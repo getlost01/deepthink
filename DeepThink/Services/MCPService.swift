@@ -127,6 +127,42 @@ final class MCPService {
         }
     }
 
+    func discoverFromClaudeConfig() -> [(name: String, command: String, args: String, category: String, description: String)] {
+        let configPaths = [
+            "\(NSHomeDirectory())/.claude.json",
+            "\(NSHomeDirectory())/.claude/claude_desktop_config.json",
+            "\(NSHomeDirectory())/Library/Application Support/Claude/claude_desktop_config.json",
+        ]
+
+        for path in configPaths {
+            guard let data = FileManager.default.contents(atPath: path),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let servers = json["mcpServers"] as? [String: Any] else {
+                continue
+            }
+
+            var discovered: [(name: String, command: String, args: String, category: String, description: String)] = []
+
+            for (name, value) in servers {
+                guard let config = value as? [String: Any],
+                      let command = config["command"] as? String else { continue }
+
+                let args = (config["args"] as? [String])?.joined(separator: " ") ?? ""
+                discovered.append((
+                    name: name,
+                    command: command,
+                    args: args,
+                    category: "Discovered",
+                    description: "Imported from Claude config"
+                ))
+            }
+
+            if !discovered.isEmpty { return discovered }
+        }
+
+        return []
+    }
+
     static let presetServers: [(name: String, command: String, args: String, category: String, description: String)] = [
         ("Filesystem", "npx", "-y @modelcontextprotocol/server-filesystem /Users", "Files", "Read, write, and manage files on your system"),
         ("Web Search", "npx", "-y @anthropic-ai/mcp-server-web-search", "Search", "Search the web using Brave Search API"),

@@ -7,43 +7,42 @@ struct ProjectDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
+            HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(Color(hex: project.color))
-                    .frame(width: 16, height: 16)
+                    .frame(width: 10, height: 10)
 
                 TextField("Project name", text: $project.name)
                     .textFieldStyle(.plain)
                     .font(.title2)
                     .fontWeight(.semibold)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.lg)
 
             TextField("Add a summary...", text: $project.summary, axis: .vertical)
                 .textFieldStyle(.plain)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .lineLimit(2)
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.top, DS.Spacing.xs)
 
-            HStack(spacing: 16) {
+            HStack(spacing: DS.Spacing.md) {
                 StatChip(label: "Notes", value: "\(project.notes.count)", icon: "doc.text")
                 StatChip(label: "Tasks", value: "\(project.openTaskCount) open", icon: "checklist")
-                StatChip(label: "Points", value: "\(project.completedStoryPoints)/\(project.totalStoryPoints)", icon: "chart.bar")
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.md)
 
             Picker("", selection: $selectedTab) {
                 Text("Tasks").tag(0)
                 Text("Notes").tag(1)
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.lg)
+            .padding(.bottom, DS.Spacing.sm)
 
             Divider()
 
@@ -81,16 +80,16 @@ private struct StatChip: View {
     let icon: String
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: DS.Spacing.xs) {
             Image(systemName: icon)
-                .font(.caption2)
+                .font(DS.Font.tiny)
             Text(value)
-                .font(.caption)
+                .font(DS.Font.caption)
                 .fontWeight(.medium)
         }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.quaternary.opacity(0.5), in: Capsule())
+        .foregroundStyle(DS.Colors.textSecondary)
+        .padding(.horizontal, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.xs)
+        .background(Color.primary.opacity(0.04), in: Capsule())
     }
 }

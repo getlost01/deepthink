@@ -1,28 +1,5 @@
 import SwiftUI
 
-struct EmptyStateView: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 36))
-                .foregroundStyle(.tertiary)
-            Text(title)
-                .font(.headline)
-                .foregroundStyle(.secondary)
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
-        .listRowSeparator(.hidden)
-    }
-}
-
 struct StoryPointsBadge: View {
     let points: Int
 
@@ -33,7 +10,7 @@ struct StoryPointsBadge: View {
             .foregroundStyle(.blue)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }
 
@@ -42,11 +19,11 @@ struct TagChip: View {
 
     var body: some View {
         Text(tag.name)
-            .font(.caption2)
+            .font(DS.Font.tiny)
             .fontWeight(.medium)
             .foregroundStyle(Color(hex: tag.color))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.xs)
             .background(Color(hex: tag.color).opacity(0.12), in: Capsule())
     }
 }
@@ -56,7 +33,7 @@ struct StatusIndicator: View {
 
     var body: some View {
         Image(systemName: status.icon)
-            .font(.caption)
+            .font(.system(size: 10))
             .foregroundStyle(status.color)
     }
 }

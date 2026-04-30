@@ -7,15 +7,13 @@ struct TaskDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 TextField("Task title", text: $task.title)
                     .textFieldStyle(.plain)
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Divider()
-
-                HStack(spacing: 16) {
+                HStack(spacing: DS.Spacing.lg) {
                     Picker("Status", selection: $task.status) {
                         ForEach(TaskStatus.allCases) { status in
                             Label(status.rawValue, systemImage: status.icon)
@@ -31,9 +29,7 @@ struct TaskDetailView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                }
 
-                HStack(spacing: 16) {
                     Picker("Story Points", selection: Binding(
                         get: { task.storyPoints ?? -1 },
                         set: { task.storyPoints = $0 == -1 ? nil : $0 }
@@ -44,7 +40,9 @@ struct TaskDetailView: View {
                         }
                     }
                     .pickerStyle(.menu)
+                }
 
+                HStack(spacing: DS.Spacing.lg) {
                     DatePicker("Due Date",
                         selection: Binding(
                             get: { task.dueDate ?? Date() },
@@ -55,40 +53,44 @@ struct TaskDetailView: View {
 
                     if task.dueDate != nil {
                         Button("Clear") { task.dueDate = nil }
-                            .font(.caption)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(.secondary)
                     }
-                }
 
-                Picker("Project", selection: Binding(
-                    get: { task.project },
-                    set: { task.project = $0 }
-                )) {
-                    Text("No Project").tag(nil as Project?)
-                    ForEach(projects) { project in
-                        HStack {
-                            Circle()
-                                .fill(Color(hex: project.color))
-                                .frame(width: 8, height: 8)
-                            Text(project.name)
+                    Spacer()
+
+                    Picker("Project", selection: Binding(
+                        get: { task.project },
+                        set: { task.project = $0 }
+                    )) {
+                        Text("No Project").tag(nil as Project?)
+                        ForEach(projects) { project in
+                            HStack {
+                                Circle()
+                                    .fill(Color(hex: project.color))
+                                    .frame(width: 8, height: 8)
+                                Text(project.name)
+                            }
+                            .tag(project as Project?)
                         }
-                        .tag(project as Project?)
                     }
+                    .pickerStyle(.menu)
                 }
-                .pickerStyle(.menu)
 
                 Divider()
 
                 Text("Description")
-                    .font(.headline)
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textSecondary)
 
                 TextEditor(text: $task.detail)
                     .font(.body)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 200)
-                    .padding(8)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                    .padding(DS.Spacing.sm)
+                    .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
-            .padding(20)
+            .padding(DS.Spacing.xl)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: task.title) { task.modifiedAt = Date() }

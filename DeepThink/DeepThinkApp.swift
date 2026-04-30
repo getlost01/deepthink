@@ -87,6 +87,9 @@ struct DeepThinkApp: App {
             Command(title: "Deep Search", icon: "sparkle.magnifyingglass", shortcut: "⇧⌘F", section: "Navigate") {
                 appState.navigate(to: .deepSearch)
             },
+            Command(title: "Analysis", icon: "wand.and.rays", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .analysis)
+            },
             Command(title: "Notes", icon: "doc.text", shortcut: nil, section: "Navigate") {
                 appState.navigate(to: .notes)
             },

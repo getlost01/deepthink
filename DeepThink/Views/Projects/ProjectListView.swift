@@ -11,22 +11,22 @@ struct ProjectListView: View {
         showArchived ? allProjects : allProjects.filter { !$0.isArchived }
     }
 
-    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 300), spacing: 16)]
+    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 300), spacing: DS.Spacing.lg)]
 
     var body: some View {
         @Bindable var appState = appState
 
         ScrollView {
             if projects.isEmpty {
-                EmptyStateView(
+                DSEmptyState(
                     icon: "folder",
                     title: "No Projects",
-                    subtitle: "Create a project to organize your work"
+                    subtitle: "Create a project to organize your work",
+                    action: createProject,
+                    actionTitle: "New Project"
                 )
-                .frame(maxWidth: .infinity)
-                .padding(.top, 100)
             } else {
-                LazyVGrid(columns: columns, spacing: 16) {
+                LazyVGrid(columns: columns, spacing: DS.Spacing.lg) {
                     ForEach(projects) { project in
                         ProjectCard(project: project, isSelected: appState.selectedProjectID == project.id)
                             .onTapGesture {
@@ -47,22 +47,27 @@ struct ProjectListView: View {
                             }
                     }
                 }
-                .padding(20)
+                .padding(DS.Spacing.xl)
             }
         }
         .navigationTitle("Projects")
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: createProject) {
-                    Image(systemName: "folder.badge.plus")
-                }
-                .help("New Project")
-            }
             ToolbarItem(placement: .automatic) {
-                Toggle(isOn: $showArchived) {
-                    Image(systemName: "archivebox")
+                HStack(spacing: DS.Spacing.sm) {
+                    Button {
+                        showArchived.toggle()
+                    } label: {
+                        Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
+                            .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .help(showArchived ? "Hide Archived" : "Show Archived")
+
+                    Button(action: createProject) {
+                        Image(systemName: "plus")
+                    }
+                    .help("New Project")
                 }
-                .help("Show Archived")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewProject)) { _ in
@@ -82,41 +87,36 @@ private struct ProjectCard: View {
     let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            RoundedRectangle(cornerRadius: 4)
-                .fill(Color(hex: project.color))
-                .frame(height: 4)
-
-            Text(project.name)
-                .font(.headline)
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.sm) {
+                Circle()
+                    .fill(Color(hex: project.color))
+                    .frame(width: 8, height: 8)
+                Text(project.name)
+                    .font(DS.Font.body)
+                    .fontWeight(.medium)
+                    .lineLimit(1)
+            }
 
             if !project.summary.isEmpty {
                 Text(project.summary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(2)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: DS.Spacing.md) {
                 Label("\(project.notes.count)", systemImage: "doc.text")
                 Label("\(project.openTaskCount)", systemImage: "checklist")
-                if project.totalStoryPoints > 0 {
-                    Label("\(project.completedStoryPoints)/\(project.totalStoryPoints) SP", systemImage: "chart.bar")
-                }
             }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+            .font(DS.Font.tiny)
+            .foregroundStyle(DS.Colors.textTertiary)
         }
-        .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 12)
-                .fill(.background)
-                .shadow(color: .black.opacity(0.08), radius: isSelected ? 8 : 4, y: 2)
-        }
+        .padding(DS.Spacing.lg)
+        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(isSelected ? Color.accentColor : .clear, lineWidth: 2)
+            RoundedRectangle(cornerRadius: DS.Radius.lg)
+                .strokeBorder(isSelected ? Color.accentColor : DS.Colors.border, lineWidth: isSelected ? 1.5 : 0.5)
         }
     }
 }

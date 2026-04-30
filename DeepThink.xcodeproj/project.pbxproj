@@ -50,6 +50,8 @@
 		EDDAAA898C3FECF2D63E897E /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3B3F89EA7F9BAF3FD80471 /* Extensions.swift */; };
 		F632E15BC4F4D38DB00F7919 /* NoteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 537CE926D065F008EC744C10 /* NoteLink.swift */; };
 		F698D7CDD7BE6577F5F3C53F /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00321B3E3D5116C5303B7C3C /* TaskRowView.swift */; };
+		AA11223344556677AABB0001 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0002 /* AnalysisView.swift */; };
+		AA11223344556677AABB0003 /* CLIAnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11223344556677AABB0004 /* CLIAnalysisService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +100,8 @@
 		F5A5BAF20115A6287910164A /* TaskInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskInspectorView.swift; sourceTree = "<group>"; };
 		FA9DA6F9A7A0B110A50028AE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSearchView.swift; sourceTree = "<group>"; };
+		AA11223344556677AABB0002 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		AA11223344556677AABB0004 /* CLIAnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLIAnalysisService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -168,6 +172,7 @@
 			isa = PBXGroup;
 			children = (
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
+				AA11223344556677AABB0004 /* CLIAnalysisService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
 				0600BB6D0E20A8A684ED8D07 /* MCPService.swift */,
 				A3FCAE699A5E746FA2001B06 /* StorageService.swift */,
@@ -176,10 +181,19 @@
 			path = Services;
 			sourceTree = "<group>";
 		};
+		AA11223344556677AABB0005 /* Analysis */ = {
+			isa = PBXGroup;
+			children = (
+				AA11223344556677AABB0002 /* AnalysisView.swift */,
+			);
+			path = Analysis;
+			sourceTree = "<group>";
+		};
 		6372EA5B33DC5CA902A14153 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				85913E0C3242EC5DDD5A16AC /* ContentView.swift */,
+				AA11223344556677AABB0005 /* Analysis */,
 				EF7FA233F182B3FCB79197F0 /* CommandPalette */,
 				8E81F1B5F7CED5AEB54788C6 /* Dashboard */,
 				25E962E33F99CAB988BD7F17 /* DeepSearch */,
@@ -397,6 +411,8 @@
 			files = (
 				46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */,
 				B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */,
+				AA11223344556677AABB0001 /* AnalysisView.swift in Sources */,
+				AA11223344556677AABB0003 /* CLIAnalysisService.swift in Sources */,
 				4A07702CB750BA644FF75839 /* AppState.swift in Sources */,
 				4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,

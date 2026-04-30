@@ -5,6 +5,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case home = "Home"
     case chat = "AI Chat"
     case deepSearch = "Deep Search"
+    case analysis = "Analysis"
     case notes = "Notes"
     case tasks = "Tasks"
     case projects = "Projects"
@@ -19,6 +20,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .home: "house"
         case .chat: "bubble.left.and.bubble.right"
         case .deepSearch: "sparkle.magnifyingglass"
+        case .analysis: "wand.and.rays"
         case .notes: "doc.text"
         case .tasks: "checklist"
         case .projects: "folder"
@@ -31,12 +33,13 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .home: .blue
-        case .chat: .purple
+        case .chat: .blue
         case .deepSearch: .orange
+        case .analysis: .green
         case .notes: .blue
         case .tasks: .green
         case .projects: .teal
-        case .tools: .indigo
+        case .tools: .teal
         case .graph: .cyan
         case .terminal: .gray
         }
@@ -95,10 +98,10 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .none: "minus"
-        case .low: "arrow.down"
-        case .medium: "equal"
-        case .high: "arrow.up"
-        case .urgent: "exclamationmark.2"
+        case .low: "chevron.down"
+        case .medium: "chevron.up.chevron.down"
+        case .high: "chevron.up"
+        case .urgent: "exclamationmark"
         }
     }
 

@@ -46,11 +46,11 @@ struct DeepSearchView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkle.magnifyingglass")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
+            VStack(spacing: DS.Spacing.md) {
+                HStack(spacing: DS.Spacing.md) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 14))
+                        .foregroundStyle(DS.Colors.textTertiary)
 
                     TextField("Search your knowledge base...", text: $query)
                         .textFieldStyle(.plain)
@@ -61,18 +61,10 @@ struct DeepSearchView: View {
                     if isSearching {
                         ProgressView().scaleEffect(0.7)
                     }
-
-                    Button(action: performSearch) {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(query.isEmpty ? Color.secondary.opacity(0.3) : .orange)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(query.isEmpty)
                 }
-                .padding(16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.quaternary))
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.md)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.md))
 
                 Picker("Mode", selection: $searchMode) {
                     ForEach(SearchMode.allCases, id: \.self) { mode in
@@ -80,9 +72,9 @@ struct DeepSearchView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 360)
+                .frame(width: 320)
             }
-            .padding(24)
+            .padding(DS.Spacing.xl)
             .background(.bar)
 
             Divider()
@@ -90,19 +82,18 @@ struct DeepSearchView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if let aiResult, !aiResult.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack(spacing: 6) {
-                                Image(systemName: "brain.head.profile")
-                                    .foregroundStyle(.purple)
+                        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                            HStack(spacing: DS.Spacing.sm) {
                                 Text("AI Analysis")
-                                    .font(.headline)
+                                    .font(DS.Font.heading)
                                 Spacer()
                                 Button {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(aiResult, forType: .string)
                                 } label: {
                                     Image(systemName: "doc.on.doc")
-                                        .font(.caption)
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.textTertiary)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -117,14 +108,14 @@ struct DeepSearchView: View {
                                     .textSelection(.enabled)
                             }
                         }
-                        .padding(16)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.purple.opacity(0.2)))
+                        .padding(DS.Spacing.lg)
+                        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.lg).strokeBorder(DS.Colors.border))
                     }
 
                     if !localResults.isEmpty {
                         Text("Workspace Results (\(localResults.count))")
-                            .font(.headline)
+                            .font(DS.Font.heading)
 
                         ForEach(localResults) { result in
                             SearchResultRow(result: result) {
@@ -134,31 +125,25 @@ struct DeepSearchView: View {
                     }
 
                     if query.isEmpty && aiResult == nil {
-                        VStack(spacing: 12) {
-                            Image(systemName: "sparkle.magnifyingglass")
-                                .font(.system(size: 40))
-                                .foregroundStyle(.tertiary)
+                        VStack(spacing: DS.Spacing.lg) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 32))
+                                .foregroundStyle(.quaternary)
                             Text("Deep Search")
-                                .font(.title3)
-                                .fontWeight(.semibold)
-                            Text("Search across notes, tasks, projects — or use AI to analyze and find answers")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .frame(maxWidth: 400)
+                                .font(DS.Font.heading)
+                                .foregroundStyle(DS.Colors.textSecondary)
 
-                            VStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                                 SearchSuggestion(text: "What did I work on this week?") { query = $0; performSearch() }
                                 SearchSuggestion(text: "Summarize project progress") { query = $0; performSearch() }
                                 SearchSuggestion(text: "Find tasks related to authentication") { query = $0; performSearch() }
-                                SearchSuggestion(text: "What decisions were made recently?") { query = $0; performSearch() }
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
+                        .padding(.top, DS.Spacing.xxxl)
                     }
                 }
-                .padding(24)
+                .padding(DS.Spacing.xl)
             }
         }
         .onAppear { focused = true }
@@ -271,27 +256,23 @@ private struct SearchResultRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: DS.Spacing.md) {
                 Image(systemName: result.type.icon)
-                    .font(.body)
+                    .font(DS.Font.body)
                     .foregroundStyle(result.type.color)
                     .frame(width: 28, height: 28)
-                    .background(result.type.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                    .background(result.type.color.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(result.title).font(.callout).fontWeight(.medium).lineLimit(1)
-                    Text(result.subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                    Text(result.title).font(DS.Font.body).fontWeight(.medium).lineLimit(1)
+                    Text(result.subtitle).font(DS.Font.caption).foregroundStyle(.secondary).lineLimit(2)
                 }
 
                 Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
-            .padding(10)
-            .background(.background, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary.opacity(0.5)))
+            .padding(DS.Spacing.md)
+            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
         }
         .buttonStyle(.plain)
     }
@@ -303,15 +284,15 @@ private struct SearchSuggestion: View {
 
     var body: some View {
         Button { action(text) } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(.caption2).foregroundStyle(.orange)
-                Text(text).font(.caption)
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "magnifyingglass").font(.system(size: 10)).foregroundStyle(DS.Colors.textTertiary)
+                Text(text).font(DS.Font.caption)
                 Spacer()
             }
-            .padding(8)
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 6))
+            .padding(DS.Spacing.sm)
+            .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plain)
-        .frame(maxWidth: 400)
+        .frame(maxWidth: 360)
     }
 }

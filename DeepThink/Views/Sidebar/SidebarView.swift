@@ -18,6 +18,7 @@ struct SidebarView: View {
             Section("AI") {
                 sidebarRow(.chat)
                 sidebarRow(.deepSearch)
+                sidebarRow(.analysis)
             }
 
             Section("Workspace") {
@@ -39,16 +40,16 @@ struct SidebarView: View {
                 appState.toggleCommandPalette()
             } label: {
                 HStack(spacing: DS.Spacing.sm) {
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "command")
                             .font(.system(size: 9))
                         Text("K")
                             .font(.system(size: 10, weight: .medium, design: .rounded))
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 3)
-                    .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: 4))
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.vertical, 2)
+                    .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: DS.Spacing.xs))
 
                     Text("Command Palette")
                         .font(DS.Font.caption)

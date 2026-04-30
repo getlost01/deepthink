@@ -4,7 +4,7 @@ struct TaskRowView: View {
     @Bindable var task: TaskItem
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DS.Spacing.sm) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     task.status = task.status == .done ? .todo : .done
@@ -13,7 +13,7 @@ struct TaskRowView: View {
             } label: {
                 Image(systemName: task.status == .done ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(task.status == .done ? .green : .secondary)
-                    .font(.body)
+                    .font(.system(size: 14))
             }
             .buttonStyle(.plain)
 
@@ -34,7 +34,7 @@ struct TaskRowView: View {
 
             if task.priority != .none {
                 Image(systemName: task.priority.icon)
-                    .font(.caption)
+                    .font(.system(size: 10))
                     .foregroundStyle(task.priority.color)
             }
 
@@ -42,6 +42,6 @@ struct TaskRowView: View {
                 StoryPointsBadge(points: points)
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DS.Spacing.xs)
     }
 }

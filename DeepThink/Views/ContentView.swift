@@ -37,6 +37,8 @@ struct ContentRouter: View {
                 AIChatView()
             case .deepSearch:
                 DeepSearchView()
+            case .analysis:
+                AnalysisView()
             case .notes:
                 NoteWorkspace()
             case .tasks:
@@ -68,7 +70,7 @@ struct NoteWorkspace: View {
     var body: some View {
         HStack(spacing: 0) {
             NoteListView()
-                .frame(width: 260)
+                .frame(width: 250)
                 .background(DS.Colors.surface)
 
             Divider()
@@ -100,7 +102,7 @@ struct TaskWorkspace: View {
     var body: some View {
         HStack(spacing: 0) {
             TaskListView()
-                .frame(width: 280)
+                .frame(width: 250)
                 .background(DS.Colors.surface)
 
             Divider()
@@ -142,14 +144,14 @@ struct ProjectContentView: View {
                             Text("Projects")
                                 .font(DS.Font.caption)
                         }
-                        .foregroundStyle(DS.Colors.accent)
+                        .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
 
                     Spacer()
                 }
                 .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.md)
                 .background(.bar)
 
                 Divider()

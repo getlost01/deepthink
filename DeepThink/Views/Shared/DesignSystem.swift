@@ -32,11 +32,11 @@ enum DS {
     }
 
     enum Colors {
-        static let accent = Color.purple
+        static let accent = Color.accentColor
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .windowBackgroundColor)
-        static let border = Color.primary.opacity(0.08)
-        static let borderSubtle = Color.primary.opacity(0.04)
+        static let border = Color.primary.opacity(0.06)
+        static let borderSubtle = Color.primary.opacity(0.03)
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
         static let textTertiary = Color.primary.opacity(0.3)
@@ -56,11 +56,10 @@ struct DSCard<Content: View>: View {
             .background {
                 if material {
                     RoundedRectangle(cornerRadius: DS.Radius.lg)
-                        .fill(.ultraThinMaterial)
+                        .fill(.thinMaterial)
                 } else {
                     RoundedRectangle(cornerRadius: DS.Radius.lg)
                         .fill(.background)
-                        .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
                 }
             }
             .overlay {
@@ -79,7 +78,7 @@ struct DSGlassCard<Content: View>: View {
     var body: some View {
         content()
             .padding(padding)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(.white.opacity(0.1), lineWidth: 0.5)
@@ -176,11 +175,7 @@ struct DSSearchField: View {
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.md)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay {
-            RoundedRectangle(cornerRadius: DS.Radius.md)
-                .strokeBorder(DS.Colors.border, lineWidth: 0.5)
-        }
+        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.md))
     }
 }
 
@@ -191,6 +186,7 @@ struct DSActionButton: View {
     let icon: String
     var color: Color = DS.Colors.accent
     let action: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
@@ -204,9 +200,10 @@ struct DSActionButton: View {
             .foregroundStyle(color)
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(color.opacity(isHovered ? 0.15 : 0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }
 
@@ -222,8 +219,8 @@ struct DSEmptyState: View {
     var body: some View {
         VStack(spacing: DS.Spacing.lg) {
             Image(systemName: icon)
-                .font(.system(size: 36))
-                .foregroundStyle(DS.Colors.textTertiary)
+                .font(.system(size: 32))
+                .foregroundStyle(.quaternary)
 
             VStack(spacing: DS.Spacing.xs) {
                 Text(title)
@@ -288,16 +285,12 @@ struct DSToolbar<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.md) {
-                content()
-            }
-            .padding(.horizontal, DS.Spacing.xl)
-            .padding(.vertical, DS.Spacing.md)
-            .background(.bar)
-
-            Divider()
+        HStack(spacing: DS.Spacing.md) {
+            content()
         }
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.md)
+        .background(.bar)
     }
 }
 
@@ -308,7 +301,6 @@ extension View {
         self
             .padding(padding)
             .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-            .shadow(color: .black.opacity(0.04), radius: 8, y: 2)
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(DS.Colors.border, lineWidth: 0.5)
@@ -318,7 +310,7 @@ extension View {
     func dsGlass(padding: CGFloat = DS.Spacing.lg) -> some View {
         self
             .padding(padding)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)

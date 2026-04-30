@@ -28,7 +28,7 @@ struct NoteEditorView: View {
                         showAIMenu.toggle()
                     } label: {
                         Image(systemName: "brain.head.profile")
-                            .foregroundStyle(.purple)
+                            .foregroundStyle(DS.Colors.accent)
                     }
                     .buttonStyle(.plain)
                     .popover(isPresented: $showAIMenu) {
@@ -56,12 +56,9 @@ struct NoteEditorView: View {
                     .frame(width: 80)
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 8)
-
-            Divider()
-                .padding(.horizontal, 20)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.top, DS.Spacing.lg)
+            .padding(.bottom, DS.Spacing.sm)
 
             if showPreview {
                 MarkdownRendererView(markdown: note.content)
@@ -69,8 +66,8 @@ struct NoteEditorView: View {
                 TextEditor(text: $note.content)
                     .font(.body.monospaced())
                     .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.top, DS.Spacing.sm)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -125,7 +122,7 @@ private struct AIActionsMenu: View {
                             dismiss()
                         }
                         .buttonStyle(.borderedProminent)
-                        .tint(.purple)
+                        .tint(DS.Colors.accent)
                         .controlSize(.small)
 
                         Button("Copy") {
@@ -150,8 +147,8 @@ private struct AIActionsMenu: View {
                     }
                     .frame(maxHeight: 300)
                 }
-                .padding(12)
-                .frame(width: 380)
+                .padding(DS.Spacing.md)
+                .frame(width: 360)
             } else if let error {
                 VStack(spacing: 8) {
                     Image(systemName: "exclamationmark.triangle")
@@ -161,16 +158,16 @@ private struct AIActionsMenu: View {
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
                 }
-                .padding(12)
-                .frame(width: 280)
+                .padding(DS.Spacing.md)
+                .frame(width: 260)
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("AI Actions")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .padding(.horizontal, 12)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
+                        .padding(.horizontal, DS.Spacing.md)
+                        .padding(.top, DS.Spacing.sm)
+                        .padding(.bottom, DS.Spacing.xs)
 
                     AIActionRow(title: "Summarize", icon: "text.justify.leading", color: .blue) {
                         await runAction { try await ClaudeService.shared.summarize(note.content) }
@@ -184,7 +181,7 @@ private struct AIActionsMenu: View {
                     AIActionRow(title: "Improve Writing", icon: "pencil.and.outline", color: .green) {
                         await runAction { try await ClaudeService.shared.improveWriting(note.content) }
                     }
-                    AIActionRow(title: "Continue Writing", icon: "arrow.right.doc.on.clipboard", color: .purple) {
+                    AIActionRow(title: "Continue Writing", icon: "arrow.right.doc.on.clipboard", color: .blue) {
                         await runAction {
                             try await ClaudeService.shared.query(
                                 "Continue writing this document naturally from where it left off. Match the tone and style. Output only the continuation:\n\n\(note.content)",
@@ -194,7 +191,7 @@ private struct AIActionsMenu: View {
                     }
                 }
                 .padding(.bottom, 8)
-                .frame(width: 220)
+                .frame(width: 200)
             }
         }
     }
@@ -230,8 +227,8 @@ private struct AIActionRow: View {
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

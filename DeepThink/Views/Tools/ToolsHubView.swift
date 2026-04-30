@@ -21,119 +21,107 @@ struct ToolsHubView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "wrench.and.screwdriver")
-                    .foregroundStyle(.indigo)
-                Text("Tools & MCP Servers")
-                    .font(.headline)
-
+            HStack(spacing: DS.Spacing.sm) {
                 Spacer()
 
                 Text("\(servers.filter(\.isEnabled).count) active")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(.green.opacity(0.1), in: Capsule())
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
 
                 Button {
                     showPresets = true
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.square.on.square")
-                        Text("Presets")
-                    }
-                    .font(.caption)
+                    Text("Presets")
+                        .font(DS.Font.caption)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
 
                 Button {
+                    importFromClaude()
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "square.and.arrow.down")
+                        Text("Import")
+                    }
+                    .font(DS.Font.caption)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help("Import MCP servers from Claude config")
+
+                Button {
                     showAddSheet = true
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "plus")
-                        Text("Custom")
+                        Text("Add")
                     }
-                    .font(.caption)
+                    .font(DS.Font.caption)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.md)
             .background(.bar)
 
             Divider()
 
-            HStack(spacing: 0) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(categories, id: \.self) { cat in
-                            Button {
-                                selectedCategory = cat
-                            } label: {
-                                Text(cat)
-                                    .font(.caption)
-                                    .fontWeight(selectedCategory == cat ? .semibold : .regular)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 5)
-                                    .background(selectedCategory == cat ? Color.accentColor.opacity(0.15) : .clear, in: Capsule())
-                            }
-                            .buttonStyle(.plain)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.Spacing.xs) {
+                    ForEach(categories, id: \.self) { cat in
+                        Button {
+                            selectedCategory = cat
+                        } label: {
+                            Text(cat)
+                                .font(DS.Font.caption)
+                                .fontWeight(selectedCategory == cat ? .medium : .regular)
+                                .foregroundStyle(selectedCategory == cat ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(selectedCategory == cat ? Color.primary.opacity(0.06) : .clear, in: Capsule())
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
                 }
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
             }
-            .background(.bar.opacity(0.5))
-
-            Divider()
 
             if filteredServers.isEmpty {
-                VStack(spacing: 12) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.tertiary)
-                    Text("No tools configured")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Text("Add MCP servers to give Claude superpowers — search the web, query databases, manage files, and more")
-                        .font(.callout)
-                        .foregroundStyle(.tertiary)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 400)
-                    Button("Browse Presets") { showPresets = true }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.regular)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DSEmptyState(
+                    icon: "wrench.and.screwdriver",
+                    title: "No tools configured",
+                    subtitle: "Add MCP servers to extend Claude with web search, databases, and more",
+                    action: { showPresets = true },
+                    actionTitle: "Browse Presets"
+                )
             } else {
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 400), spacing: 12)], spacing: 12) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 400), spacing: DS.Spacing.md)], spacing: DS.Spacing.md) {
                         ForEach(filteredServers) { server in
                             ToolCard(server: server, onTest: { testServer(server) }, onDelete: { deleteServer(server) })
                         }
                     }
-                    .padding(24)
+                    .padding(DS.Spacing.xl)
                 }
             }
 
             if let testResult {
-                HStack(spacing: 8) {
+                HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: isTesting ? "hourglass" : "checkmark.circle")
                         .foregroundStyle(isTesting ? .orange : .green)
                     Text(testResult)
-                        .font(.caption)
+                        .font(DS.Font.caption)
                         .lineLimit(1)
                     Spacer()
                     Button("Dismiss") { self.testResult = nil }
-                        .font(.caption)
+                        .font(DS.Font.caption)
                         .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 8)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
                 .background(.bar)
             }
         }
@@ -175,6 +163,33 @@ struct ToolsHubView: View {
     private func deleteServer(_ server: MCPServer) {
         modelContext.delete(server)
     }
+
+    private func importFromClaude() {
+        let discovered = MCPService.shared.discoverFromClaudeConfig()
+        let existingNames = Set(servers.map(\.name))
+        var imported = 0
+
+        for item in discovered {
+            guard !existingNames.contains(item.name) else { continue }
+            let server = MCPServer(
+                name: item.name,
+                command: item.command,
+                args: item.args,
+                category: item.category,
+                description: item.description
+            )
+            modelContext.insert(server)
+            imported += 1
+        }
+
+        if imported > 0 {
+            testResult = "Imported \(imported) server(s) from Claude config"
+        } else if discovered.isEmpty {
+            testResult = "No Claude config found at ~/.claude.json"
+        } else {
+            testResult = "All discovered servers already exist"
+        }
+    }
 }
 
 private struct ToolCard: View {
@@ -183,21 +198,21 @@ private struct ToolCard: View {
     let onDelete: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.md) {
                 Image(systemName: iconFor(server.category))
-                    .font(.title3)
-                    .foregroundStyle(.indigo)
-                    .frame(width: 32, height: 32)
-                    .background(.indigo.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(DS.Colors.accent)
+                    .frame(width: 28, height: 28)
+                    .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(server.name)
-                        .font(.callout)
-                        .fontWeight(.semibold)
+                        .font(DS.Font.body)
+                        .fontWeight(.medium)
                     Text(server.category)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(DS.Font.tiny)
+                        .foregroundStyle(DS.Colors.textSecondary)
                 }
 
                 Spacer()
@@ -209,19 +224,19 @@ private struct ToolCard: View {
 
             if !server.serverDescription.isEmpty {
                 Text(server.serverDescription)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(2)
             }
 
             Text(server.command + " " + server.args)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.tertiary)
+                .font(DS.Font.monoSmall)
+                .foregroundStyle(DS.Colors.textTertiary)
                 .lineLimit(1)
 
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Spacing.sm) {
                 Button("Test", action: onTest)
-                    .font(.caption2)
+                    .font(DS.Font.tiny)
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
 
@@ -229,17 +244,17 @@ private struct ToolCard: View {
 
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
-                        .font(.caption2)
+                        .font(DS.Font.tiny)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.red.opacity(0.6))
+                .foregroundStyle(.red.opacity(0.5))
             }
         }
-        .padding(14)
-        .background(.background, in: RoundedRectangle(cornerRadius: 12))
+        .padding(DS.Spacing.md)
+        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(server.isEnabled ? Color.green.opacity(0.3) : Color.secondary.opacity(0.15))
+            RoundedRectangle(cornerRadius: DS.Radius.lg)
+                .strokeBorder(DS.Colors.border)
         )
     }
 
@@ -271,13 +286,13 @@ private struct AddServerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Add Custom MCP Server")
-                    .font(.headline)
+                Text("Add MCP Server")
+                    .font(DS.Font.heading)
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .buttonStyle(.plain)
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
 
             Divider()
 
@@ -293,7 +308,7 @@ private struct AddServerSheet: View {
                     .lineLimit(3...6)
                     .font(.system(.body, design: .monospaced))
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
 
             Divider()
 
@@ -307,7 +322,7 @@ private struct AddServerSheet: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(name.isEmpty || command.isEmpty)
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
         }
         .frame(width: 480, height: 440)
     }
@@ -321,35 +336,32 @@ private struct PresetServersSheet: View {
         VStack(spacing: 0) {
             HStack {
                 Text("MCP Server Presets")
-                    .font(.headline)
+                    .font(DS.Font.heading)
                 Spacer()
                 Button("Done") { dismiss() }
                     .buttonStyle(.plain)
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
 
             Divider()
 
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Spacing.sm) {
                     ForEach(MCPService.presetServers, id: \.name) { preset in
-                        HStack(spacing: 12) {
+                        HStack(spacing: DS.Spacing.md) {
                             VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Text(preset.name).font(.callout).fontWeight(.medium)
+                                HStack(spacing: DS.Spacing.sm) {
+                                    Text(preset.name).font(DS.Font.body).fontWeight(.medium)
                                     Text(preset.category)
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(.quaternary, in: Capsule())
+                                        .font(DS.Font.tiny)
+                                        .foregroundStyle(DS.Colors.textSecondary)
                                 }
                                 Text(preset.description)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(DS.Font.caption)
+                                    .foregroundStyle(DS.Colors.textSecondary)
                                 Text("\(preset.command) \(preset.args)")
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundStyle(.tertiary)
+                                    .font(DS.Font.monoSmall)
+                                    .foregroundStyle(DS.Colors.textTertiary)
                             }
 
                             Spacer()
@@ -367,14 +379,14 @@ private struct PresetServersSheet: View {
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                         }
-                        .padding(12)
-                        .background(.background, in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary.opacity(0.5)))
+                        .padding(DS.Spacing.md)
+                        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
                     }
                 }
-                .padding(16)
+                .padding(DS.Spacing.lg)
             }
         }
-        .frame(width: 600, height: 500)
+        .frame(width: 560, height: 480)
     }
 }

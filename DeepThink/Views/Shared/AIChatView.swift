@@ -29,21 +29,16 @@ struct AIChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Image(systemName: "bubble.left.and.bubble.right")
-                    .foregroundStyle(.purple)
-                Text("AI Chat")
-                    .font(.headline)
-
+            HStack(spacing: DS.Spacing.sm) {
                 Spacer()
 
                 if !activeServers.isEmpty {
                     Toggle(isOn: $useMCP) {
-                        HStack(spacing: 4) {
+                        HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "wrench.and.screwdriver")
                             Text("MCP (\(activeServers.count))")
                         }
-                        .font(.caption)
+                        .font(DS.Font.caption)
                     }
                     .toggleStyle(.switch)
                     .controlSize(.mini)
@@ -58,26 +53,27 @@ struct AIChatView: View {
                     messages.removeAll()
                 } label: {
                     Image(systemName: "trash")
-                        .font(.caption)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .buttonStyle(.plain)
                 .help("Clear chat")
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.md)
             .background(.bar)
 
             Divider()
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 16) {
+                    LazyVStack(spacing: DS.Spacing.lg) {
                         if messages.isEmpty {
                             WelcomePrompts { prompt in
                                 inputText = prompt
                                 sendMessage()
                             }
-                            .padding(.top, 40)
+                            .padding(.top, DS.Spacing.xxxl)
                         }
 
                         ForEach(messages) { message in
@@ -85,7 +81,7 @@ struct AIChatView: View {
                                 .id(message.id)
                         }
                     }
-                    .padding(20)
+                    .padding(DS.Spacing.xl)
                 }
                 .onChange(of: messages.count) {
                     if let last = messages.last {
@@ -96,23 +92,23 @@ struct AIChatView: View {
 
             Divider()
 
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .bottom, spacing: DS.Spacing.md) {
                 TextField("Ask Claude anything...", text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
-                    .font(.body)
+                    .font(DS.Font.body)
                     .focused($inputFocused)
                     .onSubmit { sendMessage() }
 
                 Button(action: sendMessage) {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.3) : .purple)
+                        .font(.system(size: 20))
+                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.3) : DS.Colors.accent)
                 }
                 .buttonStyle(.plain)
                 .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || isProcessing)
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
             .background(.bar)
         }
         .onAppear {
@@ -178,43 +174,33 @@ private struct WelcomePrompts: View {
     ]
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "brain.head.profile")
-                .font(.system(size: 40))
-                .foregroundStyle(.purple.opacity(0.4))
-
+        VStack(spacing: DS.Spacing.lg) {
             Text("How can I help?")
-                .font(.title2)
+                .font(DS.Font.title)
                 .fontWeight(.semibold)
 
-            Text("Chat with Claude, powered by your workspace context and MCP tools")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 400)
-
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DS.Spacing.sm) {
                 ForEach(suggestions, id: \.0) { title, icon in
                     Button {
                         onSelect(title)
                     } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: icon)
-                                .font(.caption)
-                                .foregroundStyle(.purple)
+                                .font(DS.Font.caption)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 20)
                             Text(title)
-                                .font(.caption)
+                                .font(DS.Font.caption)
                                 .lineLimit(1)
                             Spacer()
                         }
-                        .padding(10)
-                        .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 8))
+                        .padding(DS.Spacing.md)
+                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .frame(maxWidth: 500)
+            .frame(maxWidth: 480)
         }
         .frame(maxWidth: .infinity)
     }
@@ -224,57 +210,53 @@ struct ChatBubble: View {
     let message: AIMessage
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .top, spacing: DS.Spacing.md) {
             if message.role == .user {
-                Spacer(minLength: 60)
+                Spacer(minLength: 80)
             }
 
             if message.role != .user {
                 Image(systemName: message.role == .error ? "exclamationmark.triangle" : "brain.head.profile")
-                    .font(.caption)
-                    .foregroundStyle(message.role == .error ? .red : .purple)
-                    .frame(width: 24, height: 24)
-                    .background(message.role == .error ? .red.opacity(0.1) : .purple.opacity(0.1), in: Circle())
+                    .font(.system(size: 11))
+                    .foregroundStyle(message.role == .error ? .red : DS.Colors.accent)
+                    .frame(width: 22, height: 22)
+                    .background(message.role == .error ? .red.opacity(0.1) : DS.Colors.accent.opacity(0.1), in: Circle())
             }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 if message.role == .error {
                     Text(message.content)
-                        .font(.callout)
+                        .font(DS.Font.body)
                         .foregroundStyle(.red)
-                        .padding(12)
-                        .background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(DS.Spacing.md)
+                        .background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 } else if let attributed = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                     Text(attributed)
-                        .font(.callout)
+                        .font(DS.Font.body)
                         .textSelection(.enabled)
-                        .padding(12)
+                        .padding(DS.Spacing.md)
                         .background(
                             message.role == .user
-                                ? AnyShapeStyle(Color.purple.opacity(0.1))
+                                ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
                                 : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
-                            in: RoundedRectangle(cornerRadius: 12)
+                            in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 } else {
                     Text(message.content)
-                        .font(.callout)
+                        .font(DS.Font.body)
                         .textSelection(.enabled)
-                        .padding(12)
+                        .padding(DS.Spacing.md)
                         .background(
                             message.role == .user
-                                ? AnyShapeStyle(Color.purple.opacity(0.1))
+                                ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
                                 : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
-                            in: RoundedRectangle(cornerRadius: 12)
+                            in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 }
-
-                Text(message.timestamp, style: .time)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
             }
 
             if message.role != .user {
-                Spacer(minLength: 60)
+                Spacer(minLength: 80)
             }
         }
     }

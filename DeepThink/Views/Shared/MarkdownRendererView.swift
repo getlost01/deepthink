@@ -16,7 +16,7 @@ struct MarkdownRendererView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .padding(16)
+            .padding(DS.Spacing.lg)
         }
     }
 }
@@ -35,8 +35,8 @@ struct MarkdownSplitEditor: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 80)
-                .padding(.trailing, 12)
-                .padding(.vertical, 4)
+                .padding(.trailing, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
             }
             .background(.bar)
 
@@ -48,8 +48,8 @@ struct MarkdownSplitEditor: View {
                 TextEditor(text: $text)
                     .font(.body.monospaced())
                     .scrollContentBackground(.hidden)
-                    .padding(.horizontal, 12)
-                    .padding(.top, 4)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.top, DS.Spacing.xs)
             }
         }
     }

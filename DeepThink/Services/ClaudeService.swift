@@ -6,6 +6,8 @@ final class ClaudeService {
 
     var isProcessing = false
     var lastError: String?
+    var selectedModel: String = "sonnet"
+    var maxTokens: Int = 4096
 
     private let claudePath: String
 
@@ -51,7 +53,7 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence"]
+                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--model", "claude-\(ClaudeService.shared.selectedModel)-4-6", "--max-tokens", "\(ClaudeService.shared.maxTokens)"]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -136,6 +138,34 @@ final class ClaudeService {
             "Improve the following text for clarity and conciseness. Return only the improved text:\n\n\(text)",
             systemPrompt: "You are an expert editor. Improve text for clarity while preserving meaning. Output only the improved text."
         )
+    }
+
+    func analyzeCLIOutput(_ output: String, question: String? = nil) async throws -> String {
+        let prompt: String
+        if let question {
+            prompt = "Analyze this command output and answer: \(question)\n\n```\n\(output.prefix(8000))\n```"
+        } else {
+            prompt = "Analyze this command output. Summarize key findings, highlight issues or anomalies, and suggest next steps if applicable:\n\n```\n\(output.prefix(8000))\n```"
+        }
+        return try await query(prompt, systemPrompt: "You are a CLI and devops expert. Analyze command output concisely. Use bullet points. Highlight errors, warnings, and anomalies.")
+    }
+
+    func explainError(_ command: String, stderr: String, exitCode: Int32) async throws -> String {
+        let prompt = "Command: \(command)\nExit code: \(exitCode)\nError output:\n```\n\(stderr.prefix(4000))\n```\n\nExplain what went wrong and suggest a fix."
+        return try await query(prompt, systemPrompt: "You are a CLI expert. Explain errors concisely and provide actionable fixes.")
+    }
+
+    func analyzeFile(at path: String, question: String? = nil) async throws -> String {
+        let url = URL(fileURLWithPath: path)
+        let content = try String(contentsOf: url, encoding: .utf8)
+        let ext = url.pathExtension
+        let prompt: String
+        if let question {
+            prompt = "Analyze this \(ext) file and answer: \(question)\n\n```\(ext)\n\(content.prefix(10000))\n```"
+        } else {
+            prompt = "Analyze this \(ext) file. Describe its purpose, highlight key patterns, potential issues, and suggest improvements:\n\n```\(ext)\n\(content.prefix(10000))\n```"
+        }
+        return try await query(prompt, systemPrompt: "You are a code and data analysis expert. Be concise and actionable.")
     }
 }
 
