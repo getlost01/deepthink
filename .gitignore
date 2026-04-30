@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.moved-aside
+*.hmap
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+Packages/
+
+# CLI - Bun/Node
+cli/node_modules/
+cli/*.bun-build
+cli/deepthink
+cli/deepthink-arm64
+cli/deepthink-x64
+cli/dist/
+
+# DeepThink runtime data
+~/deepthink/
+
+# Environment
+.env
+.env.*

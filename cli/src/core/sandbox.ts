@@ -1,0 +1,26 @@
+import { mkdirSync, readdirSync, existsSync } from "fs";
+import { join } from "path";
+import { SANDBOX_ROOT, SANDBOX_DIRS, MEMORY_DIR, LOGS_DIR } from "../config";
+
+export function initSandbox(): void {
+  const dirs = [...Object.values(SANDBOX_DIRS), MEMORY_DIR, LOGS_DIR];
+  for (const d of dirs) {
+    mkdirSync(d, { recursive: true });
+  }
+}
+
+export function getPath(category: keyof typeof SANDBOX_DIRS, filename: string): string {
+  return join(SANDBOX_DIRS[category], filename);
+}
+
+export function listFiles(category?: keyof typeof SANDBOX_DIRS): string[] {
+  const base = category ? SANDBOX_DIRS[category] : SANDBOX_ROOT;
+  if (!existsSync(base)) return [];
+  try {
+    return readdirSync(base).map((f) => join(base, f));
+  } catch {
+    return [];
+  }
+}
+
+initSandbox();

@@ -19,6 +19,13 @@ targets:
       - path: DeepThink
         excludes:
           - "Preview Content"
+    postCompileScripts:
+      - script: |
+          if [ -f "${SRCROOT}/cli/deepthink" ]; then
+            mkdir -p "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+            cp "${SRCROOT}/cli/deepthink" "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/deepthink-cli"
+          fi
+        name: Bundle DeepThink CLI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.deepthink.app

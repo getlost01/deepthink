@@ -90,6 +90,9 @@ struct DeepThinkApp: App {
             Command(title: "Analysis", icon: "wand.and.rays", shortcut: nil, section: "Navigate") {
                 appState.navigate(to: .analysis)
             },
+            Command(title: "Memory", icon: "brain", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .memory)
+            },
             Command(title: "Notes", icon: "doc.text", shortcut: nil, section: "Navigate") {
                 appState.navigate(to: .notes)
             },

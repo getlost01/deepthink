@@ -210,6 +210,7 @@ struct TerminalView: View {
             if let idx = activeTabIndex, tabs[idx].outputLines.isEmpty {
                 tabs[idx].outputLines.append(TerminalLine(text: "DeepThink Terminal", type: .info))
                 tabs[idx].outputLines.append(TerminalLine(text: "↑↓ history • Ctrl+C cancel • Claude toggle for AI-assisted commands", type: .info))
+                tabs[idx].outputLines.append(TerminalLine(text: "Type 'dt <command>' for DeepThink CLI (dt recall, dt remember, dt ask, dt status)", type: .info))
             }
             inputFocused = true
         }
@@ -226,6 +227,7 @@ struct TerminalView: View {
         if let idx = tabs.firstIndex(where: { $0.id == newTab.id }) {
             tabs[idx].outputLines.append(TerminalLine(text: "DeepThink Terminal", type: .info))
             tabs[idx].outputLines.append(TerminalLine(text: "↑↓ history • Ctrl+C cancel • Claude toggle for AI-assisted commands", type: .info))
+            tabs[idx].outputLines.append(TerminalLine(text: "Type 'dt <command>' for DeepThink CLI", type: .info))
         }
         inputFocused = true
     }
@@ -311,6 +313,10 @@ struct TerminalView: View {
             for (i, cmd) in tabs[idx].commandHistory.enumerated() {
                 tabs[idx].outputLines.append(TerminalLine(text: "  \(i + 1)  \(cmd)", type: .output))
             }
+            return
+        }
+        if command.hasPrefix("dt ") || command == "dt" {
+            executeDeepThink(command, tabIndex: idx)
             return
         }
 
@@ -410,6 +416,34 @@ struct TerminalView: View {
                     tabs[i].outputLines.append(TerminalLine(text: "Claude error: \(error.localizedDescription)", type: .error))
                     tabs[i].isRunning = false
                 }
+            }
+        }
+    }
+
+    private func executeDeepThink(_ command: String, tabIndex idx: Int) {
+        let tabID = tabs[idx].id
+        tabs[idx].isRunning = true
+        tabs[idx].outputLines.append(TerminalLine(text: "⚡ DeepThink CLI...", type: .info))
+
+        let args: [String]
+        if command == "dt" {
+            args = ["--help"]
+        } else {
+            args = Array(command.dropFirst(3).split(separator: " ").map(String.init))
+        }
+
+        Task {
+            let result = await DeepThinkCLIService.shared.run(args)
+            await MainActor.run {
+                guard let i = tabs.firstIndex(where: { $0.id == tabID }) else { return }
+                if result.success {
+                    for line in result.output.split(separator: "\n", omittingEmptySubsequences: false) {
+                        tabs[i].outputLines.append(TerminalLine(text: String(line), type: .ai))
+                    }
+                } else {
+                    tabs[i].outputLines.append(TerminalLine(text: result.error, type: .error))
+                }
+                tabs[i].isRunning = false
             }
         }
     }

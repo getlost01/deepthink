@@ -17,6 +17,7 @@ struct DeepSearchView: View {
     enum SearchMode: String, CaseIterable {
         case workspace = "Workspace"
         case ai = "AI Search"
+        case memory = "Memory"
         case web = "Web (MCP)"
     }
 
@@ -157,6 +158,17 @@ struct DeepSearchView: View {
         isSearching = true
         let q = query
         let context = localResults.prefix(5).map { "\($0.type): \($0.title) — \($0.subtitle)" }.joined(separator: "\n")
+
+        if searchMode == .memory {
+            Task {
+                let result = await DeepThinkCLIService.shared.recall(query: q)
+                await MainActor.run {
+                    aiResult = result.success ? result.output : "Memory search error: \(result.error)"
+                    isSearching = false
+                }
+            }
+            return
+        }
 
         Task {
             do {

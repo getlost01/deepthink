@@ -14,6 +14,7 @@ struct AnalysisView: View {
         case command = "Command"
         case file = "File"
         case url = "URL"
+        case data = "Data Analysis"
     }
 
     struct AnalysisResultItem: Identifiable {
@@ -176,6 +177,7 @@ struct AnalysisView: View {
         case .command: "terminal"
         case .file: "doc"
         case .url: "globe"
+        case .data: "chart.bar"
         }
     }
 
@@ -184,6 +186,7 @@ struct AnalysisView: View {
         case .command: "Enter command to run and analyze..."
         case .file: "Enter file path to analyze..."
         case .url: "Enter URL to fetch and analyze..."
+        case .data: "Enter CSV/JSON file path for data analysis..."
         }
     }
 
@@ -196,6 +199,8 @@ struct AnalysisView: View {
         ("System Info", "sw_vers && sysctl -n machdep.cpu.brand_string", "desktopcomputer", "macOS version and hardware"),
         ("Brew Health", "brew outdated 2>/dev/null && brew doctor 2>/dev/null | head -20", "mug", "Homebrew package status"),
         ("npm Audit", "npm audit 2>/dev/null || echo 'No package.json'", "shield", "Dependency vulnerabilities"),
+        ("DeepThink Status", "deepthink status 2>/dev/null || echo 'CLI not set up'", "brain", "DeepThink CLI system status"),
+        ("Memory Stats", "deepthink memory 2>/dev/null || echo 'CLI not set up'", "brain.head.profile", "Memory bank statistics"),
     ]
 
     private func runAnalysis() {
@@ -221,6 +226,14 @@ struct AnalysisView: View {
                 case .url:
                     rawOutput = try await shellRun("curl -sL '\(cmd)' | head -500")
                     source = "URL: \(cmd)"
+                case .data:
+                    let cliResult = await DeepThinkCLIService.shared.analyze(
+                        file: cmd,
+                        withReport: true,
+                        title: question ?? "Analysis"
+                    )
+                    rawOutput = cliResult.output
+                    source = "Data: \((cmd as NSString).lastPathComponent)"
                 }
 
                 let analysis = try await ClaudeService.shared.analyzeCLIOutput(

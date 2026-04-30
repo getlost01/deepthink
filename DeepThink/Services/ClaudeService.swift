@@ -53,7 +53,7 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--model", "claude-\(ClaudeService.shared.selectedModel)-4-6", "--max-tokens", "\(ClaudeService.shared.maxTokens)"]
+                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", "claude-\(ClaudeService.shared.selectedModel)-4-6"]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }

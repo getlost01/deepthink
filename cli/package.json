@@ -1,0 +1,14 @@
+{
+  "name": "deepthink-cli",
+  "version": "1.0.0",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build src/index.ts --compile --outfile deepthink",
+    "build:universal": "bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile deepthink-arm64 && bun build src/index.ts --compile --target=bun-darwin-x64 --outfile deepthink-x64"
+  },
+  "type": "module"
+}

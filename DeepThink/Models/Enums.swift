@@ -6,6 +6,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
     case chat = "AI Chat"
     case deepSearch = "Deep Search"
     case analysis = "Analysis"
+    case memory = "Memory"
     case notes = "Notes"
     case tasks = "Tasks"
     case projects = "Projects"
@@ -21,6 +22,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .chat: "bubble.left.and.bubble.right"
         case .deepSearch: "sparkle.magnifyingglass"
         case .analysis: "wand.and.rays"
+        case .memory: "brain"
         case .notes: "doc.text"
         case .tasks: "checklist"
         case .projects: "folder"
@@ -36,6 +38,7 @@ enum SidebarSection: String, CaseIterable, Identifiable {
         case .chat: .blue
         case .deepSearch: .orange
         case .analysis: .green
+        case .memory: .purple
         case .notes: .blue
         case .tasks: .green
         case .projects: .teal

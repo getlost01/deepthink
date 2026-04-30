@@ -39,6 +39,8 @@ struct ContentRouter: View {
                 DeepSearchView()
             case .analysis:
                 AnalysisView()
+            case .memory:
+                MemoryView()
             case .notes:
                 NoteWorkspace()
             case .tasks:

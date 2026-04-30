@@ -82,7 +82,7 @@ final class MCPService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = StorageService.shared.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--mcp-config", configPath]
+                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--mcp-config", configPath]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }

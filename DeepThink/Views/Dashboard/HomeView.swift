@@ -8,6 +8,9 @@ struct HomeView: View {
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
     @Query(filter: #Predicate<MCPServer> { $0.isEnabled }) private var activeTools: [MCPServer]
     @State private var quickQuery = ""
+    @State private var memoryShort = 0
+    @State private var memoryLong = 0
+    @State private var cliAvailable = false
 
     private var activeTasks: [TaskItem] {
         tasks.filter { $0.status == .inProgress || $0.status == .todo }
@@ -49,6 +52,12 @@ struct HomeView: View {
                     }
                     HomeCard(title: "Deep Search", icon: "sparkle.magnifyingglass", color: .orange) {
                         appState.selectedSection = .deepSearch
+                    }
+                    HomeCard(title: "Memory", icon: "brain", color: .purple, badge: memoryShort + memoryLong > 0 ? "\(memoryShort + memoryLong)" : nil) {
+                        appState.selectedSection = .memory
+                    }
+                    HomeCard(title: "Analysis", icon: "wand.and.rays", color: .green) {
+                        appState.selectedSection = .analysis
                     }
                     HomeCard(title: "Tools", icon: "wrench.and.screwdriver", color: .teal) {
                         appState.selectedSection = .tools
@@ -157,6 +166,26 @@ struct HomeView: View {
             .padding(DS.Spacing.xxl)
         }
         .dsPage()
+        .onAppear { loadMemoryStats() }
+    }
+
+    private func loadMemoryStats() {
+        Task {
+            let result = await DeepThinkCLIService.shared.memoryStats()
+            await MainActor.run {
+                cliAvailable = result.success
+                if result.success {
+                    for line in result.output.components(separatedBy: "\n") {
+                        if line.contains("Short-term:") {
+                            memoryShort = Int(line.components(separatedBy: ": ").last?.components(separatedBy: " ").first ?? "0") ?? 0
+                        }
+                        if line.contains("Long-term:") {
+                            memoryLong = Int(line.components(separatedBy: ": ").last?.components(separatedBy: " ").first ?? "0") ?? 0
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -164,12 +193,25 @@ private struct HomeCard: View {
     let title: String
     let icon: String
     let color: Color
+    var badge: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                DSIconBadge(icon: icon, color: color, size: 36)
+                HStack {
+                    DSIconBadge(icon: icon, color: color, size: 36)
+                    Spacer()
+                    if let badge {
+                        Text(badge)
+                            .font(DS.Font.tiny)
+                            .fontWeight(.medium)
+                            .foregroundStyle(color)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(color.opacity(0.1), in: Capsule())
+                    }
+                }
                 Text(title).font(DS.Font.body).fontWeight(.semibold).foregroundStyle(DS.Colors.textPrimary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
