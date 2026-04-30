@@ -1,0 +1,36 @@
+name: DeepThink
+options:
+  bundleIdPrefix: com.deepthink
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+
+targets:
+  DeepThink:
+    type: application
+    platform: macOS
+    sources:
+      - path: DeepThink
+        excludes:
+          - "Preview Content"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.deepthink.app
+        PRODUCT_NAME: DeepThink
+        INFOPLIST_GENERATION_MODE: GeneratedByXcode
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_EMIT_LOC_STRINGS: "YES"
+        GENERATE_INFOPLIST_FILE: "YES"
+        CODE_SIGN_ENTITLEMENTS: DeepThink/DeepThink.entitlements
+        ENABLE_PREVIEWS: "YES"
+    entitlements:
+      path: DeepThink/DeepThink.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
