@@ -307,7 +307,7 @@ private struct MemoryEntryRow: View {
             }
         }
         .padding(DS.Spacing.md)
-        .dsBordered()
+        .dsClickable()
     }
 }
 

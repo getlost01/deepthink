@@ -22,6 +22,7 @@ Packages/
 
 # CLI - Bun/Node
 cli/node_modules/
+cli/out/
 cli/*.bun-build
 cli/deepthink
 cli/deepthink-arm64

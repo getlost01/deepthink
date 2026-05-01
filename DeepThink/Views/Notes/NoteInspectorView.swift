@@ -17,13 +17,13 @@ struct NoteInspectorView: View {
             if let note = selectedNote {
                 NoteInspectorContent(note: note, projects: projects, allNotes: allNotes, modelContext: modelContext)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "doc.text")
-                        .font(.title2)
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a note")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .font(DS.Font.caption)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -75,7 +75,7 @@ private struct NoteInspectorContent: View {
 
             if !note.tags.isEmpty {
                 Section("Tags") {
-                    FlowLayout(spacing: 4) {
+                    FlowLayout(spacing: DS.Spacing.xs) {
                         ForEach(note.tags) { tag in
                             TagChip(tag: tag)
                         }
@@ -89,12 +89,12 @@ private struct NoteInspectorContent: View {
                         Button {
                             appState.selectedNoteID = linked.id
                         } label: {
-                            HStack(spacing: 6) {
+                            HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: "arrow.turn.left.up")
-                                    .font(.caption2)
-                                    .foregroundStyle(.blue)
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.info)
                                 Text(linked.title.isEmpty ? "Untitled" : linked.title)
-                                    .font(.caption)
+                                    .font(DS.Font.caption)
                                     .lineLimit(1)
                             }
                         }
@@ -109,12 +109,12 @@ private struct NoteInspectorContent: View {
                         Button {
                             appState.selectedNoteID = linked.id
                         } label: {
-                            HStack(spacing: 6) {
+                            HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: "arrow.turn.right.down")
-                                    .font(.caption2)
-                                    .foregroundStyle(.green)
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.success)
                                 Text(linked.title.isEmpty ? "Untitled" : linked.title)
-                                    .font(.caption)
+                                    .font(DS.Font.caption)
                                     .lineLimit(1)
                             }
                         }
@@ -125,8 +125,8 @@ private struct NoteInspectorContent: View {
 
             Section {
                 Text("Use [[Note Title]] in content to create links")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(DS.Font.tiny)
+                    .foregroundStyle(DS.Colors.textTertiary)
             }
         }
         .formStyle(.grouped)

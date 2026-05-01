@@ -32,11 +32,7 @@ struct TaskListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
-                Text("Tasks")
-                    .font(DS.Font.heading)
-                Spacer()
-
+            DSPageHeader(title: "Tasks") {
                 Menu {
                     Button("All") { filterStatus = nil }
                     Divider()
@@ -53,15 +49,13 @@ struct TaskListView: View {
                         .foregroundStyle(filterStatus == nil ? DS.Colors.textSecondary : DS.Colors.accent)
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 24)
+                .frame(width: 28)
 
                 DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
                     createTask()
                 }
                 .help("New Task (⌘T)")
             }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
 
             DSSearchField(text: $searchText, placeholder: "Search tasks...")
                 .padding(.horizontal, DS.Spacing.md)
@@ -89,7 +83,7 @@ struct TaskListView: View {
                     } header: {
                         HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: status.icon)
-                                .font(.system(size: DS.IconSize.xs + 1))
+                                .font(.system(size: DS.IconSize.sm, weight: .medium))
                                 .foregroundStyle(status.color)
                             Text(status.rawValue)
                                 .font(DS.Font.caption)
@@ -104,8 +98,8 @@ struct TaskListView: View {
                 if groupedTasks.isEmpty {
                     DSEmptyState(
                         icon: "checklist",
-                        title: "No Tasks",
-                        subtitle: "Create your first task",
+                        title: "No Tasks Yet",
+                        subtitle: "Track your work with tasks. Add priorities, due dates, and story points.",
                         action: createTask,
                         actionTitle: "New Task"
                     )

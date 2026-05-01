@@ -49,33 +49,68 @@ enum DS {
         static let accent = Color.accentColor
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .windowBackgroundColor)
-        static let border = Color.primary.opacity(0.08)
-        static let borderStrong = Color.primary.opacity(0.12)
-        static let borderSubtle = Color.primary.opacity(0.03)
+        static let border = Color.primary.opacity(0.10)
+        static let borderStrong = Color.primary.opacity(0.15)
+        static let borderSubtle = Color.primary.opacity(0.06)
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
-        static let textTertiary = Color.primary.opacity(0.3)
+        static let textTertiary = Color.primary.opacity(0.35)
 
         static let success = Color.green
         static let warning = Color.orange
         static let error = Color.red
         static let info = Color.blue
 
-        static let hoverBg = Color.primary.opacity(0.04)
-        static let subtleBg = Color.primary.opacity(0.03)
-        static let inputBg = Color.primary.opacity(0.04)
+        static let hoverBg = Color.primary.opacity(0.06)
+        static let subtleBg = Color.primary.opacity(0.04)
+        static let inputBg = Color.primary.opacity(0.05)
+        static let selectedBg = Color.accentColor.opacity(0.08)
     }
 
     enum Layout {
         static let sidebarWidth: CGFloat = 200
-        static let listPanelWidth: CGFloat = 260
-        static let toolbarHeight: CGFloat = 40
+        static let listPanelWidth: CGFloat = 280
+        static let toolbarHeight: CGFloat = 48
+        static let headerHeight: CGFloat = 48
     }
 
     enum Animation {
         static let quick: SwiftUI.Animation = .easeInOut(duration: 0.15)
         static let standard: SwiftUI.Animation = .easeInOut(duration: 0.25)
         static let spring: SwiftUI.Animation = .spring(duration: 0.3, bounce: 0.15)
+    }
+}
+
+// MARK: - Page Header
+
+struct DSPageHeader<Trailing: View>: View {
+    let title: String
+    @ViewBuilder let trailing: () -> Trailing
+
+    init(title: String, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.title = title
+        self.trailing = trailing
+    }
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Text(title)
+                .font(DS.Font.heading)
+                .foregroundStyle(DS.Colors.textPrimary)
+
+            Spacer()
+
+            trailing()
+        }
+        .frame(height: DS.Layout.headerHeight)
+        .padding(.horizontal, DS.Spacing.lg)
+    }
+}
+
+extension DSPageHeader where Trailing == EmptyView {
+    init(title: String) {
+        self.title = title
+        self.trailing = { EmptyView() }
     }
 }
 
@@ -128,7 +163,7 @@ struct DSSectionHeader: View {
     }
 }
 
-// MARK: - List Panel Header
+// MARK: - List Panel Header (legacy, prefer DSPageHeader)
 
 struct DSListHeader: View {
     let title: String
@@ -141,8 +176,8 @@ struct DSListHeader: View {
             Spacer()
             if let trailing { trailing }
         }
+        .frame(height: DS.Layout.headerHeight)
         .padding(.horizontal, DS.Spacing.lg)
-        .padding(.vertical, DS.Spacing.md)
     }
 }
 
@@ -155,8 +190,8 @@ struct DSToolbarBar<Content: View>: View {
         HStack(spacing: DS.Spacing.sm) {
             content()
         }
+        .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.md)
-        .padding(.vertical, DS.Spacing.sm)
         .background(.bar)
     }
 }
@@ -173,7 +208,7 @@ struct DSIconBadge: View {
             .font(.system(size: size * 0.45, weight: .medium))
             .foregroundStyle(color)
             .frame(width: size, height: size)
-            .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: size * 0.25))
+            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: size * 0.25))
     }
 }
 
@@ -190,7 +225,7 @@ struct DSPill: View {
             .foregroundStyle(color)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(color.opacity(0.1), in: Capsule())
+            .background(color.opacity(0.12), in: Capsule())
     }
 }
 
@@ -214,8 +249,12 @@ struct DSSearchField: View {
                 .onSubmit { onSubmit?() }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .padding(.vertical, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm + 2)
         .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.md)
+                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+        )
     }
 }
 
@@ -257,29 +296,39 @@ struct DSEmptyState: View {
     var actionTitle: String = "Get Started"
 
     var body: some View {
-        VStack(spacing: DS.Spacing.lg) {
+        VStack(spacing: DS.Spacing.xl) {
             Image(systemName: icon)
-                .font(.system(size: 32))
-                .foregroundStyle(.quaternary)
+                .font(.system(size: 36, weight: .light))
+                .foregroundStyle(DS.Colors.textTertiary)
 
-            VStack(spacing: DS.Spacing.xs) {
+            VStack(spacing: DS.Spacing.sm) {
                 Text(title)
                     .font(DS.Font.heading)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                    .foregroundStyle(DS.Colors.textPrimary)
                 if let subtitle {
                     Text(subtitle)
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 320)
                 }
             }
 
             if let action {
-                Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.Colors.accent)
-                    .controlSize(.regular)
+                Button(action: action) {
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: "plus")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        Text(actionTitle)
+                            .font(DS.Font.body)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, DS.Spacing.xl)
+                    .padding(.vertical, DS.Spacing.md)
+                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                }
+                .buttonStyle(.plain)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -328,8 +377,8 @@ struct DSToolbar<Content: View>: View {
         HStack(spacing: DS.Spacing.md) {
             content()
         }
+        .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.md)
         .background(.bar)
     }
 }
@@ -355,6 +404,26 @@ struct DSInteractive: ViewModifier {
     }
 }
 
+// MARK: - Clickable Card/Row Modifier
+
+struct DSClickable: ViewModifier {
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .fill(isHovered ? DS.Colors.hoverBg : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(isHovered ? DS.Colors.borderStrong : DS.Colors.border, lineWidth: 1)
+            )
+            .onHover { isHovered = $0 }
+            .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
 // MARK: - Toolbar Icon Button
 
 struct DSToolbarButton: View {
@@ -362,14 +431,72 @@ struct DSToolbarButton: View {
     var color: Color = DS.Colors.textTertiary
     var size: CGFloat = DS.IconSize.md
     let action: () -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: size))
-                .foregroundStyle(color)
+                .font(.system(size: size, weight: .medium))
+                .foregroundStyle(isHovered ? DS.Colors.textPrimary : color)
+                .frame(width: 28, height: 28)
+                .background(isHovered ? DS.Colors.hoverBg : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+// MARK: - Stat Chip (shared)
+
+struct DSStatChip: View {
+    let label: String
+    let value: String
+    let icon: String
+    var color: Color = DS.Colors.textSecondary
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.xs) {
+            Image(systemName: icon)
+                .font(.system(size: DS.IconSize.xs, weight: .medium))
+            Text(value)
+                .font(DS.Font.caption)
+                .fontWeight(.medium)
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm)
+        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Divider with label
+
+struct DSSectionDivider: View {
+    var label: String? = nil
+
+    var body: some View {
+        if let label {
+            HStack(spacing: DS.Spacing.md) {
+                Rectangle()
+                    .fill(DS.Colors.border)
+                    .frame(height: 1)
+                Text(label)
+                    .font(DS.Font.tiny)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .textCase(.uppercase)
+                Rectangle()
+                    .fill(DS.Colors.border)
+                    .frame(height: 1)
+            }
+        } else {
+            Divider()
+        }
     }
 }
 
@@ -408,11 +535,24 @@ extension View {
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
             .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+            )
     }
 
     func dsBordered() -> some View {
         self
             .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
+    }
+
+    func dsClickable() -> some View {
+        modifier(DSClickable())
+    }
+
+    func dsListPanel() -> some View {
+        self
+            .frame(width: DS.Layout.listPanelWidth)
     }
 }

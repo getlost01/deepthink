@@ -15,13 +15,13 @@ struct TaskInspectorView: View {
             if let task = selectedTask {
                 TaskInspectorContent(task: task)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "checklist")
-                        .font(.title2)
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a task")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .font(DS.Font.caption)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -36,14 +36,14 @@ private struct TaskInspectorContent: View {
         Form {
             Section("Status") {
                 LabeledContent("Status") {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: task.status.icon)
                             .foregroundStyle(task.status.color)
                         Text(task.status.rawValue)
                     }
                 }
                 LabeledContent("Priority") {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: task.priority.icon)
                             .foregroundStyle(task.priority.color)
                         Text(task.priority.rawValue)
@@ -60,7 +60,7 @@ private struct TaskInspectorContent: View {
                 if let due = task.dueDate {
                     LabeledContent("Due") {
                         Text(due.shortFormatted)
-                            .foregroundStyle(task.isOverdue ? .red : .primary)
+                            .foregroundStyle(task.isOverdue ? DS.Colors.error : DS.Colors.textPrimary)
                     }
                 }
                 if let completed = task.completedAt {
@@ -70,7 +70,7 @@ private struct TaskInspectorContent: View {
 
             if let project = task.project {
                 Section("Project") {
-                    HStack {
+                    HStack(spacing: DS.Spacing.sm) {
                         Circle()
                             .fill(Color(hex: project.color))
                             .frame(width: 8, height: 8)
@@ -81,7 +81,7 @@ private struct TaskInspectorContent: View {
 
             if !task.tags.isEmpty {
                 Section("Tags") {
-                    FlowLayout(spacing: 4) {
+                    FlowLayout(spacing: DS.Spacing.xs) {
                         ForEach(task.tags) { tag in
                             TagChip(tag: tag)
                         }

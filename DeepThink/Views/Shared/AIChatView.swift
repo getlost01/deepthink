@@ -29,7 +29,7 @@ struct AIChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.md) {
                 Spacer()
 
                 if !activeServers.isEmpty {
@@ -54,8 +54,8 @@ struct AIChatView: View {
                 }
                 .help("Clear chat")
             }
+            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
-            .padding(.vertical, DS.Spacing.md)
             .background(.bar)
 
             Divider()
@@ -103,7 +103,8 @@ struct AIChatView: View {
                 .buttonStyle(.plain)
                 .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || isProcessing)
             }
-            .padding(DS.Spacing.lg)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
             .background(.bar)
         }
         .onAppear {
@@ -169,33 +170,39 @@ private struct WelcomePrompts: View {
     ]
 
     var body: some View {
-        VStack(spacing: DS.Spacing.lg) {
-            Text("How can I help?")
-                .font(DS.Font.title)
-                .fontWeight(.semibold)
+        VStack(spacing: DS.Spacing.xl) {
+            VStack(spacing: DS.Spacing.sm) {
+                Text("How can I help?")
+                    .font(DS.Font.title)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("Ask me anything about your workspace, or try a suggestion below")
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DS.Spacing.sm) {
                 ForEach(suggestions, id: \.0) { title, icon in
                     Button {
                         onSelect(title)
                     } label: {
-                        HStack(spacing: DS.Spacing.sm) {
+                        HStack(spacing: DS.Spacing.md) {
                             Image(systemName: icon)
-                                .font(.system(size: DS.IconSize.sm))
-                                .foregroundStyle(DS.Colors.textSecondary)
+                                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                                .foregroundStyle(DS.Colors.accent)
                                 .frame(width: 20)
                             Text(title)
-                                .font(DS.Font.caption)
+                                .font(DS.Font.body)
+                                .foregroundStyle(DS.Colors.textPrimary)
                                 .lineLimit(1)
                             Spacer()
                         }
                         .padding(DS.Spacing.md)
-                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .dsClickable()
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .frame(maxWidth: 480)
+            .frame(maxWidth: 520)
         }
         .frame(maxWidth: .infinity)
     }
@@ -203,6 +210,7 @@ private struct WelcomePrompts: View {
 
 struct ChatBubble: View {
     let message: AIMessage
+    @State private var isHovered = false
 
     var body: some View {
         HStack(alignment: .top, spacing: DS.Spacing.md) {
@@ -212,10 +220,13 @@ struct ChatBubble: View {
 
             if message.role != .user {
                 Image(systemName: message.role == .error ? "exclamationmark.triangle" : "brain.head.profile")
-                    .font(.system(size: DS.IconSize.sm))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(message.role == .error ? DS.Colors.error : DS.Colors.accent)
-                    .frame(width: 22, height: 22)
-                    .background(message.role == .error ? DS.Colors.error.opacity(0.1) : DS.Colors.accent.opacity(0.1), in: Circle())
+                    .frame(width: 24, height: 24)
+                    .background(
+                        (message.role == .error ? DS.Colors.error : DS.Colors.accent).opacity(0.10),
+                        in: Circle()
+                    )
             }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: DS.Spacing.xs) {
@@ -233,7 +244,7 @@ struct ChatBubble: View {
                         .background(
                             message.role == .user
                                 ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
-                                : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
+                                : AnyShapeStyle(DS.Colors.inputBg),
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 } else {
@@ -244,7 +255,7 @@ struct ChatBubble: View {
                         .background(
                             message.role == .user
                                 ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
-                                : AnyShapeStyle(Color(nsColor: .controlBackgroundColor)),
+                                : AnyShapeStyle(DS.Colors.inputBg),
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 }

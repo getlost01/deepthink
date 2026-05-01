@@ -19,33 +19,33 @@ struct FileTreeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Files")
-                    .font(DS.Font.heading)
-                Spacer()
+            DSPageHeader(title: "Files") {
                 Menu {
                     Button("Add Folder...") { pickFolder() }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: DS.IconSize.sm))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 20)
+                .frame(width: 28)
             }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
 
             Divider()
 
             if roots.isEmpty {
-                VStack(spacing: DS.Spacing.md) {
+                VStack(spacing: DS.Spacing.lg) {
                     Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 24))
-                        .foregroundStyle(.quaternary)
-                    Text("No folders open")
-                        .font(DS.Font.caption)
+                        .font(.system(size: 28, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
+                    VStack(spacing: DS.Spacing.sm) {
+                        Text("No folders open")
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("Add a folder to browse files")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
                     Button("Open Folder") { pickFolder() }
                         .font(DS.Font.caption)
                         .buttonStyle(.bordered)
@@ -162,7 +162,7 @@ private struct FileNodeRow: View {
                 .padding(.leading, CGFloat(depth) * 16 + DS.Spacing.sm)
                 .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(isSelected ? DS.Colors.accent.opacity(0.1) : .clear)
+                .background(isSelected ? DS.Colors.selectedBg : .clear)
             }
             .buttonStyle(.plain)
 

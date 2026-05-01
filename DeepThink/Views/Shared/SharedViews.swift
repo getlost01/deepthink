@@ -5,12 +5,12 @@ struct StoryPointsBadge: View {
 
     var body: some View {
         Text("\(points)")
-            .font(.caption2)
+            .font(DS.Font.tiny)
             .fontWeight(.semibold)
             .foregroundStyle(.blue)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }
 

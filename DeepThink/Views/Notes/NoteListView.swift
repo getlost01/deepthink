@@ -20,17 +20,12 @@ struct NoteListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
-                Text("Notes")
-                    .font(DS.Font.heading)
-                Spacer()
+            DSPageHeader(title: "Notes") {
                 DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.accent, size: DS.IconSize.md) {
                     createNote()
                 }
                 .help("New Note (⌘N)")
             }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
 
             DSSearchField(text: $searchText, placeholder: "Search notes...")
                 .padding(.horizontal, DS.Spacing.md)
@@ -82,8 +77,8 @@ struct NoteListView: View {
                 if filteredNotes.isEmpty {
                     DSEmptyState(
                         icon: "doc.text",
-                        title: "No Notes",
-                        subtitle: "Create your first note",
+                        title: "No Notes Yet",
+                        subtitle: "Notes are great for capturing ideas, meeting notes, or documentation",
                         action: createNote,
                         actionTitle: "New Note"
                     )

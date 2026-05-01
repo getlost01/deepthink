@@ -57,7 +57,7 @@ struct WorkspaceView: View {
     private var notesContent: some View {
         HStack(spacing: 0) {
             NoteListView()
-                .frame(width: DS.Layout.listPanelWidth)
+                .dsListPanel()
 
             Divider()
 
@@ -68,8 +68,8 @@ struct WorkspaceView: View {
             } else {
                 DSEmptyState(
                     icon: "doc.text",
-                    title: "No note selected",
-                    subtitle: "Choose a note or create a new one"
+                    title: "Select a Note",
+                    subtitle: "Pick a note from the list or create a new one to start writing"
                 )
             }
         }
@@ -81,7 +81,7 @@ struct WorkspaceView: View {
     private var tasksContent: some View {
         HStack(spacing: 0) {
             TaskListView()
-                .frame(width: DS.Layout.listPanelWidth)
+                .dsListPanel()
 
             Divider()
 
@@ -92,8 +92,8 @@ struct WorkspaceView: View {
             } else {
                 DSEmptyState(
                     icon: "checklist",
-                    title: "No task selected",
-                    subtitle: "Choose a task or create a new one"
+                    title: "Select a Task",
+                    subtitle: "Pick a task from the list or create a new one to track your work"
                 )
             }
         }
@@ -105,7 +105,7 @@ struct WorkspaceView: View {
     private var projectsContent: some View {
         HStack(spacing: 0) {
             ProjectListView()
-                .frame(width: DS.Layout.listPanelWidth)
+                .dsListPanel()
 
             Divider()
 
@@ -116,8 +116,8 @@ struct WorkspaceView: View {
             } else {
                 DSEmptyState(
                     icon: "folder",
-                    title: "No project selected",
-                    subtitle: "Choose a project or create a new one"
+                    title: "Select a Project",
+                    subtitle: "Projects group related notes and tasks together. Create one to get organized."
                 )
             }
         }
@@ -137,7 +137,7 @@ struct DSTabButton: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: DS.IconSize.sm))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                 Text(title)
                     .font(DS.Font.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
@@ -147,12 +147,13 @@ struct DSTabButton: View {
             .padding(.vertical, DS.Spacing.sm)
             .background(
                 isSelected
-                    ? DS.Colors.accent.opacity(0.1)
+                    ? DS.Colors.selectedBg
                     : (isHovered ? DS.Colors.hoverBg : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

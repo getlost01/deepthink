@@ -15,13 +15,13 @@ struct ProjectInspectorView: View {
             if let project = selectedProject {
                 ProjectInspectorContent(project: project)
             } else {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "folder")
-                        .font(.title2)
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 24, weight: .light))
+                        .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a project")
-                        .foregroundStyle(.secondary)
-                        .font(.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .font(DS.Font.caption)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
@@ -43,7 +43,7 @@ private struct ProjectInspectorContent: View {
             }
 
             Section("Color") {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: DS.Spacing.sm) {
                     ForEach(colorOptions, id: \.self) { hex in
                         Circle()
                             .fill(Color(hex: hex))
@@ -76,9 +76,10 @@ private struct ProjectInspectorContent: View {
                 Section("Progress") {
                     let progress = Double(project.completedStoryPoints) / Double(project.totalStoryPoints)
                     ProgressView(value: progress)
+                        .tint(DS.Colors.accent)
                     Text("\(Int(progress * 100))% complete")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
                 }
             }
         }

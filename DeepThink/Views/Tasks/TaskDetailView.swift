@@ -12,82 +12,91 @@ struct TaskDetailView: View {
                     .textFieldStyle(.plain)
                     .font(DS.Font.detailTitle)
 
-                HStack(spacing: DS.Spacing.lg) {
-                    Picker("Status", selection: $task.status) {
-                        ForEach(TaskStatus.allCases) { status in
-                            Label(status.rawValue, systemImage: status.icon)
-                                .tag(status)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    Picker("Priority", selection: $task.priority) {
-                        ForEach(TaskPriority.allCases) { priority in
-                            Label(priority.rawValue, systemImage: priority.icon)
-                                .tag(priority)
-                        }
-                    }
-                    .pickerStyle(.menu)
-
-                    Picker("Story Points", selection: Binding(
-                        get: { task.storyPoints ?? -1 },
-                        set: { task.storyPoints = $0 == -1 ? nil : $0 }
-                    )) {
-                        Text("None").tag(-1)
-                        ForEach(AppConstants.fibonacciPoints, id: \.self) { point in
-                            Text("\(point)").tag(point)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                HStack(spacing: DS.Spacing.lg) {
-                    DatePicker("Due Date",
-                        selection: Binding(
-                            get: { task.dueDate ?? Date() },
-                            set: { task.dueDate = $0 }
-                        ),
-                        displayedComponents: .date
-                    )
-
-                    if task.dueDate != nil {
-                        Button("Clear") { task.dueDate = nil }
-                            .font(DS.Font.caption)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                    }
-
-                    Spacer()
-
-                    Picker("Project", selection: Binding(
-                        get: { task.project },
-                        set: { task.project = $0 }
-                    )) {
-                        Text("No Project").tag(nil as Project?)
-                        ForEach(projects) { project in
-                            HStack {
-                                Circle()
-                                    .fill(Color(hex: project.color))
-                                    .frame(width: 8, height: 8)
-                                Text(project.name)
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    HStack(spacing: DS.Spacing.lg) {
+                        Picker("Status", selection: $task.status) {
+                            ForEach(TaskStatus.allCases) { status in
+                                Label(status.rawValue, systemImage: status.icon)
+                                    .tag(status)
                             }
-                            .tag(project as Project?)
                         }
+                        .pickerStyle(.menu)
+
+                        Picker("Priority", selection: $task.priority) {
+                            ForEach(TaskPriority.allCases) { priority in
+                                Label(priority.rawValue, systemImage: priority.icon)
+                                    .tag(priority)
+                            }
+                        }
+                        .pickerStyle(.menu)
+
+                        Picker("Story Points", selection: Binding(
+                            get: { task.storyPoints ?? -1 },
+                            set: { task.storyPoints = $0 == -1 ? nil : $0 }
+                        )) {
+                            Text("None").tag(-1)
+                            ForEach(AppConstants.fibonacciPoints, id: \.self) { point in
+                                Text("\(point)").tag(point)
+                            }
+                        }
+                        .pickerStyle(.menu)
                     }
-                    .pickerStyle(.menu)
+
+                    HStack(spacing: DS.Spacing.lg) {
+                        DatePicker("Due Date",
+                            selection: Binding(
+                                get: { task.dueDate ?? Date() },
+                                set: { task.dueDate = $0 }
+                            ),
+                            displayedComponents: .date
+                        )
+
+                        if task.dueDate != nil {
+                            Button("Clear") { task.dueDate = nil }
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textSecondary)
+                        }
+
+                        Spacer()
+
+                        Picker("Project", selection: Binding(
+                            get: { task.project },
+                            set: { task.project = $0 }
+                        )) {
+                            Text("No Project").tag(nil as Project?)
+                            ForEach(projects) { project in
+                                HStack {
+                                    Circle()
+                                        .fill(Color(hex: project.color))
+                                        .frame(width: 8, height: 8)
+                                    Text(project.name)
+                                }
+                                .tag(project as Project?)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
                 }
 
                 Divider()
 
-                Text("Description")
-                    .font(DS.Font.sectionLabel)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                    Text("Description")
+                        .font(DS.Font.sectionLabel)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .textCase(.uppercase)
 
-                TextEditor(text: $task.detail)
-                    .font(DS.Font.body)
-                    .scrollContentBackground(.hidden)
-                    .frame(minHeight: 200)
-                    .padding(DS.Spacing.sm)
-                    .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    TextEditor(text: $task.detail)
+                        .font(DS.Font.body)
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 200)
+                        .padding(DS.Spacing.md)
+                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.md)
+                                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                        )
+                }
             }
             .padding(DS.Spacing.xl)
         }

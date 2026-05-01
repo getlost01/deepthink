@@ -21,31 +21,21 @@ struct ProjectListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
-                Text("Projects")
-                    .font(DS.Font.heading)
-                Spacer()
-
-                Button {
+            DSPageHeader(title: "Projects") {
+                DSToolbarButton(
+                    icon: showArchived ? "archivebox.fill" : "archivebox",
+                    color: showArchived ? DS.Colors.accent : DS.Colors.textTertiary,
+                    size: DS.IconSize.md
+                ) {
                     showArchived.toggle()
-                } label: {
-                    Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textSecondary)
                 }
-                .buttonStyle(.plain)
                 .help(showArchived ? "Hide Archived" : "Show Archived")
 
-                Button(action: createProject) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(DS.Colors.accent)
+                DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
+                    createProject()
                 }
-                .buttonStyle(.plain)
                 .help("New Project (⇧⌘N)")
             }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
 
             DSSearchField(text: $searchText, placeholder: "Search projects...")
                 .padding(.horizontal, DS.Spacing.md)
@@ -77,8 +67,8 @@ struct ProjectListView: View {
                 if projects.isEmpty {
                     DSEmptyState(
                         icon: "folder",
-                        title: "No Projects",
-                        subtitle: "Create a project to organize your work",
+                        title: "No Projects Yet",
+                        subtitle: "Projects help you organize related notes and tasks into focused workstreams",
                         action: createProject,
                         actionTitle: "New Project"
                     )
@@ -101,7 +91,7 @@ private struct ProjectRow: View {
     let project: Project
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(Color(hex: project.color))
@@ -114,7 +104,7 @@ private struct ProjectRow: View {
                     DSPill(text: "Archived", color: .secondary)
                 }
             }
-            HStack {
+            HStack(spacing: 0) {
                 if !project.summary.isEmpty {
                     Text(project.summary)
                         .font(DS.Font.caption)
@@ -122,7 +112,7 @@ private struct ProjectRow: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                HStack(spacing: DS.Spacing.sm) {
+                HStack(spacing: DS.Spacing.md) {
                     Label("\(project.notes.count)", systemImage: "doc.text")
                     Label("\(project.openTaskCount)", systemImage: "checklist")
                 }

@@ -8,7 +8,7 @@ struct DocsView: View {
     var body: some View {
         HStack(spacing: 0) {
             FileTreeView(rootPaths: rootPaths, selectedPath: $selectedFilePath)
-                .frame(width: 240)
+                .frame(width: DS.Layout.listPanelWidth)
 
             Divider()
 
@@ -19,8 +19,8 @@ struct DocsView: View {
             } else {
                 DSEmptyState(
                     icon: "doc.text.magnifyingglass",
-                    title: "No file selected",
-                    subtitle: "Open a folder and select a file to view"
+                    title: "Browse Your Files",
+                    subtitle: "Open a folder from the sidebar to browse and preview documents, code, and more"
                 )
             }
         }
@@ -59,7 +59,7 @@ struct DocRendererView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.md) {
                 Text(fileName)
                     .font(DS.Font.body)
                     .fontWeight(.medium)
@@ -77,8 +77,8 @@ struct DocRendererView: View {
                 }
                 .help("Reveal in Finder")
             }
+            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
-            .padding(.vertical, DS.Spacing.md)
             .background(.bar)
 
             Divider()

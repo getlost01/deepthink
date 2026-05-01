@@ -80,7 +80,7 @@ struct ToolsHubView: View {
                                 .foregroundStyle(selectedCategory == cat ? DS.Colors.textPrimary : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, DS.Spacing.xs)
-                                .background(selectedCategory == cat ? Color.primary.opacity(0.06) : .clear, in: Capsule())
+                                .background(selectedCategory == cat ? DS.Colors.selectedBg : .clear, in: Capsule())
                         }
                         .buttonStyle(.plain)
                     }
@@ -92,8 +92,8 @@ struct ToolsHubView: View {
             if filteredServers.isEmpty {
                 DSEmptyState(
                     icon: "wrench.and.screwdriver",
-                    title: "No tools configured",
-                    subtitle: "Add MCP servers to extend Claude with web search, databases, and more",
+                    title: "No Tools Configured",
+                    subtitle: "MCP servers extend AI with web search, databases, file access, and more. Start with a preset or add your own.",
                     action: { showPresets = true },
                     actionTitle: "Browse Presets"
                 )
@@ -251,7 +251,7 @@ private struct ToolCard: View {
             }
         }
         .padding(DS.Spacing.md)
-        .dsBordered()
+        .dsClickable()
     }
 
     private func iconFor(_ category: String) -> String {
@@ -378,7 +378,7 @@ private struct PresetServersSheet: View {
                             .controlSize(.small)
                         }
                         .padding(DS.Spacing.md)
-                        .dsBordered()
+                        .dsClickable()
                     }
                 }
                 .padding(DS.Spacing.lg)

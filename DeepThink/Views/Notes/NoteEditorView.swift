@@ -14,7 +14,7 @@ struct NoteEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
+            HStack(spacing: DS.Spacing.md) {
                 TextField("Note title", text: $note.title)
                     .textFieldStyle(.plain)
                     .font(DS.Font.detailTitle)
@@ -48,9 +48,10 @@ struct NoteEditorView: View {
                     .frame(width: 80)
                 }
             }
+            .frame(height: DS.Layout.headerHeight)
             .padding(.horizontal, DS.Spacing.xl)
-            .padding(.top, DS.Spacing.lg)
-            .padding(.bottom, DS.Spacing.sm)
+
+            Divider()
 
             if showPreview {
                 MarkdownRendererView(markdown: note.content)
@@ -139,27 +140,30 @@ private struct AIActionsMenu: View {
                     }
                     .frame(maxHeight: 300)
                 }
-                .padding(DS.Spacing.md)
+                .padding(DS.Spacing.lg)
                 .frame(width: 360)
             } else if let error {
-                VStack(spacing: DS.Spacing.sm) {
+                VStack(spacing: DS.Spacing.md) {
                     Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 20, weight: .light))
                         .foregroundStyle(DS.Colors.error)
                     Text(error)
-                        .font(DS.Font.caption)
+                        .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.error)
                         .multilineTextAlignment(.center)
                 }
-                .padding(DS.Spacing.md)
+                .padding(DS.Spacing.lg)
                 .frame(width: 260)
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("AI Actions")
                         .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
+                        .fontWeight(.medium)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .textCase(.uppercase)
                         .padding(.horizontal, DS.Spacing.md)
-                        .padding(.top, DS.Spacing.sm)
-                        .padding(.bottom, DS.Spacing.xs)
+                        .padding(.top, DS.Spacing.md)
+                        .padding(.bottom, DS.Spacing.sm)
 
                     AIActionRow(title: "Summarize", icon: "text.justify.leading", color: .blue) {
                         await runAction { try await ClaudeService.shared.summarize(note.content) }
@@ -183,7 +187,7 @@ private struct AIActionsMenu: View {
                     }
                 }
                 .padding(.bottom, DS.Spacing.sm)
-                .frame(width: 200)
+                .frame(width: 220)
             }
         }
     }
@@ -204,14 +208,15 @@ private struct AIActionRow: View {
     let icon: String
     let color: Color
     let action: () async -> Void
+    @State private var isHovered = false
 
     var body: some View {
         Button {
             Task { await action() }
         } label: {
-            HStack(spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.md) {
                 Image(systemName: icon)
-                    .font(.system(size: DS.IconSize.sm))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(color)
                     .frame(width: 20)
                 Text(title)
@@ -222,9 +227,11 @@ private struct AIActionRow: View {
                     .foregroundStyle(DS.Colors.textTertiary)
             }
             .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm + 2)
+            .background(isHovered ? DS.Colors.hoverBg : .clear)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
     }
 }

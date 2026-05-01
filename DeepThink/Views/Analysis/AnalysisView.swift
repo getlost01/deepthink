@@ -82,10 +82,10 @@ struct AnalysisView: View {
                     VStack(spacing: DS.Spacing.xl) {
                         DSEmptyState(
                             icon: "wand.and.rays",
-                            title: "Run Analysis",
-                            subtitle: "Execute a command, open a file, or fetch a URL — then get AI insights"
+                            title: "Analyze Anything",
+                            subtitle: "Run a shell command, open a file, or fetch a URL — AI will explain what it finds"
                         )
-                        .frame(height: 160)
+                        .frame(height: 180)
 
                         VStack(alignment: .leading, spacing: DS.Spacing.md) {
                             Text("Quick Analysis")
@@ -117,7 +117,7 @@ struct AnalysisView: View {
                                             Spacer()
                                         }
                                         .padding(DS.Spacing.md)
-                                        .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                        .dsClickable()
                                     }
                                     .buttonStyle(.plain)
                                 }

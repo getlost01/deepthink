@@ -118,13 +118,20 @@ struct DeepSearchView: View {
                     }
 
                     if query.isEmpty && aiResult == nil {
-                        VStack(spacing: DS.Spacing.lg) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 32))
-                                .foregroundStyle(.quaternary)
-                            Text("Deep Search")
-                                .font(DS.Font.heading)
-                                .foregroundStyle(DS.Colors.textSecondary)
+                        VStack(spacing: DS.Spacing.xl) {
+                            Image(systemName: "sparkle.magnifyingglass")
+                                .font(.system(size: 36, weight: .light))
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            VStack(spacing: DS.Spacing.sm) {
+                                Text("Deep Search")
+                                    .font(DS.Font.title)
+                                    .foregroundStyle(DS.Colors.textPrimary)
+                                Text("Search across notes, tasks, and projects — or ask AI to analyze your workspace")
+                                    .font(DS.Font.body)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: 400)
+                            }
 
                             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                                 SearchSuggestion(text: "What did I work on this week?") { query = $0; performSearch() }
@@ -278,7 +285,7 @@ private struct SearchResultRow: View {
                 Spacer()
             }
             .padding(DS.Spacing.md)
-            .dsBordered()
+            .dsClickable()
         }
         .buttonStyle(.plain)
     }

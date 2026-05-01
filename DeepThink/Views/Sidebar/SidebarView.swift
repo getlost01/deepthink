@@ -16,19 +16,18 @@ struct SidebarView: View {
             HStack {
                 if isExpanded {
                     Text("DeepThink")
-                        .font(DS.Font.body)
-                        .fontWeight(.semibold)
+                        .font(DS.Font.heading)
                         .foregroundStyle(DS.Colors.textPrimary)
                 }
                 Spacer()
                 DSToolbarButton(icon: "sidebar.left", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
+                    withAnimation(DS.Animation.standard) {
                         isExpanded.toggle()
                     }
                 }
             }
+            .frame(height: DS.Layout.headerHeight)
             .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.md)
 
             Divider()
 
@@ -72,9 +71,13 @@ struct SidebarView: View {
                                 .font(.system(size: 10, weight: .medium, design: .rounded))
                         }
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .padding(.horizontal, DS.Spacing.xs)
-                        .padding(.vertical, 2)
-                        .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: DS.Spacing.xs))
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, 3)
+                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                        )
 
                         Text("Command Palette")
                             .font(DS.Font.caption)
@@ -89,7 +92,7 @@ struct SidebarView: View {
         }
         .frame(width: isExpanded ? DS.Layout.sidebarWidth : 52)
         .background(DS.Colors.surface)
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .animation(DS.Animation.standard, value: isExpanded)
     }
 }
 
@@ -124,13 +127,14 @@ private struct SidebarItem: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 isSelected
-                    ? section.color.opacity(0.1)
+                    ? section.color.opacity(0.10)
                     : (isHovered ? DS.Colors.hoverBg : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
         .help(isExpanded ? "" : section.rawValue)
     }
 }

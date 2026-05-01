@@ -14,10 +14,12 @@ fi
 echo "Installing dependencies..."
 bun install
 
-echo "Building standalone binary..."
-bun build src/index.ts --compile --outfile deepthink
+mkdir -p out
 
-echo "Binary size: $(du -h deepthink | cut -f1)"
+echo "Building standalone binary..."
+bun build src/index.ts --compile --outfile out/deepthink
+
+echo "Binary size: $(du -h out/deepthink | cut -f1)"
 echo ""
-echo "Build complete: $SCRIPT_DIR/deepthink"
-echo "Test: ./deepthink status"
+echo "Build complete: $SCRIPT_DIR/out/deepthink"
+echo "Test: ./out/deepthink status"
