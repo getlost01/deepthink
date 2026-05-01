@@ -158,7 +158,7 @@ private struct TerminalTabButton: View {
             .padding(.vertical, DS.Spacing.xs)
             .background(
                 isActive
-                    ? DS.Colors.accent.opacity(0.1)
+                    ? DS.Colors.selectedBg
                     : (isHovered ? DS.Colors.hoverBg : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
@@ -166,6 +166,7 @@ private struct TerminalTabButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 
     private var displayTitle: String {

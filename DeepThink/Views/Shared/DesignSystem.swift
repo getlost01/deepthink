@@ -41,6 +41,7 @@ enum DS {
         static let monoSmall: SwiftUI.Font = .system(size: 11, weight: .regular, design: .monospaced)
         static let terminal: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
 
+        static let subtitle: SwiftUI.Font = .system(size: 16, weight: .medium)
         static let detailTitle: SwiftUI.Font = .system(size: 18, weight: .semibold)
         static let sectionLabel: SwiftUI.Font = .system(size: 12, weight: .medium)
     }
@@ -430,6 +431,7 @@ struct DSToolbarButton: View {
     let icon: String
     var color: Color = DS.Colors.textTertiary
     var size: CGFloat = DS.IconSize.md
+    var label: String? = nil
     let action: () -> Void
     @State private var isHovered = false
 
@@ -444,6 +446,7 @@ struct DSToolbarButton: View {
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .accessibilityLabel(label ?? icon)
     }
 }
 

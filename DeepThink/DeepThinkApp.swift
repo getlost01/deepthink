@@ -66,6 +66,53 @@ struct DeepThinkApp: App {
                     appState.toggleCommandPalette()
                 }
                 .keyboardShortcut("k", modifiers: .command)
+
+                Divider()
+
+                Button("Go to Workspace") {
+                    appState.navigate(to: .workspace)
+                }
+                .keyboardShortcut("1", modifiers: .command)
+
+                Button("Go to AI") {
+                    appState.navigate(to: .ai)
+                }
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button("Go to Terminal") {
+                    appState.navigate(to: .terminal)
+                }
+                .keyboardShortcut("3", modifiers: .command)
+
+                Button("Go to Docs") {
+                    appState.navigate(to: .docs)
+                }
+                .keyboardShortcut("4", modifiers: .command)
+
+                Button("Go to Settings") {
+                    appState.navigate(to: .settings)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+
+                Divider()
+
+                Button("Notes Tab") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .notes
+                }
+                .keyboardShortcut("1", modifiers: [.command, .shift])
+
+                Button("Tasks Tab") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .tasks
+                }
+                .keyboardShortcut("2", modifiers: [.command, .shift])
+
+                Button("Projects Tab") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .projects
+                }
+                .keyboardShortcut("3", modifiers: [.command, .shift])
             }
         }
         .defaultSize(width: 1200, height: 800)
@@ -91,22 +138,22 @@ struct DeepThinkApp: App {
             },
 
             // Navigate
-            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: nil, section: "Navigate") {
+            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘1", section: "Navigate") {
                 appState.navigate(to: .workspace)
             },
-            Command(title: "Notes", icon: "doc.text", shortcut: nil, section: "Navigate") {
+            Command(title: "Notes", icon: "doc.text", shortcut: "⇧⌘1", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .notes
             },
-            Command(title: "Tasks", icon: "checklist", shortcut: nil, section: "Navigate") {
+            Command(title: "Tasks", icon: "checklist", shortcut: "⇧⌘2", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .tasks
             },
-            Command(title: "Projects", icon: "folder", shortcut: nil, section: "Navigate") {
+            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘3", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .projects
             },
-            Command(title: "AI Chat", icon: "sparkles", shortcut: nil, section: "Navigate") {
+            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
                 appState.selectedSection = .ai
                 appState.aiMode = .chat
             },
@@ -118,13 +165,13 @@ struct DeepThinkApp: App {
                 appState.selectedSection = .ai
                 appState.aiMode = .analyze
             },
-            Command(title: "Terminal", icon: "terminal", shortcut: nil, section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘3", section: "Navigate") {
                 appState.navigate(to: .terminal)
             },
-            Command(title: "Docs", icon: "doc.text.magnifyingglass", shortcut: nil, section: "Navigate") {
+            Command(title: "Docs", icon: "doc.text.magnifyingglass", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .docs)
             },
-            Command(title: "Settings", icon: "gearshape", shortcut: nil, section: "Navigate") {
+            Command(title: "Settings", icon: "gearshape", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)
             },
         ])
@@ -142,6 +189,8 @@ struct DeepThinkApp: App {
                 sourcePath = bundled
             } else {
                 let devPaths = [
+                    Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/out/deepthink" },
+                    NSHomeDirectory() + "/code/deepthink/cli/out/deepthink",
                     Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/deepthink" },
                     NSHomeDirectory() + "/code/deepthink/cli/deepthink",
                 ].compactMap { $0 }

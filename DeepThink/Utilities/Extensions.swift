@@ -30,3 +30,20 @@ extension String {
         split(whereSeparator: \.isWhitespace).count
     }
 }
+
+@Observable
+final class DebouncedText {
+    var text: String = ""
+    var debouncedText: String = ""
+    private var task: Task<Void, Never>?
+
+    func update(_ newValue: String, delay: Duration = .milliseconds(200)) {
+        text = newValue
+        task?.cancel()
+        task = Task { @MainActor in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            debouncedText = newValue
+        }
+    }
+}

@@ -6,10 +6,12 @@ struct NoteListView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \Note.modifiedAt, order: .reverse) private var notes: [Note]
     @State private var searchText = ""
+    @State private var debouncedSearch = ""
+    @State private var searchTask: Task<Void, Never>?
 
     private var filteredNotes: [Note] {
-        if searchText.isEmpty { return notes }
-        let lowered = searchText.lowercased()
+        if debouncedSearch.isEmpty { return notes }
+        let lowered = debouncedSearch.lowercased()
         return notes.filter {
             $0.title.lowercased().contains(lowered) ||
             $0.content.lowercased().contains(lowered)
@@ -83,6 +85,14 @@ struct NoteListView: View {
                         actionTitle: "New Note"
                     )
                 }
+            }
+        }
+        .onChange(of: searchText) {
+            searchTask?.cancel()
+            searchTask = Task {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = searchText
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in

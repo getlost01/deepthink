@@ -6,13 +6,15 @@ struct TaskListView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
     @State private var searchText = ""
+    @State private var debouncedSearch = ""
+    @State private var searchTask: Task<Void, Never>?
     @State private var filterStatus: TaskStatus?
 
     private var filteredTasks: [TaskItem] {
         var tasks = allTasks
         if let filterStatus { tasks = tasks.filter { $0.status == filterStatus } }
-        if !searchText.isEmpty {
-            let lowered = searchText.lowercased()
+        if !debouncedSearch.isEmpty {
+            let lowered = debouncedSearch.lowercased()
             tasks = tasks.filter { $0.title.lowercased().contains(lowered) || $0.detail.lowercased().contains(lowered) }
         }
         return tasks
@@ -104,6 +106,14 @@ struct TaskListView: View {
                         actionTitle: "New Task"
                     )
                 }
+            }
+        }
+        .onChange(of: searchText) {
+            searchTask?.cancel()
+            searchTask = Task {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = searchText
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in

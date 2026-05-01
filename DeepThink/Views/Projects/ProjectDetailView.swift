@@ -72,16 +72,34 @@ struct ProjectDetailView: View {
     @ViewBuilder
     private var projectTasksList: some View {
         if project.tasks.isEmpty {
-            VStack(spacing: DS.Spacing.md) {
+            VStack(spacing: DS.Spacing.lg) {
                 Image(systemName: "checklist")
                     .font(.system(size: 24, weight: .light))
                     .foregroundStyle(DS.Colors.textTertiary)
-                Text("No tasks yet")
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                Text("Tasks assigned to this project will appear here")
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                VStack(spacing: DS.Spacing.sm) {
+                    Text("No tasks yet")
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Text("Create a task and assign it to this project")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                Button {
+                    NotificationCenter.default.post(name: .createNewTask, object: nil)
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "plus")
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
+                        Text("New Task")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(DS.Colors.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity)
             .padding(.top, DS.Spacing.xxxl)
@@ -121,16 +139,34 @@ struct ProjectDetailView: View {
     @ViewBuilder
     private var projectNotesList: some View {
         if project.notes.isEmpty {
-            VStack(spacing: DS.Spacing.md) {
+            VStack(spacing: DS.Spacing.lg) {
                 Image(systemName: "doc.text")
                     .font(.system(size: 24, weight: .light))
                     .foregroundStyle(DS.Colors.textTertiary)
-                Text("No notes yet")
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                Text("Notes linked to this project will appear here")
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                VStack(spacing: DS.Spacing.sm) {
+                    Text("No notes yet")
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Text("Create a note and assign it to this project")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                Button {
+                    NotificationCenter.default.post(name: .createNewNote, object: nil)
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "plus")
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
+                        Text("New Note")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(DS.Colors.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plain)
             }
             .frame(maxWidth: .infinity)
             .padding(.top, DS.Spacing.xxxl)

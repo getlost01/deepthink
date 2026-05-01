@@ -6,12 +6,14 @@ struct ProjectListView: View {
     @Environment(AppState.self) private var appState
     @Query(sort: \Project.modifiedAt, order: .reverse) private var allProjects: [Project]
     @State private var searchText = ""
+    @State private var debouncedSearch = ""
+    @State private var searchTask: Task<Void, Never>?
     @State private var showArchived = false
 
     private var projects: [Project] {
         var result = showArchived ? allProjects : allProjects.filter { !$0.isArchived }
-        if !searchText.isEmpty {
-            let lowered = searchText.lowercased()
+        if !debouncedSearch.isEmpty {
+            let lowered = debouncedSearch.lowercased()
             result = result.filter { $0.name.lowercased().contains(lowered) || $0.summary.lowercased().contains(lowered) }
         }
         return result
@@ -73,6 +75,14 @@ struct ProjectListView: View {
                         actionTitle: "New Project"
                     )
                 }
+            }
+        }
+        .onChange(of: searchText) {
+            searchTask?.cancel()
+            searchTask = Task {
+                try? await Task.sleep(for: .milliseconds(200))
+                guard !Task.isCancelled else { return }
+                debouncedSearch = searchText
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewProject)) { _ in
