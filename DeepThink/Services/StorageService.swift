@@ -10,27 +10,58 @@ final class StorageService {
         baseURL = documents.appendingPathComponent("DeepThink")
     }
 
-    // MARK: - Directory Paths
+    // MARK: - Core Data
 
     var dataURL: URL { baseURL.appendingPathComponent("data") }
     var storeURL: URL { dataURL.appendingPathComponent("deepthink.store") }
+
+    // MARK: - Configs
+
     var configsURL: URL { baseURL.appendingPathComponent("configs") }
     var mcpConfigURL: URL { configsURL.appendingPathComponent("mcp") }
     var claudeConfigURL: URL { configsURL.appendingPathComponent("claude") }
-    var logsURL: URL { baseURL.appendingPathComponent("logs") }
-    var toolsURL: URL { baseURL.appendingPathComponent("tools") }
-    var contextURL: URL { baseURL.appendingPathComponent("context") }
-    var embeddingsURL: URL { contextURL.appendingPathComponent("embeddings") }
-    var summariesURL: URL { contextURL.appendingPathComponent("summaries") }
-    var workspaceURL: URL { baseURL.appendingPathComponent("workspace") }
-    var notesExportURL: URL { workspaceURL.appendingPathComponent("notes") }
-    var projectsExportURL: URL { workspaceURL.appendingPathComponent("projects") }
-    var terminalLogsURL: URL { logsURL.appendingPathComponent("terminal") }
-
-    // MARK: - MCP
+    var skillsConfigURL: URL { configsURL.appendingPathComponent("skills") }
+    var rulesConfigURL: URL { configsURL.appendingPathComponent("rules") }
 
     var mcpServerConfigFile: URL { mcpConfigURL.appendingPathComponent("servers.json") }
     var mcpTempConfigFile: URL { mcpConfigURL.appendingPathComponent("active-config.json") }
+
+    // MARK: - Knowledge Base
+
+    var knowledgeURL: URL { baseURL.appendingPathComponent("knowledge") }
+    var knowledgeProjectsURL: URL { knowledgeURL.appendingPathComponent("projects") }
+    var knowledgeIntegrationsURL: URL { knowledgeURL.appendingPathComponent("integrations") }
+    var knowledgeArchiveURL: URL { knowledgeURL.appendingPathComponent("archive") }
+    var knowledgeIndexFile: URL { knowledgeURL.appendingPathComponent("index.json") }
+
+    func knowledgeProjectURL(name: String) -> URL {
+        knowledgeProjectsURL.appendingPathComponent(name.slugified)
+    }
+
+    func knowledgeIntegrationURL(source: String) -> URL {
+        knowledgeIntegrationsURL.appendingPathComponent(source.lowercased())
+    }
+
+    // MARK: - Memory
+
+    var memoryURL: URL { baseURL.appendingPathComponent("memory") }
+
+    // MARK: - Sandbox
+
+    var sandboxURL: URL { baseURL.appendingPathComponent("sandbox") }
+    var sandboxDocsURL: URL { sandboxURL.appendingPathComponent("docs") }
+    var sandboxOutputsURL: URL { sandboxURL.appendingPathComponent("outputs") }
+    var sandboxAnalysisURL: URL { sandboxURL.appendingPathComponent("analysis") }
+    var sandboxInsightsURL: URL { sandboxURL.appendingPathComponent("insights") }
+
+    // MARK: - Tools & Logs & Workspace
+
+    var toolsURL: URL { baseURL.appendingPathComponent("tools") }
+    var logsURL: URL { baseURL.appendingPathComponent("logs") }
+    var terminalLogsURL: URL { logsURL.appendingPathComponent("terminal") }
+    var workspaceURL: URL { baseURL.appendingPathComponent("workspace") }
+    var notesExportURL: URL { workspaceURL.appendingPathComponent("notes") }
+    var projectsExportURL: URL { workspaceURL.appendingPathComponent("exports") }
 
     // MARK: - Setup
 
@@ -38,18 +69,21 @@ final class StorageService {
         let fm = FileManager.default
         let dirs = [
             dataURL,
-            configsURL,
-            mcpConfigURL,
-            claudeConfigURL,
-            logsURL,
-            terminalLogsURL,
-            toolsURL,
-            contextURL,
-            embeddingsURL,
-            summariesURL,
-            workspaceURL,
-            notesExportURL,
-            projectsExportURL,
+            // Configs
+            configsURL, mcpConfigURL, claudeConfigURL, skillsConfigURL, rulesConfigURL,
+            // Knowledge
+            knowledgeURL, knowledgeProjectsURL, knowledgeIntegrationsURL, knowledgeArchiveURL,
+            knowledgeIntegrationURL(source: "slack"),
+            knowledgeIntegrationURL(source: "github"),
+            knowledgeIntegrationURL(source: "linear"),
+            knowledgeIntegrationURL(source: "web"),
+            // Memory
+            memoryURL,
+            // Sandbox
+            sandboxURL, sandboxDocsURL, sandboxOutputsURL, sandboxAnalysisURL, sandboxInsightsURL,
+            // Tools, Logs, Workspace
+            toolsURL, logsURL, terminalLogsURL,
+            workspaceURL, notesExportURL, projectsExportURL,
         ]
 
         for url in dirs {
@@ -58,6 +92,7 @@ final class StorageService {
             }
         }
 
+        ensureKnowledgeIndex()
         createReadmeIfNeeded()
     }
 
@@ -84,34 +119,67 @@ final class StorageService {
         }
     }
 
+    private func ensureKnowledgeIndex() {
+        let indexFile = knowledgeIndexFile
+        guard !FileManager.default.fileExists(atPath: indexFile.path) else { return }
+        let initial: [String: Any] = [
+            "version": 1,
+            "created": ISO8601DateFormatter().string(from: Date()),
+            "projects": [String: Any](),
+            "integrations": [String: Any](),
+            "stats": ["totalEntries": 0, "lastUpdated": ISO8601DateFormatter().string(from: Date())]
+        ]
+        if let data = try? JSONSerialization.data(withJSONObject: initial, options: .prettyPrinted) {
+            try? data.write(to: indexFile)
+        }
+    }
+
     private func createReadmeIfNeeded() {
         let readme = baseURL.appendingPathComponent("README.md")
         guard !FileManager.default.fileExists(atPath: readme.path) else { return }
         let content = """
         # DeepThink Workspace
 
-        This folder is managed by the DeepThink app.
+        Self-contained AI workspace managed by DeepThink.
 
         ## Structure
 
         ```
         DeepThink/
-        ├── data/              # SwiftData database
+        ├── data/                # App database
         ├── configs/
-        │   ├── mcp/           # MCP server configurations
-        │   └── claude/        # Claude CLI settings
-        ├── context/
-        │   ├── embeddings/    # Vector embeddings
-        │   └── summaries/     # AI-generated summaries
-        ├── workspace/
-        │   ├── notes/         # Exported notes
-        │   └── projects/      # Project files
-        ├── tools/             # Custom tools & scripts
-        └── logs/              # App & terminal logs
+        │   ├── mcp/             # MCP server configurations
+        │   ├── claude/          # Claude CLI settings
+        │   ├── skills/          # Custom skills
+        │   └── rules/           # System prompts & rules
+        ├── knowledge/
+        │   ├── projects/        # Per-project knowledge base
+        │   ├── integrations/    # MCP data (Slack, GitHub, etc.)
+        │   ├── archive/         # Compressed old knowledge
+        │   └── index.json       # Master index
+        ├── memory/              # Short & long-term memory
+        ├── sandbox/
+        │   ├── docs/            # Generated documents
+        │   ├── outputs/         # Tool outputs
+        │   ├── analysis/        # Analysis results
+        │   └── insights/        # AI insights
+        ├── tools/               # Custom CLI tools
+        ├── logs/                # App & terminal logs
+        └── workspace/
+            ├── notes/           # Exported notes
+            └── exports/         # Project exports
         ```
 
-        All app data lives here. Back up this folder to preserve your workspace.
+        All data lives here. Back up this folder to preserve everything.
         """
         try? content.write(to: readme, atomically: true, encoding: .utf8)
+    }
+}
+
+private extension String {
+    var slugified: String {
+        lowercased()
+            .replacingOccurrences(of: " ", with: "-")
+            .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
     }
 }

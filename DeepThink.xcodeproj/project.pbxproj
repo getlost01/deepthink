@@ -34,6 +34,7 @@
 		75274A244834AFCFD470C59C /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03342B4E6B4D5436CD2AD64 /* SidebarView.swift */; };
 		7A8E4B214AEA7699D519693F /* DeepSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */; };
 		83871561D4637C6CF9D4FE34 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF79BBD1111238B6B285FF3 /* AnalysisView.swift */; };
+		85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */; };
 		8AF9EBDF670E306EA30DA428 /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D86BA082EAA0134C406EC5 /* Tag.swift */; };
 		8B94A2A274C1F4D160B9C3FB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D7A4EF57F552986078971D26 /* Assets.xcassets */; };
 		8BBBEEC83A0299ED6C484E3E /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FD6E3C699838F6B6313A2D /* Enums.swift */; };
@@ -69,6 +70,7 @@
 		37D86BA082EAA0134C406EC5 /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
 		385A4FAAC692A38BD53EDF64 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		49DACC2342FDEA5CD1242861 /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
+		4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeService.swift; sourceTree = "<group>"; };
 		4F275DFF4FDCF5E5906CA86E /* DeepThink.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DeepThink.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51BFA5828C333E058B73C0C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		537CE926D065F008EC744C10 /* NoteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteLink.swift; sourceTree = "<group>"; };
@@ -187,6 +189,7 @@
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
 				DCCA16C67256D8A109A8379B /* CLIAnalysisService.swift */,
 				AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */,
+				4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */,
 				0600BB6D0E20A8A684ED8D07 /* MCPService.swift */,
 				A3FCAE699A5E746FA2001B06 /* StorageService.swift */,
 				A3275C61AF584F63DAF20352 /* VersioningService.swift */,
@@ -464,6 +467,7 @@
 				EDDAAA898C3FECF2D63E897E /* Extensions.swift in Sources */,
 				59F17A8E4D3D2ED490972F7E /* HomeView.swift in Sources */,
 				6411604BCDA0FF0B68B1EE80 /* KnowledgeGraphView.swift in Sources */,
+				85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */,
 				D5A59CA9651B9337A12970DD /* MCPServer.swift in Sources */,
 				A676C81F265FD7A1038E0A54 /* MCPService.swift in Sources */,
 				426F6E951AA7D85D61A0C92B /* MarkdownRendererView.swift in Sources */,

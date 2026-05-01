@@ -5,7 +5,7 @@ import { getPath } from "../core/sandbox";
 export function writeFile(
   content: string,
   filename: string,
-  category: "docs" | "outputs" | "projects" | "insights" = "outputs"
+  category: "docs" | "outputs" | "analysis" | "insights" = "outputs"
 ): string {
   const path = getPath(category, filename);
   mkdirSync(dirname(path), { recursive: true });
@@ -20,7 +20,7 @@ export function readFile(filepath: string): string {
 export function appendToFile(
   content: string,
   filename: string,
-  category: "docs" | "outputs" | "projects" | "insights" = "outputs"
+  category: "docs" | "outputs" | "analysis" | "insights" = "outputs"
 ): string {
   const path = getPath(category, filename);
   mkdirSync(dirname(path), { recursive: true });

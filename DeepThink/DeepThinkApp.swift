@@ -33,6 +33,7 @@ struct DeepThinkApp: App {
                 )
                 .onAppear {
                     registerCommands()
+                    installCLI()
                 }
         }
         .modelContainer(sharedModelContainer)
@@ -115,6 +116,43 @@ struct DeepThinkApp: App {
                 appState.navigate(to: .home)
             },
         ])
+    }
+
+    private func installCLI() {
+        DispatchQueue.global(qos: .utility).async {
+            let fm = FileManager.default
+            let installDir = NSHomeDirectory() + "/.local/bin"
+            let installPath = installDir + "/deepthink"
+
+            // Find CLI binary: bundle first, then dev source tree
+            var sourcePath: String?
+            if let bundled = Bundle.main.resourceURL?.appendingPathComponent("deepthink-cli").path,
+               fm.isExecutableFile(atPath: bundled) {
+                sourcePath = bundled
+            } else {
+                let devPaths = [
+                    Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/deepthink" },
+                    NSHomeDirectory() + "/code/deepthink/cli/deepthink",
+                ].compactMap { $0 }
+                sourcePath = devPaths.first { fm.isExecutableFile(atPath: $0) }
+            }
+
+            guard let source = sourcePath else { return }
+
+            // Create ~/.local/bin if needed
+            if !fm.fileExists(atPath: installDir) {
+                try? fm.createDirectory(atPath: installDir, withIntermediateDirectories: true)
+            }
+
+            // Copy binary (overwrite if exists)
+            try? fm.removeItem(atPath: installPath)
+            try? fm.copyItem(atPath: source, toPath: installPath)
+
+            // Ensure executable
+            try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: installPath)
+
+            StorageService.shared.writeLog("CLI installed: \(installPath)", to: "app")
+        }
     }
 }
 
