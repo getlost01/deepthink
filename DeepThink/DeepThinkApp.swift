@@ -40,19 +40,22 @@ struct DeepThinkApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("New Note") {
-                    appState.navigate(to: .notes)
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .notes
                     NotificationCenter.default.post(name: .createNewNote, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
                 Button("New Task") {
-                    appState.navigate(to: .tasks)
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .tasks
                     NotificationCenter.default.post(name: .createNewTask, object: nil)
                 }
                 .keyboardShortcut("t", modifiers: .command)
 
                 Button("New Project") {
-                    appState.navigate(to: .projects)
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .projects
                     NotificationCenter.default.post(name: .createNewProject, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
@@ -70,50 +73,59 @@ struct DeepThinkApp: App {
 
     private func registerCommands() {
         commandPaletteState.registerCommands([
+            // Create
             Command(title: "New Note", icon: "doc.text.badge.plus", shortcut: "⌘N", section: "Create") {
-                appState.navigate(to: .notes)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .notes
                 NotificationCenter.default.post(name: .createNewNote, object: nil)
             },
             Command(title: "New Task", icon: "plus.circle", shortcut: "⌘T", section: "Create") {
-                appState.navigate(to: .tasks)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .tasks
                 NotificationCenter.default.post(name: .createNewTask, object: nil)
             },
             Command(title: "New Project", icon: "folder.badge.plus", shortcut: "⇧⌘N", section: "Create") {
-                appState.navigate(to: .projects)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .projects
                 NotificationCenter.default.post(name: .createNewProject, object: nil)
             },
-            Command(title: "AI Chat", icon: "bubble.left.and.bubble.right", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .chat)
-            },
-            Command(title: "Deep Search", icon: "sparkle.magnifyingglass", shortcut: "⇧⌘F", section: "Navigate") {
-                appState.navigate(to: .deepSearch)
-            },
-            Command(title: "Analysis", icon: "wand.and.rays", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .analysis)
-            },
-            Command(title: "Memory", icon: "brain", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .memory)
+
+            // Navigate
+            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .workspace)
             },
             Command(title: "Notes", icon: "doc.text", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .notes)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .notes
             },
             Command(title: "Tasks", icon: "checklist", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .tasks)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .tasks
             },
             Command(title: "Projects", icon: "folder", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .projects)
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .projects
             },
-            Command(title: "Tools & MCP", icon: "wrench.and.screwdriver", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .tools)
+            Command(title: "AI Chat", icon: "sparkles", shortcut: nil, section: "Navigate") {
+                appState.selectedSection = .ai
+                appState.aiMode = .chat
             },
-            Command(title: "Knowledge Graph", icon: "point.3.connected.trianglepath.dotted", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .graph)
+            Command(title: "AI Search", icon: "sparkle.magnifyingglass", shortcut: "⇧⌘F", section: "Navigate") {
+                appState.selectedSection = .ai
+                appState.aiMode = .search
+            },
+            Command(title: "AI Analyze", icon: "wand.and.rays", shortcut: nil, section: "Navigate") {
+                appState.selectedSection = .ai
+                appState.aiMode = .analyze
             },
             Command(title: "Terminal", icon: "terminal", shortcut: nil, section: "Navigate") {
                 appState.navigate(to: .terminal)
             },
-            Command(title: "Home", icon: "house", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .home)
+            Command(title: "Docs", icon: "doc.text.magnifyingglass", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .docs)
+            },
+            Command(title: "Settings", icon: "gearshape", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .settings)
             },
         ])
     }
@@ -124,7 +136,6 @@ struct DeepThinkApp: App {
             let installDir = NSHomeDirectory() + "/.local/bin"
             let installPath = installDir + "/deepthink"
 
-            // Find CLI binary: bundle first, then dev source tree
             var sourcePath: String?
             if let bundled = Bundle.main.resourceURL?.appendingPathComponent("deepthink-cli").path,
                fm.isExecutableFile(atPath: bundled) {
@@ -139,16 +150,12 @@ struct DeepThinkApp: App {
 
             guard let source = sourcePath else { return }
 
-            // Create ~/.local/bin if needed
             if !fm.fileExists(atPath: installDir) {
                 try? fm.createDirectory(atPath: installDir, withIntermediateDirectories: true)
             }
 
-            // Copy binary (overwrite if exists)
             try? fm.removeItem(atPath: installPath)
             try? fm.copyItem(atPath: source, toPath: installPath)
-
-            // Ensure executable
             try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: installPath)
 
             StorageService.shared.writeLog("CLI installed: \(installPath)", to: "app")

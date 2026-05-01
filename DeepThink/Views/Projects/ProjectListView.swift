@@ -5,68 +5,83 @@ struct ProjectListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
     @Query(sort: \Project.modifiedAt, order: .reverse) private var allProjects: [Project]
+    @State private var searchText = ""
     @State private var showArchived = false
 
     private var projects: [Project] {
-        showArchived ? allProjects : allProjects.filter { !$0.isArchived }
+        var result = showArchived ? allProjects : allProjects.filter { !$0.isArchived }
+        if !searchText.isEmpty {
+            let lowered = searchText.lowercased()
+            result = result.filter { $0.name.lowercased().contains(lowered) || $0.summary.lowercased().contains(lowered) }
+        }
+        return result
     }
-
-    private let columns = [GridItem(.adaptive(minimum: 220, maximum: 300), spacing: DS.Spacing.lg)]
 
     var body: some View {
         @Bindable var appState = appState
 
-        ScrollView {
-            if projects.isEmpty {
-                DSEmptyState(
-                    icon: "folder",
-                    title: "No Projects",
-                    subtitle: "Create a project to organize your work",
-                    action: createProject,
-                    actionTitle: "New Project"
-                )
-            } else {
-                LazyVGrid(columns: columns, spacing: DS.Spacing.lg) {
-                    ForEach(projects) { project in
-                        ProjectCard(project: project, isSelected: appState.selectedProjectID == project.id)
-                            .onTapGesture {
-                                appState.selectedProjectID = project.id
-                            }
-                            .contextMenu {
-                                Button(project.isArchived ? "Unarchive" : "Archive") {
-                                    project.isArchived.toggle()
-                                    project.modifiedAt = Date()
-                                }
-                                Divider()
-                                Button("Delete", role: .destructive) {
-                                    if appState.selectedProjectID == project.id {
-                                        appState.selectedProjectID = nil
-                                    }
-                                    modelContext.delete(project)
-                                }
-                            }
-                    }
-                }
-                .padding(DS.Spacing.xl)
-            }
-        }
-        .navigationTitle("Projects")
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                HStack(spacing: DS.Spacing.sm) {
-                    Button {
-                        showArchived.toggle()
-                    } label: {
-                        Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
-                            .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plain)
-                    .help(showArchived ? "Hide Archived" : "Show Archived")
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.sm) {
+                Text("Projects")
+                    .font(DS.Font.heading)
+                Spacer()
 
-                    Button(action: createProject) {
-                        Image(systemName: "plus")
-                    }
-                    .help("New Project")
+                Button {
+                    showArchived.toggle()
+                } label: {
+                    Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textSecondary)
+                }
+                .buttonStyle(.plain)
+                .help(showArchived ? "Hide Archived" : "Show Archived")
+
+                Button(action: createProject) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 15))
+                        .foregroundStyle(DS.Colors.accent)
+                }
+                .buttonStyle(.plain)
+                .help("New Project (⇧⌘N)")
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+
+            DSSearchField(text: $searchText, placeholder: "Search projects...")
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.sm)
+
+            Divider()
+
+            List(selection: $appState.selectedProjectID) {
+                ForEach(projects) { project in
+                    ProjectRow(project: project)
+                        .tag(project.id)
+                        .contextMenu {
+                            Button(project.isArchived ? "Unarchive" : "Archive") {
+                                project.isArchived.toggle()
+                                project.modifiedAt = Date()
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                if appState.selectedProjectID == project.id {
+                                    appState.selectedProjectID = nil
+                                }
+                                modelContext.delete(project)
+                            }
+                        }
+                }
+            }
+            .listStyle(.inset)
+            .overlay {
+                if projects.isEmpty {
+                    DSEmptyState(
+                        icon: "folder",
+                        title: "No Projects",
+                        subtitle: "Create a project to organize your work",
+                        action: createProject,
+                        actionTitle: "New Project"
+                    )
                 }
             }
         }
@@ -82,12 +97,11 @@ struct ProjectListView: View {
     }
 }
 
-private struct ProjectCard: View {
+private struct ProjectRow: View {
     let project: Project
-    let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
             HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(Color(hex: project.color))
@@ -96,27 +110,26 @@ private struct ProjectCard: View {
                     .font(DS.Font.body)
                     .fontWeight(.medium)
                     .lineLimit(1)
+                if project.isArchived {
+                    DSPill(text: "Archived", color: .secondary)
+                }
             }
-
-            if !project.summary.isEmpty {
-                Text(project.summary)
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(2)
+            HStack {
+                if !project.summary.isEmpty {
+                    Text(project.summary)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                HStack(spacing: DS.Spacing.sm) {
+                    Label("\(project.notes.count)", systemImage: "doc.text")
+                    Label("\(project.openTaskCount)", systemImage: "checklist")
+                }
+                .font(DS.Font.tiny)
+                .foregroundStyle(DS.Colors.textTertiary)
             }
-
-            HStack(spacing: DS.Spacing.md) {
-                Label("\(project.notes.count)", systemImage: "doc.text")
-                Label("\(project.openTaskCount)", systemImage: "checklist")
-            }
-            .font(DS.Font.tiny)
-            .foregroundStyle(DS.Colors.textTertiary)
         }
-        .padding(DS.Spacing.lg)
-        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-        .overlay {
-            RoundedRectangle(cornerRadius: DS.Radius.lg)
-                .strokeBorder(isSelected ? Color.accentColor : DS.Colors.border, lineWidth: isSelected ? 1.5 : 0.5)
-        }
+        .padding(.vertical, DS.Spacing.xs)
     }
 }

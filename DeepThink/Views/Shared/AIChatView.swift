@@ -49,14 +49,9 @@ struct AIChatView: View {
                         .scaleEffect(0.7)
                 }
 
-                Button {
+                DSToolbarButton(icon: "trash", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
                     messages.removeAll()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textTertiary)
                 }
-                .buttonStyle(.plain)
                 .help("Clear chat")
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -102,8 +97,8 @@ struct AIChatView: View {
 
                 Button(action: sendMessage) {
                     Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? Color.secondary.opacity(0.3) : DS.Colors.accent)
+                        .font(.system(size: DS.IconSize.xl))
+                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
                 }
                 .buttonStyle(.plain)
                 .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || isProcessing)
@@ -186,8 +181,8 @@ private struct WelcomePrompts: View {
                     } label: {
                         HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: icon)
-                                .font(DS.Font.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.system(size: DS.IconSize.sm))
+                                .foregroundStyle(DS.Colors.textSecondary)
                                 .frame(width: 20)
                             Text(title)
                                 .font(DS.Font.caption)
@@ -195,7 +190,7 @@ private struct WelcomePrompts: View {
                             Spacer()
                         }
                         .padding(DS.Spacing.md)
-                        .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plain)
                 }
@@ -217,19 +212,19 @@ struct ChatBubble: View {
 
             if message.role != .user {
                 Image(systemName: message.role == .error ? "exclamationmark.triangle" : "brain.head.profile")
-                    .font(.system(size: 11))
-                    .foregroundStyle(message.role == .error ? .red : DS.Colors.accent)
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(message.role == .error ? DS.Colors.error : DS.Colors.accent)
                     .frame(width: 22, height: 22)
-                    .background(message.role == .error ? .red.opacity(0.1) : DS.Colors.accent.opacity(0.1), in: Circle())
+                    .background(message.role == .error ? DS.Colors.error.opacity(0.1) : DS.Colors.accent.opacity(0.1), in: Circle())
             }
 
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
+            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: DS.Spacing.xs) {
                 if message.role == .error {
                     Text(message.content)
                         .font(DS.Font.body)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DS.Colors.error)
                         .padding(DS.Spacing.md)
-                        .background(.red.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .background(DS.Colors.error.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 } else if let attributed = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                     Text(attributed)
                         .font(DS.Font.body)

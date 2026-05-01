@@ -17,20 +17,15 @@ struct NoteEditorView: View {
             HStack {
                 TextField("Note title", text: $note.title)
                     .textFieldStyle(.plain)
-                    .font(.title)
-                    .fontWeight(.semibold)
+                    .font(DS.Font.detailTitle)
                     .focused($titleFocused)
 
                 Spacer()
 
-                HStack(spacing: 4) {
-                    Button {
+                HStack(spacing: DS.Spacing.xs) {
+                    DSToolbarButton(icon: "brain.head.profile", color: DS.Colors.accent, size: DS.IconSize.md) {
                         showAIMenu.toggle()
-                    } label: {
-                        Image(systemName: "brain.head.profile")
-                            .foregroundStyle(DS.Colors.accent)
                     }
-                    .buttonStyle(.plain)
                     .popover(isPresented: $showAIMenu) {
                         AIActionsMenu(note: note, isProcessing: $aiProcessing)
                     }
@@ -40,12 +35,9 @@ struct NoteEditorView: View {
                             .scaleEffect(0.6)
                     }
 
-                    Button {
+                    DSToolbarButton(icon: "clock.arrow.circlepath", size: DS.IconSize.md) {
                         showVersions = true
-                    } label: {
-                        Image(systemName: "clock.arrow.circlepath")
                     }
-                    .buttonStyle(.plain)
                     .help("Version History")
 
                     Picker("", selection: $showPreview) {
@@ -112,10 +104,10 @@ private struct AIActionsMenu: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if let result {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     HStack {
                         Text("AI Result")
-                            .font(.headline)
+                            .font(DS.Font.heading)
                         Spacer()
                         Button("Apply") {
                             note.content += "\n\n---\n\n\(result)"
@@ -135,12 +127,12 @@ private struct AIActionsMenu: View {
                     ScrollView {
                         if let attributed = try? AttributedString(markdown: result, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                             Text(attributed)
-                                .font(.callout)
+                                .font(DS.Font.body)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         } else {
                             Text(result)
-                                .font(.callout)
+                                .font(DS.Font.body)
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -150,12 +142,12 @@ private struct AIActionsMenu: View {
                 .padding(DS.Spacing.md)
                 .frame(width: 360)
             } else if let error {
-                VStack(spacing: 8) {
+                VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "exclamationmark.triangle")
-                        .foregroundStyle(.red)
+                        .foregroundStyle(DS.Colors.error)
                     Text(error)
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.error)
                         .multilineTextAlignment(.center)
                 }
                 .padding(DS.Spacing.md)
@@ -163,8 +155,8 @@ private struct AIActionsMenu: View {
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("AI Actions")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
                         .padding(.horizontal, DS.Spacing.md)
                         .padding(.top, DS.Spacing.sm)
                         .padding(.bottom, DS.Spacing.xs)
@@ -190,7 +182,7 @@ private struct AIActionsMenu: View {
                         }
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, DS.Spacing.sm)
                 .frame(width: 200)
             }
         }
@@ -217,15 +209,17 @@ private struct AIActionRow: View {
         Button {
             Task { await action() }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: icon)
+                    .font(.system(size: DS.IconSize.sm))
                     .foregroundStyle(color)
                     .frame(width: 20)
                 Text(title)
+                    .font(DS.Font.body)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(.system(size: DS.IconSize.xs))
+                    .foregroundStyle(DS.Colors.textTertiary)
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)

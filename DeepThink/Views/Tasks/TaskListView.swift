@@ -49,18 +49,15 @@ struct TaskListView: View {
                     }
                 } label: {
                     Image(systemName: filterStatus == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(filterStatus == nil ? DS.Colors.textSecondary : DS.Colors.accent)
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
 
-                Button(action: createTask) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(DS.Colors.accent)
+                DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
+                    createTask()
                 }
-                .buttonStyle(.plain)
                 .help("New Task (⌘T)")
             }
             .padding(.horizontal, DS.Spacing.lg)
@@ -92,7 +89,7 @@ struct TaskListView: View {
                     } header: {
                         HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: status.icon)
-                                .font(.system(size: 10))
+                                .font(.system(size: DS.IconSize.xs + 1))
                                 .foregroundStyle(status.color)
                             Text(status.rawValue)
                                 .font(DS.Font.caption)

@@ -10,8 +10,7 @@ struct TaskDetailView: View {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 TextField("Task title", text: $task.title)
                     .textFieldStyle(.plain)
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                    .font(DS.Font.detailTitle)
 
                 HStack(spacing: DS.Spacing.lg) {
                     Picker("Status", selection: $task.status) {
@@ -54,7 +53,7 @@ struct TaskDetailView: View {
                     if task.dueDate != nil {
                         Button("Clear") { task.dueDate = nil }
                             .font(DS.Font.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
 
                     Spacer()
@@ -80,15 +79,15 @@ struct TaskDetailView: View {
                 Divider()
 
                 Text("Description")
-                    .font(DS.Font.heading)
+                    .font(DS.Font.sectionLabel)
                     .foregroundStyle(DS.Colors.textSecondary)
 
                 TextEditor(text: $task.detail)
-                    .font(.body)
+                    .font(DS.Font.body)
                     .scrollContentBackground(.hidden)
                     .frame(minHeight: 200)
                     .padding(DS.Spacing.sm)
-                    .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
             .padding(DS.Spacing.xl)
         }

@@ -50,12 +50,12 @@ struct DeepSearchView: View {
             VStack(spacing: DS.Spacing.md) {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14))
+                        .font(.system(size: DS.IconSize.md))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     TextField("Search your knowledge base...", text: $query)
                         .textFieldStyle(.plain)
-                        .font(.title3)
+                        .font(DS.Font.heading)
                         .focused($focused)
                         .onSubmit { performSearch() }
 
@@ -63,9 +63,7 @@ struct DeepSearchView: View {
                         ProgressView().scaleEffect(0.7)
                     }
                 }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.md)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .dsInputField()
 
                 Picker("Mode", selection: $searchMode) {
                     ForEach(SearchMode.allCases, id: \.self) { mode in
@@ -81,37 +79,31 @@ struct DeepSearchView: View {
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                     if let aiResult, !aiResult.isEmpty {
                         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                             HStack(spacing: DS.Spacing.sm) {
                                 Text("AI Analysis")
                                     .font(DS.Font.heading)
                                 Spacer()
-                                Button {
+                                DSToolbarButton(icon: "doc.on.doc", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
                                     NSPasteboard.general.clearContents()
                                     NSPasteboard.general.setString(aiResult, forType: .string)
-                                } label: {
-                                    Image(systemName: "doc.on.doc")
-                                        .font(DS.Font.caption)
-                                        .foregroundStyle(DS.Colors.textTertiary)
                                 }
-                                .buttonStyle(.plain)
                             }
 
                             if let attributed = try? AttributedString(markdown: aiResult, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                                 Text(attributed)
-                                    .font(.callout)
+                                    .font(DS.Font.body)
                                     .textSelection(.enabled)
                             } else {
                                 Text(aiResult)
-                                    .font(.callout)
+                                    .font(DS.Font.body)
                                     .textSelection(.enabled)
                             }
                         }
                         .padding(DS.Spacing.lg)
-                        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.lg).strokeBorder(DS.Colors.border))
+                        .dsBordered()
                     }
 
                     if !localResults.isEmpty {
@@ -208,14 +200,11 @@ struct DeepSearchView: View {
     private func navigateTo(_ result: SearchResult) {
         switch result.type {
         case .note:
-            appState.selectedSection = .notes
-            appState.selectedNoteID = result.id
+            appState.navigateToNote(result.id)
         case .task:
-            appState.selectedSection = .tasks
-            appState.selectedTaskID = result.id
+            appState.navigateToTask(result.id)
         case .project:
-            appState.selectedSection = .projects
-            appState.selectedProjectID = result.id
+            appState.navigateToProject(result.id)
         }
     }
 
@@ -270,21 +259,26 @@ private struct SearchResultRow: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: result.type.icon)
-                    .font(DS.Font.body)
+                    .font(.system(size: DS.IconSize.md))
                     .foregroundStyle(result.type.color)
                     .frame(width: 28, height: 28)
                     .background(result.type.color.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(result.title).font(DS.Font.body).fontWeight(.medium).lineLimit(1)
-                    Text(result.subtitle).font(DS.Font.caption).foregroundStyle(.secondary).lineLimit(2)
+                    Text(result.title)
+                        .font(DS.Font.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    Text(result.subtitle)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(2)
                 }
 
                 Spacer()
             }
             .padding(DS.Spacing.md)
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
+            .dsBordered()
         }
         .buttonStyle(.plain)
     }
@@ -297,12 +291,15 @@ private struct SearchSuggestion: View {
     var body: some View {
         Button { action(text) } label: {
             HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: "magnifyingglass").font(.system(size: 10)).foregroundStyle(DS.Colors.textTertiary)
-                Text(text).font(DS.Font.caption)
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: DS.IconSize.xs + 1))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                Text(text)
+                    .font(DS.Font.caption)
                 Spacer()
             }
             .padding(DS.Spacing.sm)
-            .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plain)
         .frame(maxWidth: 360)

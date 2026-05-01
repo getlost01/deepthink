@@ -34,11 +34,10 @@ struct MemoryView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Search bar
             VStack(spacing: DS.Spacing.md) {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: "brain")
-                        .font(.system(size: 14))
+                        .font(.system(size: DS.IconSize.md))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     TextField("Search memories...", text: $searchQuery)
@@ -51,17 +50,12 @@ struct MemoryView: View {
                         ProgressView().scaleEffect(0.7)
                     }
 
-                    Button(action: searchMemories) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 14))
-                            .foregroundStyle(DS.Colors.accent)
+                    DSToolbarButton(icon: "magnifyingglass", color: DS.Colors.accent, size: DS.IconSize.md) {
+                        searchMemories()
                     }
-                    .buttonStyle(.plain)
                     .disabled(searchQuery.isEmpty)
                 }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.md)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .dsInputField()
 
                 HStack(spacing: DS.Spacing.md) {
                     Picker("Layer", selection: $selectedLayer) {
@@ -76,8 +70,8 @@ struct MemoryView: View {
 
                     if let stats {
                         HStack(spacing: DS.Spacing.md) {
-                            StatBadge(label: "Short", count: stats.shortTerm, color: .orange)
-                            StatBadge(label: "Long", count: stats.longTerm, color: .blue)
+                            StatBadge(label: "Short", count: stats.shortTerm, color: DS.Colors.warning)
+                            StatBadge(label: "Long", count: stats.longTerm, color: DS.Colors.info)
                         }
                     }
 
@@ -121,7 +115,7 @@ struct MemoryView: View {
             if let statusMessage {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "checkmark.circle")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(DS.Colors.success)
                     Text(statusMessage)
                         .font(DS.Font.caption)
                     Spacer()
@@ -197,7 +191,6 @@ struct MemoryView: View {
     private func parseMemoryOutput(_ output: String) {
         let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
         memoryEntries = lines.compactMap { line in
-            // Format: [2026-05-01T01:21] (short, tags: system, init) Content here
             let timestampEnd = line.firstIndex(of: "]").map { line.index(after: $0) }
             let timestamp = timestampEnd.map { String(line[line.startIndex..<$0]).trimmingCharacters(in: CharacterSet(charactersIn: "[]")) } ?? ""
 
@@ -278,26 +271,21 @@ private struct MemoryEntryRow: View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: entry.layer == "long" ? "brain.fill" : "brain")
-                    .font(.system(size: 11))
-                    .foregroundStyle(entry.layer == "long" ? .blue : .orange)
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(entry.layer == "long" ? DS.Colors.info : DS.Colors.warning)
 
                 Text(entry.timestamp)
                     .font(DS.Font.tiny)
                     .foregroundStyle(DS.Colors.textTertiary)
 
-                DSPill(text: entry.layer, color: entry.layer == "long" ? .blue : .orange)
+                DSPill(text: entry.layer, color: entry.layer == "long" ? DS.Colors.info : DS.Colors.warning)
 
                 Spacer()
 
-                Button {
+                DSToolbarButton(icon: "doc.on.doc", color: DS.Colors.textTertiary, size: DS.IconSize.xs + 1) {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(entry.content, forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(DS.Font.tiny)
-                        .foregroundStyle(DS.Colors.textTertiary)
                 }
-                .buttonStyle(.plain)
             }
 
             Text(entry.content)
@@ -313,14 +301,13 @@ private struct MemoryEntryRow: View {
                             .foregroundStyle(DS.Colors.textSecondary)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
-                            .background(Color.primary.opacity(0.04), in: Capsule())
+                            .background(DS.Colors.inputBg, in: Capsule())
                     }
                 }
             }
         }
         .padding(DS.Spacing.md)
-        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
+        .dsBordered()
     }
 }
 
@@ -346,13 +333,13 @@ private struct AddMemorySheet: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 Text("Content")
-                    .font(DS.Font.caption)
+                    .font(DS.Font.sectionLabel)
                     .foregroundStyle(DS.Colors.textSecondary)
                 TextEditor(text: $text)
                     .font(DS.Font.body)
                     .frame(minHeight: 100)
                     .padding(DS.Spacing.sm)
-                    .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                 TextField("Tags (comma-separated)", text: $tags)
                     .textFieldStyle(.roundedBorder)

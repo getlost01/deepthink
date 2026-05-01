@@ -62,8 +62,7 @@ struct KnowledgeGraphView: View {
                         selectedNodeID = node.id
                     }
                     .onTapGesture(count: 2) {
-                        appState.navigate(to: .notes)
-                        appState.selectedNoteID = node.id
+                        appState.navigateToNote(node.id)
                     }
 
                     Text(node.title)

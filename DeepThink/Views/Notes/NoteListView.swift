@@ -24,12 +24,9 @@ struct NoteListView: View {
                 Text("Notes")
                     .font(DS.Font.heading)
                 Spacer()
-                Button(action: createNote) {
-                    Image(systemName: "square.and.pencil")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(DS.Colors.accent)
+                DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.accent, size: DS.IconSize.md) {
+                    createNote()
                 }
-                .buttonStyle(.plain)
                 .help("New Note (⌘N)")
             }
             .padding(.horizontal, DS.Spacing.lg)
@@ -47,8 +44,8 @@ struct NoteListView: View {
                         HStack(spacing: DS.Spacing.xs) {
                             if note.isPinned {
                                 Image(systemName: "pin.fill")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.orange)
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.warning)
                             }
                             Text(note.title.isEmpty ? "Untitled" : note.title)
                                 .font(DS.Font.body)

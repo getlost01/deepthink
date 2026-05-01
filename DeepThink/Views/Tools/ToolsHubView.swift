@@ -111,7 +111,7 @@ struct ToolsHubView: View {
             if let testResult {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: isTesting ? "hourglass" : "checkmark.circle")
-                        .foregroundStyle(isTesting ? .orange : .green)
+                        .foregroundStyle(isTesting ? DS.Colors.warning : DS.Colors.success)
                     Text(testResult)
                         .font(DS.Font.caption)
                         .lineLimit(1)
@@ -201,7 +201,7 @@ private struct ToolCard: View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: iconFor(server.category))
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: DS.IconSize.md, weight: .medium))
                     .foregroundStyle(DS.Colors.accent)
                     .frame(width: 28, height: 28)
                     .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -247,15 +247,11 @@ private struct ToolCard: View {
                         .font(DS.Font.tiny)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.red.opacity(0.5))
+                .foregroundStyle(DS.Colors.error.opacity(0.5))
             }
         }
         .padding(DS.Spacing.md)
-        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.lg)
-                .strokeBorder(DS.Colors.border)
-        )
+        .dsBordered()
     }
 
     private func iconFor(_ category: String) -> String {
@@ -299,14 +295,14 @@ private struct AddServerSheet: View {
             Form {
                 TextField("Name", text: $name)
                 TextField("Command", text: $command)
-                    .font(.system(.body, design: .monospaced))
+                    .font(DS.Font.mono)
                 TextField("Arguments", text: $args)
-                    .font(.system(.body, design: .monospaced))
+                    .font(DS.Font.mono)
                 TextField("Category", text: $category)
                 TextField("Description", text: $description)
                 TextField("Environment Variables (KEY=VALUE per line)", text: $envVars, axis: .vertical)
                     .lineLimit(3...6)
-                    .font(.system(.body, design: .monospaced))
+                    .font(DS.Font.mono)
             }
             .padding(DS.Spacing.lg)
 
@@ -351,7 +347,9 @@ private struct PresetServersSheet: View {
                         HStack(spacing: DS.Spacing.md) {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: DS.Spacing.sm) {
-                                    Text(preset.name).font(DS.Font.body).fontWeight(.medium)
+                                    Text(preset.name)
+                                        .font(DS.Font.body)
+                                        .fontWeight(.medium)
                                     Text(preset.category)
                                         .font(DS.Font.tiny)
                                         .foregroundStyle(DS.Colors.textSecondary)
@@ -380,8 +378,7 @@ private struct PresetServersSheet: View {
                             .controlSize(.small)
                         }
                         .padding(DS.Spacing.md)
-                        .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
+                        .dsBordered()
                     }
                 }
                 .padding(DS.Spacing.lg)

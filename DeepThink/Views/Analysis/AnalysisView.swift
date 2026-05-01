@@ -28,9 +28,7 @@ struct AnalysisView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Input area
             VStack(spacing: DS.Spacing.md) {
-                // Mode picker
                 Picker("Mode", selection: $inputMode) {
                     ForEach(InputMode.allCases, id: \.self) { mode in
                         Text(mode.rawValue).tag(mode)
@@ -39,10 +37,9 @@ struct AnalysisView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 240)
 
-                // Input field
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: inputIcon)
-                        .font(.system(size: 14))
+                        .font(.system(size: DS.IconSize.md))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     TextField(inputPlaceholder, text: $commandText)
@@ -57,20 +54,17 @@ struct AnalysisView: View {
 
                     Button(action: runAnalysis) {
                         Image(systemName: "arrow.right.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(commandText.isEmpty ? Color.secondary.opacity(0.3) : DS.Colors.accent)
+                            .font(.system(size: DS.IconSize.xl - 2))
+                            .foregroundStyle(commandText.isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
                     }
                     .buttonStyle(.plain)
                     .disabled(commandText.isEmpty || isRunning)
                 }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.md)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .dsInputField()
 
-                // Optional question
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "questionmark.circle")
-                        .font(.system(size: 12))
+                        .font(.system(size: DS.IconSize.sm))
                         .foregroundStyle(DS.Colors.textTertiary)
                     TextField("Ask a specific question about the output (optional)", text: $questionText)
                         .textFieldStyle(.plain)
@@ -84,7 +78,6 @@ struct AnalysisView: View {
             Divider()
 
             if results.isEmpty {
-                // Empty state with preset commands
                 ScrollView {
                     VStack(spacing: DS.Spacing.xl) {
                         DSEmptyState(
@@ -108,7 +101,7 @@ struct AnalysisView: View {
                                     } label: {
                                         HStack(spacing: DS.Spacing.sm) {
                                             Image(systemName: preset.icon)
-                                                .font(.system(size: 12))
+                                                .font(.system(size: DS.IconSize.sm))
                                                 .foregroundStyle(DS.Colors.accent)
                                                 .frame(width: 24, height: 24)
                                                 .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -124,7 +117,7 @@ struct AnalysisView: View {
                                             Spacer()
                                         }
                                         .padding(DS.Spacing.md)
-                                        .background(Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                        .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -135,9 +128,7 @@ struct AnalysisView: View {
                     .padding(.top, DS.Spacing.xl)
                 }
             } else {
-                // Results list
                 HSplitView {
-                    // Left: result list
                     List(selection: $selectedResultID) {
                         ForEach(results) { result in
                             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
@@ -156,7 +147,6 @@ struct AnalysisView: View {
                     .listStyle(.inset)
                     .frame(minWidth: 180, idealWidth: 220, maxWidth: 260)
 
-                    // Right: detail
                     if let result = results.first(where: { $0.id == selectedResultID }) {
                         AnalysisDetailView(result: result)
                     } else if let first = results.first {
@@ -322,7 +312,6 @@ private struct AnalysisDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
             HStack(spacing: DS.Spacing.sm) {
                 Text(result.source)
                     .font(DS.Font.body)
@@ -337,16 +326,11 @@ private struct AnalysisDetailView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 180)
 
-                Button {
+                DSToolbarButton(icon: "doc.on.doc", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
                     let text = showRaw ? result.rawOutput : result.analysis
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(text, forType: .string)
-                } label: {
-                    Image(systemName: "doc.on.doc")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textTertiary)
                 }
-                .buttonStyle(.plain)
                 .help("Copy to clipboard")
             }
             .padding(.horizontal, DS.Spacing.xl)

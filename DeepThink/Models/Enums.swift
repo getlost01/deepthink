@@ -1,53 +1,71 @@
 import Foundation
 import SwiftUI
 
+// MARK: - Navigation
+
 enum SidebarSection: String, CaseIterable, Identifiable {
-    case home = "Home"
-    case chat = "AI Chat"
-    case deepSearch = "Deep Search"
-    case analysis = "Analysis"
-    case memory = "Memory"
-    case notes = "Notes"
-    case tasks = "Tasks"
-    case projects = "Projects"
-    case tools = "Tools & MCP"
-    case graph = "Knowledge Graph"
+    case workspace = "Workspace"
+    case ai = "AI"
     case terminal = "Terminal"
+    case docs = "Docs"
+    case settings = "Settings"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .home: "house"
-        case .chat: "bubble.left.and.bubble.right"
-        case .deepSearch: "sparkle.magnifyingglass"
-        case .analysis: "wand.and.rays"
-        case .memory: "brain"
-        case .notes: "doc.text"
-        case .tasks: "checklist"
-        case .projects: "folder"
-        case .tools: "wrench.and.screwdriver"
-        case .graph: "point.3.connected.trianglepath.dotted"
+        case .workspace: "square.grid.2x2"
+        case .ai: "sparkles"
         case .terminal: "terminal"
+        case .docs: "doc.text.magnifyingglass"
+        case .settings: "gearshape"
         }
     }
 
     var color: Color {
         switch self {
-        case .home: .blue
-        case .chat: .blue
-        case .deepSearch: .orange
-        case .analysis: .green
-        case .memory: .purple
-        case .notes: .blue
-        case .tasks: .green
-        case .projects: .teal
-        case .tools: .teal
-        case .graph: .cyan
-        case .terminal: .gray
+        case .workspace: .blue
+        case .ai: .purple
+        case .terminal: .green
+        case .docs: .orange
+        case .settings: .gray
         }
     }
 }
+
+enum WorkspaceTab: String, CaseIterable, Identifiable {
+    case notes = "Notes"
+    case tasks = "Tasks"
+    case projects = "Projects"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .notes: "doc.text"
+        case .tasks: "checklist"
+        case .projects: "folder"
+        }
+    }
+}
+
+enum AIMode: String, CaseIterable, Identifiable {
+    case chat = "Chat"
+    case search = "Search"
+    case analyze = "Analyze"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .chat: "bubble.left.and.bubble.right"
+        case .search: "sparkle.magnifyingglass"
+        case .analyze: "wand.and.rays"
+        }
+    }
+}
+
+// MARK: - Tasks
 
 enum TaskStatus: String, Codable, CaseIterable, Identifiable {
     case backlog = "Backlog"
