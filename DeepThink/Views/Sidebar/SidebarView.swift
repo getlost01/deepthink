@@ -26,7 +26,7 @@ struct SidebarView: View {
                     }
                 }
             }
-            .frame(height: DS.Layout.headerHeight)
+            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.md)
 
             Divider()
@@ -66,17 +66,17 @@ struct SidebarView: View {
                     HStack(spacing: DS.Spacing.sm) {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "command")
-                                .font(.system(size: DS.IconSize.xs))
+                                .font(.system(size: DS.IconSize.sm))
                             Text("K")
                                 .font(.system(size: 10, weight: .medium, design: .rounded))
                         }
                         .foregroundStyle(DS.Colors.textTertiary)
                         .padding(.horizontal, DS.Spacing.sm)
                         .padding(.vertical, 3)
-                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
                         )
 
                         Text("Command Palette")
@@ -109,8 +109,8 @@ private struct SidebarItem: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: section.icon)
-                    .font(.system(size: DS.IconSize.md, weight: .medium))
-                    .foregroundStyle(isSelected ? section.color : DS.Colors.textSecondary)
+                    .font(.system(size: DS.IconSize.lg, weight: .medium))
+                    .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textTertiary)
                     .frame(width: 24, height: 24)
 
                 if isExpanded {
@@ -127,8 +127,8 @@ private struct SidebarItem: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 isSelected
-                    ? section.color.opacity(0.10)
-                    : (isHovered ? DS.Colors.hoverBg : .clear),
+                    ? DS.Colors.accentFill
+                    : (isHovered ? DS.Colors.fillSecondary : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }

@@ -62,7 +62,7 @@ struct ProjectDetailView: View {
 
             Spacer()
         }
-        .frame(height: DS.Layout.headerHeight)
+        .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.xl)
     }
 
@@ -88,7 +88,7 @@ struct ProjectDetailView: View {
 
                 TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(DS.Font.bodyLarge)
+                    .font(DS.Font.body)
                     .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(3)
 
@@ -150,12 +150,12 @@ struct ProjectDetailView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Tasks")
-                    .font(DS.Font.sectionLabel)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
 
                 if !project.tasks.isEmpty {
-                    DSPill(text: "\(project.openTaskCount) open", color: DS.Colors.info)
+                    DSPill(text: "\(project.openTaskCount) open", color: DS.Colors.accent)
                 }
 
                 Spacer()
@@ -188,11 +188,11 @@ struct ProjectDetailView: View {
                             }
                         }
                     }
-                    .background(DS.Colors.borderSubtle)
+                    .background(DS.Colors.border)
                     .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                     .overlay(
                         RoundedRectangle(cornerRadius: DS.Radius.md)
-                            .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                            .strokeBorder(DS.Colors.border, lineWidth: 1)
                     )
                     .padding(.horizontal, DS.Spacing.xl)
                     .padding(.vertical, DS.Spacing.sm)
@@ -208,7 +208,7 @@ struct ProjectDetailView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Notes")
-                    .font(DS.Font.sectionLabel)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
 
@@ -246,11 +246,11 @@ struct ProjectDetailView: View {
                             }
                         }
                     }
-                    .background(DS.Colors.borderSubtle)
+                    .background(DS.Colors.border)
                     .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
                     .overlay(
                         RoundedRectangle(cornerRadius: DS.Radius.md)
-                            .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                            .strokeBorder(DS.Colors.border, lineWidth: 1)
                     )
                     .padding(.horizontal, DS.Spacing.xl)
                     .padding(.vertical, DS.Spacing.sm)
@@ -282,11 +282,11 @@ private struct SplitDragHandle: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(isHovered ? DS.Colors.borderStrong : DS.Colors.border)
+                .fill(isHovered ? DS.Colors.borderHover : DS.Colors.border)
                 .frame(height: 1)
 
             Capsule()
-                .fill(isHovered ? DS.Colors.textTertiary : DS.Colors.borderStrong)
+                .fill(isHovered ? DS.Colors.textTertiary : DS.Colors.borderHover)
                 .frame(width: 36, height: 4)
         }
         .frame(height: 8)
@@ -327,14 +327,14 @@ private struct ProjectTaskRow: View {
 
                 if task.priority != .none {
                     Image(systemName: task.priority.icon)
-                        .font(.system(size: DS.IconSize.xs))
+                        .font(.system(size: DS.IconSize.sm))
                         .foregroundStyle(task.priority.color)
                 }
 
                 if let due = task.dueDate {
                     Text(due.shortFormatted)
-                        .font(DS.Font.tiny)
-                        .foregroundStyle(task.isOverdue ? DS.Colors.error : DS.Colors.textTertiary)
+                        .font(DS.Font.small)
+                        .foregroundStyle(task.isOverdue ? DS.Colors.danger : DS.Colors.textTertiary)
                 }
 
                 Image(systemName: "chevron.right")
@@ -344,7 +344,7 @@ private struct ProjectTaskRow: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .background(isHovered ? DS.Colors.hoverBg : DS.Colors.surface)
+            .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.surface)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -364,7 +364,7 @@ private struct ProjectNoteRow: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: note.isPinned ? "pin.fill" : "doc.text")
-                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(note.isPinned ? DS.Colors.warning : DS.Colors.textTertiary)
                     .frame(width: 18)
 
@@ -376,7 +376,7 @@ private struct ProjectNoteRow: View {
                 Spacer()
 
                 Text(note.modifiedAt.relativeFormatted)
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
 
                 Image(systemName: "chevron.right")
@@ -386,7 +386,7 @@ private struct ProjectNoteRow: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .background(isHovered ? DS.Colors.hoverBg : DS.Colors.surface)
+            .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.surface)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)

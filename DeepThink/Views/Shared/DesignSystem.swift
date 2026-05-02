@@ -8,77 +8,64 @@ enum DS {
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
         static let lg: CGFloat = 16
-        static let xl: CGFloat = 20
-        static let xxl: CGFloat = 28
-        static let xxxl: CGFloat = 36
+        static let xl: CGFloat = 24
+        static let xxl: CGFloat = 32
     }
 
     enum Radius {
         static let sm: CGFloat = 6
-        static let md: CGFloat = 10
-        static let lg: CGFloat = 14
-        static let xl: CGFloat = 18
+        static let md: CGFloat = 8
+        static let lg: CGFloat = 12
     }
 
     enum IconSize {
-        static let xs: CGFloat = 9
-        static let sm: CGFloat = 11
-        static let md: CGFloat = 13
+        static let sm: CGFloat = 12
+        static let md: CGFloat = 14
         static let lg: CGFloat = 16
         static let xl: CGFloat = 20
     }
 
     enum Font {
-        static let hero: SwiftUI.Font = .system(size: 28, weight: .bold, design: .default)
-        static let title: SwiftUI.Font = .system(size: 20, weight: .semibold)
-        static let heading: SwiftUI.Font = .system(size: 15, weight: .semibold)
-        static let bodyLarge: SwiftUI.Font = .system(size: 14)
+        static let title: SwiftUI.Font = .system(size: 18, weight: .semibold)
+        static let heading: SwiftUI.Font = .system(size: 14, weight: .semibold)
         static let body: SwiftUI.Font = .system(size: 13)
         static let caption: SwiftUI.Font = .system(size: 11)
-        static let tiny: SwiftUI.Font = .system(size: 10)
-        static let code: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
+        static let small: SwiftUI.Font = .system(size: 10, weight: .medium)
         static let mono: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
         static let monoSmall: SwiftUI.Font = .system(size: 11, weight: .regular, design: .monospaced)
-        static let terminal: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
-
-        static let subtitle: SwiftUI.Font = .system(size: 16, weight: .medium)
-        static let detailTitle: SwiftUI.Font = .system(size: 18, weight: .semibold)
-        static let sectionLabel: SwiftUI.Font = .system(size: 12, weight: .medium)
     }
 
     enum Colors {
         static let accent = Color.accentColor
+        static let accentFill = Color.accentColor.opacity(0.10)
+
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .windowBackgroundColor)
-        static let border = Color.primary.opacity(0.10)
-        static let borderStrong = Color.primary.opacity(0.15)
-        static let borderSubtle = Color.primary.opacity(0.06)
+        static let fill = Color.primary.opacity(0.04)
+        static let fillSecondary = Color.primary.opacity(0.06)
+
+        static let border = Color.primary.opacity(0.08)
+        static let borderHover = Color.primary.opacity(0.14)
+
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
-        static let textTertiary = Color.primary.opacity(0.35)
+        static let textTertiary = Color.primary.opacity(0.40)
 
         static let success = Color.green
         static let warning = Color.orange
-        static let error = Color.red
-        static let info = Color.blue
-
-        static let hoverBg = Color.primary.opacity(0.06)
-        static let subtleBg = Color.primary.opacity(0.04)
-        static let inputBg = Color.primary.opacity(0.05)
-        static let selectedBg = Color.accentColor.opacity(0.08)
+        static let danger = Color.red
     }
 
     enum Layout {
         static let sidebarWidth: CGFloat = 200
-        static let listPanelWidth: CGFloat = 280
-        static let toolbarHeight: CGFloat = 48
-        static let headerHeight: CGFloat = 48
+        static let panelWidth: CGFloat = 300
+        static let toolbarHeight: CGFloat = 44
+        static let rowHeight: CGFloat = 36
     }
 
     enum Animation {
         static let quick: SwiftUI.Animation = .easeInOut(duration: 0.15)
-        static let standard: SwiftUI.Animation = .easeInOut(duration: 0.25)
-        static let spring: SwiftUI.Animation = .spring(duration: 0.3, bounce: 0.15)
+        static let standard: SwiftUI.Animation = .easeInOut(duration: 0.2)
     }
 }
 
@@ -103,7 +90,7 @@ struct DSPageHeader<Trailing: View>: View {
 
             trailing()
         }
-        .frame(height: DS.Layout.headerHeight)
+        .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
     }
 }
@@ -124,8 +111,11 @@ struct DSCard<Content: View>: View {
     var body: some View {
         content()
             .padding(padding)
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-            .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
+            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
     }
 }
 
@@ -144,12 +134,11 @@ struct DSSectionHeader: View {
 
             if let count {
                 Text("\(count)")
-                    .font(DS.Font.tiny)
-                    .fontWeight(.medium)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(DS.Colors.border, in: Capsule())
+                    .background(DS.Colors.fill, in: Capsule())
             }
 
             Spacer()
@@ -157,28 +146,10 @@ struct DSSectionHeader: View {
             if let action {
                 Button("View All", action: action)
                     .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.accent)
+                    .foregroundStyle(DS.Colors.textSecondary)
                     .buttonStyle(.plainPointer)
             }
         }
-    }
-}
-
-// MARK: - List Panel Header (legacy, prefer DSPageHeader)
-
-struct DSListHeader: View {
-    let title: String
-    var trailing: AnyView? = nil
-
-    var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Text(title)
-                .font(DS.Font.heading)
-            Spacer()
-            if let trailing { trailing }
-        }
-        .frame(height: DS.Layout.headerHeight)
-        .padding(.horizontal, DS.Spacing.lg)
     }
 }
 
@@ -197,19 +168,54 @@ struct DSToolbarBar<Content: View>: View {
     }
 }
 
+// MARK: - Tab Button
+
+struct DSTabButton: View {
+    let title: String
+    var icon: String? = nil
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 0) {
+                HStack(spacing: DS.Spacing.xs) {
+                    if let icon {
+                        Image(systemName: icon)
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                    }
+                    Text(title)
+                        .font(DS.Font.caption)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                }
+                .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+
+                Rectangle()
+                    .fill(isSelected ? DS.Colors.accent : .clear)
+                    .frame(height: 2)
+            }
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+    }
+}
+
 // MARK: - Icon Badge
 
 struct DSIconBadge: View {
     let icon: String
-    var color: Color = DS.Colors.accent
-    var size: CGFloat = 32
+    var color: Color = DS.Colors.textSecondary
+    var size: CGFloat = 28
 
     var body: some View {
         Image(systemName: icon)
             .font(.system(size: size * 0.45, weight: .medium))
             .foregroundStyle(color)
             .frame(width: size, height: size)
-            .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: size * 0.25))
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }
 
@@ -217,16 +223,15 @@ struct DSIconBadge: View {
 
 struct DSPill: View {
     let text: String
-    var color: Color = DS.Colors.accent
+    var color: Color = DS.Colors.textSecondary
 
     var body: some View {
         Text(text)
-            .font(DS.Font.tiny)
-            .fontWeight(.medium)
+            .font(DS.Font.small)
             .foregroundStyle(color)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
-            .background(color.opacity(0.12), in: Capsule())
+            .background(color.opacity(0.10), in: Capsule())
     }
 }
 
@@ -251,10 +256,10 @@ struct DSSearchField: View {
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm + 2)
-        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.md)
-                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                .strokeBorder(DS.Colors.border, lineWidth: 1)
         )
     }
 }
@@ -264,7 +269,7 @@ struct DSSearchField: View {
 struct DSActionButton: View {
     let title: String
     let icon: String
-    var color: Color = DS.Colors.accent
+    var color: Color = DS.Colors.textPrimary
     let action: () -> Void
     @State private var isHovered = false
 
@@ -280,10 +285,15 @@ struct DSActionButton: View {
             .foregroundStyle(color)
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(color.opacity(isHovered ? 0.15 : 0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -299,7 +309,7 @@ struct DSEmptyState: View {
     var body: some View {
         VStack(spacing: DS.Spacing.xl) {
             Image(systemName: icon)
-                .font(.system(size: 36, weight: .light))
+                .font(.system(size: 32, weight: .light))
                 .foregroundStyle(DS.Colors.textTertiary)
 
             VStack(spacing: DS.Spacing.sm) {
@@ -311,7 +321,7 @@ struct DSEmptyState: View {
                         .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 320)
+                        .frame(maxWidth: 300)
                 }
             }
 
@@ -319,13 +329,13 @@ struct DSEmptyState: View {
                 Button(action: action) {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.xs, weight: .medium))
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
                         Text(actionTitle)
                             .font(DS.Font.caption)
                             .fontWeight(.medium)
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.horizontal, DS.Spacing.lg)
                     .padding(.vertical, DS.Spacing.sm)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
@@ -369,62 +379,6 @@ struct DSRow<Leading: View, Trailing: View>: View {
     }
 }
 
-// MARK: - Toolbar Style (legacy)
-
-struct DSToolbar<Content: View>: View {
-    @ViewBuilder let content: () -> Content
-
-    var body: some View {
-        HStack(spacing: DS.Spacing.md) {
-            content()
-        }
-        .frame(height: DS.Layout.toolbarHeight)
-        .padding(.horizontal, DS.Spacing.xl)
-        .background(.bar)
-    }
-}
-
-// MARK: - Interactive Modifier
-
-struct DSInteractive: ViewModifier {
-    @State private var isHovered = false
-    @State private var isPressed = false
-
-    func body(content: Content) -> some View {
-        content
-            .scaleEffect(isPressed ? 0.98 : 1.0)
-            .background(isHovered ? DS.Colors.hoverBg : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-            .onHover { isHovered = $0 }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { _ in isPressed = true }
-                    .onEnded { _ in isPressed = false }
-            )
-            .animation(DS.Animation.quick, value: isHovered)
-            .animation(DS.Animation.quick, value: isPressed)
-    }
-}
-
-// MARK: - Clickable Card/Row Modifier
-
-struct DSClickable: ViewModifier {
-    @State private var isHovered = false
-
-    func body(content: Content) -> some View {
-        content
-            .background(
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .fill(isHovered ? DS.Colors.hoverBg : .clear)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(isHovered ? DS.Colors.borderStrong : DS.Colors.border, lineWidth: 1)
-            )
-            .onHover { isHovered = $0 }
-            .animation(DS.Animation.quick, value: isHovered)
-    }
-}
-
 // MARK: - Toolbar Icon Button
 
 struct DSToolbarButton: View {
@@ -441,7 +395,7 @@ struct DSToolbarButton: View {
                 .font(.system(size: size, weight: .medium))
                 .foregroundStyle(isHovered ? DS.Colors.textPrimary : color)
                 .frame(width: 28, height: 28)
-                .background(isHovered ? DS.Colors.hoverBg : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(isHovered ? DS.Colors.fillSecondary : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
@@ -450,7 +404,7 @@ struct DSToolbarButton: View {
     }
 }
 
-// MARK: - Stat Chip (shared)
+// MARK: - Stat Chip
 
 struct DSStatChip: View {
     let label: String
@@ -461,7 +415,7 @@ struct DSStatChip: View {
     var body: some View {
         HStack(spacing: DS.Spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: DS.IconSize.xs, weight: .medium))
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
             Text(value)
                 .font(DS.Font.caption)
                 .fontWeight(.medium)
@@ -469,10 +423,10 @@ struct DSStatChip: View {
         .foregroundStyle(color)
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm)
-        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.sm)
-                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                .strokeBorder(DS.Colors.border, lineWidth: 1)
         )
     }
 }
@@ -488,7 +442,7 @@ struct DSLabeledTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text(label)
-                .font(DS.Font.sectionLabel)
+                .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .textCase(.uppercase)
 
@@ -497,10 +451,10 @@ struct DSLabeledTextField: View {
                 .font(DS.Font.body)
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.md)
-                .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.md)
-                        .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                        .strokeBorder(DS.Colors.border, lineWidth: 1)
                 )
         }
     }
@@ -514,7 +468,7 @@ struct DSLabeledTextEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text(label)
-                .font(DS.Font.sectionLabel)
+                .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .textCase(.uppercase)
 
@@ -523,10 +477,10 @@ struct DSLabeledTextEditor: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
                 .padding(DS.Spacing.md)
-                .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.md)
-                        .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                        .strokeBorder(DS.Colors.border, lineWidth: 1)
                 )
         }
     }
@@ -540,7 +494,7 @@ struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text(label)
-                .font(DS.Font.sectionLabel)
+                .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .textCase(.uppercase)
 
@@ -550,10 +504,10 @@ struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
             .pickerStyle(.menu)
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.xs)
-            .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
             )
         }
     }
@@ -571,8 +525,7 @@ struct DSSectionDivider: View {
                     .fill(DS.Colors.border)
                     .frame(height: 1)
                 Text(label)
-                    .font(DS.Font.tiny)
-                    .fontWeight(.medium)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
                 Rectangle()
@@ -591,18 +544,11 @@ extension View {
     func dsCard(padding: CGFloat = DS.Spacing.lg) -> some View {
         self
             .padding(padding)
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-            .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
-    }
-
-    func dsGlass(padding: CGFloat = DS.Spacing.lg) -> some View {
-        self
-            .padding(padding)
-            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-            .overlay {
-                RoundedRectangle(cornerRadius: DS.Radius.lg)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
-            }
+            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
     }
 
     func dsPage() -> some View {
@@ -619,10 +565,10 @@ extension View {
         self
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
             )
     }
 
@@ -638,7 +584,7 @@ extension View {
 
     func dsListPanel() -> some View {
         self
-            .frame(width: DS.Layout.listPanelWidth)
+            .frame(width: DS.Layout.panelWidth)
     }
 
     func pointerOnHover() -> some View {
@@ -652,20 +598,48 @@ extension View {
     }
 }
 
-// MARK: - Pointer Cursor Button Style
+// MARK: - Interactive Modifier
 
-struct PointerButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .onHover { hovering in
-                if hovering {
-                    NSCursor.pointingHand.push()
-                } else {
-                    NSCursor.pop()
-                }
-            }
+struct DSInteractive: ViewModifier {
+    @State private var isHovered = false
+    @State private var isPressed = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isPressed ? 0.98 : 1.0)
+            .background(isHovered ? DS.Colors.fillSecondary : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .onHover { isHovered = $0 }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in isPressed = true }
+                    .onEnded { _ in isPressed = false }
+            )
+            .animation(DS.Animation.quick, value: isHovered)
+            .animation(DS.Animation.quick, value: isPressed)
     }
 }
+
+// MARK: - Clickable Modifier
+
+struct DSClickable: ViewModifier {
+    @State private var isHovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .fill(isHovered ? DS.Colors.fillSecondary : .clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 1)
+            )
+            .onHover { isHovered = $0 }
+            .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+// MARK: - Button Styles
 
 struct PlainPointerButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
@@ -685,7 +659,7 @@ extension ButtonStyle where Self == PlainPointerButtonStyle {
     static var plainPointer: PlainPointerButtonStyle { PlainPointerButtonStyle() }
 }
 
-// MARK: - Custom Calendar Picker
+// MARK: - Calendar Picker
 
 struct DSCalendarPicker: View {
     @Binding var selectedDate: Date?
@@ -714,7 +688,6 @@ struct DSCalendarPicker: View {
 
     var body: some View {
         VStack(spacing: DS.Spacing.md) {
-            // Quick options
             HStack(spacing: DS.Spacing.sm) {
                 quickButton("Today", date: Date())
                 quickButton("Tomorrow", date: calendar.date(byAdding: .day, value: 1, to: Date())!)
@@ -723,7 +696,6 @@ struct DSCalendarPicker: View {
 
             Divider()
 
-            // Month nav
             HStack {
                 Button {
                     withAnimation(DS.Animation.quick) {
@@ -758,18 +730,15 @@ struct DSCalendarPicker: View {
                 .buttonStyle(.plainPointer)
             }
 
-            // Weekday headers
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
                 ForEach(weekdays, id: \.self) { day in
                     Text(day)
-                        .font(DS.Font.tiny)
-                        .fontWeight(.medium)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                         .frame(height: 20)
                 }
             }
 
-            // Days grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
                 ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
                     if let date {
@@ -793,7 +762,7 @@ struct DSCalendarPicker: View {
                                 .frame(width: 28, height: 28)
                                 .background(
                                     isSelected ? DS.Colors.accent :
-                                    isToday ? DS.Colors.accent.opacity(0.1) :
+                                    isToday ? DS.Colors.accentFill :
                                     .clear,
                                     in: Circle()
                                 )
@@ -814,7 +783,7 @@ struct DSCalendarPicker: View {
                 } label: {
                     Text("Clear date")
                         .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.error)
+                        .foregroundStyle(DS.Colors.danger)
                 }
                 .buttonStyle(.plainPointer)
             }
@@ -836,13 +805,12 @@ struct DSCalendarPicker: View {
             isPresented = false
         } label: {
             Text(label)
-                .font(DS.Font.tiny)
-                .fontWeight(.medium)
+                .font(DS.Font.small)
                 .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(
-                    isSelected ? DS.Colors.accent : DS.Colors.inputBg,
+                    isSelected ? DS.Colors.accent : DS.Colors.fill,
                     in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                 )
         }
@@ -850,7 +818,7 @@ struct DSCalendarPicker: View {
     }
 }
 
-// MARK: - Rich Markdown Editor (Tiptap + WKWebView, locally bundled)
+// MARK: - Rich Markdown Editor
 
 import WebKit
 

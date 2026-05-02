@@ -121,7 +121,7 @@ struct ContextView: View {
                         Spacer()
 
                         Text(item.timestamp.relativeFormatted)
-                            .font(DS.Font.tiny)
+                            .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
                     .padding(.vertical, DS.Spacing.xs)
@@ -129,7 +129,7 @@ struct ContextView: View {
                 .buttonStyle(.plain)
                 .listRowBackground(
                     appState.selectedContextItemPath == item.filePath
-                        ? DS.Colors.selectedBg
+                        ? DS.Colors.accentFill
                         : Color.clear
                 )
             }

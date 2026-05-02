@@ -48,7 +48,7 @@ struct NoteListView: View {
             if let projectName = filterProjectName {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "folder.fill")
-                        .font(.system(size: DS.IconSize.xs))
+                        .font(.system(size: DS.IconSize.sm))
                         .foregroundStyle(DS.Colors.accent)
                     Text(projectName)
                         .font(DS.Font.caption)
@@ -75,7 +75,7 @@ struct NoteListView: View {
                         HStack(spacing: DS.Spacing.xs) {
                             if note.isPinned {
                                 Image(systemName: "pin.fill")
-                                    .font(.system(size: DS.IconSize.xs))
+                                    .font(.system(size: DS.IconSize.sm))
                                     .foregroundStyle(DS.Colors.warning)
                             }
                             Text(note.title.isEmpty ? "Untitled" : note.title)
@@ -90,7 +90,7 @@ struct NoteListView: View {
                                 .lineLimit(1)
                             Spacer()
                             Text(note.modifiedAt.relativeFormatted)
-                                .font(DS.Font.tiny)
+                                .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                     }

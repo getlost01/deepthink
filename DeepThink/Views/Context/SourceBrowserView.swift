@@ -118,7 +118,7 @@ struct SourceBrowserView: View {
             .padding(.vertical, DS.Spacing.sm)
             .background(
                 appState.selectedContextSource == source.id && appState.selectedContextChannel == nil
-                    ? DS.Colors.selectedBg
+                    ? DS.Colors.accentFill
                     : Color.clear,
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
@@ -151,12 +151,12 @@ struct SourceBrowserView: View {
 
                 if let date = channel.lastUpdated {
                     Text(date.relativeFormatted)
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
 
                 Text("\(channel.itemCount)")
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .fontWeight(.medium)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, 6)
@@ -166,7 +166,7 @@ struct SourceBrowserView: View {
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.xs + 2)
             .background(
-                isSelected ? DS.Colors.selectedBg : Color.clear,
+                isSelected ? DS.Colors.accentFill : Color.clear,
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }
@@ -197,7 +197,7 @@ struct SourceBrowserView: View {
             .padding(.vertical, DS.Spacing.sm)
             .background(
                 (appState.selectedContextSource == "projects" && appState.selectedContextChannel == name)
-                    ? DS.Colors.selectedBg
+                    ? DS.Colors.accentFill
                     : Color.clear,
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )

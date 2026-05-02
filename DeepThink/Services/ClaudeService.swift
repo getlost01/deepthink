@@ -60,7 +60,7 @@ final class ClaudeService {
             switch self {
             case .haiku: .cyan
             case .sonnet: .blue
-            case .opus: .purple
+            case .opus: .blue
             }
         }
 

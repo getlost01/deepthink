@@ -92,7 +92,7 @@ struct ContextFeedView: View {
             HStack(spacing: DS.Spacing.xs) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                 }
                 Text(title)
                     .font(DS.Font.caption)
@@ -102,7 +102,7 @@ struct ContextFeedView: View {
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
             .background(
-                isSelected ? color : DS.Colors.inputBg,
+                isSelected ? color : DS.Colors.fillSecondary,
                 in: Capsule()
             )
         }
@@ -127,7 +127,7 @@ struct ContextFeedView: View {
                         DSPill(text: item.channel, color: DS.Colors.textSecondary)
                         Spacer()
                         Text(item.timestamp.relativeFormatted)
-                            .font(DS.Font.tiny)
+                            .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
 
@@ -147,7 +147,7 @@ struct ContextFeedView: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         }
         .buttonStyle(.plainPointer)
         .padding(.horizontal, DS.Spacing.lg)

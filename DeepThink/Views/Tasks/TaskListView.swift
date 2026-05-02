@@ -75,7 +75,7 @@ struct TaskListView: View {
             if let projectName = filterProjectName {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "folder.fill")
-                        .font(.system(size: DS.IconSize.xs))
+                        .font(.system(size: DS.IconSize.sm))
                         .foregroundStyle(DS.Colors.accent)
                     Text(projectName)
                         .font(DS.Font.caption)
@@ -102,7 +102,7 @@ struct TaskListView: View {
                     ProgressView(value: progress)
                         .tint(DS.Colors.accent)
                     Text("\(done)/\(total)")
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .padding(.horizontal, DS.Spacing.md)

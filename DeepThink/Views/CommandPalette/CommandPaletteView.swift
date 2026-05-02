@@ -77,15 +77,15 @@ struct CommandPaletteView: View {
                         Text("close")
                     }
                 }
-                .font(DS.Font.tiny)
+                .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
             }
             .frame(width: 520)
-            .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+            .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
-                RoundedRectangle(cornerRadius: DS.Radius.xl)
+                RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
             }
             .shadow(color: .black.opacity(0.25), radius: 30, y: 10)
@@ -120,7 +120,7 @@ private struct PaletteRow: View {
 
             if let section = Optional(command.section), !section.isEmpty {
                 Text(section)
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(isSelected ? .white.opacity(0.5) : DS.Colors.textTertiary)
             }
 

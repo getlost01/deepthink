@@ -14,21 +14,11 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .context: "tray.full"
+        case .context: "tray"
         case .workspace: "square.grid.2x2"
         case .ai: "sparkles"
         case .terminal: "terminal"
-        case .settings: "gearshape"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .context: .orange
-        case .workspace: .blue
-        case .ai: .purple
-        case .terminal: .green
-        case .settings: .gray
+        case .settings: "gear"
         }
     }
 }
@@ -121,10 +111,10 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .none: "minus"
-        case .low: "chevron.down"
-        case .medium: "chevron.up.chevron.down"
-        case .high: "chevron.up"
-        case .urgent: "exclamationmark"
+        case .low: "arrow.down"
+        case .medium: "equal"
+        case .high: "arrow.up"
+        case .urgent: "exclamationmark.triangle"
         }
     }
 
@@ -132,7 +122,7 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .none: .secondary
         case .low: .blue
-        case .medium: .yellow
+        case .medium: .orange
         case .high: .orange
         case .urgent: .red
         }

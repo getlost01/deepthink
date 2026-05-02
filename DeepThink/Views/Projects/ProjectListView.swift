@@ -134,13 +134,13 @@ private struct ProjectCard: View {
             HStack(spacing: DS.Spacing.sm) {
                 if project.notes.count > 0 {
                     Text("\(project.notes.count)")
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 if project.openTaskCount > 0 {
                     Text("\(project.openTaskCount)")
-                        .font(DS.Font.tiny)
-                        .foregroundStyle(DS.Colors.info)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.accent)
                 }
             }
         }

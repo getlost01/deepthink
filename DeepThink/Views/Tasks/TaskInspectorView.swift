@@ -61,7 +61,7 @@ private struct TaskInspectorContent: View {
                 if let due = task.dueDate {
                     LabeledContent("Due") {
                         Text(due.shortFormatted)
-                            .foregroundStyle(task.isOverdue ? DS.Colors.error : DS.Colors.textPrimary)
+                            .foregroundStyle(task.isOverdue ? DS.Colors.danger : DS.Colors.textPrimary)
                     }
                 }
                 if let completed = task.completedAt {
@@ -82,7 +82,7 @@ private struct TaskInspectorContent: View {
                                 .foregroundStyle(DS.Colors.accent)
                             Spacer()
                             Image(systemName: "arrow.right")
-                                .font(.system(size: DS.IconSize.xs))
+                                .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                     }

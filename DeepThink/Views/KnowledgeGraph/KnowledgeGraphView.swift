@@ -204,7 +204,7 @@ struct KnowledgeGraphView: View {
                 Spacer()
                     .frame(height: radius / 2 + 14)
                 Text(isHovered ? node.title : String(node.title.prefix(12)) + (node.title.count > 12 ? "..." : ""))
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(isDimmed ? DS.Colors.textTertiary : DS.Colors.textSecondary)
                     .lineLimit(isHovered ? 3 : 1)
                     .frame(width: isHovered ? 140 : 80)

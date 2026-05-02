@@ -160,7 +160,7 @@ struct DeepSearchView: View {
                             }
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.top, DS.Spacing.xxxl)
+                        .padding(.top, DS.Spacing.xxl)
                     }
                 }
                 .padding(DS.Spacing.xl)
@@ -393,7 +393,7 @@ private struct WebResultRow: View {
                     if !result.url.isEmpty, let url = URL(string: result.url) {
                         Link(destination: url) {
                             Text(result.url)
-                                .font(DS.Font.tiny)
+                                .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.accent)
                                 .lineLimit(1)
                         }
@@ -424,14 +424,14 @@ private struct SearchSuggestion: View {
         Button { action(text) } label: {
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: DS.IconSize.xs + 1))
+                    .font(.system(size: DS.IconSize.sm + 1))
                     .foregroundStyle(DS.Colors.textTertiary)
                 Text(text)
                     .font(DS.Font.caption)
                 Spacer()
             }
             .padding(DS.Spacing.sm)
-            .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
         .frame(maxWidth: 360)

@@ -80,7 +80,7 @@ struct ToolsHubView: View {
                                 .foregroundStyle(selectedCategory == cat ? DS.Colors.textPrimary : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, DS.Spacing.xs)
-                                .background(selectedCategory == cat ? DS.Colors.selectedBg : .clear, in: Capsule())
+                                .background(selectedCategory == cat ? DS.Colors.accentFill : .clear, in: Capsule())
                         }
                         .buttonStyle(.plainPointer)
                     }
@@ -211,7 +211,7 @@ private struct ToolCard: View {
                         .font(DS.Font.body)
                         .fontWeight(.medium)
                     Text(server.category)
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textSecondary)
                 }
 
@@ -236,7 +236,7 @@ private struct ToolCard: View {
 
             HStack(spacing: DS.Spacing.sm) {
                 Button("Test", action: onTest)
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .buttonStyle(.bordered)
                     .controlSize(.mini)
 
@@ -244,10 +244,10 @@ private struct ToolCard: View {
 
                 Button(role: .destructive, action: onDelete) {
                     Image(systemName: "trash")
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                 }
                 .buttonStyle(.plainPointer)
-                .foregroundStyle(DS.Colors.error.opacity(0.5))
+                .foregroundStyle(DS.Colors.danger.opacity(0.5))
             }
         }
         .padding(DS.Spacing.md)
@@ -351,7 +351,7 @@ private struct PresetServersSheet: View {
                                         .font(DS.Font.body)
                                         .fontWeight(.medium)
                                     Text(preset.category)
-                                        .font(DS.Font.tiny)
+                                        .font(DS.Font.small)
                                         .foregroundStyle(DS.Colors.textSecondary)
                                 }
                                 Text(preset.description)

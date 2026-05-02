@@ -149,13 +149,13 @@ struct AllTasksView: View {
             statusFilter = status
         } label: {
             Text(title)
-                .font(DS.Font.tiny)
+                .font(DS.Font.small)
                 .fontWeight(.medium)
                 .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(
-                    isSelected ? (status?.color ?? DS.Colors.accent) : DS.Colors.inputBg,
+                    isSelected ? (status?.color ?? DS.Colors.accent) : DS.Colors.fillSecondary,
                     in: Capsule()
                 )
         }
@@ -184,7 +184,7 @@ struct AllTasksView: View {
 
                     if let project = task.project {
                         Text(project.name)
-                            .font(DS.Font.tiny)
+                            .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
                 }
@@ -194,8 +194,8 @@ struct AllTasksView: View {
 
             if let dueDate = task.dueDate {
                 Text(dueDate.shortFormatted)
-                    .font(DS.Font.tiny)
-                    .foregroundStyle(task.isOverdue ? DS.Colors.error : DS.Colors.textTertiary)
+                    .font(DS.Font.small)
+                    .foregroundStyle(task.isOverdue ? DS.Colors.danger : DS.Colors.textTertiary)
             }
         }
         .padding(.vertical, DS.Spacing.xs)

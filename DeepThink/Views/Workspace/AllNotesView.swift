@@ -134,12 +134,12 @@ struct AllNotesView: View {
                 HStack(spacing: DS.Spacing.xs) {
                     if let project = note.project {
                         Text(project.name)
-                            .font(DS.Font.tiny)
+                            .font(DS.Font.small)
                             .foregroundStyle(Color(hex: project.color))
                     }
 
                     Text(note.modifiedAt.relativeFormatted)
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
             }

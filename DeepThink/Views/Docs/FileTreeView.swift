@@ -162,7 +162,7 @@ private struct FileNodeRow: View {
                 .padding(.leading, CGFloat(depth) * 16 + DS.Spacing.sm)
                 .padding(.vertical, 3)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(isSelected ? DS.Colors.selectedBg : .clear)
+                .background(isSelected ? DS.Colors.accentFill : .clear)
             }
             .buttonStyle(.plainPointer)
 
@@ -197,15 +197,15 @@ private struct FileNodeRow: View {
     }
 
     private func colorForFile(_ node: FileNode) -> Color {
-        if node.isDirectory { return DS.Colors.info }
+        if node.isDirectory { return DS.Colors.accent }
         let ext = (node.name as NSString).pathExtension.lowercased()
         switch ext {
-        case "md", "markdown": return .purple
+        case "md", "markdown": return .blue
         case "swift": return .orange
         case "ts", "tsx", "js", "jsx": return .yellow
         case "py": return DS.Colors.success
         case "json", "yaml", "yml", "toml": return .gray
-        case "pdf": return DS.Colors.error
+        case "pdf": return DS.Colors.danger
         default: return DS.Colors.textTertiary
         }
     }

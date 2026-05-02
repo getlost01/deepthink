@@ -5,7 +5,7 @@ struct StoryPointsBadge: View {
 
     var body: some View {
         Text("\(points)")
-            .font(DS.Font.tiny)
+            .font(DS.Font.small)
             .fontWeight(.semibold)
             .foregroundStyle(.blue)
             .padding(.horizontal, 7)
@@ -19,7 +19,7 @@ struct TagChip: View {
 
     var body: some View {
         Text(tag.name)
-            .font(DS.Font.tiny)
+            .font(DS.Font.small)
             .fontWeight(.medium)
             .foregroundStyle(Color(hex: tag.color))
             .padding(.horizontal, DS.Spacing.sm)

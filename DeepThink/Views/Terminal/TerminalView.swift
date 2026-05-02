@@ -138,7 +138,7 @@ private struct TerminalTabButton: View {
         Button(action: onSelect) {
             HStack(spacing: DS.Spacing.xs) {
                 Circle()
-                    .fill(session.isRunning ? DS.Colors.success : DS.Colors.error.opacity(0.5))
+                    .fill(session.isRunning ? DS.Colors.success : DS.Colors.danger.opacity(0.5))
                     .frame(width: 6, height: 6)
 
                 Text(displayTitle)
@@ -160,8 +160,8 @@ private struct TerminalTabButton: View {
             .padding(.vertical, DS.Spacing.xs)
             .background(
                 isActive
-                    ? DS.Colors.selectedBg
-                    : (isHovered ? DS.Colors.hoverBg : .clear),
+                    ? DS.Colors.accentFill
+                    : (isHovered ? DS.Colors.fillSecondary : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .foregroundStyle(isActive ? DS.Colors.textPrimary : DS.Colors.textSecondary)

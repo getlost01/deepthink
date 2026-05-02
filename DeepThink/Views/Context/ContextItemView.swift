@@ -34,7 +34,7 @@ struct ContextItemView: View {
                 }
                 .help("Reveal in Finder")
             }
-            .frame(height: DS.Layout.headerHeight)
+            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.lg)
             .background(.bar)
 
@@ -61,7 +61,7 @@ struct ContextItemView: View {
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.subtleBg)
+                .background(DS.Colors.fill)
 
                 Divider()
             }

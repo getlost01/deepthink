@@ -28,10 +28,10 @@ struct WorkspaceOverviewView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 HStack(spacing: DS.Spacing.md) {
-                    statCard(icon: "folder", label: "Projects", count: projects.count, color: .blue)
-                    statCard(icon: "doc.text", label: "Notes", count: notes.count, color: .green)
-                    statCard(icon: "checklist", label: "Tasks", count: tasks.count, color: .orange)
-                    statCard(icon: "circle.lefthalf.filled", label: "In Progress", count: inProgressCount, color: .purple)
+                    statCard(icon: "folder", label: "Projects", count: projects.count)
+                    statCard(icon: "doc.text", label: "Notes", count: notes.count)
+                    statCard(icon: "checklist", label: "Tasks", count: tasks.count)
+                    statCard(icon: "circle.lefthalf.filled", label: "In Progress", count: inProgressCount)
                 }
 
                 HStack(alignment: .top, spacing: DS.Spacing.xl) {
@@ -63,7 +63,7 @@ struct WorkspaceOverviewView: View {
 
                                                 if let project = note.project {
                                                     Text(project.name)
-                                                        .font(DS.Font.tiny)
+                                                        .font(DS.Font.small)
                                                         .foregroundStyle(DS.Colors.textTertiary)
                                                 }
                                             }
@@ -71,7 +71,7 @@ struct WorkspaceOverviewView: View {
                                             Spacer()
 
                                             Text(note.modifiedAt.relativeFormatted)
-                                                .font(DS.Font.tiny)
+                                                .font(DS.Font.small)
                                                 .foregroundStyle(DS.Colors.textTertiary)
                                         }
                                         .padding(.horizontal, DS.Spacing.md)
@@ -142,17 +142,17 @@ struct WorkspaceOverviewView: View {
                     DSSectionHeader(title: "Quick Actions")
 
                     HStack(spacing: DS.Spacing.md) {
-                        DSActionButton(title: "New Note", icon: "doc.text.badge.plus", color: .green) {
+                        DSActionButton(title: "New Note", icon: "plus") {
                             appState.workspaceTab = .notes
                             NotificationCenter.default.post(name: .createNewNote, object: nil)
                         }
 
-                        DSActionButton(title: "New Task", icon: "plus.circle", color: .orange) {
+                        DSActionButton(title: "New Task", icon: "plus") {
                             appState.workspaceTab = .tasks
                             NotificationCenter.default.post(name: .createNewTask, object: nil)
                         }
 
-                        DSActionButton(title: "New Project", icon: "folder.badge.plus", color: .blue) {
+                        DSActionButton(title: "New Project", icon: "plus") {
                             appState.workspaceTab = .projects
                             NotificationCenter.default.post(name: .createNewProject, object: nil)
                         }
@@ -165,11 +165,11 @@ struct WorkspaceOverviewView: View {
     }
 
     @ViewBuilder
-    private func statCard(icon: String, label: String, count: Int, color: Color) -> some View {
+    private func statCard(icon: String, label: String, count: Int) -> some View {
         VStack(spacing: DS.Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: DS.IconSize.lg, weight: .medium))
-                .foregroundStyle(color)
+                .foregroundStyle(DS.Colors.textTertiary)
 
             Text("\(count)")
                 .font(DS.Font.title)
@@ -182,10 +182,10 @@ struct WorkspaceOverviewView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(DS.Spacing.lg)
-        .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.lg)
-                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: DS.Radius.md)
+                .strokeBorder(DS.Colors.border, lineWidth: 1)
         )
     }
 
@@ -201,6 +201,6 @@ struct WorkspaceOverviewView: View {
         }
         .frame(maxWidth: .infinity, alignment: .center)
         .padding(DS.Spacing.xl)
-        .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
     }
 }

@@ -202,7 +202,7 @@ final class ContextService {
 
     static func colorForSource(_ source: String) -> Color {
         switch source.lowercased() {
-        case "slack": return .purple
+        case "slack": return .blue
         case "github": return .gray
         case "linear": return .blue
         case "web": return .orange

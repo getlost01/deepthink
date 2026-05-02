@@ -25,11 +25,11 @@ struct ClaudeSettingsView: View {
                 HStack(spacing: DS.Spacing.md) {
                     ZStack {
                         Circle()
-                            .fill(claude.isAvailable ? DS.Colors.success.opacity(0.15) : DS.Colors.error.opacity(0.15))
+                            .fill(claude.isAvailable ? DS.Colors.success.opacity(0.15) : DS.Colors.danger.opacity(0.15))
                             .frame(width: 36, height: 36)
                         Image(systemName: claude.isAvailable ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .font(.system(size: DS.IconSize.lg, weight: .medium))
-                            .foregroundStyle(claude.isAvailable ? DS.Colors.success : DS.Colors.error)
+                            .foregroundStyle(claude.isAvailable ? DS.Colors.success : DS.Colors.danger)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -43,7 +43,7 @@ struct ClaudeSettingsView: View {
                                     ProgressView()
                                         .controlSize(.mini)
                                     Text("Processing")
-                                        .font(DS.Font.tiny)
+                                        .font(DS.Font.small)
                                 }
                                 .foregroundStyle(DS.Colors.warning)
                                 .padding(.horizontal, DS.Spacing.sm)
@@ -61,7 +61,7 @@ struct ClaudeSettingsView: View {
                     if let version = claude.cliVersion {
                         VStack(alignment: .trailing, spacing: 2) {
                             Text("CLI")
-                                .font(DS.Font.tiny)
+                                .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                                 .textCase(.uppercase)
                             Text(version)
@@ -78,12 +78,12 @@ struct ClaudeSettingsView: View {
                             .foregroundStyle(DS.Colors.warning)
                         Text(error)
                             .font(DS.Font.caption)
-                            .foregroundStyle(DS.Colors.error)
+                            .foregroundStyle(DS.Colors.danger)
                             .lineLimit(3)
                         Spacer()
                     }
                     .padding(DS.Spacing.sm)
-                    .background(DS.Colors.error.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.danger.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
             }
         }
@@ -114,7 +114,7 @@ struct ClaudeSettingsView: View {
                 VStack(alignment: .leading, spacing: DS.Spacing.md) {
                     HStack {
                         Text("Version")
-                            .font(DS.Font.sectionLabel)
+                            .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                             .textCase(.uppercase)
                         Spacer()
@@ -161,7 +161,7 @@ struct ClaudeSettingsView: View {
             DSCard {
                 VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     Text("MAX TOKENS")
-                        .font(DS.Font.sectionLabel)
+                        .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     HStack(spacing: DS.Spacing.sm) {
@@ -192,9 +192,9 @@ struct ClaudeSettingsView: View {
                 Spacer()
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: DS.IconSize.xs))
+                        .font(.system(size: DS.IconSize.sm))
                     Text("Since \(claude.sessionStartDate.formatted(date: .abbreviated, time: .shortened))")
-                        .font(DS.Font.tiny)
+                        .font(DS.Font.small)
                 }
                 .foregroundStyle(DS.Colors.textTertiary)
             }
@@ -224,7 +224,7 @@ struct ClaudeSettingsView: View {
                         ? formatCost(claude.totalCostUSD / Double(claude.totalQueries))
                         : "--",
                     icon: "chart.bar",
-                    color: .purple
+                    color: .blue
                 )
             }
         }
@@ -268,7 +268,7 @@ private struct ModelFamilyCard: View {
                     .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
 
                 Text(family.tagline)
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -280,13 +280,13 @@ private struct ModelFamilyCard: View {
             .background(
                 isSelected
                     ? family.color.opacity(0.10)
-                    : (isHovered ? DS.Colors.hoverBg : DS.Colors.inputBg),
+                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
                 in: RoundedRectangle(cornerRadius: DS.Radius.md)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(
-                        isSelected ? family.color.opacity(0.4) : DS.Colors.borderSubtle,
+                        isSelected ? family.color.opacity(0.4) : DS.Colors.border,
                         lineWidth: isSelected ? 1.5 : 1
                     )
             )
@@ -336,13 +336,13 @@ private struct VersionPill: View {
             .background(
                 isSelected
                     ? version.family.color.opacity(0.10)
-                    : (isHovered ? DS.Colors.hoverBg : DS.Colors.inputBg),
+                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
                     .strokeBorder(
-                        isSelected ? version.family.color.opacity(0.3) : DS.Colors.borderSubtle,
+                        isSelected ? version.family.color.opacity(0.3) : DS.Colors.border,
                         lineWidth: 1
                     )
             )
@@ -363,7 +363,7 @@ private struct ModelSpec: View {
     var body: some View {
         HStack(spacing: DS.Spacing.xs) {
             Image(systemName: icon)
-                .font(.system(size: DS.IconSize.xs))
+                .font(.system(size: DS.IconSize.sm))
                 .foregroundStyle(DS.Colors.textTertiary)
             VStack(alignment: .leading, spacing: 1) {
                 Text(label)
@@ -405,13 +405,13 @@ private struct TokenOptionButton: View {
                 .background(
                     isSelected
                         ? DS.Colors.accent.opacity(0.10)
-                        : (isHovered ? DS.Colors.hoverBg : DS.Colors.inputBg),
+                        : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
                     in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.sm)
                         .strokeBorder(
-                            isSelected ? DS.Colors.accent.opacity(0.3) : DS.Colors.borderSubtle,
+                            isSelected ? DS.Colors.accent.opacity(0.3) : DS.Colors.border,
                             lineWidth: 1
                         )
                 )
@@ -437,7 +437,7 @@ private struct UsageStatCard: View {
                     .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(color)
                 Text(title)
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
             }
@@ -448,10 +448,10 @@ private struct UsageStatCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.Spacing.md)
-        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.md)
-                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                .strokeBorder(DS.Colors.border, lineWidth: 1)
         )
     }
 }

@@ -31,7 +31,7 @@ struct IntegrationsView: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.subtleBg)
+            .background(DS.Colors.fill)
 
             Divider()
 
@@ -94,7 +94,7 @@ private struct DataSourcesView: View {
                                 if let date = source.lastUpdated {
                                     VStack(alignment: .trailing, spacing: 2) {
                                         Text("Last sync")
-                                            .font(DS.Font.tiny)
+                                            .font(DS.Font.small)
                                             .foregroundStyle(DS.Colors.textTertiary)
                                         Text(date.relativeFormatted)
                                             .font(DS.Font.caption)
@@ -103,7 +103,7 @@ private struct DataSourcesView: View {
                                 }
                             }
                             .padding(DS.Spacing.md)
-                            .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                         }
                     }
                 }
@@ -129,7 +129,7 @@ private struct DataSourcesView: View {
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .padding(DS.Spacing.lg)
-                .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             }
             .padding(DS.Spacing.xl)
         }
@@ -148,7 +148,7 @@ private struct DataSourcesView: View {
                 .foregroundStyle(DS.Colors.accent)
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 .textSelection(.enabled)
         }
     }

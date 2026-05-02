@@ -8,7 +8,7 @@ struct DocsView: View {
     var body: some View {
         HStack(spacing: 0) {
             FileTreeView(rootPaths: rootPaths, selectedPath: $selectedFilePath)
-                .frame(width: DS.Layout.listPanelWidth)
+                .frame(width: DS.Layout.panelWidth)
 
             Divider()
 

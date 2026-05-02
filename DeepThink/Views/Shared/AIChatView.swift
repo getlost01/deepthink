@@ -68,7 +68,7 @@ struct AIChatView: View {
                                 inputText = prompt
                                 sendMessage()
                             }
-                            .padding(.top, DS.Spacing.xxxl)
+                            .padding(.top, DS.Spacing.xxl)
                         }
 
                         ForEach(messages) { message in
@@ -257,10 +257,10 @@ struct ChatBubble: View {
             if message.role != .user {
                 Image(systemName: message.role == .error ? "exclamationmark.triangle" : "brain.head.profile")
                     .font(.system(size: DS.IconSize.sm, weight: .medium))
-                    .foregroundStyle(message.role == .error ? DS.Colors.error : DS.Colors.accent)
+                    .foregroundStyle(message.role == .error ? DS.Colors.danger : DS.Colors.accent)
                     .frame(width: 24, height: 24)
                     .background(
-                        (message.role == .error ? DS.Colors.error : DS.Colors.accent).opacity(0.10),
+                        (message.role == .error ? DS.Colors.danger : DS.Colors.accent).opacity(0.10),
                         in: Circle()
                     )
             }
@@ -269,9 +269,9 @@ struct ChatBubble: View {
                 if message.role == .error {
                     Text(message.content)
                         .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.error)
+                        .foregroundStyle(DS.Colors.danger)
                         .padding(DS.Spacing.md)
-                        .background(DS.Colors.error.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .background(DS.Colors.danger.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 } else if let attributed = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                     Text(attributed)
                         .font(DS.Font.body)
@@ -280,7 +280,7 @@ struct ChatBubble: View {
                         .background(
                             message.role == .user
                                 ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
-                                : AnyShapeStyle(DS.Colors.inputBg),
+                                : AnyShapeStyle(DS.Colors.fillSecondary),
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 } else {
@@ -291,7 +291,7 @@ struct ChatBubble: View {
                         .background(
                             message.role == .user
                                 ? AnyShapeStyle(DS.Colors.accent.opacity(0.08))
-                                : AnyShapeStyle(DS.Colors.inputBg),
+                                : AnyShapeStyle(DS.Colors.fillSecondary),
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 }

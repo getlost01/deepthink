@@ -83,7 +83,7 @@ private struct NoteInspectorContent: View {
                                 .foregroundStyle(DS.Colors.accent)
                             Spacer()
                             Image(systemName: "arrow.right")
-                                .font(.system(size: DS.IconSize.xs))
+                                .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                     }
@@ -111,8 +111,8 @@ private struct NoteInspectorContent: View {
                         } label: {
                             HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: "arrow.turn.left.up")
-                                    .font(.system(size: DS.IconSize.xs))
-                                    .foregroundStyle(DS.Colors.info)
+                                    .font(.system(size: DS.IconSize.sm))
+                                    .foregroundStyle(DS.Colors.accent)
                                 Text(linked.title.isEmpty ? "Untitled" : linked.title)
                                     .font(DS.Font.caption)
                                     .lineLimit(1)
@@ -131,7 +131,7 @@ private struct NoteInspectorContent: View {
                         } label: {
                             HStack(spacing: DS.Spacing.sm) {
                                 Image(systemName: "arrow.turn.right.down")
-                                    .font(.system(size: DS.IconSize.xs))
+                                    .font(.system(size: DS.IconSize.sm))
                                     .foregroundStyle(DS.Colors.success)
                                 Text(linked.title.isEmpty ? "Untitled" : linked.title)
                                     .font(DS.Font.caption)
@@ -145,7 +145,7 @@ private struct NoteInspectorContent: View {
 
             Section {
                 Text("Use [[Note Title]] in content to create links")
-                    .font(DS.Font.tiny)
+                    .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
             }
         }

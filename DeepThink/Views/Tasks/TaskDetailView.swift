@@ -53,7 +53,7 @@ struct TaskDetailView: View {
                     Button { showCalendar.toggle() } label: {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "calendar")
-                                .font(.system(size: DS.IconSize.xs))
+                                .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(dueDateColor)
                             Text(task.dueDate?.shortFormatted ?? "Due date")
                                 .foregroundStyle(task.dueDate == nil ? DS.Colors.textTertiary : dueDateColor)
@@ -61,7 +61,7 @@ struct TaskDetailView: View {
                         .font(DS.Font.caption)
                         .padding(.horizontal, DS.Spacing.sm + 2)
                         .padding(.vertical, DS.Spacing.xs + 2)
-                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
                     .popover(isPresented: $showCalendar) {
@@ -108,7 +108,7 @@ struct TaskDetailView: View {
     }
 
     private var dueDateColor: Color {
-        task.isOverdue ? DS.Colors.error : DS.Colors.textPrimary
+        task.isOverdue ? DS.Colors.danger : DS.Colors.textPrimary
     }
 
     @ViewBuilder
@@ -123,14 +123,14 @@ struct TaskDetailView: View {
         } label: {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: DS.IconSize.xs))
+                    .font(.system(size: DS.IconSize.sm))
                     .foregroundStyle(color)
                 Text(text)
             }
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
             .padding(.vertical, DS.Spacing.xs + 2)
-            .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
     }

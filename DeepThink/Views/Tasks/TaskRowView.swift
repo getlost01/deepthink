@@ -26,8 +26,8 @@ struct TaskRowView: View {
 
                 if task.isOverdue, let due = task.dueDate {
                     Text("Overdue: \(due.shortFormatted)")
-                        .font(DS.Font.tiny)
-                        .foregroundStyle(DS.Colors.error)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.danger)
                 }
             }
 

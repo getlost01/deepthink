@@ -14,7 +14,7 @@ struct NoteEditorView: View {
             HStack(spacing: DS.Spacing.md) {
                 TextField("Give your note a title...", text: $note.title)
                     .textFieldStyle(.plain)
-                    .font(DS.Font.detailTitle)
+                    .font(DS.Font.title)
                     .focused($titleFocused)
 
                 Spacer()
@@ -24,7 +24,7 @@ struct NoteEditorView: View {
                 }
                 .help("Version History")
             }
-            .frame(height: DS.Layout.headerHeight)
+            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
 
             RichMarkdownEditor(text: $note.content)

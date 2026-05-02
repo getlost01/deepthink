@@ -69,37 +69,3 @@ struct WorkspaceView: View {
         }
     }
 }
-
-// MARK: - Shared Tab Button
-
-struct DSTabButton: View {
-    let title: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: DS.IconSize.sm, weight: .medium))
-                Text(title)
-                    .font(DS.Font.caption)
-                    .fontWeight(isSelected ? .semibold : .regular)
-            }
-            .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm)
-            .background(
-                isSelected
-                    ? DS.Colors.selectedBg
-                    : (isHovered ? DS.Colors.hoverBg : .clear),
-                in: RoundedRectangle(cornerRadius: DS.Radius.sm)
-            )
-        }
-        .buttonStyle(.plainPointer)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
-    }
-}
