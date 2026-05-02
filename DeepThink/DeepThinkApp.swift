@@ -68,6 +68,11 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("k", modifiers: .command)
 
+                Button("AI Panel") {
+                    appState.toggleAIPanel()
+                }
+                .keyboardShortcut("j", modifiers: .command)
+
                 Divider()
 
                 Button("Go to Workspace") {
@@ -165,6 +170,9 @@ struct DeepThinkApp: App {
             Command(title: "Settings", icon: "gearshape", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)
             },
+            Command(title: "Toggle AI Panel", icon: "sparkles", shortcut: "⌘J", section: "Navigate") {
+                appState.toggleAIPanel()
+            },
         ])
     }
 
@@ -176,7 +184,7 @@ struct DeepThinkApp: App {
 
             let hasWorkspace = existing.contains { $0.name == "DeepThink Workspace" }
             if !hasWorkspace {
-                let mcpPath = NSHomeDirectory() + "/code/deepthink/cli/src/mcp-server.ts"
+                let mcpPath = DeepThinkPaths.mcpServerPath
                 let server = MCPServer(
                     name: "DeepThink Workspace",
                     command: "bun",
@@ -193,7 +201,7 @@ struct DeepThinkApp: App {
     private func installCLI() {
         DispatchQueue.global(qos: .utility).async {
             let fm = FileManager.default
-            let installDir = NSHomeDirectory() + "/.local/bin"
+            let installDir = DeepThinkPaths.localBin
             let installPath = installDir + "/deepthink"
 
             var sourcePath: String?
@@ -201,13 +209,7 @@ struct DeepThinkApp: App {
                fm.isExecutableFile(atPath: bundled) {
                 sourcePath = bundled
             } else {
-                let devPaths = [
-                    Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/out/deepthink" },
-                    NSHomeDirectory() + "/code/deepthink/cli/out/deepthink",
-                    Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/deepthink" },
-                    NSHomeDirectory() + "/code/deepthink/cli/deepthink",
-                ].compactMap { $0 }
-                sourcePath = devPaths.first { fm.isExecutableFile(atPath: $0) }
+                sourcePath = DeepThinkPaths.cliInstallCandidates.first { fm.isExecutableFile(atPath: $0) }
             }
 
             guard let source = sourcePath else { return }

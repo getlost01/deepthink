@@ -14,26 +14,35 @@ final class DeepThinkCLIService {
         let error: String
         let exitCode: Int32
         let success: Bool
+
+        func decoded<T: Decodable>(_ type: T.Type) -> T? {
+            guard success, let data = output.data(using: .utf8) else { return nil }
+            return try? JSONDecoder().decode(type, from: data)
+        }
+    }
+
+    struct CLIMemoryEntry: Codable {
+        let id: String
+        let content: String
+        let tags: [String]
+        let timestamp: String
+        let layer: String
+    }
+
+    struct CLIMemoryRecall: Codable {
+        let entries: [CLIMemoryEntry]
+    }
+
+    struct CLIMemoryStats: Codable {
+        let shortTerm: Int
+        let longTerm: Int
     }
 
     private init() {
-        // Priority: 1) App bundle  2) Dev source tree  3) Home directory
-        let bundled = Bundle.main.resourceURL?
-            .appendingPathComponent("deepthink-cli").path ?? ""
-
-        let projectDir = Bundle.main.bundlePath
-            .components(separatedBy: "/DeepThink.app").first ?? ""
-
-        let candidates = [
-            bundled,
-            projectDir + "/cli/deepthink",
-            NSHomeDirectory() + "/code/deepthink/cli/deepthink",
-            "/usr/local/bin/deepthink",
-        ]
-
+        let candidates = DeepThinkPaths.cliBinaryCandidates
         self.binaryPath = candidates.first {
             FileManager.default.isExecutableFile(atPath: $0)
-        } ?? candidates[2]
+        } ?? candidates.last!
     }
 
     var isAvailable: Bool {
@@ -57,15 +66,24 @@ final class DeepThinkCLIService {
         await run(["analyze", file, "--quick"])
     }
 
-    func recall(query: String) async -> CLIResult {
-        await run(["recall", query])
+    func recall(query: String, json: Bool = false) async -> CLIResult {
+        var args = ["memory", "recall", query]
+        if json { args.append("--json") }
+        return await run(args)
     }
 
-    func remember(content: String, tags: [String] = [], layer: String = "short") async -> CLIResult {
-        var args = ["remember", content, "--layer", layer]
+    func remember(content: String, tags: [String] = [], layer: String = "short", json: Bool = false) async -> CLIResult {
+        var args = ["memory", "save", content, "--layer", layer]
         if !tags.isEmpty {
             args.append(contentsOf: ["--tags", tags.joined(separator: ",")])
         }
+        if json { args.append("--json") }
+        return await run(args)
+    }
+
+    func memoryStats(json: Bool = false) async -> CLIResult {
+        var args = ["memory"]
+        if json { args.append("--json") }
         return await run(args)
     }
 
@@ -96,10 +114,6 @@ final class DeepThinkCLIService {
         var args = ["run"] + task.components(separatedBy: " ")
         if noDocs { args.append("--no-docs") }
         return await run(args)
-    }
-
-    func memoryStats() async -> CLIResult {
-        await run(["memory"])
     }
 
     // MARK: - Core Runner

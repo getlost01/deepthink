@@ -7,6 +7,10 @@ final class AppState {
     var showCommandPalette: Bool = false
     var searchQuery: String = ""
 
+    // AI Side Panel
+    var showAIPanel: Bool = false
+    var aiPanelContext: String = ""
+
     // Workspace sub-navigation
     var workspaceTab: WorkspaceTab = .projects
     var selectedNoteID: UUID?
@@ -25,9 +29,6 @@ final class AppState {
     // AI sub-navigation
     var aiMode: AIMode = .chat
     var pendingChatMessage: String?
-
-    // AI side panel (Phase 4)
-    var showAIPanel: Bool = false
 
     func navigate(to section: SidebarSection) {
         selectedSection = section
@@ -65,6 +66,19 @@ final class AppState {
 
     func filterByProject(_ projectID: UUID?) {
         filterProjectID = projectID
+    }
+
+    func toggleAIPanel() {
+        withAnimation(.spring(duration: 0.25)) {
+            showAIPanel.toggle()
+        }
+    }
+
+    func openAIPanelWith(context: String) {
+        aiPanelContext = context
+        withAnimation(.spring(duration: 0.25)) {
+            showAIPanel = true
+        }
     }
 
     func toggleCommandPalette() {

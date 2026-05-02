@@ -19,6 +19,10 @@ export function recall(q: string): string {
   return getMgr().recall(q);
 }
 
+export function recallJSON(q: string): { entries: any[] } {
+  return getMgr().recallJSON(q);
+}
+
 export function memoryStats(): { shortTerm: number; longTerm: number } {
   return getMgr().stats();
 }

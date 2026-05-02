@@ -13,6 +13,13 @@ struct ContentView: View {
 
             ContentRouter()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if appState.showAIPanel {
+                Divider()
+                AISidePanelView()
+                    .frame(width: 360)
+                    .transition(.move(edge: .trailing))
+            }
         }
         .overlay {
             if appState.showCommandPalette {

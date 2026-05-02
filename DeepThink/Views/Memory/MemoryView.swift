@@ -148,9 +148,9 @@ struct MemoryView: View {
         isSearching = true
 
         Task {
-            let result = await DeepThinkCLIService.shared.recall(query: searchQuery)
+            let result = await DeepThinkCLIService.shared.recall(query: searchQuery, json: true)
             await MainActor.run {
-                parseMemoryOutput(result.output)
+                parseJSONMemories(result)
                 isSearching = false
             }
         }
@@ -158,63 +158,45 @@ struct MemoryView: View {
 
     private func loadRecent() {
         Task {
-            let result = await DeepThinkCLIService.shared.recall(query: "")
+            let result = await DeepThinkCLIService.shared.recall(query: "", json: true)
             await MainActor.run {
-                if result.success && !result.output.contains("No memories") {
-                    parseMemoryOutput(result.output)
-                }
+                parseJSONMemories(result)
             }
         }
     }
 
     private func loadStats() {
         Task {
-            let result = await DeepThinkCLIService.shared.memoryStats()
+            let result = await DeepThinkCLIService.shared.memoryStats(json: true)
             await MainActor.run {
-                if result.success {
-                    let lines = result.output.components(separatedBy: "\n")
-                    var short = 0, long = 0
-                    for line in lines {
-                        if line.contains("Short-term:") {
-                            short = Int(line.components(separatedBy: ": ").last?.components(separatedBy: " ").first ?? "0") ?? 0
-                        }
-                        if line.contains("Long-term:") {
-                            long = Int(line.components(separatedBy: ": ").last?.components(separatedBy: " ").first ?? "0") ?? 0
-                        }
-                    }
-                    stats = MemoryStats(shortTerm: short, longTerm: long)
+                if let s = result.decoded(DeepThinkCLIService.CLIMemoryStats.self) {
+                    stats = MemoryStats(shortTerm: s.shortTerm, longTerm: s.longTerm)
                 }
             }
         }
     }
 
-    private func parseMemoryOutput(_ output: String) {
-        let lines = output.components(separatedBy: "\n").filter { !$0.isEmpty }
-        memoryEntries = lines.compactMap { line in
-            let timestampEnd = line.firstIndex(of: "]").map { line.index(after: $0) }
-            let timestamp = timestampEnd.map { String(line[line.startIndex..<$0]).trimmingCharacters(in: CharacterSet(charactersIn: "[]")) } ?? ""
+    private func parseJSONMemories(_ result: DeepThinkCLIService.CLIResult) {
+        guard let recall = result.decoded(DeepThinkCLIService.CLIMemoryRecall.self) else {
+            memoryEntries = []
+            return
+        }
 
-            let parenStart = line.firstIndex(of: "(")
-            let parenEnd = line.firstIndex(of: ")")
-            var layer = ""
-            var tags = ""
-            if let ps = parenStart, let pe = parenEnd {
-                let meta = String(line[line.index(after: ps)..<pe])
-                let parts = meta.components(separatedBy: ", tags: ")
-                layer = parts.first?.trimmingCharacters(in: .whitespaces) ?? ""
-                tags = parts.count > 1 ? parts[1] : ""
-            }
-
-            let contentStart = parenEnd.map { line.index($0, offsetBy: 2, limitedBy: line.endIndex) ?? line.endIndex } ?? line.startIndex
-            let content = String(line[contentStart...]).trimmingCharacters(in: .whitespaces)
-
-            return MemoryEntry(content: content, layer: layer, tags: tags, timestamp: timestamp)
+        var entries = recall.entries.map { e in
+            MemoryEntry(
+                content: e.content,
+                layer: e.layer,
+                tags: e.tags.joined(separator: ", "),
+                timestamp: String(e.timestamp.prefix(16))
+            )
         }
 
         if selectedLayer != .all {
             let filterLayer = selectedLayer == .short ? "short" : "long"
-            memoryEntries = memoryEntries.filter { $0.layer == filterLayer }
+            entries = entries.filter { $0.layer == filterLayer }
         }
+
+        memoryEntries = entries
     }
 
     private func saveMemory() {

@@ -92,6 +92,15 @@ export class MemoryManager {
       .join("\n");
   }
 
+  recallJSON(query: string): { entries: MemoryEntry[] } {
+    const results = this.search(query || undefined, undefined, 10);
+    return { entries: results };
+  }
+
+  statsJSON(): { shortTerm: number; longTerm: number } {
+    return this.stats();
+  }
+
   promote(entryId: string): boolean {
     const short = this.load("short");
     const idx = short.findIndex((e) => e.id === entryId);

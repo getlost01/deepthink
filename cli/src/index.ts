@@ -109,8 +109,11 @@ async function cmdRun() {
 // ── deepthink memory ──
 
 function cmdMemory() {
+  const json = flag("--json");
+
   if (!sub || sub === "stats") {
     const s = memoryTools.memoryStats();
+    if (json) { p(JSON.stringify(s)); return; }
     p(`short-term: ${s.shortTerm}\nlong-term:  ${s.longTerm}`);
     return;
   }
@@ -121,18 +124,21 @@ function cmdMemory() {
     const tags = flagVal("--tags")?.split(",").map((t) => t.trim()) ?? [];
     const layer = (flagVal("--layer") ?? "short") as "short" | "long";
     const id = memoryTools.saveMemory(content, tags, layer);
+    if (json) { p(JSON.stringify({ id, layer })); return; }
     ok(`saved (${id}) to ${layer}-term`);
     return;
   }
 
   if (sub === "recall") {
-    const q = args.slice(2).join(" ");
+    const q = args.slice(2).filter((a) => !a.startsWith("--")).join(" ");
+    if (json) { p(JSON.stringify(memoryTools.recallJSON(q))); return; }
     p(memoryTools.recall(q));
     return;
   }
 
   if (sub === "clear") {
     memoryTools.clearShortTerm();
+    if (json) { p(JSON.stringify({ cleared: true })); return; }
     ok("short-term cleared");
     return;
   }

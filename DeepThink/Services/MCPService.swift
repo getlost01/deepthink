@@ -164,7 +164,7 @@ final class MCPService {
     }
 
     static let presetServers: [(name: String, command: String, args: String, category: String, description: String)] = [
-        ("DeepThink Workspace", "bun", "run \(NSHomeDirectory())/code/deepthink/cli/src/mcp-server.ts", "Workspace", "Manage tasks, notes, and projects in your DeepThink workspace"),
+        ("DeepThink Workspace", "bun", "run \(DeepThinkPaths.mcpServerPath)", "Workspace", "Manage tasks, notes, and projects in your DeepThink workspace"),
         ("Filesystem", "npx", "-y @modelcontextprotocol/server-filesystem /Users", "Files", "Read, write, and manage files on your system"),
         ("Web Search", "npx", "-y @anthropic-ai/mcp-server-web-search", "Search", "Search the web using Brave Search API"),
         ("Memory", "npx", "-y @modelcontextprotocol/server-memory", "Knowledge", "Persistent memory for storing and retrieving facts"),

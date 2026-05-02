@@ -1,16 +1,23 @@
 import SwiftUI
 import SwiftData
 
+struct WebResult: Identifiable {
+    let id = UUID()
+    let title: String
+    let url: String
+    let snippet: String
+}
+
 struct DeepSearchView: View {
     @Environment(AppState.self) private var appState
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
     @Query private var projects: [Project]
-    @Query(filter: #Predicate<MCPServer> { $0.isEnabled }) private var activeServers: [MCPServer]
 
     @State private var query = ""
     @State private var isSearching = false
     @State private var aiResult: String?
+    @State private var webResults: [WebResult] = []
     @State private var searchMode: SearchMode = .workspace
     @FocusState private var focused: Bool
 
@@ -18,7 +25,7 @@ struct DeepSearchView: View {
         case workspace = "Workspace"
         case ai = "AI Search"
         case memory = "Memory"
-        case web = "Web (MCP)"
+        case web = "Web"
     }
 
     private var localResults: [SearchResult] {
@@ -106,6 +113,15 @@ struct DeepSearchView: View {
                         .dsBordered()
                     }
 
+                    if !webResults.isEmpty {
+                        Text("Web Results (\(webResults.count))")
+                            .font(DS.Font.heading)
+
+                        ForEach(webResults) { result in
+                            WebResultRow(result: result)
+                        }
+                    }
+
                     if !localResults.isEmpty {
                         Text("Workspace Results (\(localResults.count))")
                             .font(DS.Font.heading)
@@ -155,6 +171,7 @@ struct DeepSearchView: View {
         if searchMode == .workspace { return }
 
         isSearching = true
+        webResults = []
         let q = query
         let context = localResults.prefix(5).map { "\($0.type): \($0.title) — \($0.subtitle)" }.joined(separator: "\n")
 
@@ -169,27 +186,50 @@ struct DeepSearchView: View {
             return
         }
 
+        if searchMode == .web {
+            Task {
+                let cliResult = await DeepThinkCLIService.shared.search(query: q)
+                let parsed = cliResult.success ? Self.parseWebResults(cliResult.output) : []
+
+                await MainActor.run {
+                    webResults = parsed
+                }
+
+                do {
+                    let result: String
+                    if !parsed.isEmpty {
+                        let webContext = parsed.map { "[\($0.title)](\($0.url))\n\($0.snippet)" }.joined(separator: "\n\n")
+                        let prompt = "Based on these web search results:\n\n\(webContext)\n\nAnswer the question: \(q)\n\nCite sources with their URLs where relevant."
+                        let systemPrompt = "You are a research assistant. Synthesize the provided web search results into a clear, comprehensive answer. Include source URLs as markdown links."
+                        result = try await ClaudeService.shared.query(prompt, systemPrompt: systemPrompt)
+                    } else {
+                        let prompt = "Answer the following question using your training knowledge: \(q)"
+                        let systemPrompt = "You are a knowledgeable assistant. Answer the question thoroughly using your training data. Note that live web search was unavailable, so your answer is based on training knowledge up to your cutoff date."
+                        result = try await ClaudeService.shared.query(prompt, systemPrompt: systemPrompt)
+                    }
+
+                    await MainActor.run {
+                        aiResult = result
+                        isSearching = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        aiResult = "Error: \(error.localizedDescription)"
+                        isSearching = false
+                    }
+                }
+            }
+            return
+        }
+
         Task {
             do {
-                let prompt: String
-                let systemPrompt: String
+                let prompt = context.isEmpty
+                    ? "Answer this question about my workspace: \(q)"
+                    : "Based on this workspace data:\n\(context)\n\nAnswer: \(q)"
+                let systemPrompt = "You are a knowledge assistant analyzing a user's workspace. Provide insights based on their notes, tasks, and projects. Be specific and actionable."
 
-                if searchMode == .web {
-                    prompt = "Search the web and answer: \(q)"
-                    systemPrompt = "You have access to web search. Search and provide comprehensive answers with sources."
-                } else {
-                    prompt = context.isEmpty
-                        ? "Answer this question about my workspace: \(q)"
-                        : "Based on this workspace data:\n\(context)\n\nAnswer: \(q)"
-                    systemPrompt = "You are a knowledge assistant analyzing a user's workspace. Provide insights based on their notes, tasks, and projects. Be specific and actionable."
-                }
-
-                let result: String
-                if searchMode == .web && !activeServers.isEmpty {
-                    result = try await MCPService.shared.queryWithMCP(prompt: prompt, servers: Array(activeServers), systemPrompt: systemPrompt)
-                } else {
-                    result = try await ClaudeService.shared.query(prompt, systemPrompt: systemPrompt)
-                }
+                let result = try await ClaudeService.shared.query(prompt, systemPrompt: systemPrompt)
 
                 await MainActor.run {
                     aiResult = result
@@ -202,6 +242,50 @@ struct DeepSearchView: View {
                 }
             }
         }
+    }
+
+    static func parseWebResults(_ output: String) -> [WebResult] {
+        var results: [WebResult] = []
+        let lines = output.components(separatedBy: "\n")
+        var i = 0
+        while i < lines.count {
+            let line = lines[i].trimmingCharacters(in: .whitespaces)
+            guard !line.isEmpty else { i += 1; continue }
+
+            // Title line (not indented in original)
+            let rawLine = lines[i]
+            let isIndented = rawLine.hasPrefix("  ") || rawLine.hasPrefix("\t")
+
+            if !isIndented && !line.isEmpty {
+                let title = line
+                var url = ""
+                var snippet = ""
+
+                // Next line: URL (indented)
+                if i + 1 < lines.count {
+                    let nextLine = lines[i + 1].trimmingCharacters(in: .whitespaces)
+                    if nextLine.hasPrefix("http://") || nextLine.hasPrefix("https://") {
+                        url = nextLine
+                        i += 1
+                    }
+                }
+
+                // Next line: Snippet (indented)
+                if i + 1 < lines.count {
+                    let snippetLine = lines[i + 1].trimmingCharacters(in: .whitespaces)
+                    if !snippetLine.isEmpty && !snippetLine.hasPrefix("http://") && !snippetLine.hasPrefix("https://") {
+                        snippet = snippetLine
+                        i += 1
+                    }
+                }
+
+                if !url.isEmpty || !snippet.isEmpty {
+                    results.append(WebResult(title: title, url: url, snippet: snippet))
+                }
+            }
+            i += 1
+        }
+        return results
     }
 
     private func navigateTo(_ result: SearchResult) {
@@ -288,6 +372,50 @@ private struct SearchResultRow: View {
             .dsClickable()
         }
         .buttonStyle(.plainPointer)
+    }
+}
+
+private struct WebResultRow: View {
+    let result: WebResult
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "globe")
+                    .font(.system(size: DS.IconSize.md))
+                    .foregroundStyle(.blue)
+                    .frame(width: 28, height: 28)
+                    .background(Color.blue.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(result.title)
+                        .font(DS.Font.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+
+                    if !result.url.isEmpty, let url = URL(string: result.url) {
+                        Link(destination: url) {
+                            Text(result.url)
+                                .font(DS.Font.tiny)
+                                .foregroundStyle(DS.Colors.accent)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                Spacer()
+            }
+
+            if !result.snippet.isEmpty {
+                Text(result.snippet)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(3)
+                    .padding(.leading, 28 + DS.Spacing.sm)
+            }
+        }
+        .padding(DS.Spacing.md)
+        .dsBordered()
     }
 }
 

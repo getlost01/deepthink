@@ -117,6 +117,32 @@ struct AIChatView: View {
         }
     }
 
+    private static let workspaceKeywords = [
+        "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
+        "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
+        "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
+    ]
+
+    private func isWorkspaceRequest(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return Self.workspaceKeywords.contains { lower.contains($0) }
+    }
+
+    private func ensureWorkspaceServer(in servers: [MCPServer]) -> [MCPServer] {
+        if servers.contains(where: { $0.name == "DeepThink Workspace" }) {
+            return servers
+        }
+        let wsServer = MCPServer(
+            name: "DeepThink Workspace",
+            command: "bun",
+            args: "run \(DeepThinkPaths.mcpServerPath)",
+            category: "Workspace",
+            description: "Manage tasks, notes, and projects"
+        )
+        wsServer.isEnabled = true
+        return [wsServer] + servers
+    }
+
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -126,13 +152,23 @@ struct AIChatView: View {
         isProcessing = true
 
         let ctx = workspaceContext
-        let servers = useMCP ? Array(activeServers) : []
+        let isWorkspace = isWorkspaceRequest(text)
+        var servers = useMCP ? Array(activeServers) : []
+        if isWorkspace {
+            servers = ensureWorkspaceServer(in: servers)
+        }
 
         Task {
             do {
                 let response: String
                 let fullPrompt = ctx.isEmpty ? text : "Workspace context:\n\(ctx)\n\nUser: \(text)"
-                let systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting."
+
+                let systemPrompt: String
+                if isWorkspace {
+                    systemPrompt = "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
+                } else {
+                    systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting."
+                }
 
                 if servers.isEmpty {
                     response = try await ClaudeService.shared.query(fullPrompt, systemPrompt: systemPrompt)
