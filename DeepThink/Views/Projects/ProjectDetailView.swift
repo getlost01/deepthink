@@ -2,65 +2,135 @@ import SwiftUI
 import SwiftData
 
 struct ProjectDetailView: View {
+    @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @Bindable var project: Project
-    @State private var selectedTab = 0
+    @Query private var allTasks: [TaskItem]
+    @Query private var allNotes: [Note]
+
+    private var selectedTask: TaskItem? {
+        guard case .taskDetail(let id) = appState.projectDetailMode else { return nil }
+        return allTasks.first { $0.id == id }
+    }
+
+    private var selectedNote: Note? {
+        guard case .noteDetail(let id) = appState.projectDetailMode else { return nil }
+        return allNotes.first { $0.id == id }
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                    HStack(spacing: DS.Spacing.md) {
-                        Circle()
-                            .fill(Color(hex: project.color))
-                            .frame(width: 12, height: 12)
+        switch appState.projectDetailMode {
+        case .overview:
+            projectOverview
+        case .taskDetail:
+            if let task = selectedTask {
+                VStack(spacing: 0) {
+                    backBar
+                    Divider()
+                    TaskDetailView(task: task)
+                        .id(task.id)
+                }
+            }
+        case .noteDetail:
+            if let note = selectedNote {
+                VStack(spacing: 0) {
+                    backBar
+                    Divider()
+                    NoteEditorView(note: note)
+                        .id(note.id)
+                }
+            }
+        }
+    }
 
-                        TextField("Project name", text: $project.name)
-                            .textFieldStyle(.plain)
-                            .font(DS.Font.detailTitle)
-                    }
+    private var backBar: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Button {
+                withAnimation(DS.Animation.standard) {
+                    appState.backToProjectOverview()
+                }
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                    Text(project.name)
+                        .font(DS.Font.body)
+                }
+                .foregroundStyle(DS.Colors.accent)
+            }
+            .buttonStyle(.plainPointer)
 
-                    TextField("Add a summary...", text: $project.summary, axis: .vertical)
+            Spacer()
+        }
+        .frame(height: DS.Layout.headerHeight)
+        .padding(.horizontal, DS.Spacing.xl)
+    }
+
+    // MARK: - Overview
+
+    @State private var splitRatio: CGFloat = 0.5
+    private let minPaneRatio: CGFloat = 0.2
+
+    @ViewBuilder
+    private var projectOverview: some View {
+        VStack(spacing: 0) {
+            // Header
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                HStack(spacing: DS.Spacing.md) {
+                    Circle()
+                        .fill(Color(hex: project.color))
+                        .frame(width: 14, height: 14)
+
+                    TextField("Give your project a name", text: $project.name)
                         .textFieldStyle(.plain)
-                        .font(DS.Font.bodyLarge)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .lineLimit(2)
+                        .font(DS.Font.title)
+                }
 
-                    HStack(spacing: DS.Spacing.sm) {
-                        DSStatChip(label: "Notes", value: "\(project.notes.count)", icon: "doc.text")
-                        DSStatChip(label: "Tasks", value: "\(project.openTaskCount) open", icon: "checklist")
-                        if project.totalStoryPoints > 0 {
-                            DSStatChip(label: "Points", value: "\(project.completedStoryPoints)/\(project.totalStoryPoints)", icon: "star")
-                        }
-                    }
+                TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.bodyLarge)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(3)
 
-                    if project.totalStoryPoints > 0 {
-                        let progress = Double(project.completedStoryPoints) / Double(project.totalStoryPoints)
-                        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                            ProgressView(value: progress)
-                                .tint(DS.Colors.accent)
-                            Text("\(Int(progress * 100))% complete")
-                                .font(DS.Font.caption)
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
+                if project.totalStoryPoints > 0 {
+                    let progress = Double(project.completedStoryPoints) / Double(project.totalStoryPoints)
+                    HStack(spacing: DS.Spacing.md) {
+                        ProgressView(value: progress)
+                            .tint(DS.Colors.accent)
+                            .frame(maxWidth: 200)
+                        Text("\(Int(progress * 100))%")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
                 }
-                .padding(DS.Spacing.xl)
+            }
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.lg)
 
-                Divider()
-                    .padding(.horizontal, DS.Spacing.xl)
+            Divider()
 
-                Picker("", selection: $selectedTab) {
-                    Text("Tasks").tag(0)
-                    Text("Notes").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.md)
+            // Split pane: Tasks top, Notes bottom
+            GeometryReader { geo in
+                let totalHeight = geo.size.height
+                let topHeight = max(totalHeight * splitRatio, totalHeight * minPaneRatio)
+                let bottomHeight = max(totalHeight - topHeight - 8, totalHeight * minPaneRatio)
 
-                if selectedTab == 0 {
-                    projectTasksList
-                } else {
-                    projectNotesList
+                VStack(spacing: 0) {
+                    tasksPane
+                        .frame(height: topHeight)
+
+                    // Drag handle
+                    SplitDragHandle()
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    let newRatio = (topHeight + value.translation.height) / totalHeight
+                                    splitRatio = min(max(newRatio, minPaneRatio), 1 - minPaneRatio)
+                                }
+                        )
+
+                    notesPane
+                        .frame(height: bottomHeight)
                 }
             }
         }
@@ -69,137 +139,254 @@ struct ProjectDetailView: View {
         .onChange(of: project.summary) { project.modifiedAt = Date() }
     }
 
+    // MARK: - Tasks Pane
+
     @ViewBuilder
-    private var projectTasksList: some View {
-        if project.tasks.isEmpty {
-            VStack(spacing: DS.Spacing.lg) {
-                Image(systemName: "checklist")
-                    .font(.system(size: 24, weight: .light))
+    private var tasksPane: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Tasks")
+                    .font(DS.Font.sectionLabel)
                     .foregroundStyle(DS.Colors.textTertiary)
-                VStack(spacing: DS.Spacing.sm) {
-                    Text("No tasks yet")
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Text("Create a task and assign it to this project")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                    .textCase(.uppercase)
+
+                if !project.tasks.isEmpty {
+                    DSPill(text: "\(project.openTaskCount) open", color: DS.Colors.info)
                 }
-                Button {
-                    NotificationCenter.default.post(name: .createNewTask, object: nil)
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.xs, weight: .bold))
-                        Text("New Task")
-                            .font(DS.Font.caption)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundStyle(DS.Colors.accent)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
-                    .background(DS.Colors.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                Spacer()
+
+                DSToolbarButton(icon: "plus", color: DS.Colors.accent, size: DS.IconSize.sm) {
+                    createTaskInProject()
                 }
-                .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, DS.Spacing.xxxl)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(project.tasks.sorted(by: { $0.status.sortOrder < $1.status.sortOrder })) { task in
-                    HStack(spacing: DS.Spacing.md) {
-                        Image(systemName: task.status.icon)
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
-                            .foregroundStyle(task.status.color)
-                            .frame(width: 20)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.sm)
 
-                        Text(task.title)
-                            .font(DS.Font.body)
-                            .lineLimit(1)
+            Divider()
 
-                        Spacer()
-
-                        if task.priority != .none {
-                            Image(systemName: task.priority.icon)
-                                .font(.system(size: DS.IconSize.sm))
-                                .foregroundStyle(task.priority.color)
+            if project.tasks.isEmpty {
+                DSEmptyState(
+                    icon: "checklist",
+                    title: "No tasks yet",
+                    subtitle: "Add tasks to track work",
+                    action: createTaskInProject,
+                    actionTitle: "Add Task"
+                )
+            } else {
+                ScrollView {
+                    VStack(spacing: 1) {
+                        ForEach(project.tasks.sorted(by: { $0.status.sortOrder < $1.status.sortOrder })) { task in
+                            ProjectTaskRow(task: task) {
+                                withAnimation(DS.Animation.standard) {
+                                    appState.navigateToTaskInProject(task.id)
+                                }
+                            }
                         }
                     }
+                    .background(DS.Colors.borderSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.md)
+                            .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                    )
                     .padding(.horizontal, DS.Spacing.xl)
-                    .padding(.vertical, DS.Spacing.md)
-
-                    if task.id != project.tasks.last?.id {
-                        Divider()
-                            .padding(.leading, DS.Spacing.xl + 20 + DS.Spacing.md)
-                    }
+                    .padding(.vertical, DS.Spacing.sm)
                 }
             }
         }
     }
 
+    // MARK: - Notes Pane
+
     @ViewBuilder
-    private var projectNotesList: some View {
-        if project.notes.isEmpty {
-            VStack(spacing: DS.Spacing.lg) {
-                Image(systemName: "doc.text")
-                    .font(.system(size: 24, weight: .light))
+    private var notesPane: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Notes")
+                    .font(DS.Font.sectionLabel)
                     .foregroundStyle(DS.Colors.textTertiary)
-                VStack(spacing: DS.Spacing.sm) {
-                    Text("No notes yet")
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Text("Create a note and assign it to this project")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                    .textCase(.uppercase)
+
+                if !project.notes.isEmpty {
+                    DSPill(text: "\(project.notes.count)", color: DS.Colors.warning)
                 }
-                Button {
-                    NotificationCenter.default.post(name: .createNewNote, object: nil)
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.xs, weight: .bold))
-                        Text("New Note")
-                            .font(DS.Font.caption)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundStyle(DS.Colors.accent)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
-                    .background(DS.Colors.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                Spacer()
+
+                DSToolbarButton(icon: "plus", color: DS.Colors.accent, size: DS.IconSize.sm) {
+                    createNoteInProject()
                 }
-                .buttonStyle(.plain)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.top, DS.Spacing.xxxl)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(project.notes.sorted(by: { $0.modifiedAt > $1.modifiedAt })) { note in
-                    HStack(spacing: DS.Spacing.md) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
-                            .foregroundStyle(DS.Colors.textTertiary)
-                            .frame(width: 20)
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.sm)
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(note.title.isEmpty ? "Untitled" : note.title)
-                                .font(DS.Font.body)
-                                .fontWeight(.medium)
-                                .lineLimit(1)
-                            Text(note.modifiedAt.relativeFormatted)
-                                .font(DS.Font.tiny)
-                                .foregroundStyle(DS.Colors.textTertiary)
+            Divider()
+
+            if project.notes.isEmpty {
+                DSEmptyState(
+                    icon: "doc.text",
+                    title: "No notes yet",
+                    subtitle: "Create notes for this project",
+                    action: createNoteInProject,
+                    actionTitle: "Add Note"
+                )
+            } else {
+                ScrollView {
+                    VStack(spacing: 1) {
+                        ForEach(project.notes.sorted(by: { $0.modifiedAt > $1.modifiedAt })) { note in
+                            ProjectNoteRow(note: note) {
+                                withAnimation(DS.Animation.standard) {
+                                    appState.navigateToNoteInProject(note.id)
+                                }
+                            }
                         }
-
-                        Spacer()
                     }
+                    .background(DS.Colors.borderSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.md)
+                            .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                    )
                     .padding(.horizontal, DS.Spacing.xl)
-                    .padding(.vertical, DS.Spacing.md)
-
-                    if note.id != project.notes.last?.id {
-                        Divider()
-                            .padding(.leading, DS.Spacing.xl + 20 + DS.Spacing.md)
-                    }
+                    .padding(.vertical, DS.Spacing.sm)
                 }
             }
         }
+    }
+
+    private func createTaskInProject() {
+        let task = TaskItem(title: "New Task")
+        task.project = project
+        modelContext.insert(task)
+        appState.navigateToTaskInProject(task.id)
+    }
+
+    private func createNoteInProject() {
+        let note = Note(title: "Untitled Note")
+        note.project = project
+        modelContext.insert(note)
+        appState.navigateToNoteInProject(note.id)
+    }
+}
+
+// MARK: - Split Drag Handle
+
+private struct SplitDragHandle: View {
+    @State private var isHovered = false
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(isHovered ? DS.Colors.borderStrong : DS.Colors.border)
+                .frame(height: 1)
+
+            Capsule()
+                .fill(isHovered ? DS.Colors.textTertiary : DS.Colors.borderStrong)
+                .frame(width: 36, height: 4)
+        }
+        .frame(height: 8)
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering {
+                NSCursor.resizeUpDown.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+        .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+// MARK: - Task Row
+
+private struct ProjectTaskRow: View {
+    let task: TaskItem
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DS.Spacing.md) {
+                Image(systemName: task.status.icon)
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
+                    .foregroundStyle(task.status.color)
+                    .frame(width: 18)
+
+                Text(task.title)
+                    .font(DS.Font.body)
+                    .lineLimit(1)
+                    .foregroundStyle(task.status == .done ? DS.Colors.textTertiary : DS.Colors.textPrimary)
+
+                Spacer()
+
+                if task.priority != .none {
+                    Image(systemName: task.priority.icon)
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(task.priority.color)
+                }
+
+                if let due = task.dueDate {
+                    Text(due.shortFormatted)
+                        .font(DS.Font.tiny)
+                        .foregroundStyle(task.isOverdue ? DS.Colors.error : DS.Colors.textTertiary)
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .opacity(isHovered ? 1 : 0)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm + 2)
+            .background(isHovered ? DS.Colors.hoverBg : DS.Colors.surface)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+// MARK: - Note Row
+
+private struct ProjectNoteRow: View {
+    let note: Note
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DS.Spacing.md) {
+                Image(systemName: note.isPinned ? "pin.fill" : "doc.text")
+                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    .foregroundStyle(note.isPinned ? DS.Colors.warning : DS.Colors.textTertiary)
+                    .frame(width: 18)
+
+                Text(note.title.isEmpty ? "Untitled" : note.title)
+                    .font(DS.Font.body)
+                    .lineLimit(1)
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                Spacer()
+
+                Text(note.modifiedAt.relativeFormatted)
+                    .font(DS.Font.tiny)
+                    .foregroundStyle(DS.Colors.textTertiary)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .opacity(isHovered ? 1 : 0)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm + 2)
+            .background(isHovered ? DS.Colors.hoverBg : DS.Colors.surface)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

@@ -15,7 +15,7 @@ struct TaskRowView: View {
                     .foregroundStyle(task.status == .done ? DS.Colors.success : DS.Colors.textSecondary)
                     .font(.system(size: DS.IconSize.lg))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.plainPointer)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(task.title.isEmpty ? "Untitled" : task.title)

@@ -4,106 +4,172 @@ import SwiftData
 struct TaskDetailView: View {
     @Bindable var task: TaskItem
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @State private var showCustomPoints = false
+    @State private var customPointsText = ""
+    @State private var showCalendar = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-                TextField("Task title", text: $task.title)
-                    .textFieldStyle(.plain)
-                    .font(DS.Font.detailTitle)
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("What needs to be done?", text: $task.title)
+                .textFieldStyle(.plain)
+                .font(DS.Font.title)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.top, DS.Spacing.lg)
+                .padding(.bottom, DS.Spacing.md)
 
-                VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                    HStack(spacing: DS.Spacing.lg) {
-                        Picker("Status", selection: $task.status) {
-                            ForEach(TaskStatus.allCases) { status in
+            // Compact metadata chips
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.Spacing.sm) {
+                    metadataChip(icon: task.status.icon, color: task.status.color, text: task.status.rawValue) {
+                        ForEach(TaskStatus.allCases) { status in
+                            Button { task.status = status } label: {
                                 Label(status.rawValue, systemImage: status.icon)
-                                    .tag(status)
                             }
                         }
-                        .pickerStyle(.menu)
-
-                        Picker("Priority", selection: $task.priority) {
-                            ForEach(TaskPriority.allCases) { priority in
-                                Label(priority.rawValue, systemImage: priority.icon)
-                                    .tag(priority)
-                            }
-                        }
-                        .pickerStyle(.menu)
-
-                        Picker("Story Points", selection: Binding(
-                            get: { task.storyPoints ?? -1 },
-                            set: { task.storyPoints = $0 == -1 ? nil : $0 }
-                        )) {
-                            Text("None").tag(-1)
-                            ForEach(AppConstants.fibonacciPoints, id: \.self) { point in
-                                Text("\(point)").tag(point)
-                            }
-                        }
-                        .pickerStyle(.menu)
                     }
 
-                    HStack(spacing: DS.Spacing.lg) {
-                        DatePicker("Due Date",
-                            selection: Binding(
-                                get: { task.dueDate ?? Date() },
+                    metadataChip(icon: task.priority.icon, color: task.priority.color, text: task.priority.rawValue) {
+                        ForEach(TaskPriority.allCases) { priority in
+                            Button { task.priority = priority } label: {
+                                Label(priority.rawValue, systemImage: priority.icon)
+                            }
+                        }
+                    }
+
+                    // Story points
+                    metadataChip(icon: "number", color: DS.Colors.textSecondary, text: task.storyPoints.map { "\($0) pts" } ?? "Points") {
+                        Button { task.storyPoints = nil } label: { Text("None") }
+                        Divider()
+                        ForEach(AppConstants.storyPointOptions, id: \.self) { point in
+                            Button { task.storyPoints = point } label: { Text("\(point)") }
+                        }
+                        Divider()
+                        Button { showCustomPoints = true } label: {
+                            Label("Custom...", systemImage: "number.square")
+                        }
+                    }
+
+                    // Due date
+                    Button { showCalendar.toggle() } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "calendar")
+                                .font(.system(size: DS.IconSize.xs))
+                                .foregroundStyle(dueDateColor)
+                            Text(task.dueDate?.shortFormatted ?? "Due date")
+                                .foregroundStyle(task.dueDate == nil ? DS.Colors.textTertiary : dueDateColor)
+                        }
+                        .font(DS.Font.caption)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
+                    .popover(isPresented: $showCalendar) {
+                        DSCalendarPicker(
+                            selectedDate: Binding(
+                                get: { task.dueDate },
                                 set: { task.dueDate = $0 }
                             ),
-                            displayedComponents: .date
+                            isPresented: $showCalendar
                         )
+                    }
 
-                        if task.dueDate != nil {
-                            Button("Clear") { task.dueDate = nil }
-                                .font(DS.Font.caption)
-                                .foregroundStyle(DS.Colors.textSecondary)
-                        }
-
-                        Spacer()
-
-                        Picker("Project", selection: Binding(
-                            get: { task.project },
-                            set: { task.project = $0 }
-                        )) {
-                            Text("No Project").tag(nil as Project?)
-                            ForEach(projects) { project in
-                                HStack {
-                                    Circle()
-                                        .fill(Color(hex: project.color))
-                                        .frame(width: 8, height: 8)
-                                    Text(project.name)
-                                }
-                                .tag(project as Project?)
+                    // Project
+                    metadataChip(
+                        icon: "folder",
+                        color: task.project.map { Color(hex: $0.color) } ?? DS.Colors.textSecondary,
+                        text: task.project?.name ?? "Project"
+                    ) {
+                        Button { task.project = nil } label: { Text("None") }
+                        Divider()
+                        ForEach(projects) { project in
+                            Button { task.project = project } label: {
+                                Label(project.name, systemImage: "folder")
                             }
                         }
-                        .pickerStyle(.menu)
                     }
                 }
-
-                Divider()
-
-                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                    Text("Description")
-                        .font(DS.Font.sectionLabel)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                        .textCase(.uppercase)
-
-                    TextEditor(text: $task.detail)
-                        .font(DS.Font.body)
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 200)
-                        .padding(DS.Spacing.md)
-                        .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DS.Radius.md)
-                                .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
-                        )
-                }
+                .padding(.horizontal, DS.Spacing.xl)
             }
-            .padding(DS.Spacing.xl)
+            .padding(.bottom, DS.Spacing.md)
+
+            // Rich markdown editor (toolbar is built-in)
+            RichMarkdownEditor(text: $task.detail)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: task.title) { task.modifiedAt = Date() }
         .onChange(of: task.detail) { task.modifiedAt = Date() }
         .onChange(of: task.statusRaw) { task.modifiedAt = Date() }
         .onChange(of: task.priorityRaw) { task.modifiedAt = Date() }
+        .sheet(isPresented: $showCustomPoints) {
+            CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
+        }
+    }
+
+    private var dueDateColor: Color {
+        task.isOverdue ? DS.Colors.error : DS.Colors.textPrimary
+    }
+
+    @ViewBuilder
+    private func metadataChip<MenuContent: View>(
+        icon: String,
+        color: Color,
+        text: String,
+        @ViewBuilder menu: () -> MenuContent
+    ) -> some View {
+        Menu {
+            menu()
+        } label: {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: DS.IconSize.xs))
+                    .foregroundStyle(color)
+                Text(text)
+            }
+            .font(DS.Font.caption)
+            .padding(.horizontal, DS.Spacing.sm + 2)
+            .padding(.vertical, DS.Spacing.xs + 2)
+            .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        }
+        .buttonStyle(.plainPointer)
     }
 }
+
+// MARK: - Custom Points Sheet
+
+private struct CustomPointsSheet: View {
+    @Binding var points: Int?
+    @Binding var isPresented: Bool
+    @State private var text = ""
+
+    var body: some View {
+        VStack(spacing: DS.Spacing.lg) {
+            Text("Custom Story Points")
+                .font(DS.Font.heading)
+
+            TextField("Enter points", text: $text)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 120)
+                .onSubmit { apply() }
+
+            HStack(spacing: DS.Spacing.md) {
+                Button("Cancel") { isPresented = false }
+                    .buttonStyle(.plainPointer)
+                Button("Apply") { apply() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(Int(text) == nil)
+            }
+        }
+        .padding(DS.Spacing.xl)
+        .frame(width: 240)
+    }
+
+    private func apply() {
+        if let val = Int(text) {
+            points = val
+        }
+        isPresented = false
+    }
+}
+

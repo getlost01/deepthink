@@ -87,7 +87,7 @@ struct SidebarView: View {
                     .padding(.horizontal, DS.Spacing.md)
                     .padding(.vertical, DS.Spacing.sm)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plainPointer)
             }
         }
         .frame(width: isExpanded ? DS.Layout.sidebarWidth : 52)
@@ -132,7 +132,7 @@ private struct SidebarItem: View {
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
         .help(isExpanded ? "" : section.rawValue)

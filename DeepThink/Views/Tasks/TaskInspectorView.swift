@@ -31,6 +31,7 @@ struct TaskInspectorView: View {
 
 private struct TaskInspectorContent: View {
     let task: TaskItem
+    @Environment(AppState.self) private var appState
 
     var body: some View {
         Form {
@@ -70,12 +71,22 @@ private struct TaskInspectorContent: View {
 
             if let project = task.project {
                 Section("Project") {
-                    HStack(spacing: DS.Spacing.sm) {
-                        Circle()
-                            .fill(Color(hex: project.color))
-                            .frame(width: 8, height: 8)
-                        Text(project.name)
+                    Button {
+                        appState.navigateToProject(project.id)
+                    } label: {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Circle()
+                                .fill(Color(hex: project.color))
+                                .frame(width: 8, height: 8)
+                            Text(project.name)
+                                .foregroundStyle(DS.Colors.accent)
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: DS.IconSize.xs))
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
                     }
+                    .buttonStyle(.plainPointer)
                 }
             }
 

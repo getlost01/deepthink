@@ -47,8 +47,9 @@ struct ProjectListView: View {
 
             List(selection: $appState.selectedProjectID) {
                 ForEach(projects) { project in
-                    ProjectRow(project: project)
+                    ProjectCard(project: project)
                         .tag(project.id)
+                        .listRowInsets(EdgeInsets(top: 2, leading: DS.Spacing.sm, bottom: 2, trailing: DS.Spacing.sm))
                         .contextMenu {
                             Button(project.isArchived ? "Unarchive" : "Archive") {
                                 project.isArchived.toggle()
@@ -70,7 +71,7 @@ struct ProjectListView: View {
                     DSEmptyState(
                         icon: "folder",
                         title: "No Projects Yet",
-                        subtitle: "Projects help you organize related notes and tasks into focused workstreams",
+                        subtitle: "Create a project to organize notes and tasks",
                         action: createProject,
                         actionTitle: "New Project"
                     )
@@ -85,6 +86,9 @@ struct ProjectListView: View {
                 debouncedSearch = searchText
             }
         }
+        .onChange(of: appState.selectedProjectID) {
+            appState.projectDetailMode = .overview
+        }
         .onReceive(NotificationCenter.default.publisher(for: .createNewProject)) { _ in
             createProject()
         }
@@ -97,39 +101,49 @@ struct ProjectListView: View {
     }
 }
 
-private struct ProjectRow: View {
+private struct ProjectCard: View {
     let project: Project
+    @State private var isHovered = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            HStack(spacing: DS.Spacing.sm) {
-                Circle()
-                    .fill(Color(hex: project.color))
-                    .frame(width: 8, height: 8)
-                Text(project.name)
-                    .font(DS.Font.body)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                if project.isArchived {
-                    DSPill(text: "Archived", color: .secondary)
+        HStack(spacing: DS.Spacing.md) {
+            Circle()
+                .fill(Color(hex: project.color))
+                .frame(width: 10, height: 10)
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text(project.name)
+                        .font(DS.Font.body)
+                        .fontWeight(.medium)
+                        .lineLimit(1)
+                    if project.isArchived {
+                        DSPill(text: "Archived", color: .secondary)
+                    }
                 }
-            }
-            HStack(spacing: 0) {
                 if !project.summary.isEmpty {
                     Text(project.summary)
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .lineLimit(1)
                 }
-                Spacer()
-                HStack(spacing: DS.Spacing.md) {
-                    Label("\(project.notes.count)", systemImage: "doc.text")
-                    Label("\(project.openTaskCount)", systemImage: "checklist")
+            }
+
+            Spacer()
+
+            HStack(spacing: DS.Spacing.sm) {
+                if project.notes.count > 0 {
+                    Text("\(project.notes.count)")
+                        .font(DS.Font.tiny)
+                        .foregroundStyle(DS.Colors.textTertiary)
                 }
-                .font(DS.Font.tiny)
-                .foregroundStyle(DS.Colors.textTertiary)
+                if project.openTaskCount > 0 {
+                    Text("\(project.openTaskCount)")
+                        .font(DS.Font.tiny)
+                        .foregroundStyle(DS.Colors.info)
+                }
             }
         }
-        .padding(.vertical, DS.Spacing.xs)
+        .padding(.vertical, DS.Spacing.sm)
     }
 }

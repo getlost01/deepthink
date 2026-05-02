@@ -8,14 +8,26 @@ struct NoteListView: View {
     @State private var searchText = ""
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
+    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
 
     private var filteredNotes: [Note] {
-        if debouncedSearch.isEmpty { return notes }
-        let lowered = debouncedSearch.lowercased()
-        return notes.filter {
-            $0.title.lowercased().contains(lowered) ||
-            $0.content.lowercased().contains(lowered)
+        var result = notes
+        if let projectID = appState.filterProjectID {
+            result = result.filter { $0.project?.id == projectID }
         }
+        if !debouncedSearch.isEmpty {
+            let lowered = debouncedSearch.lowercased()
+            result = result.filter {
+                $0.title.lowercased().contains(lowered) ||
+                $0.content.lowercased().contains(lowered)
+            }
+        }
+        return result
+    }
+
+    private var filterProjectName: String? {
+        guard let id = appState.filterProjectID else { return nil }
+        return allProjects.first { $0.id == id }?.name
     }
 
     var body: some View {
@@ -32,6 +44,28 @@ struct NoteListView: View {
             DSSearchField(text: $searchText, placeholder: "Search notes...")
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.bottom, DS.Spacing.sm)
+
+            if let projectName = filterProjectName {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.accent)
+                    Text(projectName)
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                    Button {
+                        appState.filterByProject(nil)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plainPointer)
+                    Spacer()
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.sm)
+            }
 
             Divider()
 

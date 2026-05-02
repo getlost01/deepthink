@@ -287,7 +287,7 @@ private struct SearchResultRow: View {
             .padding(DS.Spacing.md)
             .dsClickable()
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
     }
 }
 
@@ -308,7 +308,7 @@ private struct SearchSuggestion: View {
             .padding(DS.Spacing.sm)
             .background(DS.Colors.subtleBg, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .frame(maxWidth: 360)
     }
 }

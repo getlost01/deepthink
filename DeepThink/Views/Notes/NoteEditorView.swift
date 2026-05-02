@@ -6,7 +6,6 @@ struct NoteEditorView: View {
     @FocusState private var titleFocused: Bool
     @State private var saveTask: Task<Void, Never>?
     @Environment(\.modelContext) private var modelContext
-    @State private var showPreview = false
     @State private var aiProcessing = false
     @State private var showAIMenu = false
     @State private var showVersions = false
@@ -15,7 +14,7 @@ struct NoteEditorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
-                TextField("Note title", text: $note.title)
+                TextField("Give your note a title...", text: $note.title)
                     .textFieldStyle(.plain)
                     .font(DS.Font.detailTitle)
                     .focused($titleFocused)
@@ -39,29 +38,13 @@ struct NoteEditorView: View {
                         showVersions = true
                     }
                     .help("Version History")
-
-                    Picker("", selection: $showPreview) {
-                        Image(systemName: "pencil").tag(false)
-                        Image(systemName: "eye").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(width: 80)
                 }
             }
             .frame(height: DS.Layout.headerHeight)
             .padding(.horizontal, DS.Spacing.xl)
 
-            Divider()
-
-            if showPreview {
-                MarkdownRendererView(markdown: note.content)
-            } else {
-                TextEditor(text: $note.content)
-                    .font(.body.monospaced())
-                    .scrollContentBackground(.hidden)
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.top, DS.Spacing.sm)
-            }
+            RichMarkdownEditor(text: $note.content)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: note.content) { debouncedSave() }
@@ -231,7 +214,7 @@ private struct AIActionRow: View {
             .background(isHovered ? DS.Colors.hoverBg : .clear)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
     }
 }

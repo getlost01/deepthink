@@ -70,6 +70,26 @@ private struct NoteInspectorContent: View {
                     }
                 }
 
+                if let project = note.project {
+                    Button {
+                        appState.navigateToProject(project.id)
+                    } label: {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Circle()
+                                .fill(Color(hex: project.color))
+                                .frame(width: 8, height: 8)
+                            Text("Go to \(project.name)")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.accent)
+                            Spacer()
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: DS.IconSize.xs))
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+
                 Toggle("Pinned", isOn: $note.isPinned)
             }
 
@@ -98,7 +118,7 @@ private struct NoteInspectorContent: View {
                                     .lineLimit(1)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                     }
                 }
             }
@@ -118,7 +138,7 @@ private struct NoteInspectorContent: View {
                                     .lineLimit(1)
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                     }
                 }
             }

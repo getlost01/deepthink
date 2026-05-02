@@ -41,14 +41,14 @@ struct DeepThinkApp: App {
             CommandGroup(replacing: .newItem) {
                 Button("New Note") {
                     appState.selectedSection = .workspace
-                    appState.workspaceTab = .notes
+                    appState.workspaceTab = .projects
                     NotificationCenter.default.post(name: .createNewNote, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: .command)
 
                 Button("New Task") {
                     appState.selectedSection = .workspace
-                    appState.workspaceTab = .tasks
+                    appState.workspaceTab = .projects
                     NotificationCenter.default.post(name: .createNewTask, object: nil)
                 }
                 .keyboardShortcut("t", modifiers: .command)
@@ -96,23 +96,17 @@ struct DeepThinkApp: App {
 
                 Divider()
 
-                Button("Notes Tab") {
-                    appState.selectedSection = .workspace
-                    appState.workspaceTab = .notes
-                }
-                .keyboardShortcut("1", modifiers: [.command, .shift])
-
-                Button("Tasks Tab") {
-                    appState.selectedSection = .workspace
-                    appState.workspaceTab = .tasks
-                }
-                .keyboardShortcut("2", modifiers: [.command, .shift])
-
                 Button("Projects Tab") {
                     appState.selectedSection = .workspace
                     appState.workspaceTab = .projects
                 }
-                .keyboardShortcut("3", modifiers: [.command, .shift])
+                .keyboardShortcut("1", modifiers: [.command, .shift])
+
+                Button("Knowledge Base") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .knowledge
+                }
+                .keyboardShortcut("2", modifiers: [.command, .shift])
             }
         }
         .defaultSize(width: 1200, height: 800)
@@ -123,12 +117,12 @@ struct DeepThinkApp: App {
             // Create
             Command(title: "New Note", icon: "doc.text.badge.plus", shortcut: "⌘N", section: "Create") {
                 appState.selectedSection = .workspace
-                appState.workspaceTab = .notes
+                appState.workspaceTab = .projects
                 NotificationCenter.default.post(name: .createNewNote, object: nil)
             },
             Command(title: "New Task", icon: "plus.circle", shortcut: "⌘T", section: "Create") {
                 appState.selectedSection = .workspace
-                appState.workspaceTab = .tasks
+                appState.workspaceTab = .projects
                 NotificationCenter.default.post(name: .createNewTask, object: nil)
             },
             Command(title: "New Project", icon: "folder.badge.plus", shortcut: "⇧⌘N", section: "Create") {
@@ -141,17 +135,13 @@ struct DeepThinkApp: App {
             Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘1", section: "Navigate") {
                 appState.navigate(to: .workspace)
             },
-            Command(title: "Notes", icon: "doc.text", shortcut: "⇧⌘1", section: "Navigate") {
-                appState.selectedSection = .workspace
-                appState.workspaceTab = .notes
-            },
-            Command(title: "Tasks", icon: "checklist", shortcut: "⇧⌘2", section: "Navigate") {
-                appState.selectedSection = .workspace
-                appState.workspaceTab = .tasks
-            },
-            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘3", section: "Navigate") {
+            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘1", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .projects
+            },
+            Command(title: "Knowledge Base", icon: "brain", shortcut: "⇧⌘2", section: "Navigate") {
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .knowledge
             },
             Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
                 appState.selectedSection = .ai

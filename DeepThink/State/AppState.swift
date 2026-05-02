@@ -8,10 +8,19 @@ final class AppState {
     var searchQuery: String = ""
 
     // Workspace sub-navigation
-    var workspaceTab: WorkspaceTab = .notes
+    var workspaceTab: WorkspaceTab = .projects
     var selectedNoteID: UUID?
     var selectedTaskID: UUID?
     var selectedProjectID: UUID?
+    var filterProjectID: UUID?
+
+    // Project detail sub-navigation
+    enum ProjectDetailMode: Equatable {
+        case overview
+        case taskDetail(UUID)
+        case noteDetail(UUID)
+    }
+    var projectDetailMode: ProjectDetailMode = .overview
 
     // AI sub-navigation
     var aiMode: AIMode = .chat
@@ -26,13 +35,13 @@ final class AppState {
 
     func navigateToNote(_ id: UUID) {
         selectedSection = .workspace
-        workspaceTab = .notes
+        workspaceTab = .projects
         selectedNoteID = id
     }
 
     func navigateToTask(_ id: UUID) {
         selectedSection = .workspace
-        workspaceTab = .tasks
+        workspaceTab = .projects
         selectedTaskID = id
     }
 
@@ -40,6 +49,22 @@ final class AppState {
         selectedSection = .workspace
         workspaceTab = .projects
         selectedProjectID = id
+    }
+
+    func navigateToNoteInProject(_ noteID: UUID) {
+        projectDetailMode = .noteDetail(noteID)
+    }
+
+    func navigateToTaskInProject(_ taskID: UUID) {
+        projectDetailMode = .taskDetail(taskID)
+    }
+
+    func backToProjectOverview() {
+        projectDetailMode = .overview
+    }
+
+    func filterByProject(_ projectID: UUID?) {
+        filterProjectID = projectID
     }
 
     func toggleCommandPalette() {

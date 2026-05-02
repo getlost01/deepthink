@@ -151,7 +151,7 @@ private struct TerminalTabButton: View {
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
                 }
             }
             .padding(.horizontal, DS.Spacing.sm)
@@ -164,7 +164,7 @@ private struct TerminalTabButton: View {
             )
             .foregroundStyle(isActive ? DS.Colors.textPrimary : DS.Colors.textSecondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
     }

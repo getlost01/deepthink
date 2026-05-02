@@ -57,7 +57,7 @@ struct AnalysisView: View {
                             .font(.system(size: DS.IconSize.xl - 2))
                             .foregroundStyle(commandText.isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
                     .disabled(commandText.isEmpty || isRunning)
                 }
                 .dsInputField()
@@ -119,7 +119,7 @@ struct AnalysisView: View {
                                         .padding(DS.Spacing.md)
                                         .dsClickable()
                                     }
-                                    .buttonStyle(.plain)
+                                    .buttonStyle(.plainPointer)
                                 }
                             }
                             .padding(.horizontal, DS.Spacing.xl)

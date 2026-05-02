@@ -82,7 +82,7 @@ struct ToolsHubView: View {
                                 .padding(.vertical, DS.Spacing.xs)
                                 .background(selectedCategory == cat ? DS.Colors.selectedBg : .clear, in: Capsule())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                     }
                 }
                 .padding(.horizontal, DS.Spacing.xl)
@@ -118,7 +118,7 @@ struct ToolsHubView: View {
                     Spacer()
                     Button("Dismiss") { self.testResult = nil }
                         .font(DS.Font.caption)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                 }
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
@@ -246,7 +246,7 @@ private struct ToolCard: View {
                     Image(systemName: "trash")
                         .font(DS.Font.tiny)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plainPointer)
                 .foregroundStyle(DS.Colors.error.opacity(0.5))
             }
         }
@@ -286,7 +286,7 @@ private struct AddServerSheet: View {
                     .font(DS.Font.heading)
                 Spacer()
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
             }
             .padding(DS.Spacing.lg)
 
@@ -335,7 +335,7 @@ private struct PresetServersSheet: View {
                     .font(DS.Font.heading)
                 Spacer()
                 Button("Done") { dismiss() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
             }
             .padding(DS.Spacing.lg)
 

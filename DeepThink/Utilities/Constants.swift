@@ -13,4 +13,5 @@ enum AppConstants {
     static let documentsPath = "DeepThink"
 
     static let fibonacciPoints = [0, 1, 2, 3, 5, 8, 13, 21]
+    static let storyPointOptions = [1, 2, 3, 4, 5, 10, 15]
 }

@@ -164,7 +164,7 @@ private struct FileNodeRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(isSelected ? DS.Colors.selectedBg : .clear)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.plainPointer)
 
             if node.isDirectory && isExpanded, let children = node.children {
                 ForEach(children) { child in

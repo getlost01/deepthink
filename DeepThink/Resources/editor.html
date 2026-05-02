@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: transparent;
+    --text: #d4d4d4;
+    --text-dim: #808080;
+    --border: rgba(255,255,255,0.08);
+    --accent: #007AFF;
+    --code-bg: rgba(255,255,255,0.06);
+    --code-text: #e5c07b;
+    --block-bg: rgba(255,255,255,0.04);
+    --toolbar-bg: rgba(255,255,255,0.02);
+    --toolbar-border: rgba(255,255,255,0.06);
+    --highlight: rgba(255,230,0,0.25);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --text: #1d1d1f;
+      --text-dim: #86868b;
+      --border: rgba(0,0,0,0.08);
+      --code-bg: rgba(0,0,0,0.05);
+      --code-text: #9a6700;
+      --block-bg: rgba(0,0,0,0.025);
+      --toolbar-bg: rgba(0,0,0,0.015);
+      --toolbar-border: rgba(0,0,0,0.06);
+      --highlight: rgba(255,230,0,0.35);
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #toolbar {
+    display: flex;
+    gap: 1px;
+    padding: 3px 10px;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--toolbar-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    align-items: center;
+    user-select: none;
+    -webkit-user-select: none;
+    overflow-x: auto;
+  }
+
+  .tb-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px;
+    border: none; background: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.12s;
+    flex-shrink: 0;
+  }
+  .tb-btn:hover { background: var(--border); color: var(--text); }
+  .tb-btn.active { background: var(--accent); color: white; }
+  .tb-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  .tb-sep {
+    width: 1px; height: 18px;
+    background: var(--border);
+    margin: 0 3px;
+    flex-shrink: 0;
+  }
+
+  .tb-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  /* Editor */
+  .ProseMirror { padding: 14px 18px; outline: none; min-height: calc(100vh - 38px); }
+  .ProseMirror > * + * { margin-top: 0.4em; }
+  .ProseMirror p { margin: 0 0 4px; }
+
+  .ProseMirror h1 { font-size: 24px; font-weight: 700; margin: 20px 0 6px; line-height: 1.25; }
+  .ProseMirror h2 { font-size: 19px; font-weight: 700; margin: 16px 0 4px; line-height: 1.3; }
+  .ProseMirror h3 { font-size: 15px; font-weight: 600; margin: 12px 0 4px; line-height: 1.4; }
+
+  .ProseMirror strong { font-weight: 700; }
+  .ProseMirror em { font-style: italic; }
+  .ProseMirror u { text-decoration: underline; }
+  .ProseMirror s { text-decoration: line-through; color: var(--text-dim); }
+
+  .ProseMirror mark { background: var(--highlight); border-radius: 2px; padding: 0 2px; }
+
+  .ProseMirror code {
+    font-family: 'Menlo', 'SF Mono', monospace;
+    font-size: 11.5px;
+    background: var(--code-bg);
+    color: var(--code-text);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .ProseMirror pre {
+    font-family: 'Menlo', 'SF Mono', monospace;
+    font-size: 12px;
+    background: var(--block-bg);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin: 10px 0;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  .ProseMirror pre code {
+    background: none; padding: 0; color: var(--text); border-radius: 0; font-weight: 400;
+  }
+
+  .ProseMirror blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 14px;
+    margin: 8px 0;
+    color: var(--text-dim);
+  }
+
+  .ProseMirror ul, .ProseMirror ol { padding-left: 24px; margin: 4px 0; }
+  .ProseMirror li { margin: 2px 0; }
+  .ProseMirror li p { margin: 0; }
+
+  .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 4px; }
+  .ProseMirror ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 8px; }
+  .ProseMirror ul[data-type="taskList"] li label { margin-top: 3px; cursor: pointer; }
+  .ProseMirror ul[data-type="taskList"] li label input[type="checkbox"] {
+    width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer;
+  }
+  .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div > p {
+    text-decoration: line-through; color: var(--text-dim);
+  }
+
+  .ProseMirror a { color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+  .ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    color: var(--text-dim); pointer-events: none; float: left; height: 0; opacity: 0.5;
+  }
+
+  .ProseMirror ::selection { background: rgba(0, 122, 255, 0.25); }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <!-- Text formatting -->
+  <button class="tb-btn" data-action="bold" title="Bold ⌘B">
+    <svg viewBox="0 0 24 24"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
+  </button>
+  <button class="tb-btn" data-action="italic" title="Italic ⌘I">
+    <svg viewBox="0 0 24 24"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>
+  </button>
+  <button class="tb-btn" data-action="underline" title="Underline ⌘U">
+    <svg viewBox="0 0 24 24"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/><line x1="4" y1="21" x2="20" y2="21"/></svg>
+  </button>
+  <button class="tb-btn" data-action="strike" title="Strikethrough ⌘⇧X">
+    <svg viewBox="0 0 24 24"><path d="M16 4c-1.5-1.2-3.5-2-6-2-3 0-5 1.5-5 4 0 2 1.5 3 4 3.5"/><line x1="4" y1="12" x2="20" y2="12"/><path d="M15 12.5c1 .5 2 1.5 2 3 0 2.5-2 4-5 4-2.5 0-4.5-.8-6-2"/></svg>
+  </button>
+  <button class="tb-btn" data-action="highlight" title="Highlight">
+    <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Headings -->
+  <button class="tb-btn" data-action="h1" title="Heading 1 ⌘⇧1"><span class="tb-label">H1</span></button>
+  <button class="tb-btn" data-action="h2" title="Heading 2 ⌘⇧2"><span class="tb-label">H2</span></button>
+  <button class="tb-btn" data-action="h3" title="Heading 3 ⌘⇧3"><span class="tb-label">H3</span></button>
+  <button class="tb-btn" data-action="body" title="Body text ⌘⇧0"><span class="tb-label" style="font-weight:400">P</span></button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Lists -->
+  <button class="tb-btn" data-action="bulletList" title="Bullet List">
+    <svg viewBox="0 0 24 24"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="5" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="5" cy="18" r="1.5" fill="currentColor" stroke="none"/></svg>
+  </button>
+  <button class="tb-btn" data-action="orderedList" title="Numbered List">
+    <svg viewBox="0 0 24 24"><line x1="10" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="10" y1="18" x2="20" y2="18"/><text x="4" y="8" font-size="7" fill="currentColor" stroke="none" font-weight="700">1</text><text x="4" y="14" font-size="7" fill="currentColor" stroke="none" font-weight="700">2</text><text x="4" y="20" font-size="7" fill="currentColor" stroke="none" font-weight="700">3</text></svg>
+  </button>
+  <button class="tb-btn" data-action="taskList" title="Checklist">
+    <svg viewBox="0 0 24 24"><rect x="3" y="5" width="6" height="6" rx="1"/><path d="M5 8l1.5 1.5L9 7"/><line x1="13" y1="8" x2="21" y2="8"/><rect x="3" y="13" width="6" height="6" rx="1"/><line x1="13" y1="16" x2="21" y2="16"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Blocks -->
+  <button class="tb-btn" data-action="link" title="Link ⌘K">
+    <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+  </button>
+  <button class="tb-btn" data-action="code" title="Inline Code ⌘E">
+    <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+  </button>
+  <button class="tb-btn" data-action="codeBlock" title="Code Block">
+    <svg viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/><rect x="1" y="1" width="22" height="22" rx="3" stroke-width="1.2" stroke-dasharray="0"/></svg>
+  </button>
+  <button class="tb-btn" data-action="blockquote" title="Quote">
+    <svg viewBox="0 0 24 24"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+  </button>
+  <button class="tb-btn" data-action="hr" title="Divider">
+    <svg viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12" stroke-width="2"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Alignment -->
+  <button class="tb-btn" data-action="alignLeft" title="Align Left">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/></svg>
+  </button>
+  <button class="tb-btn" data-action="alignCenter" title="Align Center">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="6" y1="12" x2="18" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+  </button>
+  <button class="tb-btn" data-action="alignRight" title="Align Right">
+    <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/></svg>
+  </button>
+</div>
+
+<div id="editor"></div>
+
+<script src="editor.bundle.js"></script>
+</body>
+</html>

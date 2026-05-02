@@ -158,7 +158,7 @@ struct DSSectionHeader: View {
                 Button("View All", action: action)
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.accent)
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
             }
         }
     }
@@ -282,7 +282,7 @@ struct DSActionButton: View {
             .padding(.vertical, DS.Spacing.sm)
             .background(color.opacity(isHovered ? 0.15 : 0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
     }
 }
@@ -329,7 +329,7 @@ struct DSEmptyState: View {
                     .padding(.vertical, DS.Spacing.md)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plainPointer)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -443,7 +443,7 @@ struct DSToolbarButton: View {
                 .frame(width: 28, height: 28)
                 .background(isHovered ? DS.Colors.hoverBg : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
         .accessibilityLabel(label ?? icon)
@@ -474,6 +474,88 @@ struct DSStatChip: View {
             RoundedRectangle(cornerRadius: DS.Radius.sm)
                 .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
         )
+    }
+}
+
+// MARK: - Labeled Text Field
+
+struct DSLabeledTextField: View {
+    let label: String
+    @Binding var text: String
+    var placeholder: String = ""
+    var axis: Axis = .horizontal
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text(label)
+                .font(DS.Font.sectionLabel)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .textCase(.uppercase)
+
+            TextField(placeholder.isEmpty ? label : placeholder, text: $text, axis: axis)
+                .textFieldStyle(.plain)
+                .font(DS.Font.body)
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.md)
+                .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                        .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                )
+        }
+    }
+}
+
+struct DSLabeledTextEditor: View {
+    let label: String
+    @Binding var text: String
+    var minHeight: CGFloat = 200
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text(label)
+                .font(DS.Font.sectionLabel)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .textCase(.uppercase)
+
+            TextEditor(text: $text)
+                .font(DS.Font.body)
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: minHeight)
+                .padding(DS.Spacing.md)
+                .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                        .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+                )
+        }
+    }
+}
+
+struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
+    let label: String
+    @Binding var selection: SelectionValue
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text(label)
+                .font(DS.Font.sectionLabel)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .textCase(.uppercase)
+
+            Picker("", selection: $selection) {
+                content()
+            }
+            .pickerStyle(.menu)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.xs)
+            .background(DS.Colors.inputBg, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.borderSubtle, lineWidth: 1)
+            )
+        }
     }
 }
 
@@ -558,4 +640,287 @@ extension View {
         self
             .frame(width: DS.Layout.listPanelWidth)
     }
+
+    func pointerOnHover() -> some View {
+        self.onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
+    }
+}
+
+// MARK: - Pointer Cursor Button Style
+
+struct PointerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+    }
+}
+
+struct PlainPointerButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.8 : 1.0)
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.pointingHand.push()
+                } else {
+                    NSCursor.pop()
+                }
+            }
+    }
+}
+
+extension ButtonStyle where Self == PlainPointerButtonStyle {
+    static var plainPointer: PlainPointerButtonStyle { PlainPointerButtonStyle() }
+}
+
+// MARK: - Custom Calendar Picker
+
+struct DSCalendarPicker: View {
+    @Binding var selectedDate: Date?
+    @Binding var isPresented: Bool
+    @State private var displayMonth: Date = Date()
+
+    private let calendar = Calendar.current
+    private let weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+
+    private var monthTitle: String {
+        displayMonth.formatted(.dateTime.month(.wide).year())
+    }
+
+    private var daysInMonth: [Date?] {
+        let range = calendar.range(of: .day, in: .month, for: displayMonth)!
+        let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayMonth))!
+        var weekday = calendar.component(.weekday, from: firstDay)
+        weekday = (weekday + 5) % 7
+
+        var days: [Date?] = Array(repeating: nil, count: weekday)
+        for day in range {
+            days.append(calendar.date(byAdding: .day, value: day - 1, to: firstDay))
+        }
+        return days
+    }
+
+    var body: some View {
+        VStack(spacing: DS.Spacing.md) {
+            // Quick options
+            HStack(spacing: DS.Spacing.sm) {
+                quickButton("Today", date: Date())
+                quickButton("Tomorrow", date: calendar.date(byAdding: .day, value: 1, to: Date())!)
+                quickButton("+1w", date: calendar.date(byAdding: .weekOfYear, value: 1, to: Date())!)
+            }
+
+            Divider()
+
+            // Month nav
+            HStack {
+                Button {
+                    withAnimation(DS.Animation.quick) {
+                        displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth)!
+                    }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plainPointer)
+
+                Spacer()
+
+                Text(monthTitle)
+                    .font(DS.Font.caption)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Button {
+                    withAnimation(DS.Animation.quick) {
+                        displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth)!
+                    }
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plainPointer)
+            }
+
+            // Weekday headers
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 0) {
+                ForEach(weekdays, id: \.self) { day in
+                    Text(day)
+                        .font(DS.Font.tiny)
+                        .fontWeight(.medium)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(height: 20)
+                }
+            }
+
+            // Days grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
+                ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
+                    if let date {
+                        let isSelected = selectedDate.map { calendar.isDate($0, inSameDayAs: date) } ?? false
+                        let isToday = calendar.isDateInToday(date)
+                        let isPast = date < calendar.startOfDay(for: Date()) && !isToday
+
+                        Button {
+                            selectedDate = date
+                            isPresented = false
+                        } label: {
+                            Text("\(calendar.component(.day, from: date))")
+                                .font(DS.Font.caption)
+                                .fontWeight(isToday ? .bold : .regular)
+                                .foregroundStyle(
+                                    isSelected ? .white :
+                                    isPast ? DS.Colors.textTertiary :
+                                    isToday ? DS.Colors.accent :
+                                    DS.Colors.textPrimary
+                                )
+                                .frame(width: 28, height: 28)
+                                .background(
+                                    isSelected ? DS.Colors.accent :
+                                    isToday ? DS.Colors.accent.opacity(0.1) :
+                                    .clear,
+                                    in: Circle()
+                                )
+                        }
+                        .buttonStyle(.plainPointer)
+                    } else {
+                        Text("")
+                            .frame(width: 28, height: 28)
+                    }
+                }
+            }
+
+            if selectedDate != nil {
+                Divider()
+                Button {
+                    selectedDate = nil
+                    isPresented = false
+                } label: {
+                    Text("Clear date")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.error)
+                }
+                .buttonStyle(.plainPointer)
+            }
+        }
+        .padding(DS.Spacing.lg)
+        .frame(width: 240)
+        .onAppear {
+            if let selected = selectedDate {
+                displayMonth = selected
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func quickButton(_ label: String, date: Date) -> some View {
+        let isSelected = selectedDate.map { calendar.isDate($0, inSameDayAs: date) } ?? false
+        Button {
+            selectedDate = date
+            isPresented = false
+        } label: {
+            Text(label)
+                .font(DS.Font.tiny)
+                .fontWeight(.medium)
+                .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
+                .background(
+                    isSelected ? DS.Colors.accent : DS.Colors.inputBg,
+                    in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                )
+        }
+        .buttonStyle(.plainPointer)
+    }
+}
+
+// MARK: - Rich Markdown Editor (Tiptap + WKWebView, locally bundled)
+
+import WebKit
+
+struct RichMarkdownEditor: NSViewRepresentable {
+    @Binding var text: String
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.userContentController.add(context.coordinator, name: "contentChanged")
+        config.userContentController.add(context.coordinator, name: "editorReady")
+
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.setValue(false, forKey: "drawsBackground")
+        context.coordinator.webView = webView
+
+        if let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") {
+            webView.loadFileURL(htmlURL, allowingReadAccessTo: htmlURL.deletingLastPathComponent())
+        }
+
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.pendingText = text
+        context.coordinator.pushIfReady()
+    }
+
+    class Coordinator: NSObject, WKScriptMessageHandler {
+        var parent: RichMarkdownEditor
+        weak var webView: WKWebView?
+        var isReady = false
+        var pendingText: String?
+        private var isReceiving = false
+        private var lastPushed: String?
+
+        init(_ parent: RichMarkdownEditor) {
+            self.parent = parent
+        }
+
+        func pushIfReady() {
+            guard isReady, let webView = webView, let text = pendingText else { return }
+            if text == lastPushed || isReceiving { return }
+            lastPushed = text
+            let escaped = text
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "`", with: "\\`")
+                .replacingOccurrences(of: "$", with: "\\$")
+            webView.evaluateJavaScript("window.setMarkdown(`\(escaped)`)")
+            pendingText = nil
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            if message.name == "editorReady" {
+                isReady = true
+                pendingText = parent.text
+                pushIfReady()
+            } else if message.name == "contentChanged", let md = message.body as? String {
+                isReceiving = true
+                lastPushed = md
+                parent.text = md
+                isReceiving = false
+            }
+        }
+    }
+}
+
+struct RichEditorToolbar: View {
+    var body: some View { EmptyView() }
 }

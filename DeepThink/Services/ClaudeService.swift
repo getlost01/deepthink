@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @Observable
 final class ClaudeService {
@@ -6,8 +7,100 @@ final class ClaudeService {
 
     var isProcessing = false
     var lastError: String?
-    var selectedModel: String = "sonnet"
-    var maxTokens: Int = 4096
+    var maxTokens: Int = 16384
+
+    // Model selection
+    var selectedModelFamily: ModelFamily = .sonnet
+    var selectedModelVersion: ModelVersion = ModelVersion.latestSonnet
+
+    // Usage tracking
+    var totalQueries: Int = 0
+    var totalCostUSD: Double = 0
+    var lastQueryCostUSD: Double?
+    var lastQueryDurationMs: Double?
+    var sessionStartDate: Date = Date()
+
+    // CLI info
+    var cliVersion: String?
+
+    struct ModelVersion: Identifiable, Hashable {
+        let id: String
+        let family: ModelFamily
+        let version: String
+        let suffix: String?
+        let isLatest: Bool
+        let contextWindow: String
+        let maxOutput: String
+        let inputCostPer1M: String
+        let outputCostPer1M: String
+
+        var displayName: String {
+            "Claude \(family.rawValue.capitalized) \(version)\(suffix.map { " (\($0))" } ?? "")"
+        }
+
+        var modelID: String { id }
+
+        static let latestOpus = ModelVersion(id: "claude-opus-4-6", family: .opus, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let latestSonnet = ModelVersion(id: "claude-sonnet-4-6", family: .sonnet, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "16K", inputCostPer1M: "$3", outputCostPer1M: "$15")
+        static let latestHaiku = ModelVersion(id: "claude-haiku-4-5-20251001", family: .haiku, version: "4.5", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
+
+        static let opus47 = ModelVersion(id: "claude-opus-4-7", family: .opus, version: "4.7", suffix: "Preview", isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let sonnet45 = ModelVersion(id: "claude-sonnet-4-5-20241022", family: .sonnet, version: "4.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$3", outputCostPer1M: "$15")
+        static let haiku35 = ModelVersion(id: "claude-3-5-haiku-20241022", family: .haiku, version: "3.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
+    }
+
+    enum ModelFamily: String, CaseIterable, Identifiable {
+        case haiku = "Haiku"
+        case sonnet = "Sonnet"
+        case opus = "Opus"
+
+        var id: String { rawValue }
+
+        var color: Color {
+            switch self {
+            case .haiku: .cyan
+            case .sonnet: .blue
+            case .opus: .purple
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .haiku: "hare"
+            case .sonnet: "scalemass"
+            case .opus: "brain.head.profile"
+            }
+        }
+
+        var tagline: String {
+            switch self {
+            case .haiku: "Fast & affordable"
+            case .sonnet: "Best balance of speed & intelligence"
+            case .opus: "Most powerful & capable"
+            }
+        }
+
+        var versions: [ModelVersion] {
+            switch self {
+            case .haiku: [.latestHaiku, .haiku35]
+            case .sonnet: [.latestSonnet, .sonnet45]
+            case .opus: [.opus47, .latestOpus]
+            }
+        }
+
+        var latestVersion: ModelVersion {
+            switch self {
+            case .haiku: .latestHaiku
+            case .sonnet: .latestSonnet
+            case .opus: .latestOpus
+            }
+        }
+    }
+
+    var modelDisplayName: String { selectedModelVersion.displayName }
+    var fullModelID: String { selectedModelVersion.modelID }
+
+    static let maxTokenOptions = [4096, 8192, 16384, 32768]
 
     private let claudePath: String
 
@@ -18,9 +111,33 @@ final class ClaudeService {
             "/opt/homebrew/bin/claude"
         ]
         self.claudePath = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
+        fetchCLIVersion()
     }
 
     var isAvailable: Bool { !claudePath.isEmpty }
+
+    private func fetchCLIVersion() {
+        guard isAvailable else { return }
+        DispatchQueue.global(qos: .utility).async { [claudePath] in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: claudePath)
+            process.arguments = ["--version"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            try? process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            DispatchQueue.main.async {
+                ClaudeService.shared.cliVersion = version
+            }
+        }
+    }
+
+    func refreshCLIVersion() {
+        fetchCLIVersion()
+    }
 
     struct CLIResponse: Codable {
         let type: String?
@@ -53,7 +170,7 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", "claude-\(ClaudeService.shared.selectedModel)-4-6"]
+                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -91,6 +208,16 @@ final class ClaudeService {
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
                        let result = response.result {
+                        let cost = response.total_cost_usd
+                        let duration = response.duration_ms
+                        DispatchQueue.main.async {
+                            ClaudeService.shared.totalQueries += 1
+                            if let cost {
+                                ClaudeService.shared.totalCostUSD += cost
+                                ClaudeService.shared.lastQueryCostUSD = cost
+                            }
+                            ClaudeService.shared.lastQueryDurationMs = duration
+                        }
                         continuation.resume(returning: result)
                     } else {
                         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -7,16 +7,6 @@ struct WorkspaceView: View {
     @Query private var allTasks: [TaskItem]
     @Query private var allProjects: [Project]
 
-    private var selectedNote: Note? {
-        guard let id = appState.selectedNoteID else { return nil }
-        return allNotes.first { $0.id == id }
-    }
-
-    private var selectedTask: TaskItem? {
-        guard let id = appState.selectedTaskID else { return nil }
-        return allTasks.first { $0.id == id }
-    }
-
     private var selectedProject: Project? {
         guard let id = appState.selectedProjectID else { return nil }
         return allProjects.first { $0.id == id }
@@ -41,60 +31,10 @@ struct WorkspaceView: View {
             Divider()
 
             switch appState.workspaceTab {
-            case .notes:
-                notesContent
-            case .tasks:
-                tasksContent
             case .projects:
                 projectsContent
-            }
-        }
-    }
-
-    // MARK: - Notes
-
-    @ViewBuilder
-    private var notesContent: some View {
-        HStack(spacing: 0) {
-            NoteListView()
-                .dsListPanel()
-
-            Divider()
-
-            if let note = selectedNote {
-                NoteEditorView(note: note)
-                    .id(note.id)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                DSEmptyState(
-                    icon: "doc.text",
-                    title: "Select a Note",
-                    subtitle: "Pick a note from the list or create a new one to start writing"
-                )
-            }
-        }
-    }
-
-    // MARK: - Tasks
-
-    @ViewBuilder
-    private var tasksContent: some View {
-        HStack(spacing: 0) {
-            TaskListView()
-                .dsListPanel()
-
-            Divider()
-
-            if let task = selectedTask {
-                TaskDetailView(task: task)
-                    .id(task.id)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                DSEmptyState(
-                    icon: "checklist",
-                    title: "Select a Task",
-                    subtitle: "Pick a task from the list or create a new one to track your work"
-                )
+            case .knowledge:
+                KnowledgeGraphView()
             }
         }
     }
@@ -152,7 +92,7 @@ struct DSTabButton: View {
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
     }

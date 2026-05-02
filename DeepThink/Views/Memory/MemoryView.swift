@@ -121,7 +121,7 @@ struct MemoryView: View {
                     Spacer()
                     Button("Dismiss") { self.statusMessage = nil }
                         .font(DS.Font.caption)
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                 }
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
@@ -325,7 +325,7 @@ private struct AddMemorySheet: View {
                     .font(DS.Font.heading)
                 Spacer()
                 Button("Cancel") { dismiss() }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
             }
             .padding(DS.Spacing.lg)
 

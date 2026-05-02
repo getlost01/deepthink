@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 enum SettingsTab: String, CaseIterable, Identifiable {
+    case claude = "Claude"
     case tools = "Tools & MCP"
     case memory = "Memory"
 
@@ -9,6 +10,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .claude: "sparkles"
         case .tools: "wrench.and.screwdriver"
         case .memory: "brain"
         }
@@ -16,7 +18,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 }
 
 struct SettingsView: View {
-    @State private var selectedTab: SettingsTab = .tools
+    @State private var selectedTab: SettingsTab = .claude
 
     var body: some View {
         VStack(spacing: 0) {
@@ -35,6 +37,8 @@ struct SettingsView: View {
             Divider()
 
             switch selectedTab {
+            case .claude:
+                ClaudeSettingsView()
             case .tools:
                 ToolsHubView()
             case .memory:

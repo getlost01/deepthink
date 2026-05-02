@@ -9,15 +9,24 @@ struct TaskListView: View {
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var filterStatus: TaskStatus?
+    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
 
     private var filteredTasks: [TaskItem] {
         var tasks = allTasks
+        if let projectID = appState.filterProjectID {
+            tasks = tasks.filter { $0.project?.id == projectID }
+        }
         if let filterStatus { tasks = tasks.filter { $0.status == filterStatus } }
         if !debouncedSearch.isEmpty {
             let lowered = debouncedSearch.lowercased()
             tasks = tasks.filter { $0.title.lowercased().contains(lowered) || $0.detail.lowercased().contains(lowered) }
         }
         return tasks
+    }
+
+    private var filterProjectName: String? {
+        guard let id = appState.filterProjectID else { return nil }
+        return allProjects.first { $0.id == id }?.name
     }
 
     private var groupedTasks: [(TaskStatus, [TaskItem])] {
@@ -62,6 +71,28 @@ struct TaskListView: View {
             DSSearchField(text: $searchText, placeholder: "Search tasks...")
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.bottom, DS.Spacing.sm)
+
+            if let projectName = filterProjectName {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "folder.fill")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.accent)
+                    Text(projectName)
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                    Button {
+                        appState.filterByProject(nil)
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plainPointer)
+                    Spacer()
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.sm)
+            }
 
             Divider()
 

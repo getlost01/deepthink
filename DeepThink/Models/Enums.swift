@@ -34,17 +34,15 @@ enum SidebarSection: String, CaseIterable, Identifiable {
 }
 
 enum WorkspaceTab: String, CaseIterable, Identifiable {
-    case notes = "Notes"
-    case tasks = "Tasks"
     case projects = "Projects"
+    case knowledge = "Knowledge Base"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .notes: "doc.text"
-        case .tasks: "checklist"
         case .projects: "folder"
+        case .knowledge: "brain"
         }
     }
 }

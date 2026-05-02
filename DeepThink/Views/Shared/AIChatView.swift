@@ -100,7 +100,7 @@ struct AIChatView: View {
                         .font(.system(size: DS.IconSize.xl))
                         .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.plainPointer)
                 .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || isProcessing)
             }
             .padding(.horizontal, DS.Spacing.lg)
@@ -199,7 +199,7 @@ private struct WelcomePrompts: View {
                         .padding(DS.Spacing.md)
                         .dsClickable()
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
                 }
             }
             .frame(maxWidth: 520)
