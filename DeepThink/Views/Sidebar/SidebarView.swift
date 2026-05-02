@@ -6,7 +6,7 @@ struct SidebarView: View {
     @State private var isExpanded = true
 
     private var mainSections: [SidebarSection] {
-        [.workspace, .ai, .terminal, .docs]
+        [.context, .workspace, .ai, .terminal]
     }
 
     var body: some View {

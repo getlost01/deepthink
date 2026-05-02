@@ -3,16 +3,12 @@ import SwiftUI
 
 @Observable
 final class AppState {
-    var selectedSection: SidebarSection? = .workspace
+    var selectedSection: SidebarSection? = .context
     var showCommandPalette: Bool = false
     var searchQuery: String = ""
 
-    // AI Side Panel
-    var showAIPanel: Bool = false
-    var aiPanelContext: String = ""
-
     // Workspace sub-navigation
-    var workspaceTab: WorkspaceTab = .projects
+    var workspaceTab: WorkspaceTab = .overview
     var selectedNoteID: UUID?
     var selectedTaskID: UUID?
     var selectedProjectID: UUID?
@@ -30,8 +26,20 @@ final class AppState {
     var aiMode: AIMode = .chat
     var pendingChatMessage: String?
 
+    // Context sub-navigation
+    var selectedContextSource: String?
+    var selectedContextChannel: String?
+    var selectedContextItemPath: String?
+    var contextSearchQuery: String = ""
+
     func navigate(to section: SidebarSection) {
         selectedSection = section
+    }
+
+    func navigateToContext(source: String? = nil, channel: String? = nil) {
+        selectedSection = .context
+        selectedContextSource = source
+        selectedContextChannel = channel
     }
 
     func navigateToNote(_ id: UUID) {
@@ -66,19 +74,6 @@ final class AppState {
 
     func filterByProject(_ projectID: UUID?) {
         filterProjectID = projectID
-    }
-
-    func toggleAIPanel() {
-        withAnimation(.spring(duration: 0.25)) {
-            showAIPanel.toggle()
-        }
-    }
-
-    func openAIPanelWith(context: String) {
-        aiPanelContext = context
-        withAnimation(.spring(duration: 0.25)) {
-            showAIPanel = true
-        }
     }
 
     func toggleCommandPalette() {

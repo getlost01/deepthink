@@ -13,13 +13,6 @@ struct ContentView: View {
 
             ContentRouter()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if appState.showAIPanel {
-                Divider()
-                AISidePanelView()
-                    .frame(width: 360)
-                    .transition(.move(edge: .trailing))
-            }
         }
         .overlay {
             if appState.showCommandPalette {
@@ -36,20 +29,19 @@ struct ContentRouter: View {
     var body: some View {
         Group {
             switch appState.selectedSection {
+            case .context:
+                ContextView()
             case .workspace:
                 WorkspaceView()
             case .ai:
                 AIView()
             case .terminal:
                 DeepThinkTerminalView()
-            case .docs:
-                DocsView()
             case .settings:
                 SettingsView()
             case nil:
-                WorkspaceView()
+                ContextView()
             }
         }
     }
 }
-

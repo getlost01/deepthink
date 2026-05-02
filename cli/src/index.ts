@@ -149,9 +149,26 @@ function cmdMemory() {
 // ── deepthink knowledge ──
 
 async function cmdKnowledge() {
+  const json = flag("--json");
+
   if (!sub || sub === "stats") {
     const s = knowledgeTools.knowledgeStats();
+    if (json) { p(JSON.stringify(s)); return; }
     p(`projects:     ${s.projects}\nintegrations: ${s.integrations}\narchives:     ${s.archives}`);
+    return;
+  }
+
+  if (sub === "search") {
+    const q = args.slice(2).filter((a) => !a.startsWith("--")).join(" ");
+    if (!q) err("usage: deepthink knowledge search <query> [--source s] [--limit n] [--json]");
+    const source = flagVal("--source");
+    const limit = flagVal("--limit") ? parseInt(flagVal("--limit")!) : 20;
+    const results = knowledgeTools.searchIntegrationData(q, source ?? undefined, limit);
+    if (json) { p(JSON.stringify(results)); return; }
+    for (const r of results) {
+      p(`${r.source}/${r.channel}: ${r.file}`);
+      p(`  ${r.content.slice(0, 100)}...\n`);
+    }
     return;
   }
 
@@ -160,6 +177,7 @@ async function cmdKnowledge() {
     if (!proj || !content) err("usage: deepthink knowledge save <project> <content> [--type context|decision|artifact]");
     const type = (flagVal("--type") ?? "context") as "context" | "decision" | "artifact";
     const path = knowledgeTools.saveProjectKnowledge(proj, content, type);
+    if (json) { p(JSON.stringify({ project: proj, path })); return; }
     ok(`${proj}: ${path}`);
     return;
   }
@@ -168,6 +186,7 @@ async function cmdKnowledge() {
     const proj = args[2];
     if (!proj) err("usage: deepthink knowledge load <project>");
     const pk = knowledgeTools.loadProjectKnowledge(proj);
+    if (json) { p(JSON.stringify(pk)); return; }
     if (pk.context) p(pk.context.slice(0, 3000));
     if (pk.decisions) p(`\ndecisions:\n${pk.decisions.slice(0, 1000)}`);
     if (pk.artifacts.length > 0) p(`\nartifacts: ${pk.artifacts.join(", ")}`);
@@ -177,6 +196,7 @@ async function cmdKnowledge() {
 
   if (sub === "list") {
     const projects = knowledgeTools.listProjects();
+    if (json) { p(JSON.stringify(projects)); return; }
     if (projects.length === 0) { p("no projects"); return; }
     projects.forEach((pr) => p(`  ${pr}`));
     return;
@@ -186,12 +206,14 @@ async function cmdKnowledge() {
     const source = args[2], channel = args[3], content = args[4];
     if (!source || !channel || !content) err("usage: deepthink knowledge capture <source> <channel> <content>");
     const path = knowledgeTools.saveIntegrationData(source, channel, content);
+    if (json) { p(JSON.stringify({ source, channel, path })); return; }
     ok(`${source}/${channel}: ${path}`);
     return;
   }
 
   if (sub === "integrations") {
     const list = knowledgeTools.listIntegrations();
+    if (json) { p(JSON.stringify(list)); return; }
     if (list.length === 0) { p("no integrations"); return; }
     for (const i of list) {
       p(`${i.source}/`);

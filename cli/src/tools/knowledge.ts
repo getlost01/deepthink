@@ -178,6 +178,23 @@ function updateIndex(project?: string): void {
   writeFileSync(indexFile, JSON.stringify(index, null, 2), "utf-8");
 }
 
+export function searchIntegrationData(query: string, source?: string, limit = 20): { source: string; channel: string; file: string; content: string }[] {
+  const sources = source ? [source] : listIntegrations().map((i) => i.source);
+  const results: { source: string; channel: string; file: string; content: string }[] = [];
+  const q = query.toLowerCase();
+
+  for (const src of sources) {
+    const items = loadIntegrationData(src, undefined, 100);
+    for (const item of items) {
+      if (item.content.toLowerCase().includes(q)) {
+        results.push(item);
+      }
+    }
+  }
+
+  return results.slice(0, limit);
+}
+
 export function knowledgeStats(): { projects: number; integrations: number; archives: number } {
   const projects = listProjects().length;
   const integrations = listIntegrations().reduce((sum, i) => sum + i.channels.length, 0);

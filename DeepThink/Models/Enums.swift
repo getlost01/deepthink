@@ -4,44 +4,50 @@ import SwiftUI
 // MARK: - Navigation
 
 enum SidebarSection: String, CaseIterable, Identifiable {
+    case context = "Context"
     case workspace = "Workspace"
     case ai = "AI"
     case terminal = "Terminal"
-    case docs = "Docs"
     case settings = "Settings"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
+        case .context: "tray.full"
         case .workspace: "square.grid.2x2"
         case .ai: "sparkles"
         case .terminal: "terminal"
-        case .docs: "doc.text.magnifyingglass"
         case .settings: "gearshape"
         }
     }
 
     var color: Color {
         switch self {
+        case .context: .orange
         case .workspace: .blue
         case .ai: .purple
         case .terminal: .green
-        case .docs: .orange
         case .settings: .gray
         }
     }
 }
 
 enum WorkspaceTab: String, CaseIterable, Identifiable {
+    case overview = "Overview"
     case projects = "Projects"
+    case notes = "Notes"
+    case tasks = "Tasks"
     case knowledge = "Knowledge Base"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
+        case .overview: "house"
         case .projects: "folder"
+        case .notes: "doc.text"
+        case .tasks: "checklist"
         case .knowledge: "brain"
         }
     }
@@ -50,7 +56,6 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
 enum AIMode: String, CaseIterable, Identifiable {
     case chat = "Chat"
     case search = "Search"
-    case analyze = "Analyze"
 
     var id: String { rawValue }
 
@@ -58,7 +63,6 @@ enum AIMode: String, CaseIterable, Identifiable {
         switch self {
         case .chat: "bubble.left.and.bubble.right"
         case .search: "sparkle.magnifyingglass"
-        case .analyze: "wand.and.rays"
         }
     }
 }

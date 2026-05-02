@@ -27,8 +27,6 @@ struct AIView: View {
                 AIChatView()
             case .search:
                 DeepSearchView()
-            case .analyze:
-                AnalysisView()
             }
         }
     }

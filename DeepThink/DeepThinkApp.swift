@@ -68,30 +68,25 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("k", modifiers: .command)
 
-                Button("AI Panel") {
-                    appState.toggleAIPanel()
-                }
-                .keyboardShortcut("j", modifiers: .command)
-
                 Divider()
+
+                Button("Go to Context") {
+                    appState.navigate(to: .context)
+                }
+                .keyboardShortcut("1", modifiers: .command)
 
                 Button("Go to Workspace") {
                     appState.navigate(to: .workspace)
                 }
-                .keyboardShortcut("1", modifiers: .command)
+                .keyboardShortcut("2", modifiers: .command)
 
                 Button("Go to AI") {
                     appState.navigate(to: .ai)
                 }
-                .keyboardShortcut("2", modifiers: .command)
+                .keyboardShortcut("3", modifiers: .command)
 
                 Button("Go to Terminal") {
                     appState.navigate(to: .terminal)
-                }
-                .keyboardShortcut("3", modifiers: .command)
-
-                Button("Go to Docs") {
-                    appState.navigate(to: .docs)
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
@@ -138,18 +133,33 @@ struct DeepThinkApp: App {
             },
 
             // Navigate
-            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘1", section: "Navigate") {
+            Command(title: "Context", icon: "tray.full", shortcut: "⌘1", section: "Navigate") {
+                appState.navigate(to: .context)
+            },
+            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘2", section: "Navigate") {
                 appState.navigate(to: .workspace)
             },
-            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘1", section: "Navigate") {
+            Command(title: "Overview", icon: "house", shortcut: "⇧⌘1", section: "Navigate") {
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .overview
+            },
+            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘2", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .projects
             },
-            Command(title: "Knowledge Base", icon: "brain", shortcut: "⇧⌘2", section: "Navigate") {
+            Command(title: "All Notes", icon: "doc.text", shortcut: "⇧⌘3", section: "Navigate") {
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .notes
+            },
+            Command(title: "All Tasks", icon: "checklist", shortcut: "⇧⌘4", section: "Navigate") {
+                appState.selectedSection = .workspace
+                appState.workspaceTab = .tasks
+            },
+            Command(title: "Knowledge Base", icon: "brain", shortcut: "⇧⌘5", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .knowledge
             },
-            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
+            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘3", section: "Navigate") {
                 appState.selectedSection = .ai
                 appState.aiMode = .chat
             },
@@ -157,21 +167,11 @@ struct DeepThinkApp: App {
                 appState.selectedSection = .ai
                 appState.aiMode = .search
             },
-            Command(title: "AI Analyze", icon: "wand.and.rays", shortcut: nil, section: "Navigate") {
-                appState.selectedSection = .ai
-                appState.aiMode = .analyze
-            },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘3", section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .terminal)
-            },
-            Command(title: "Docs", icon: "doc.text.magnifyingglass", shortcut: "⌘4", section: "Navigate") {
-                appState.navigate(to: .docs)
             },
             Command(title: "Settings", icon: "gearshape", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)
-            },
-            Command(title: "Toggle AI Panel", icon: "sparkles", shortcut: "⌘J", section: "Navigate") {
-                appState.toggleAIPanel()
             },
         ])
     }

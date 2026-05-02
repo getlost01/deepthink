@@ -24,7 +24,6 @@ struct DeepSearchView: View {
     enum SearchMode: String, CaseIterable {
         case workspace = "Workspace"
         case ai = "AI Search"
-        case memory = "Memory"
         case web = "Web"
     }
 
@@ -49,6 +48,11 @@ struct DeepSearchView: View {
                 results.append(SearchResult(type: .project, title: project.name, subtitle: project.summary.prefix(80).description, id: project.id))
             }
         }
+        let contextResults = ContextService.shared.search(query: q)
+        for item in contextResults.prefix(10) {
+            results.append(SearchResult(type: .context, title: "\(item.source)/\(item.channel)", subtitle: String(item.content.prefix(100)), id: UUID()))
+        }
+
         return results
     }
 
@@ -175,17 +179,6 @@ struct DeepSearchView: View {
         let q = query
         let context = localResults.prefix(5).map { "\($0.type): \($0.title) — \($0.subtitle)" }.joined(separator: "\n")
 
-        if searchMode == .memory {
-            Task {
-                let result = await DeepThinkCLIService.shared.recall(query: q)
-                await MainActor.run {
-                    aiResult = result.success ? result.output : "Memory search error: \(result.error)"
-                    isSearching = false
-                }
-            }
-            return
-        }
-
         if searchMode == .web {
             Task {
                 let cliResult = await DeepThinkCLIService.shared.search(query: q)
@@ -296,6 +289,8 @@ struct DeepSearchView: View {
             appState.navigateToTask(result.id)
         case .project:
             appState.navigateToProject(result.id)
+        case .context:
+            appState.navigateToContext()
         }
     }
 
@@ -322,13 +317,14 @@ struct SearchResult: Identifiable {
     }
 
     enum ResultType {
-        case note, task, project
+        case note, task, project, context
 
         var icon: String {
             switch self {
             case .note: "doc.text"
             case .task: "checklist"
             case .project: "folder"
+            case .context: "tray.full"
             }
         }
 
@@ -337,6 +333,7 @@ struct SearchResult: Identifiable {
             case .note: .blue
             case .task: .green
             case .project: .teal
+            case .context: .orange
             }
         }
     }
