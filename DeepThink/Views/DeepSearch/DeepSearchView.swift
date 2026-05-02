@@ -48,9 +48,9 @@ struct DeepSearchView: View {
                 results.append(SearchResult(type: .project, title: project.name, subtitle: project.summary.prefix(80).description, id: project.id))
             }
         }
-        let contextResults = ContextService.shared.search(query: q)
-        for item in contextResults.prefix(10) {
-            results.append(SearchResult(type: .context, title: "\(item.source)/\(item.channel)", subtitle: String(item.content.prefix(100)), id: UUID()))
+        let knowledgeResults = KnowledgeService.shared.search(q)
+        for item in knowledgeResults.prefix(10) {
+            results.append(SearchResult(type: .context, title: item.title, subtitle: String(item.content.prefix(100)), id: UUID()))
         }
 
         return results

@@ -14,6 +14,13 @@ struct AIChatView: View {
     @State private var useMCP = true
     @FocusState private var inputFocused: Bool
 
+    private var agentService: AgentFileService { AgentFileService.shared }
+
+    private var selectedAgent: AgentFile? {
+        guard let path = appState.selectedAgentPath else { return nil }
+        return agentService.agents.first { $0.filePath.path == path }
+    }
+
     private var workspaceContext: String {
         var ctx: [String] = []
         let recentNotes = notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(5)
@@ -30,6 +37,53 @@ struct AIChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
+                // Agent picker
+                Menu {
+                    Button {
+                        appState.selectedAgentPath = nil
+                        messages.removeAll()
+                    } label: {
+                        Label("Default Assistant", systemImage: "brain.head.profile")
+                    }
+
+                    Divider()
+
+                    ForEach(agentService.agents) { agent in
+                        Button {
+                            appState.selectedAgentPath = agent.filePath.path
+                            messages.removeAll()
+                        } label: {
+                            Label(agent.name, systemImage: agent.icon)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: selectedAgent?.icon ?? "brain.head.profile")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .foregroundStyle(DS.Colors.accent)
+                        Text(selectedAgent?.name ?? "Default Assistant")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.xs + 1)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+
+                if let agent = selectedAgent {
+                    Text(agent.role)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                }
+
                 Spacer()
 
                 if !activeServers.isEmpty {
@@ -164,7 +218,9 @@ struct AIChatView: View {
                 let fullPrompt = ctx.isEmpty ? text : "Workspace context:\n\(ctx)\n\nUser: \(text)"
 
                 let systemPrompt: String
-                if isWorkspace {
+                if let agent = selectedAgent {
+                    systemPrompt = AgentFileService.shared.buildSystemPrompt(for: agent)
+                } else if isWorkspace {
                     systemPrompt = "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
                 } else {
                     systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting."

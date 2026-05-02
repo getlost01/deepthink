@@ -9,7 +9,7 @@ struct DeepThinkApp: App {
     var sharedModelContainer: ModelContainer = {
         StorageService.shared.ensureDirectoryStructure()
 
-        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self])
+        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self])
         let config = ModelConfiguration(
             schema: schema,
             url: StorageService.shared.storeURL,
@@ -35,6 +35,11 @@ struct DeepThinkApp: App {
                     registerCommands()
                     installCLI()
                     installDefaultMCPServers(container: sharedModelContainer)
+                    SkillFileService.shared.installDefaultSkills()
+                    RuleFileService.shared.installDefaultRules()
+                    AgentFileService.shared.installDefaultAgents()
+                    KnowledgeService.shared.reload()
+                    CollectorScheduler.shared.start(container: sharedModelContainer)
                 }
         }
         .modelContainer(sharedModelContainer)
@@ -70,23 +75,23 @@ struct DeepThinkApp: App {
 
                 Divider()
 
-                Button("Go to Context") {
-                    appState.navigate(to: .context)
-                }
-                .keyboardShortcut("1", modifiers: .command)
-
                 Button("Go to Workspace") {
                     appState.navigate(to: .workspace)
                 }
-                .keyboardShortcut("2", modifiers: .command)
+                .keyboardShortcut("1", modifiers: .command)
 
                 Button("Go to AI") {
                     appState.navigate(to: .ai)
                 }
-                .keyboardShortcut("3", modifiers: .command)
+                .keyboardShortcut("2", modifiers: .command)
 
                 Button("Go to Terminal") {
                     appState.navigate(to: .terminal)
+                }
+                .keyboardShortcut("3", modifiers: .command)
+
+                Button("Go to Intelligence") {
+                    appState.navigate(to: .intelligence)
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
@@ -133,10 +138,7 @@ struct DeepThinkApp: App {
             },
 
             // Navigate
-            Command(title: "Context", icon: "tray.full", shortcut: "⌘1", section: "Navigate") {
-                appState.navigate(to: .context)
-            },
-            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘2", section: "Navigate") {
+            Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘1", section: "Navigate") {
                 appState.navigate(to: .workspace)
             },
             Command(title: "Overview", icon: "house", shortcut: "⇧⌘1", section: "Navigate") {
@@ -159,7 +161,7 @@ struct DeepThinkApp: App {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .knowledge
             },
-            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘3", section: "Navigate") {
+            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
                 appState.selectedSection = .ai
                 appState.aiMode = .chat
             },
@@ -167,8 +169,23 @@ struct DeepThinkApp: App {
                 appState.selectedSection = .ai
                 appState.aiMode = .search
             },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘4", section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘3", section: "Navigate") {
                 appState.navigate(to: .terminal)
+            },
+            Command(title: "Intelligence", icon: "brain", shortcut: "⌘4", section: "Navigate") {
+                appState.navigate(to: .intelligence)
+            },
+            Command(title: "Knowledge Base", icon: "book", shortcut: "⇧⌘6", section: "Navigate") {
+                appState.selectedSection = .intelligence
+                appState.automationTab = .knowledge
+            },
+            Command(title: "Agents", icon: "person.2.circle", shortcut: "⇧⌘7", section: "Navigate") {
+                appState.selectedSection = .intelligence
+                appState.automationTab = .agents
+            },
+            Command(title: "Skills & Rules", icon: "sparkles", shortcut: "⇧⌘8", section: "Navigate") {
+                appState.selectedSection = .intelligence
+                appState.automationTab = .skillsAndRules
             },
             Command(title: "Settings", icon: "gearshape", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)

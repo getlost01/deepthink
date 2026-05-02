@@ -328,62 +328,219 @@ private struct PresetServersSheet: View {
     @Environment(\.dismiss) private var dismiss
     let onAdd: (MCPServer) -> Void
 
+    private var catalog: MCPCatalogService { MCPCatalogService.shared }
+
+    @State private var searchText = ""
+    @State private var selectedCategory = "All"
+    @State private var addedNames: Set<String> = []
+
+    private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
+
+    private var filteredPackages: [MCPPackage] {
+        var results = catalog.packages
+        if selectedCategory != "All" {
+            results = results.filter { $0.category == selectedCategory }
+        }
+        if !searchText.isEmpty {
+            let q = searchText.lowercased()
+            results = results.filter {
+                $0.name.lowercased().contains(q) ||
+                $0.description.lowercased().contains(q) ||
+                $0.displayName.lowercased().contains(q)
+            }
+        }
+        return results
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("MCP Server Presets")
-                    .font(DS.Font.heading)
+            // Header
+            HStack(spacing: DS.Spacing.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("MCP Server Catalog")
+                        .font(DS.Font.heading)
+                    if let fetched = catalog.lastFetchedAt {
+                        Text("Updated \(fetched, style: .relative) ago")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                }
                 Spacer()
+
+                if catalog.isLoading {
+                    ProgressView().controlSize(.small)
+                }
+
+                Button {
+                    Task { await catalog.fetchCatalog() }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("Refresh")
+                            .font(DS.Font.small)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+
                 Button("Done") { dismiss() }
                     .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
+            .background(.bar)
 
             Divider()
 
-            ScrollView {
-                VStack(spacing: DS.Spacing.sm) {
-                    ForEach(MCPService.presetServers, id: \.name) { preset in
-                        HStack(spacing: DS.Spacing.md) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: DS.Spacing.sm) {
-                                    Text(preset.name)
-                                        .font(DS.Font.body)
-                                        .fontWeight(.medium)
-                                    Text(preset.category)
-                                        .font(DS.Font.small)
-                                        .foregroundStyle(DS.Colors.textSecondary)
-                                }
-                                Text(preset.description)
-                                    .font(DS.Font.caption)
-                                    .foregroundStyle(DS.Colors.textSecondary)
-                                Text("\(preset.command) \(preset.args)")
-                                    .font(DS.Font.monoSmall)
-                                    .foregroundStyle(DS.Colors.textTertiary)
-                            }
+            // Search
+            DSSearchField(text: $searchText, placeholder: "Search MCP servers...")
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.sm)
 
-                            Spacer()
+            // Category filter
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.Spacing.xs) {
+                    ForEach(categories, id: \.self) { cat in
+                        Button {
+                            selectedCategory = cat
+                        } label: {
+                            Text(cat)
+                                .font(DS.Font.small)
+                                .foregroundStyle(selectedCategory == cat ? .white : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm + 2)
+                                .padding(.vertical, DS.Spacing.xs + 1)
+                                .background(selectedCategory == cat ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
 
-                            Button("Add") {
+                    Spacer()
+
+                    Text("\(filteredPackages.count) servers")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .padding(.horizontal, DS.Spacing.lg)
+            }
+            .padding(.bottom, DS.Spacing.sm)
+
+            Divider()
+
+            // Package list
+            if catalog.packages.isEmpty && !catalog.isLoading {
+                DSEmptyState(
+                    icon: "puzzlepiece.extension",
+                    title: "No Catalog Data",
+                    subtitle: "Tap Refresh to fetch MCP servers from npm registry.",
+                    action: { Task { await catalog.fetchCatalog() } },
+                    actionTitle: "Fetch Catalog"
+                )
+            } else if filteredPackages.isEmpty {
+                DSEmptyState(
+                    icon: "magnifyingglass",
+                    title: "No Matches",
+                    subtitle: "Try a different search or category."
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredPackages) { pkg in
+                            CatalogRow(package: pkg, isAdded: addedNames.contains(pkg.name)) {
                                 let server = MCPServer(
-                                    name: preset.name,
-                                    command: preset.command,
-                                    args: preset.args,
-                                    category: preset.category,
-                                    description: preset.description
+                                    name: pkg.displayName,
+                                    command: pkg.installCommand,
+                                    args: pkg.installArgs,
+                                    category: pkg.category,
+                                    description: pkg.description
                                 )
                                 onAdd(server)
+                                addedNames.insert(pkg.name)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
+
+                            if pkg.id != filteredPackages.last?.id {
+                                Divider().padding(.leading, 52)
+                            }
                         }
-                        .padding(DS.Spacing.md)
-                        .dsClickable()
                     }
                 }
-                .padding(DS.Spacing.lg)
             }
         }
-        .frame(width: 560, height: 480)
+        .frame(width: 640, height: 560)
+        .onAppear {
+            if catalog.needsRefresh {
+                Task { await catalog.fetchCatalog() }
+            }
+        }
+    }
+}
+
+// MARK: - Catalog Row
+
+private struct CatalogRow: View {
+    let package: MCPPackage
+    let isAdded: Bool
+    let onAdd: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            ZStack {
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .fill(DS.Colors.accentFill)
+                    .frame(width: 32, height: 32)
+                Image(systemName: package.iconName)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(DS.Colors.accent)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text(package.displayName)
+                        .font(DS.Font.body)
+                        .fontWeight(.medium)
+
+                    Text("v\(package.version)")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+
+                    DSPill(text: package.category, color: .blue)
+                }
+
+                if !package.description.isEmpty {
+                    Text(package.description)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Text(package.name)
+                    .font(DS.Font.monoSmall)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            if !package.author.isEmpty {
+                Text(package.author)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+
+            if isAdded {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(DS.Colors.success)
+            } else {
+                Button("Add", action: onAdd)
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm + 2)
+        .background(isHovered ? DS.Colors.fillSecondary : .clear)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
     }
 }

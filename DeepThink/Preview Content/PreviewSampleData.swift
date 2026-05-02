@@ -3,7 +3,7 @@ import Foundation
 
 @MainActor
 let previewContainer: ModelContainer = {
-    let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self])
+    let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, DataSource.self])
     let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: schema, configurations: [config])
 

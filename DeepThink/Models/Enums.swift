@@ -4,21 +4,37 @@ import SwiftUI
 // MARK: - Navigation
 
 enum SidebarSection: String, CaseIterable, Identifiable {
-    case context = "Context"
     case workspace = "Workspace"
     case ai = "AI"
     case terminal = "Terminal"
+    case intelligence = "Intelligence"
     case settings = "Settings"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
-        case .context: "tray"
         case .workspace: "square.grid.2x2"
         case .ai: "sparkles"
         case .terminal: "terminal"
+        case .intelligence: "brain"
         case .settings: "gear"
+        }
+    }
+}
+
+enum AutomationTab: String, CaseIterable, Identifiable {
+    case knowledge = "Knowledge"
+    case agents = "Agents"
+    case skillsAndRules = "Skills & Rules"
+
+    var id: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .knowledge: "book"
+        case .agents: "person.2.circle"
+        case .skillsAndRules: "sparkles"
         }
     }
 }

@@ -3,7 +3,7 @@ import SwiftUI
 
 @Observable
 final class AppState {
-    var selectedSection: SidebarSection? = .context
+    var selectedSection: SidebarSection? = .workspace
     var showCommandPalette: Bool = false
     var searchQuery: String = ""
 
@@ -25,6 +25,10 @@ final class AppState {
     // AI sub-navigation
     var aiMode: AIMode = .chat
     var pendingChatMessage: String?
+    var selectedAgentPath: String?
+
+    // Automation sub-navigation
+    var automationTab: AutomationTab = .knowledge
 
     // Context sub-navigation
     var selectedContextSource: String?
@@ -37,7 +41,8 @@ final class AppState {
     }
 
     func navigateToContext(source: String? = nil, channel: String? = nil) {
-        selectedSection = .context
+        selectedSection = .intelligence
+        automationTab = .knowledge
         selectedContextSource = source
         selectedContextChannel = channel
     }

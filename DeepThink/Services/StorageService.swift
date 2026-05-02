@@ -33,6 +33,12 @@ final class StorageService {
     var knowledgeIntegrationsURL: URL { knowledgeURL.appendingPathComponent("integrations") }
     var knowledgeArchiveURL: URL { knowledgeURL.appendingPathComponent("archive") }
     var knowledgeIndexFile: URL { knowledgeURL.appendingPathComponent("index.json") }
+    var knowledgeWebURL: URL { knowledgeURL.appendingPathComponent("web") }
+    var knowledgeClipboardURL: URL { knowledgeURL.appendingPathComponent("clipboard") }
+    var knowledgeScriptsURL: URL { knowledgeURL.appendingPathComponent("scripts") }
+    var knowledgeFoldersURL: URL { knowledgeURL.appendingPathComponent("folders") }
+    var knowledgeImportsURL: URL { knowledgeURL.appendingPathComponent("imports") }
+    var knowledgeManualURL: URL { knowledgeURL.appendingPathComponent("manual") }
 
     func knowledgeProjectURL(name: String) -> URL {
         knowledgeProjectsURL.appendingPathComponent(name.slugified)
@@ -40,6 +46,13 @@ final class StorageService {
 
     func knowledgeIntegrationURL(source: String) -> URL {
         knowledgeIntegrationsURL.appendingPathComponent(source.lowercased())
+    }
+
+    func knowledgePath(for provider: String, channel: String) -> String {
+        knowledgeIntegrationsURL
+            .appendingPathComponent(provider.lowercased())
+            .appendingPathComponent(channel.slugified)
+            .path
     }
 
     // MARK: - Memory
@@ -73,10 +86,8 @@ final class StorageService {
             configsURL, mcpConfigURL, claudeConfigURL, skillsConfigURL, rulesConfigURL,
             // Knowledge
             knowledgeURL, knowledgeProjectsURL, knowledgeIntegrationsURL, knowledgeArchiveURL,
-            knowledgeIntegrationURL(source: "slack"),
-            knowledgeIntegrationURL(source: "github"),
-            knowledgeIntegrationURL(source: "linear"),
-            knowledgeIntegrationURL(source: "web"),
+            knowledgeWebURL, knowledgeClipboardURL, knowledgeScriptsURL,
+            knowledgeFoldersURL, knowledgeImportsURL, knowledgeManualURL,
             // Memory
             memoryURL,
             // Sandbox
@@ -176,7 +187,7 @@ final class StorageService {
     }
 }
 
-private extension String {
+extension String {
     var slugified: String {
         lowercased()
             .replacingOccurrences(of: " ", with: "-")

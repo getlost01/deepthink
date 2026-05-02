@@ -29,18 +29,18 @@ struct ContentRouter: View {
     var body: some View {
         Group {
             switch appState.selectedSection {
-            case .context:
-                ContextView()
             case .workspace:
                 WorkspaceView()
             case .ai:
                 AIView()
             case .terminal:
                 DeepThinkTerminalView()
+            case .intelligence:
+                AutomationView()
             case .settings:
                 SettingsView()
             case nil:
-                ContextView()
+                WorkspaceView()
             }
         }
     }
