@@ -3,6 +3,7 @@ import * as fileTools from "../tools/file";
 import * as search from "../tools/search";
 import * as analytics from "../tools/analytics";
 import * as memory from "../tools/memory";
+import { WORKSPACE_TOOL_MAP } from "../tools/workspace";
 
 type ToolFn = (...args: any[]) => any;
 
@@ -16,6 +17,15 @@ const TOOL_MAP: Record<string, ToolFn> = {
   load_memory: memory.loadMemory,
   recall: memory.recall,
 };
+
+for (const [name, tool] of Object.entries(WORKSPACE_TOOL_MAP)) {
+  TOOL_MAP[name] = (details: string) => {
+    const params = typeof details === "string" && details.trim().startsWith("{")
+      ? JSON.parse(details)
+      : { ref: details };
+    return tool.execute(params);
+  };
+}
 
 interface PlanStep {
   step: number;

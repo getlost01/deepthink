@@ -112,25 +112,29 @@ struct ProjectDetailView: View {
             // Split pane: Tasks top, Notes bottom
             GeometryReader { geo in
                 let totalHeight = geo.size.height
-                let topHeight = max(totalHeight * splitRatio, totalHeight * minPaneRatio)
-                let bottomHeight = max(totalHeight - topHeight - 8, totalHeight * minPaneRatio)
+                let handleHeight: CGFloat = 8
+                let available = totalHeight - handleHeight
+                let topHeight = max(available * splitRatio, available * minPaneRatio)
+                let bottomHeight = available - topHeight
 
                 VStack(spacing: 0) {
                     tasksPane
                         .frame(height: topHeight)
+                        .clipped()
 
                     // Drag handle
                     SplitDragHandle()
                         .gesture(
                             DragGesture()
                                 .onChanged { value in
-                                    let newRatio = (topHeight + value.translation.height) / totalHeight
+                                    let newRatio = (topHeight + value.translation.height) / available
                                     splitRatio = min(max(newRatio, minPaneRatio), 1 - minPaneRatio)
                                 }
                         )
 
                     notesPane
                         .frame(height: bottomHeight)
+                        .clipped()
                 }
             }
         }

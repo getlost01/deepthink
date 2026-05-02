@@ -34,6 +34,7 @@ struct DeepThinkApp: App {
                 .onAppear {
                     registerCommands()
                     installCLI()
+                    installDefaultMCPServers(container: sharedModelContainer)
                 }
         }
         .modelContainer(sharedModelContainer)
@@ -165,6 +166,28 @@ struct DeepThinkApp: App {
                 appState.navigate(to: .settings)
             },
         ])
+    }
+
+    private func installDefaultMCPServers(container: ModelContainer) {
+        DispatchQueue.global(qos: .utility).async {
+            let context = ModelContext(container)
+            let descriptor = FetchDescriptor<MCPServer>()
+            let existing = (try? context.fetch(descriptor)) ?? []
+
+            let hasWorkspace = existing.contains { $0.name == "DeepThink Workspace" }
+            if !hasWorkspace {
+                let mcpPath = NSHomeDirectory() + "/code/deepthink/cli/src/mcp-server.ts"
+                let server = MCPServer(
+                    name: "DeepThink Workspace",
+                    command: "bun",
+                    args: "run \(mcpPath)",
+                    category: "Workspace",
+                    description: "Manage tasks, notes, and projects in your DeepThink workspace"
+                )
+                context.insert(server)
+                try? context.save()
+            }
+        }
     }
 
     private func installCLI() {

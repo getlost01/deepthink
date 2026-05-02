@@ -16,10 +16,18 @@ bun install
 
 mkdir -p out
 
-echo "Building standalone binary..."
+echo "Building CLI binary..."
 bun build src/index.ts --compile --outfile out/deepthink
 
-echo "Binary size: $(du -h out/deepthink | cut -f1)"
+echo "Building MCP server binary..."
+bun build src/mcp-server.ts --compile --outfile out/deepthink-mcp
+
+echo "Binary sizes:"
+echo "  CLI: $(du -h out/deepthink | cut -f1)"
+echo "  MCP: $(du -h out/deepthink-mcp | cut -f1)"
 echo ""
-echo "Build complete: $SCRIPT_DIR/out/deepthink"
+echo "Build complete:"
+echo "  CLI: $SCRIPT_DIR/out/deepthink"
+echo "  MCP: $SCRIPT_DIR/out/deepthink-mcp"
+echo ""
 echo "Test: ./out/deepthink status"

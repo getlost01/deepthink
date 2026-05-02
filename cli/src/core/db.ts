@@ -1,0 +1,353 @@
+import { Database } from "bun:sqlite";
+import { join } from "path";
+import { HOME } from "../config";
+
+const STORE_PATH = join(HOME, "Documents", "DeepThink", "data", "deepthink.store");
+
+// Core Data epoch: 2001-01-01T00:00:00Z
+const CD_EPOCH = Date.UTC(2001, 0, 1) / 1000;
+
+function toCD(date: Date): number {
+  return date.getTime() / 1000 - CD_EPOCH;
+}
+
+function fromCD(ts: number): Date {
+  return new Date((ts + CD_EPOCH) * 1000);
+}
+
+function formatDate(d: Date): string {
+  return d.toISOString().replace("T", " ").slice(0, 19);
+}
+
+function uuidHex(): string {
+  return crypto.randomUUID().replace(/-/g, "").toUpperCase();
+}
+
+function nextPK(db: Database, entity: string): { pk: number; ent: number } {
+  const row = db.query("SELECT Z_ENT, Z_MAX FROM Z_PRIMARYKEY WHERE Z_NAME = ?").get(entity) as any;
+  if (!row) throw new Error(`unknown entity: ${entity}`);
+  const pk = row.Z_MAX + 1;
+  db.query("UPDATE Z_PRIMARYKEY SET Z_MAX = ? WHERE Z_NAME = ?").run(pk, entity);
+  return { pk, ent: row.Z_ENT };
+}
+
+function openDB(): Database {
+  return new Database(STORE_PATH);
+}
+
+// ── Project ──
+
+export interface ProjectRow {
+  pk: number;
+  id: string;
+  name: string;
+  summary: string;
+  color: string;
+  isArchived: boolean;
+  createdAt: Date;
+  modifiedAt: Date;
+  taskCount: number;
+  noteCount: number;
+}
+
+export function listProjects(): ProjectRow[] {
+  const db = openDB();
+  const rows = db.query(`
+    SELECT p.Z_PK, hex(p.ZID) as id, p.ZNAME, p.ZSUMMARY, p.ZCOLOR, p.ZISARCHIVED,
+           p.ZCREATEDAT, p.ZMODIFIEDAT,
+           (SELECT COUNT(*) FROM ZTASKITEM WHERE ZPROJECT = p.Z_PK) as taskCount,
+           (SELECT COUNT(*) FROM ZNOTE WHERE ZPROJECT = p.Z_PK) as noteCount
+    FROM ZPROJECT p ORDER BY p.ZMODIFIEDAT DESC
+  `).all() as any[];
+  db.close();
+  return rows.map(r => ({
+    pk: r.Z_PK, id: r.id, name: r.ZNAME, summary: r.ZSUMMARY ?? "",
+    color: r.ZCOLOR ?? "#007AFF", isArchived: !!r.ZISARCHIVED,
+    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+    taskCount: r.taskCount, noteCount: r.noteCount,
+  }));
+}
+
+export function getProject(nameOrPk: string): ProjectRow | null {
+  const projects = listProjects();
+  const byPk = projects.find(p => p.pk.toString() === nameOrPk);
+  if (byPk) return byPk;
+  const lower = nameOrPk.toLowerCase();
+  return projects.find(p => p.name.toLowerCase() === lower) ??
+         projects.find(p => p.name.toLowerCase().includes(lower)) ?? null;
+}
+
+export function createProject(name: string, opts: { summary?: string; color?: string } = {}): number {
+  const db = openDB();
+  const { pk, ent } = nextPK(db, "Project");
+  const now = toCD(new Date());
+  db.query(`
+    INSERT INTO ZPROJECT (Z_PK, Z_ENT, Z_OPT, ZISARCHIVED, ZCREATEDAT, ZMODIFIEDAT, ZNAME, ZSUMMARY, ZCOLOR, ZID)
+    VALUES (?, ?, 1, 0, ?, ?, ?, ?, ?, x'${uuidHex()}')
+  `).run(pk, ent, now, now, name, opts.summary ?? "", opts.color ?? "#007AFF");
+  db.close();
+  return pk;
+}
+
+export function updateProject(pk: number, fields: Record<string, any>): void {
+  const db = openDB();
+  const sets: string[] = [];
+  const vals: any[] = [];
+
+  if (fields.name !== undefined) { sets.push("ZNAME = ?"); vals.push(fields.name); }
+  if (fields.summary !== undefined) { sets.push("ZSUMMARY = ?"); vals.push(fields.summary); }
+  if (fields.color !== undefined) { sets.push("ZCOLOR = ?"); vals.push(fields.color); }
+  if (fields.archived !== undefined) { sets.push("ZISARCHIVED = ?"); vals.push(fields.archived ? 1 : 0); }
+
+  if (sets.length === 0) { db.close(); return; }
+
+  sets.push("ZMODIFIEDAT = ?");
+  vals.push(toCD(new Date()));
+  vals.push(pk);
+
+  db.query(`UPDATE ZPROJECT SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  db.close();
+}
+
+export function deleteProject(pk: number): void {
+  const db = openDB();
+  db.query("UPDATE ZTASKITEM SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
+  db.query("UPDATE ZNOTE SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
+  db.query("DELETE FROM ZPROJECT WHERE Z_PK = ?").run(pk);
+  db.close();
+}
+
+// ── Task ──
+
+export interface TaskRow {
+  pk: number;
+  id: string;
+  title: string;
+  detail: string;
+  status: string;
+  priority: string;
+  storyPoints: number | null;
+  dueDate: Date | null;
+  projectPk: number | null;
+  projectName: string | null;
+  createdAt: Date;
+  modifiedAt: Date;
+}
+
+export function listTasks(opts: { status?: string; priority?: string; project?: string } = {}): TaskRow[] {
+  const db = openDB();
+  let where = "1=1";
+  const params: any[] = [];
+
+  if (opts.status) { where += " AND t.ZSTATUSRAW = ?"; params.push(opts.status); }
+  if (opts.priority) { where += " AND t.ZPRIORITYRAW = ?"; params.push(opts.priority); }
+  if (opts.project) {
+    const proj = getProject(opts.project);
+    if (proj) { where += " AND t.ZPROJECT = ?"; params.push(proj.pk); }
+  }
+
+  const rows = db.query(`
+    SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
+           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZPROJECT, t.ZCREATEDAT, t.ZMODIFIEDAT,
+           p.ZNAME as projectName
+    FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
+    WHERE ${where}
+    ORDER BY t.ZMODIFIEDAT DESC
+  `).all(...params) as any[];
+  db.close();
+  return rows.map(r => ({
+    pk: r.Z_PK, id: r.id, title: r.ZTITLE, detail: r.ZDETAIL ?? "",
+    status: r.ZSTATUSRAW, priority: r.ZPRIORITYRAW,
+    storyPoints: r.ZSTORYPOINTS, dueDate: r.ZDUEDATE ? fromCD(r.ZDUEDATE) : null,
+    projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
+    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+  }));
+}
+
+export function getTask(pkStr: string): TaskRow | null {
+  const tasks = listTasks();
+  const byPk = tasks.find(t => t.pk.toString() === pkStr);
+  if (byPk) return byPk;
+  const lower = pkStr.toLowerCase();
+  return tasks.find(t => t.title.toLowerCase() === lower) ??
+         tasks.find(t => t.title.toLowerCase().includes(lower)) ?? null;
+}
+
+export function createTask(title: string, opts: {
+  detail?: string; status?: string; priority?: string;
+  storyPoints?: number; dueDate?: string; project?: string;
+} = {}): number {
+  const db = openDB();
+  const { pk, ent } = nextPK(db, "TaskItem");
+  const now = toCD(new Date());
+
+  let projectPk: number | null = null;
+  if (opts.project) {
+    const proj = getProject(opts.project);
+    if (proj) projectPk = proj.pk;
+  }
+
+  let dueDateCD: number | null = null;
+  if (opts.dueDate) {
+    dueDateCD = toCD(new Date(opts.dueDate));
+  }
+
+  db.query(`
+    INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
+    VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
+  `).run(pk, ent, opts.storyPoints ?? null, projectPk, now, dueDateCD, now, opts.detail ?? "", opts.priority ?? "None", opts.status ?? "To Do", title);
+  db.close();
+  return pk;
+}
+
+export function updateTask(pk: number, fields: Record<string, any>): void {
+  const db = openDB();
+  const sets: string[] = [];
+  const vals: any[] = [];
+
+  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
+  if (fields.detail !== undefined) { sets.push("ZDETAIL = ?"); vals.push(fields.detail); }
+  if (fields.status !== undefined) {
+    sets.push("ZSTATUSRAW = ?"); vals.push(fields.status);
+    if (fields.status === "Done") { sets.push("ZCOMPLETEDAT = ?"); vals.push(toCD(new Date())); }
+    else { sets.push("ZCOMPLETEDAT = ?"); vals.push(null); }
+  }
+  if (fields.priority !== undefined) { sets.push("ZPRIORITYRAW = ?"); vals.push(fields.priority); }
+  if (fields.storyPoints !== undefined) { sets.push("ZSTORYPOINTS = ?"); vals.push(fields.storyPoints); }
+  if (fields.dueDate !== undefined) {
+    sets.push("ZDUEDATE = ?");
+    vals.push(fields.dueDate ? toCD(new Date(fields.dueDate)) : null);
+  }
+  if (fields.project !== undefined) {
+    if (fields.project === null || fields.project === "none") {
+      sets.push("ZPROJECT = ?"); vals.push(null);
+    } else {
+      const proj = getProject(fields.project);
+      if (proj) { sets.push("ZPROJECT = ?"); vals.push(proj.pk); }
+    }
+  }
+
+  if (sets.length === 0) { db.close(); return; }
+
+  sets.push("ZMODIFIEDAT = ?");
+  vals.push(toCD(new Date()));
+  vals.push(pk);
+
+  db.query(`UPDATE ZTASKITEM SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  db.close();
+}
+
+export function deleteTask(pk: number): void {
+  const db = openDB();
+  db.query("DELETE FROM Z_6TASKS WHERE Z_7TASKS = ?").run(pk);
+  db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
+  db.close();
+}
+
+// ── Note ──
+
+export interface NoteRow {
+  pk: number;
+  id: string;
+  title: string;
+  content: string;
+  isPinned: boolean;
+  projectPk: number | null;
+  projectName: string | null;
+  createdAt: Date;
+  modifiedAt: Date;
+}
+
+export function listNotes(opts: { project?: string; pinned?: boolean } = {}): NoteRow[] {
+  const db = openDB();
+  let where = "1=1";
+  const params: any[] = [];
+
+  if (opts.pinned !== undefined) { where += " AND n.ZISPINNED = ?"; params.push(opts.pinned ? 1 : 0); }
+  if (opts.project) {
+    const proj = getProject(opts.project);
+    if (proj) { where += " AND n.ZPROJECT = ?"; params.push(proj.pk); }
+  }
+
+  const rows = db.query(`
+    SELECT n.Z_PK, hex(n.ZID) as id, n.ZTITLE, n.ZCONTENT, n.ZISPINNED, n.ZPROJECT,
+           n.ZCREATEDAT, n.ZMODIFIEDAT, p.ZNAME as projectName
+    FROM ZNOTE n LEFT JOIN ZPROJECT p ON n.ZPROJECT = p.Z_PK
+    WHERE ${where}
+    ORDER BY n.ZMODIFIEDAT DESC
+  `).all(...params) as any[];
+  db.close();
+  return rows.map(r => ({
+    pk: r.Z_PK, id: r.id, title: r.ZTITLE, content: r.ZCONTENT ?? "",
+    isPinned: !!r.ZISPINNED, projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
+    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+  }));
+}
+
+export function getNote(pkStr: string): NoteRow | null {
+  const notes = listNotes();
+  const byPk = notes.find(n => n.pk.toString() === pkStr);
+  if (byPk) return byPk;
+  const lower = pkStr.toLowerCase();
+  return notes.find(n => n.title.toLowerCase() === lower) ??
+         notes.find(n => n.title.toLowerCase().includes(lower)) ?? null;
+}
+
+export function createNote(title: string, opts: {
+  content?: string; pinned?: boolean; project?: string;
+} = {}): number {
+  const db = openDB();
+  const { pk, ent } = nextPK(db, "Note");
+  const now = toCD(new Date());
+
+  let projectPk: number | null = null;
+  if (opts.project) {
+    const proj = getProject(opts.project);
+    if (proj) projectPk = proj.pk;
+  }
+
+  db.query(`
+    INSERT INTO ZNOTE (Z_PK, Z_ENT, Z_OPT, ZISPINNED, ZPROJECT, ZCREATEDAT, ZMODIFIEDAT, ZCONTENT, ZTITLE, ZID)
+    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
+  `).run(pk, ent, opts.pinned ? 1 : 0, projectPk, now, now, opts.content ?? "", title);
+  db.close();
+  return pk;
+}
+
+export function updateNote(pk: number, fields: Record<string, any>): void {
+  const db = openDB();
+  const sets: string[] = [];
+  const vals: any[] = [];
+
+  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
+  if (fields.content !== undefined) { sets.push("ZCONTENT = ?"); vals.push(fields.content); }
+  if (fields.pinned !== undefined) { sets.push("ZISPINNED = ?"); vals.push(fields.pinned ? 1 : 0); }
+  if (fields.project !== undefined) {
+    if (fields.project === null || fields.project === "none") {
+      sets.push("ZPROJECT = ?"); vals.push(null);
+    } else {
+      const proj = getProject(fields.project);
+      if (proj) { sets.push("ZPROJECT = ?"); vals.push(proj.pk); }
+    }
+  }
+
+  if (sets.length === 0) { db.close(); return; }
+
+  sets.push("ZMODIFIEDAT = ?");
+  vals.push(toCD(new Date()));
+  vals.push(pk);
+
+  db.query(`UPDATE ZNOTE SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  db.close();
+}
+
+export function deleteNote(pk: number): void {
+  const db = openDB();
+  db.query("DELETE FROM Z_2TAGS WHERE Z_2NOTES = ?").run(pk);
+  db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
+  db.close();
+}
+
+// ── Helpers ──
+
+export { formatDate };

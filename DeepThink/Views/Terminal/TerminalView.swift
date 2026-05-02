@@ -52,6 +52,8 @@ struct DeepThinkTerminalView: View {
             if let session = activeSession {
                 TerminalHostView(session: session)
                     .id(session.id)
+                    .padding(DS.Spacing.sm)
+                    .background(Color(nsColor: NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0)))
             }
         }
         .onAppear {

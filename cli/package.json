@@ -8,7 +8,12 @@
   "scripts": {
     "dev": "bun run src/index.ts",
     "build": "mkdir -p out && bun build src/index.ts --compile --outfile out/deepthink",
+    "build:mcp": "mkdir -p out && bun build src/mcp-server.ts --compile --outfile out/deepthink-mcp",
+    "build:all": "mkdir -p out && bun build src/index.ts --compile --outfile out/deepthink && bun build src/mcp-server.ts --compile --outfile out/deepthink-mcp",
     "build:universal": "mkdir -p out && bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile out/deepthink-arm64 && bun build src/index.ts --compile --target=bun-darwin-x64 --outfile out/deepthink-x64"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  }
 }

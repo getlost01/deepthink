@@ -10,6 +10,7 @@ import * as fileTools from "./tools/file";
 import * as search from "./tools/search";
 import * as memoryTools from "./tools/memory";
 import * as knowledgeTools from "./tools/knowledge";
+import * as db from "./core/db";
 
 initSandbox();
 
@@ -275,6 +276,247 @@ async function cmdDocs() {
   ok(`saved: ${path}`);
 }
 
+// ── deepthink task ──
+
+function cmdTask() {
+  if (!sub || sub === "list") {
+    const status = flagVal("--status");
+    const priority = flagVal("--priority");
+    const project = flagVal("--project");
+    const tasks = db.listTasks({ status: status ?? undefined, priority: priority ?? undefined, project: project ?? undefined });
+    if (tasks.length === 0) { p("no tasks"); return; }
+    for (const t of tasks) {
+      const proj = t.projectName ? ` [${t.projectName}]` : "";
+      const pts = t.storyPoints ? ` ${t.storyPoints}sp` : "";
+      const due = t.dueDate ? ` due:${db.formatDate(t.dueDate).slice(0, 10)}` : "";
+      p(`  #${t.pk}  ${t.status.padEnd(11)} ${t.priority.padEnd(6)} ${t.title}${proj}${pts}${due}`);
+    }
+    return;
+  }
+
+  if (sub === "add" || sub === "create") {
+    const title = args[2];
+    if (!title) err("usage: deepthink task add <title> [--status s] [--priority p] [--points n] [--due YYYY-MM-DD] [--project name]");
+    const pk = db.createTask(title, {
+      status: flagVal("--status") ?? undefined,
+      priority: flagVal("--priority") ?? undefined,
+      storyPoints: flagVal("--points") ? parseInt(flagVal("--points")!) : undefined,
+      dueDate: flagVal("--due") ?? undefined,
+      project: flagVal("--project") ?? undefined,
+    });
+    ok(`task #${pk}: ${title}`);
+    return;
+  }
+
+  if (sub === "show") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink task show <id|name>");
+    const t = db.getTask(ref);
+    if (!t) err(`task not found: ${ref}`);
+    p(`#${t!.pk}  ${t!.title}`);
+    p(`  status:   ${t!.status}`);
+    p(`  priority: ${t!.priority}`);
+    if (t!.storyPoints) p(`  points:   ${t!.storyPoints}`);
+    if (t!.dueDate) p(`  due:      ${db.formatDate(t!.dueDate!)}`);
+    if (t!.projectName) p(`  project:  ${t!.projectName}`);
+    if (t!.detail) p(`  detail:   ${t!.detail}`);
+    p(`  created:  ${db.formatDate(t!.createdAt)}`);
+    p(`  modified: ${db.formatDate(t!.modifiedAt)}`);
+    return;
+  }
+
+  if (sub === "update" || sub === "edit") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink task update <id|name> [--title t] [--status s] [--priority p] [--points n] [--due date] [--detail d] [--project name]");
+    const t = db.getTask(ref);
+    if (!t) err(`task not found: ${ref}`);
+    const fields: Record<string, any> = {};
+    const title = flagVal("--title"); if (title) fields.title = title;
+    const status = flagVal("--status"); if (status) fields.status = status;
+    const priority = flagVal("--priority"); if (priority) fields.priority = priority;
+    const points = flagVal("--points"); if (points) fields.storyPoints = parseInt(points);
+    const due = flagVal("--due"); if (due) fields.dueDate = due === "none" ? null : due;
+    const detail = flagVal("--detail"); if (detail) fields.detail = detail;
+    const project = flagVal("--project"); if (project) fields.project = project;
+    db.updateTask(t!.pk, fields);
+    ok(`task #${t!.pk} updated`);
+    return;
+  }
+
+  if (sub === "done") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink task done <id|name>");
+    const t = db.getTask(ref);
+    if (!t) err(`task not found: ${ref}`);
+    db.updateTask(t!.pk, { status: "Done" });
+    ok(`task #${t!.pk} done`);
+    return;
+  }
+
+  if (sub === "delete" || sub === "rm") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink task delete <id|name>");
+    const t = db.getTask(ref);
+    if (!t) err(`task not found: ${ref}`);
+    db.deleteTask(t!.pk);
+    ok(`task #${t!.pk} deleted`);
+    return;
+  }
+
+  err(`unknown: deepthink task ${sub}`);
+}
+
+// ── deepthink note ──
+
+function cmdNote() {
+  if (!sub || sub === "list") {
+    const project = flagVal("--project");
+    const pinned = flag("--pinned") ? true : undefined;
+    const notes = db.listNotes({ project: project ?? undefined, pinned });
+    if (notes.length === 0) { p("no notes"); return; }
+    for (const n of notes) {
+      const proj = n.projectName ? ` [${n.projectName}]` : "";
+      const pin = n.isPinned ? " 📌" : "";
+      p(`  #${n.pk}  ${n.title}${proj}${pin}`);
+    }
+    return;
+  }
+
+  if (sub === "add" || sub === "create") {
+    const title = args[2];
+    if (!title) err("usage: deepthink note add <title> [--content text] [--pinned] [--project name]");
+    const pk = db.createNote(title, {
+      content: flagVal("--content") ?? undefined,
+      pinned: flag("--pinned"),
+      project: flagVal("--project") ?? undefined,
+    });
+    ok(`note #${pk}: ${title}`);
+    return;
+  }
+
+  if (sub === "show") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink note show <id|name>");
+    const n = db.getNote(ref);
+    if (!n) err(`note not found: ${ref}`);
+    p(`#${n!.pk}  ${n!.title}${n!.isPinned ? " (pinned)" : ""}`);
+    if (n!.projectName) p(`  project:  ${n!.projectName}`);
+    p(`  created:  ${db.formatDate(n!.createdAt)}`);
+    p(`  modified: ${db.formatDate(n!.modifiedAt)}`);
+    if (n!.content) { p(""); p(n!.content); }
+    return;
+  }
+
+  if (sub === "update" || sub === "edit") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink note update <id|name> [--title t] [--content text] [--pinned] [--unpinned] [--project name]");
+    const n = db.getNote(ref);
+    if (!n) err(`note not found: ${ref}`);
+    const fields: Record<string, any> = {};
+    const title = flagVal("--title"); if (title) fields.title = title;
+    const content = flagVal("--content"); if (content) fields.content = content;
+    if (flag("--pinned")) fields.pinned = true;
+    if (flag("--unpinned")) fields.pinned = false;
+    const project = flagVal("--project"); if (project) fields.project = project;
+    db.updateNote(n!.pk, fields);
+    ok(`note #${n!.pk} updated`);
+    return;
+  }
+
+  if (sub === "delete" || sub === "rm") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink note delete <id|name>");
+    const n = db.getNote(ref);
+    if (!n) err(`note not found: ${ref}`);
+    db.deleteNote(n!.pk);
+    ok(`note #${n!.pk} deleted`);
+    return;
+  }
+
+  err(`unknown: deepthink note ${sub}`);
+}
+
+// ── deepthink project ──
+
+function cmdProject() {
+  if (!sub || sub === "list") {
+    const projects = db.listProjects();
+    if (projects.length === 0) { p("no projects"); return; }
+    for (const pr of projects) {
+      const archived = pr.isArchived ? " (archived)" : "";
+      p(`  #${pr.pk}  ${pr.name}  ${pr.taskCount}t ${pr.noteCount}n${archived}`);
+    }
+    return;
+  }
+
+  if (sub === "add" || sub === "create") {
+    const name = args[2];
+    if (!name) err("usage: deepthink project add <name> [--summary text] [--color hex]");
+    const pk = db.createProject(name, {
+      summary: flagVal("--summary") ?? undefined,
+      color: flagVal("--color") ?? undefined,
+    });
+    ok(`project #${pk}: ${name}`);
+    return;
+  }
+
+  if (sub === "show") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink project show <id|name>");
+    const pr = db.getProject(ref);
+    if (!pr) err(`project not found: ${ref}`);
+    p(`#${pr!.pk}  ${pr!.name}`);
+    if (pr!.summary) p(`  summary:  ${pr!.summary}`);
+    p(`  color:    ${pr!.color}`);
+    p(`  tasks:    ${pr!.taskCount}`);
+    p(`  notes:    ${pr!.noteCount}`);
+    p(`  archived: ${pr!.isArchived}`);
+    p(`  created:  ${db.formatDate(pr!.createdAt)}`);
+    p(`  modified: ${db.formatDate(pr!.modifiedAt)}`);
+    return;
+  }
+
+  if (sub === "update" || sub === "edit") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink project update <id|name> [--name n] [--summary s] [--color hex] [--archive] [--unarchive]");
+    const pr = db.getProject(ref);
+    if (!pr) err(`project not found: ${ref}`);
+    const fields: Record<string, any> = {};
+    const name = flagVal("--name"); if (name) fields.name = name;
+    const summary = flagVal("--summary"); if (summary) fields.summary = summary;
+    const color = flagVal("--color"); if (color) fields.color = color;
+    if (flag("--archive")) fields.archived = true;
+    if (flag("--unarchive")) fields.archived = false;
+    db.updateProject(pr!.pk, fields);
+    ok(`project #${pr!.pk} updated`);
+    return;
+  }
+
+  if (sub === "delete" || sub === "rm") {
+    const ref = args[2];
+    if (!ref) err("usage: deepthink project delete <id|name>");
+    const pr = db.getProject(ref);
+    if (!pr) err(`project not found: ${ref}`);
+    db.deleteProject(pr!.pk);
+    ok(`project #${pr!.pk} deleted`);
+    return;
+  }
+
+  err(`unknown: deepthink project ${sub}`);
+}
+
+// ── deepthink workspace ──
+
+async function cmdWorkspace() {
+  const { WorkspaceAgent } = await import("./agents/workspace");
+  const request = args.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+  if (!request) err("usage: deepthink workspace <natural language request>\n  example: deepthink workspace \"create a high-priority task for API migration due Friday\"");
+
+  const agent = new WorkspaceAgent();
+  const result = await agent.handle(request);
+  p(result);
+}
+
 // ── help ──
 
 function cmdHelp() {
@@ -303,6 +545,39 @@ function cmdHelp() {
   deepthink knowledge archive <proj>              archive project
   deepthink knowledge stats                       overview
 
+  deepthink task list                              list tasks
+    --status <s>  --priority <p>  --project <name>
+  deepthink task add <title>                      create task
+    --status <s>  --priority <p>  --points <n>
+    --due <YYYY-MM-DD>  --project <name>
+  deepthink task show <id|name>                   view task
+  deepthink task update <id|name>                 update task
+    --title  --status  --priority  --points
+    --due  --detail  --project
+  deepthink task done <id|name>                   mark done
+  deepthink task delete <id|name>                 delete task
+
+  deepthink note list                             list notes
+    --project <name>  --pinned
+  deepthink note add <title>                      create note
+    --content <text>  --pinned  --project <name>
+  deepthink note show <id|name>                   view note
+  deepthink note update <id|name>                 update note
+    --title  --content  --pinned  --unpinned  --project
+  deepthink note delete <id|name>                 delete note
+
+  deepthink project list                          list projects
+  deepthink project add <name>                    create project
+    --summary <text>  --color <hex>
+  deepthink project show <id|name>                view project
+  deepthink project update <id|name>              update project
+    --name  --summary  --color  --archive  --unarchive
+  deepthink project delete <id|name>              delete project
+
+  deepthink workspace <request>                    AI workspace agent
+  deepthink ws <request>                          (alias)
+    natural language task/note/project management
+
   deepthink search <query>                        web search
   deepthink search local <query>                  local files
     --dir <path>
@@ -324,6 +599,11 @@ const dispatch: Record<string, () => Promise<void> | void> = {
   run: cmdRun,
   memory: cmdMemory,
   knowledge: cmdKnowledge,
+  task: cmdTask,
+  note: cmdNote,
+  project: cmdProject,
+  workspace: cmdWorkspace,
+  ws: cmdWorkspace,
   search: cmdSearch,
   analyze: cmdAnalyze,
   docs: cmdDocs,

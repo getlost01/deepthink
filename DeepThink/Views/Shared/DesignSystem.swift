@@ -317,17 +317,17 @@ struct DSEmptyState: View {
 
             if let action {
                 Button(action: action) {
-                    HStack(spacing: DS.Spacing.sm) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .font(.system(size: DS.IconSize.xs, weight: .medium))
                         Text(actionTitle)
-                            .font(DS.Font.body)
+                            .font(DS.Font.caption)
                             .fontWeight(.medium)
                     }
                     .foregroundStyle(.white)
-                    .padding(.horizontal, DS.Spacing.xl)
-                    .padding(.vertical, DS.Spacing.md)
-                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
                 .buttonStyle(.plainPointer)
             }

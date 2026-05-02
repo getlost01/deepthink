@@ -94,6 +94,21 @@ struct TaskListView: View {
                 .padding(.bottom, DS.Spacing.sm)
             }
 
+            if !filteredTasks.isEmpty {
+                let done = filteredTasks.filter { $0.status == .done }.count
+                let total = filteredTasks.count
+                let progress = Double(done) / Double(total)
+                HStack(spacing: DS.Spacing.sm) {
+                    ProgressView(value: progress)
+                        .tint(DS.Colors.accent)
+                    Text("\(done)/\(total)")
+                        .font(DS.Font.tiny)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
+            }
+
             Divider()
 
             List(selection: $appState.selectedTaskID) {
