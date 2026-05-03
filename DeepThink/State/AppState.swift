@@ -40,6 +40,41 @@ final class AppState {
     var selectedContextItemPath: String?
     var contextSearchQuery: String = ""
 
+    // Active context for skills/rules
+    var currentNoteContent: String?
+    var currentNoteTitle: String?
+    var currentNoteTags: [String] = []
+    var currentProjectName: String?
+    var selectedText: String?
+    var pendingSkillExecution: SkillFile?
+    var disabledRuleIDs: Set<String> = []
+
+    var activeContextDictionary: [String: String] {
+        var ctx: [String: String] = [:]
+        if let section = selectedSection { ctx["section"] = section.rawValue }
+        if let project = currentProjectName { ctx["project"] = project }
+        for tag in currentNoteTags { ctx["note.tagged.\(tag)"] = tag }
+        if let content = currentNoteContent, looksLikeCode(content) {
+            ctx["content_type"] = "code"
+        }
+        if let agentPath = selectedAgentPath {
+            let agentName = AgentFileService.shared.agents.first { $0.filePath.path == agentPath }?.name
+            if let name = agentName { ctx["agent"] = name }
+        }
+        return ctx
+    }
+
+    var activeRules: [RuleFile] {
+        RuleFileService.shared.matchingRules(for: activeContextDictionary)
+            .filter { !disabledRuleIDs.contains($0.id) }
+    }
+
+    private func looksLikeCode(_ text: String) -> Bool {
+        let indicators = ["```", "func ", "def ", "class ", "import ", "const ", "let ", "var ", "return "]
+        let matches = indicators.filter { text.contains($0) }.count
+        return matches >= 2
+    }
+
     func navigate(to section: SidebarSection) {
         selectedSection = section
     }

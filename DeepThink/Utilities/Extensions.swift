@@ -3,9 +3,13 @@ import SwiftUI
 
 extension Date {
     var relativeFormatted: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .short
-        return formatter.localizedString(for: self, relativeTo: Date())
+        let interval = Date().timeIntervalSince(self)
+        if interval < 60 { return "just now" }
+        if interval < 3600 { return "\(Int(interval / 60))m ago" }
+        if interval < 86400 { return "\(Int(interval / 3600))h ago" }
+        if interval < 86400 * 30 { return "\(Int(interval / 86400))d ago" }
+        if interval < 86400 * 365 { return "\(Int(interval / (86400 * 30)))mo ago" }
+        return "\(Int(interval / (86400 * 365)))y ago"
     }
 
     var shortFormatted: String {

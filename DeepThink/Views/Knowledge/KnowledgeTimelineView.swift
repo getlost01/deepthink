@@ -121,7 +121,7 @@ struct KnowledgeTimelineView: View {
                                             .font(DS.Font.body)
                                             .foregroundStyle(DS.Colors.textPrimary)
                                             .lineLimit(1)
-                                        Text("\(note.wordCount) words • \(note.modifiedAt, style: .relative) ago")
+                                        Text("\(note.wordCount) words • \(note.modifiedAt.relativeFormatted)")
                                             .font(DS.Font.small)
                                             .foregroundStyle(DS.Colors.textTertiary)
                                     }
@@ -246,7 +246,7 @@ private struct TimelineSection: View {
 
                         Spacer()
 
-                        Text(entry.importedAt, style: .relative)
+                        Text(entry.importedAt.relativeFormatted)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }

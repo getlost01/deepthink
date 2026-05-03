@@ -44,16 +44,18 @@ enum DataSourceType: String, CaseIterable, Identifiable, Codable {
     case script
     case mcp
     case clipboard
+    case rssFeed
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .folder: "Folder"
-        case .url: "URL"
+        case .url: "Web Page"
         case .script: "Script"
         case .mcp: "MCP Server"
         case .clipboard: "Clipboard"
+        case .rssFeed: "RSS/Atom Feed"
         }
     }
 
@@ -64,16 +66,18 @@ enum DataSourceType: String, CaseIterable, Identifiable, Codable {
         case .script: "terminal"
         case .mcp: "puzzlepiece.extension"
         case .clipboard: "doc.on.clipboard"
+        case .rssFeed: "dot.radiowaves.up.forward"
         }
     }
 
     var description: String {
         switch self {
-        case .folder: "Watch a folder for markdown files"
+        case .folder: "Watch a folder for new or changed files"
         case .url: "Scrape web pages into knowledge"
-        case .script: "Run a shell script that outputs markdown"
+        case .script: "Run a shell script that outputs text"
         case .mcp: "Connect via Model Context Protocol"
         case .clipboard: "Capture clipboard content"
+        case .rssFeed: "Auto-import articles from RSS or Atom feeds"
         }
     }
 }

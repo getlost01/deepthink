@@ -32,6 +32,7 @@ struct DeepThinkApp: App {
                     minHeight: AppConstants.minWindowHeight
                 )
                 .onAppear {
+                    UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
                     registerCommands()
                     installCLI()
                     installDefaultMCPServers(container: sharedModelContainer)
@@ -123,7 +124,15 @@ struct DeepThinkApp: App {
     }
 
     private func registerCommands() {
-        commandPaletteState.registerCommands([
+        let state = appState
+        let skillCommands = SkillFileService.shared.skills.map { skill in
+            Command(title: "Run: \(skill.name)", icon: skill.icon, shortcut: nil, section: "Skills") {
+                state.navigate(to: .ai)
+                state.pendingSkillExecution = skill
+            }
+        }
+
+        commandPaletteState.registerCommands(skillCommands + [
             // Create
             Command(title: "New Note", icon: "doc.text.badge.plus", shortcut: "⌘N", section: "Create") {
                 appState.selectedSection = .workspace

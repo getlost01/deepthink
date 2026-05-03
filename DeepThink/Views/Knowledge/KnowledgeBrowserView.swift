@@ -4,30 +4,30 @@ import UniformTypeIdentifiers
 
 struct KnowledgeBrowserView: View {
     @State private var searchText = ""
-    @State private var sourceFilter: String?
+    @State private var folderFilter: String?
     @State private var selectedEntry: KnowledgeEntry?
     @State private var showURLSheet = false
     @State private var showNewEntry = false
     @State private var showScriptSheet = false
     @State private var showDeleteConfirm = false
+    @State private var showNewFolder = false
+    @State private var newFolderName = ""
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
     private var filteredEntries: [KnowledgeEntry] {
         var results = knowledge.entries
-        if let filter = sourceFilter {
-            results = results.filter { $0.source == filter }
+        if let filter = folderFilter {
+            results = results.filter { $0.folder == filter }
         }
         if !searchText.isEmpty {
             results = knowledge.search(searchText)
-            if let filter = sourceFilter {
-                results = results.filter { $0.source == filter }
+            if let filter = folderFilter {
+                results = results.filter { $0.folder == filter }
             }
         }
         return results
     }
-
-    private let sources = ["url", "folder", "clipboard", "manual", "script", "mcp"]
 
     var body: some View {
         ResizableSplitView(minLeftWidth: 300, minRightWidth: 400) {
@@ -80,14 +80,24 @@ struct KnowledgeBrowserView: View {
                 .padding(.vertical, DS.Spacing.md)
 
                 HStack(spacing: DS.Spacing.sm) {
-                    Picker("Source", selection: $sourceFilter) {
-                        Text("All Sources").tag(nil as String?)
-                        ForEach(sources, id: \.self) { source in
-                            Label(source.capitalized, systemImage: iconFor(source)).tag(source as String?)
+                    Picker("Folder", selection: $folderFilter) {
+                        Text("All Folders").tag(nil as String?)
+                        ForEach(knowledge.folders, id: \.self) { folder in
+                            Label(folder, systemImage: "folder").tag(folder as String?)
                         }
                     }
                     .pickerStyle(.menu)
                     .font(DS.Font.caption)
+
+                    Button {
+                        showNewFolder = true
+                    } label: {
+                        Image(systemName: "folder.badge.plus")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .help("Create new folder")
 
                     Spacer()
 
@@ -115,6 +125,21 @@ struct KnowledgeBrowserView: View {
                             ForEach(filteredEntries) { entry in
                                 EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id) {
                                     selectedEntry = entry
+                                }
+                                .contextMenu {
+                                    Menu("Move to Folder") {
+                                        ForEach(knowledge.folders, id: \.self) { folder in
+                                            Button(folder) {
+                                                KnowledgeService.shared.moveEntry(entry, to: folder)
+                                            }
+                                            .disabled(entry.folder == folder)
+                                        }
+                                    }
+                                    Divider()
+                                    Button("Delete", role: .destructive) {
+                                        selectedEntry = entry
+                                        showDeleteConfirm = true
+                                    }
                                 }
                                 if entry.id != filteredEntries.last?.id {
                                     Divider().padding(.leading, 48)
@@ -150,6 +175,20 @@ struct KnowledgeBrowserView: View {
             }
         } message: {
             Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
+        }
+        .alert("New Folder", isPresented: $showNewFolder) {
+            TextField("Folder name", text: $newFolderName)
+            Button("Create") {
+                let name = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !name.isEmpty {
+                    KnowledgeService.shared.createFolder(named: name)
+                    folderFilter = name
+                    newFolderName = ""
+                }
+            }
+            Button("Cancel", role: .cancel) { newFolderName = "" }
+        } message: {
+            Text("Create a folder to organize your knowledge entries.")
         }
     }
 
@@ -230,9 +269,13 @@ private struct EntryRow: View {
                         .lineLimit(1)
 
                     HStack(spacing: DS.Spacing.sm) {
-                        Text(entry.source)
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 8))
+                            Text(entry.folder)
+                        }
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
 
                         if !entry.tags.isEmpty {
                             Text(entry.tags.prefix(2).joined(separator: ", "))
@@ -245,7 +288,7 @@ private struct EntryRow: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(entry.importedAt, style: .relative)
+                    Text(entry.importedAt.relativeFormatted)
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text(entry.formattedSize)

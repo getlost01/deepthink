@@ -20,6 +20,12 @@ final class KnowledgeService {
         let baseURL = StorageService.shared.knowledgeURL
         entries = scanDirectory(baseURL)
             .sorted { $0.importedAt > $1.importedAt }
+
+        // Rebuild TF-IDF index with snapshot of entries
+        let snapshot = entries
+        DispatchQueue.global(qos: .utility).async {
+            ContextEngine.shared.rebuildIndex(with: snapshot)
+        }
     }
 
     private func scanDirectory(_ url: URL) -> [KnowledgeEntry] {
@@ -65,6 +71,8 @@ final class KnowledgeService {
             importedAt = createdAt
         }
 
+        let folder = frontmatter["folder"] ?? inferFolder(from: url)
+
         return KnowledgeEntry(
             title: title,
             source: source,
@@ -73,8 +81,19 @@ final class KnowledgeService {
             importedAt: importedAt,
             content: body,
             filePath: url,
-            fileSize: fileSize
+            fileSize: fileSize,
+            folder: folder
         )
+    }
+
+    private func inferFolder(from url: URL) -> String {
+        let knowledgePath = StorageService.shared.knowledgeURL.path
+        let relativePath = url.deletingLastPathComponent().path.replacingOccurrences(of: knowledgePath, with: "")
+        let components = relativePath.split(separator: "/").map(String.init)
+        if let first = components.first, !first.isEmpty {
+            return first.replacingOccurrences(of: "-", with: " ").capitalized
+        }
+        return "General"
     }
 
     private func inferSource(from url: URL) -> String {
@@ -119,26 +138,22 @@ final class KnowledgeService {
 
     // MARK: - CRUD
 
-    func createEntry(title: String, content: String, source: String, tags: [String] = [], sourceURL: String? = nil) {
-        let dir: URL
-        switch source {
-        case "url", "web": dir = StorageService.shared.knowledgeURL.appendingPathComponent("web")
-        case "clipboard": dir = StorageService.shared.knowledgeURL.appendingPathComponent("clipboard")
-        case "manual": dir = StorageService.shared.knowledgeURL.appendingPathComponent("manual")
-        default: dir = StorageService.shared.knowledgeURL.appendingPathComponent("imports")
-        }
-
+    func createEntry(title: String, content: String, source: String, tags: [String] = [], sourceURL: String? = nil, folder: String = "General") {
+        let dir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
+        let hash = String(abs(content.hashValue), radix: 36).prefix(6)
         let slug = title.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
-        let filename = "\(slug).md"
-        let fileURL = dir.appendingPathComponent(filename)
+            .prefix(60)
+        let filename = "\(slug)-\(hash).md"
+        let fileURL = dir.appendingPathComponent(String(filename))
 
         var md = "---\n"
         md += "title: \(title)\n"
         md += "source: \(source)\n"
+        md += "folder: \(folder)\n"
         if let url = sourceURL { md += "url: \(url)\n" }
         if !tags.isEmpty { md += "tags: [\(tags.joined(separator: ", "))]\n" }
         md += "imported_at: \(ISO8601DateFormatter().string(from: Date()))\n"
@@ -155,6 +170,44 @@ final class KnowledgeService {
                 }
             }
         }
+    }
+
+    // MARK: - Folder Management
+
+    var folders: [String] {
+        let allFolders = Set(entries.map(\.folder))
+        var result = allFolders.sorted()
+        if !result.contains("General") { result.insert("General", at: 0) }
+        return result
+    }
+
+    func createFolder(named name: String) {
+        let dir = StorageService.shared.knowledgeURL.appendingPathComponent(name.slugified)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+
+    func moveEntry(_ entry: KnowledgeEntry, to folder: String) {
+        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
+        try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
+
+        let destURL = destDir.appendingPathComponent(entry.filePath.lastPathComponent)
+        guard destURL != entry.filePath else { return }
+
+        // Update folder in frontmatter
+        guard let data = fm.contents(atPath: entry.filePath.path),
+              let text = String(data: data, encoding: .utf8) else { return }
+
+        let (frontmatter, body) = parseFrontmatter(text)
+        var updated = frontmatter
+        updated["folder"] = folder
+
+        var md = "---\n"
+        for (key, value) in updated { md += "\(key): \(value)\n" }
+        md += "---\n\n\(body)"
+
+        try? md.write(to: destURL, atomically: true, encoding: .utf8)
+        try? fm.removeItem(at: entry.filePath)
+        reload()
     }
 
     func deleteEntry(_ entry: KnowledgeEntry) {
@@ -179,61 +232,38 @@ final class KnowledgeService {
         return entries.filter { $0.source == source }
     }
 
-    // MARK: - RAG: Relevance Search
+    // MARK: - RAG: Smart Retrieval via ContextEngine
 
     func relevantEntries(for query: String, maxResults: Int = 5) -> [KnowledgeEntry] {
         guard !query.isEmpty else { return [] }
 
-        let queryWords = query.lowercased()
-            .components(separatedBy: .whitespacesAndNewlines)
-            .filter { $0.count > 2 }
+        let bundle = ContextEngine.shared.retrieveContext(for: query, maxTokens: maxResults * 800)
+        let matchedIDs = Set(bundle.parts.map(\.title))
 
-        guard !queryWords.isEmpty else { return [] }
-
-        let scored: [(entry: KnowledgeEntry, score: Double)] = entries.compactMap { entry in
-            let titleLower = entry.title.lowercased()
-            let contentLower = entry.content.lowercased()
-            let tagsLower = entry.tags.map { $0.lowercased() }
-
-            var score: Double = 0
-
-            for word in queryWords {
-                if titleLower.contains(word) { score += 3.0 }
-                if tagsLower.contains(where: { $0.contains(word) }) { score += 2.5 }
-                let contentOccurrences = contentLower.components(separatedBy: word).count - 1
-                score += min(Double(contentOccurrences) * 0.5, 3.0)
-            }
-
-            let recencyDays = Date().timeIntervalSince(entry.importedAt) / 86400
-            if recencyDays < 7 { score *= 1.2 }
-            else if recencyDays < 30 { score *= 1.1 }
-
-            return score > 0 ? (entry, score) : nil
-        }
-
-        return scored
-            .sorted { $0.score > $1.score }
+        return entries
+            .filter { matchedIDs.contains($0.title) }
             .prefix(maxResults)
-            .map(\.entry)
+            .map { $0 }
     }
 
-    func ragContext(for query: String, maxTokens: Int = 3000) -> String? {
-        let relevant = relevantEntries(for: query)
-        guard !relevant.isEmpty else { return nil }
+    func ragContext(for query: String, maxTokens: Int = 4000, projectScope: String? = nil, agentScope: [String]? = nil) -> String? {
+        let bundle = ContextEngine.shared.retrieveContext(
+            for: query,
+            maxTokens: maxTokens,
+            projectScope: projectScope,
+            agentScope: agentScope
+        )
+        return ContextEngine.shared.formatForPrompt(bundle)
+    }
 
-        var context = "# Relevant Knowledge\n\n"
-        var charBudget = maxTokens * 4
+    // MARK: - Dedup-aware creation
 
-        for entry in relevant {
-            let snippet = "## \(entry.title)\n"
-                + (entry.tags.isEmpty ? "" : "Tags: \(entry.tags.joined(separator: ", "))\n")
-                + "\(String(entry.content.prefix(800)))\n\n"
-
-            if charBudget - snippet.count < 0 { break }
-            context += snippet
-            charBudget -= snippet.count
+    func createEntryIfNotDuplicate(title: String, content: String, source: String, tags: [String] = [], sourceURL: String? = nil) -> Bool {
+        if ContextEngine.shared.isDuplicateOrSimilar(content: content, threshold: 0.75) {
+            StorageService.shared.writeLog("Skipped duplicate: \(title)", to: "knowledge")
+            return false
         }
-
-        return context
+        createEntry(title: title, content: content, source: source, tags: tags, sourceURL: sourceURL)
+        return true
     }
 }

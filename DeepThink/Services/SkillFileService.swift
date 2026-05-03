@@ -45,8 +45,23 @@ final class SkillFileService {
             systemPrompt: systemPrompt,
             promptTemplate: promptTemplate,
             filePath: url,
-            isBuiltIn: fm["built_in"] == "true"
+            isBuiltIn: fm["built_in"] == "true",
+            isPinned: fm["pinned"] == "true"
         )
+    }
+
+    // MARK: - Lookup
+
+    func skill(forCommand command: String) -> SkillFile? {
+        skills.first { $0.commandName == command }
+    }
+
+    var pinnedSkills: [SkillFile] { skills.filter(\.isPinned) }
+
+    func togglePin(skill: SkillFile) {
+        guard let idx = skills.firstIndex(where: { $0.id == skill.id }) else { return }
+        skills[idx].isPinned.toggle()
+        save(skill: skills[idx])
     }
 
     // MARK: - Execute
@@ -57,7 +72,14 @@ final class SkillFileService {
         defer { isExecuting = false }
 
         let resolved = interpolate(skill.promptTemplate, with: context)
-        let system = skill.systemPrompt.isEmpty ? nil : interpolate(skill.systemPrompt, with: context)
+        var system = skill.systemPrompt.isEmpty ? nil : interpolate(skill.systemPrompt, with: context)
+
+        // Auto-inject relevant knowledge context into skill execution
+        let input = context["input"] ?? resolved
+        if let ragContext = KnowledgeService.shared.ragContext(for: input, maxTokens: 1500) {
+            let base = system ?? "You are a helpful assistant."
+            system = base + "\n\n" + ragContext
+        }
 
         do {
             let result = try await ClaudeService.shared.query(resolved, systemPrompt: system)
@@ -97,6 +119,7 @@ final class SkillFileService {
         if let model = skill.model { md += "model: \(model)\n" }
         md += "category: \(skill.category)\n"
         if skill.isBuiltIn { md += "built_in: true\n" }
+        if skill.isPinned { md += "pinned: true\n" }
         md += "---\n\n"
         if !skill.systemPrompt.isEmpty {
             md += skill.systemPrompt + "\n\n---\n\n"

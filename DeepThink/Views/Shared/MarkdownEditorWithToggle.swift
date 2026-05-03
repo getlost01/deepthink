@@ -61,18 +61,23 @@ struct MarkdownEditorWithToggle: View {
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
             .background(.bar)
+            .zIndex(1)
 
             Divider()
+                .zIndex(1)
 
             switch mode {
             case .rich:
                 RichMarkdownEditor(text: $text)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
             case .raw:
                 RawMarkdownEditor(text: $text, placeholder: placeholder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
             }
         }
+        .clipped()
         .onChange(of: text) {
             isDirty = text != lastSavedText
             scheduleAutoSave()
@@ -154,7 +159,7 @@ struct ResizableSplitView<Left: View, Right: View>: View {
                 left
                     .frame(width: leftWidth)
 
-                ResizeHandle()
+                DSSplitHandle(axis: .vertical)
                     .gesture(
                         DragGesture(minimumDistance: 1)
                             .onChanged { value in
@@ -171,22 +176,42 @@ struct ResizableSplitView<Left: View, Right: View>: View {
     }
 }
 
-private struct ResizeHandle: View {
+// MARK: - Unified Split Handle
+
+struct DSSplitHandle: View {
+    enum Axis { case horizontal, vertical }
+    var axis: Axis = .vertical
     @State private var isHovered = false
 
     var body: some View {
-        Rectangle()
-            .fill(isHovered ? DS.Colors.accent.opacity(0.5) : DS.Colors.border)
-            .frame(width: isHovered ? 3 : 1)
-            .contentShape(Rectangle().inset(by: -3))
-            .onHover { hovering in
-                isHovered = hovering
-                if hovering {
-                    NSCursor.resizeLeftRight.push()
-                } else {
-                    NSCursor.pop()
-                }
+        ZStack {
+            Rectangle()
+                .fill(isHovered ? DS.Colors.borderHover : DS.Colors.border)
+                .frame(
+                    width: axis == .vertical ? 1 : nil,
+                    height: axis == .horizontal ? 1 : nil
+                )
+
+            Capsule()
+                .fill(isHovered ? DS.Colors.textTertiary : DS.Colors.borderHover)
+                .frame(
+                    width: axis == .vertical ? 4 : 36,
+                    height: axis == .vertical ? 36 : 4
+                )
+        }
+        .frame(
+            width: axis == .vertical ? 8 : nil,
+            height: axis == .horizontal ? 8 : nil
+        )
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering {
+                (axis == .vertical ? NSCursor.resizeLeftRight : NSCursor.resizeUpDown).push()
+            } else {
+                NSCursor.pop()
             }
-            .animation(DS.Animation.quick, value: isHovered)
+        }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

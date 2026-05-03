@@ -122,8 +122,7 @@ struct ProjectDetailView: View {
                         .frame(height: topHeight)
                         .clipped()
 
-                    // Drag handle
-                    SplitDragHandle()
+                    DSSplitHandle(axis: .horizontal)
                         .gesture(
                             DragGesture()
                                 .onChanged { value in
@@ -141,6 +140,8 @@ struct ProjectDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: project.name) { project.modifiedAt = Date() }
         .onChange(of: project.summary) { project.modifiedAt = Date() }
+        .onAppear { appState.currentProjectName = project.name }
+        .onDisappear { appState.currentProjectName = nil }
     }
 
     // MARK: - Tasks Pane
@@ -271,35 +272,6 @@ struct ProjectDetailView: View {
         note.project = project
         modelContext.insert(note)
         appState.navigateToNoteInProject(note.id)
-    }
-}
-
-// MARK: - Split Drag Handle
-
-private struct SplitDragHandle: View {
-    @State private var isHovered = false
-
-    var body: some View {
-        ZStack {
-            Rectangle()
-                .fill(isHovered ? DS.Colors.borderHover : DS.Colors.border)
-                .frame(height: 1)
-
-            Capsule()
-                .fill(isHovered ? DS.Colors.textTertiary : DS.Colors.borderHover)
-                .frame(width: 36, height: 4)
-        }
-        .frame(height: 8)
-        .contentShape(Rectangle())
-        .onHover { hovering in
-            isHovered = hovering
-            if hovering {
-                NSCursor.resizeUpDown.push()
-            } else {
-                NSCursor.pop()
-            }
-        }
-        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 

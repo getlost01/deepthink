@@ -58,7 +58,7 @@ final class AgentFileService {
 
     // MARK: - Build Context
 
-    func buildSystemPrompt(for agent: AgentFile) -> String {
+    func buildSystemPrompt(for agent: AgentFile, query: String? = nil) -> String {
         var prompt = agent.systemPrompt
 
         let matchedRules = RuleFileService.shared.rulesAsSystemPrompt(for: ["agent": agent.name])
@@ -67,15 +67,25 @@ final class AgentFileService {
         }
 
         if !agent.knowledgeScope.isEmpty {
-            let knowledge = KnowledgeService.shared.entries.filter { entry in
-                agent.knowledgeScope.contains { scope in
-                    entry.source.contains(scope) || entry.tags.contains(scope) || entry.title.lowercased().contains(scope.lowercased())
+            if let query = query {
+                // Smart retrieval: use query + agent scope for targeted context
+                if let ctx = KnowledgeService.shared.ragContext(
+                    for: query, maxTokens: 2000, agentScope: agent.knowledgeScope
+                ) {
+                    prompt += "\n\n" + ctx
                 }
-            }
-            if !knowledge.isEmpty {
-                prompt += "\n\n# Knowledge Context\n\n"
-                for entry in knowledge.prefix(10) {
-                    prompt += "## \(entry.title)\n\(String(entry.content.prefix(500)))\n\n"
+            } else {
+                // Fallback: scope-filtered entries
+                let knowledge = KnowledgeService.shared.entries.filter { entry in
+                    agent.knowledgeScope.contains { scope in
+                        entry.source.contains(scope) || entry.tags.contains(scope) || entry.title.lowercased().contains(scope.lowercased())
+                    }
+                }
+                if !knowledge.isEmpty {
+                    prompt += "\n\n# Knowledge Context\n\n"
+                    for entry in knowledge.prefix(5) {
+                        prompt += "## \(entry.title)\n\(String(entry.content.prefix(400)))\n\n"
+                    }
                 }
             }
         }

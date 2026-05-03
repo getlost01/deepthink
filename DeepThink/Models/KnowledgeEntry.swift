@@ -10,6 +10,7 @@ struct KnowledgeEntry: Identifiable, Hashable {
     var content: String
     var filePath: URL
     var fileSize: Int
+    var folder: String
 
     var sourceIcon: String {
         switch source {

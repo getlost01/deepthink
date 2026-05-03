@@ -48,6 +48,7 @@ final class RuleFileService {
             let trigger = rule.trigger
             if trigger == "always" { return true }
             for (key, value) in context {
+                if key == trigger || key.hasPrefix(trigger + ".") || trigger.hasPrefix(key + ".") { return true }
                 if trigger.contains(key) || trigger.contains(value) { return true }
             }
             return false

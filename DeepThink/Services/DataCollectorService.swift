@@ -85,11 +85,12 @@ final class DataCollectorService {
 
     // MARK: - Folder Import
 
-    func importFolder(at path: String) -> Int {
+    func importFolder(at path: String, folder: String? = nil) -> Int {
         let folderURL = URL(fileURLWithPath: path)
         guard fm.fileExists(atPath: path) else { return 0 }
 
-        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent("folders").appendingPathComponent(folderURL.lastPathComponent)
+        let folderName = folder ?? folderURL.lastPathComponent.capitalized
+        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folderName.slugified)
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
         var count = 0
@@ -98,7 +99,11 @@ final class DataCollectorService {
         while let fileURL = enumerator.nextObject() as? URL {
             guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" || fileURL.pathExtension == "txt" else { continue }
 
-            let destURL = destDir.appendingPathComponent(fileURL.lastPathComponent)
+            let stem = fileURL.deletingPathExtension().lastPathComponent
+            let ext = fileURL.pathExtension
+            let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+            let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
+
             if !fm.fileExists(atPath: destURL.path) {
                 try? fm.copyItem(at: fileURL, to: destURL)
                 count += 1
@@ -150,11 +155,15 @@ final class DataCollectorService {
 
     // MARK: - Import File
 
-    func importFile(at url: URL) -> Bool {
-        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent("imports")
+    func importFile(at url: URL, folder: String = "General") -> Bool {
+        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
-        let destURL = destDir.appendingPathComponent(url.lastPathComponent)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        let hash = String(abs(url.path.hashValue), radix: 36).prefix(6)
+        let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
+
         do {
             if fm.fileExists(atPath: destURL.path) {
                 try fm.removeItem(at: destURL)
@@ -167,6 +176,151 @@ final class DataCollectorService {
         }
     }
 
+    // MARK: - RSS/Atom Feed Ingestion
+
+    func ingestFeed(_ feedURL: String, maxItems: Int = 10) async -> Int {
+        guard let url = URL(string: feedURL) else { return 0 }
+
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let xml = String(data: data, encoding: .utf8) else { return 0 }
+
+            let items = parseRSSItems(xml, maxItems: maxItems)
+            var ingested = 0
+
+            for item in items {
+                if ContextEngine.shared.isDuplicateOrSimilar(content: item.content, threshold: 0.7) { continue }
+
+                if let itemURL = item.url {
+                    let success = await scrapeURL(itemURL, title: item.title)
+                    if success { ingested += 1 }
+                } else {
+                    KnowledgeService.shared.createEntry(
+                        title: item.title,
+                        content: item.content,
+                        source: "url",
+                        tags: ["rss", "feed"],
+                        sourceURL: feedURL
+                    )
+                    ingested += 1
+                }
+            }
+
+            StorageService.shared.writeLog("RSS feed ingested \(ingested) items from \(feedURL)", to: "collector")
+            return ingested
+        } catch {
+            StorageService.shared.writeLog("RSS feed failed: \(error.localizedDescription)", to: "collector")
+            return 0
+        }
+    }
+
+    private struct FeedItem {
+        let title: String
+        let content: String
+        let url: String?
+    }
+
+    private func parseRSSItems(_ xml: String, maxItems: Int) -> [FeedItem] {
+        var items: [FeedItem] = []
+        let itemPattern = "<item[^>]*>([\\s\\S]*?)</item>"
+        let entryPattern = "<entry[^>]*>([\\s\\S]*?)</entry>"
+
+        let pattern = xml.contains("<entry") ? entryPattern : itemPattern
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else { return [] }
+
+        let matches = regex.matches(in: xml, range: NSRange(xml.startIndex..., in: xml))
+
+        for match in matches.prefix(maxItems) {
+            guard let range = Range(match.range(at: 1), in: xml) else { continue }
+            let itemXML = String(xml[range])
+
+            let title = extractXMLTag("title", from: itemXML) ?? "Untitled"
+            let description = extractXMLTag("description", from: itemXML) ?? extractXMLTag("content", from: itemXML) ?? extractXMLTag("summary", from: itemXML) ?? ""
+            let link = extractXMLTag("link", from: itemXML) ?? extractXMLAttribute("href", tag: "link", from: itemXML)
+
+            let cleanContent = extractTextFromHTML(description)
+            items.append(FeedItem(title: title, content: cleanContent, url: link))
+        }
+
+        return items
+    }
+
+    private func extractXMLTag(_ tag: String, from xml: String) -> String? {
+        let pattern = "<\(tag)[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></\(tag)>|<\(tag)[^>]*>([\\s\\S]*?)</\(tag)>"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+              let match = regex.firstMatch(in: xml, range: NSRange(xml.startIndex..., in: xml)) else { return nil }
+
+        for i in 1...2 {
+            if let range = Range(match.range(at: i), in: xml) {
+                let result = String(xml[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !result.isEmpty { return result }
+            }
+        }
+        return nil
+    }
+
+    private func extractXMLAttribute(_ attr: String, tag: String, from xml: String) -> String? {
+        let pattern = "<\(tag)[^>]*\(attr)=\"([^\"]*)\""
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+              let match = regex.firstMatch(in: xml, range: NSRange(xml.startIndex..., in: xml)),
+              let range = Range(match.range(at: 1), in: xml) else { return nil }
+        return String(xml[range])
+    }
+
+    // MARK: - Watch Folder (detect changes)
+
+    func syncFolderIncremental(at path: String, folder: String? = nil) -> Int {
+        let folderURL = URL(fileURLWithPath: path)
+        guard fm.fileExists(atPath: path) else { return 0 }
+
+        let folderName = folder ?? folderURL.lastPathComponent.capitalized
+        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folderName.slugified)
+        try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
+
+        var count = 0
+        guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) else { return 0 }
+
+        while let fileURL = enumerator.nextObject() as? URL {
+            guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" || fileURL.pathExtension == "txt" else { continue }
+
+            let stem = fileURL.deletingPathExtension().lastPathComponent
+            let ext = fileURL.pathExtension
+            let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+            let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
+
+            let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+            let destDate = (try? destURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+
+            if !fm.fileExists(atPath: destURL.path) || sourceDate > destDate {
+                try? fm.removeItem(at: destURL)
+                try? fm.copyItem(at: fileURL, to: destURL)
+                count += 1
+            }
+        }
+
+        if count > 0 { KnowledgeService.shared.reload() }
+        return count
+    }
+
+    // MARK: - Batch URL Scraping
+
+    func scrapeURLs(_ urls: [String]) async -> Int {
+        var success = 0
+        for url in urls {
+            if await scrapeURL(url) { success += 1 }
+        }
+        return success
+    }
+
+    // MARK: - Plain Text Capture (API-friendly)
+
+    func captureText(title: String, content: String, source: String = "manual", tags: [String] = []) -> Bool {
+        guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        return KnowledgeService.shared.createEntryIfNotDuplicate(
+            title: title, content: content, source: source, tags: tags
+        )
+    }
+
     // MARK: - Sync Data Source
 
     func sync(source: DataSource, container: ModelContainer) async {
@@ -176,9 +330,9 @@ final class DataCollectorService {
         switch source.type {
         case .folder:
             if let path = source.path {
-                let count = importFolder(at: path)
+                let count = syncFolderIncremental(at: path)
                 await MainActor.run {
-                    source.itemCount = count
+                    source.itemCount += count
                     source.lastSyncAt = Date()
                 }
             }
@@ -205,6 +359,14 @@ final class DataCollectorService {
             }
         case .mcp:
             break
+        case .rssFeed:
+            if let urlStr = source.url {
+                let count = await ingestFeed(urlStr)
+                await MainActor.run {
+                    source.itemCount += count
+                    source.lastSyncAt = Date()
+                }
+            }
         }
     }
 }

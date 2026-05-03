@@ -380,7 +380,7 @@ private struct PresetServersSheet: View {
                     Text("MCP Server Catalog")
                         .font(DS.Font.heading)
                     if let fetched = catalog.lastFetchedAt {
-                        Text("Updated \(fetched, style: .relative) ago")
+                        Text("Updated \(fetched.relativeFormatted)")
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }

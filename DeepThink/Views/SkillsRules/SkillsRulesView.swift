@@ -373,6 +373,19 @@ private struct SkillInlineEditor: View {
                 .frame(width: 130)
                 .onChange(of: category) { scheduleSave() }
 
+                Text("/\(skill.commandName)")
+                    .font(DS.Font.mono)
+                    .foregroundStyle(DS.Colors.textTertiary)
+
+                DSToolbarButton(
+                    icon: skill.isPinned ? "pin.fill" : "pin",
+                    color: skill.isPinned ? DS.Colors.warning : DS.Colors.textSecondary,
+                    size: DS.IconSize.sm
+                ) {
+                    SkillFileService.shared.togglePin(skill: skill)
+                }
+                .help(skill.isPinned ? "Unpin from sidebar" : "Pin to sidebar")
+
                 Button(action: onRun) {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "play.fill")
@@ -459,7 +472,7 @@ private struct SkillInlineEditor: View {
         let updated = SkillFile(
             name: name, trigger: skill.trigger, icon: skill.icon, model: skill.model,
             category: category, systemPrompt: systemPrompt, promptTemplate: promptTemplate,
-            filePath: skill.filePath, isBuiltIn: skill.isBuiltIn
+            filePath: skill.filePath, isBuiltIn: skill.isBuiltIn, isPinned: skill.isPinned
         )
         SkillFileService.shared.save(skill: updated)
     }
