@@ -72,8 +72,9 @@ struct AllTasksView: View {
                 if filteredTasks.isEmpty {
                     DSEmptyState(
                         icon: "checklist",
-                        title: "No Tasks",
-                        subtitle: searchText.isEmpty ? "Create your first task to get started." : "No tasks match your filters."
+                        title: "No Tasks Yet",
+                        subtitle: searchText.isEmpty ? "Tasks help you track what needs to be done. Add priorities and due dates to stay organized." : "No tasks match your filters.",
+                        hint: searchText.isEmpty ? "Start by adding something you need to get done this week" : nil
                     )
                 } else {
                     List(filteredTasks, selection: Binding(
@@ -112,7 +113,7 @@ struct AllTasksView: View {
                 DSEmptyState(
                     icon: "checklist",
                     title: "Select a Task",
-                    subtitle: "Choose a task from the list to view details."
+                    subtitle: "Pick a task from the list to see its details, set priority, or mark it done."
                 )
             }
         }

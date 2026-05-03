@@ -90,12 +90,12 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("3", modifiers: .command)
 
-                Button("Go to Integrations") {
+                Button("Go to Connections") {
                     appState.navigate(to: .integrations)
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
-                Button("Go to Agent Config") {
+                Button("Go to AI Assistants") {
                     appState.navigate(to: .agentConfig)
                 }
                 .keyboardShortcut("5", modifiers: .command)
@@ -167,17 +167,17 @@ struct DeepThinkApp: App {
             Command(title: "Knowledge", icon: "brain", shortcut: "⌘3", section: "Navigate") {
                 appState.navigate(to: .knowledge)
             },
-            Command(title: "Integrations", icon: "puzzlepiece.extension", shortcut: "⌘4", section: "Navigate") {
+            Command(title: "Connections", icon: "puzzlepiece.extension", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .integrations)
             },
-            Command(title: "Agent Config", icon: "person.2.circle", shortcut: "⌘5", section: "Navigate") {
+            Command(title: "AI Assistants", icon: "person.2.circle", shortcut: "⌘5", section: "Navigate") {
                 appState.navigate(to: .agentConfig)
             },
-            Command(title: "Agents", icon: "person.2.circle", shortcut: "⇧⌘7", section: "Navigate") {
+            Command(title: "Assistants", icon: "person.2.circle", shortcut: "⇧⌘7", section: "Navigate") {
                 appState.selectedSection = .agentConfig
                 appState.agentConfigTab = .agents
             },
-            Command(title: "Skills & Rules", icon: "sparkles", shortcut: "⇧⌘8", section: "Navigate") {
+            Command(title: "Automations", icon: "sparkles", shortcut: "⇧⌘8", section: "Navigate") {
                 appState.selectedSection = .agentConfig
                 appState.agentConfigTab = .skillsAndRules
             },

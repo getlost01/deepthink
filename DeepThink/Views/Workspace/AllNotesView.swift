@@ -56,8 +56,9 @@ struct AllNotesView: View {
                 if filteredNotes.isEmpty {
                     DSEmptyState(
                         icon: "doc.text",
-                        title: "No Notes",
-                        subtitle: searchText.isEmpty ? "Create your first note to get started." : "No notes match your search."
+                        title: "No Notes Yet",
+                        subtitle: searchText.isEmpty ? "Notes are where you capture ideas, meeting summaries, plans, or anything you want to remember." : "No notes match your search.",
+                        hint: searchText.isEmpty ? "Try creating a note for your next meeting or idea" : nil
                     )
                 } else {
                     List(filteredNotes, selection: Binding(
@@ -89,7 +90,7 @@ struct AllNotesView: View {
                 DSEmptyState(
                     icon: "doc.text",
                     title: "Select a Note",
-                    subtitle: "Choose a note from the list to start editing."
+                    subtitle: "Pick a note from the list to start reading or editing."
                 )
             }
         }

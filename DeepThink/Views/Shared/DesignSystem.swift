@@ -304,6 +304,7 @@ struct DSEmptyState: View {
     let icon: String
     let title: String
     var subtitle: String? = nil
+    var hint: String? = nil
     var action: (() -> Void)? = nil
     var actionTitle: String = "Get Started"
 
@@ -322,7 +323,7 @@ struct DSEmptyState: View {
                         .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .multilineTextAlignment(.center)
-                        .frame(maxWidth: 300)
+                        .frame(maxWidth: 340)
                 }
             }
 
@@ -342,8 +343,47 @@ struct DSEmptyState: View {
                 }
                 .buttonStyle(.plainPointer)
             }
+
+            if let hint {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "lightbulb")
+                        .font(.system(size: 10, weight: .medium))
+                    Text(hint)
+                        .font(DS.Font.caption)
+                }
+                .foregroundStyle(DS.Colors.textTertiary)
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Help Popover Button
+
+struct DSHelpButton: View {
+    let text: String
+    @State private var showHelp = false
+
+    var body: some View {
+        Button {
+            showHelp.toggle()
+        } label: {
+            Image(systemName: "questionmark.circle")
+                .font(.system(size: DS.IconSize.md, weight: .medium))
+                .foregroundStyle(DS.Colors.textTertiary)
+        }
+        .buttonStyle(.plainPointer)
+        .popover(isPresented: $showHelp, arrowEdge: .bottom) {
+            Text(text)
+                .font(DS.Font.body)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .padding(DS.Spacing.lg)
+                .frame(maxWidth: 320)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 }
 

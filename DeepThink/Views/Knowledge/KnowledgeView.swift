@@ -34,6 +34,7 @@ struct KnowledgeView: View {
                     }
                 }
                 Spacer()
+                DSHelpButton(text: SidebarSection.knowledge.helpText)
             }
 
             Divider()

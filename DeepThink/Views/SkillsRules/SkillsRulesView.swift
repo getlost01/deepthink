@@ -105,7 +105,8 @@ struct SkillsRulesView: View {
                     DSEmptyState(
                         icon: "sparkles",
                         title: "No Skills Yet",
-                        subtitle: "Skills are reusable AI prompts with templates. Create one to get started.",
+                        subtitle: "Skills are reusable AI actions — like saved prompts you can run anytime with one click.",
+                        hint: "Example: \"Summarize this text\", \"Write a thank-you email\", \"Extract key points\"",
                         action: { createNewSkill() },
                         actionTitle: "Create Skill"
                     )
@@ -137,7 +138,7 @@ struct SkillsRulesView: View {
                 DSEmptyState(
                     icon: "sparkles",
                     title: "Select a Skill",
-                    subtitle: "Choose a skill to edit its prompt template, system prompt, and settings. Changes auto-save."
+                    subtitle: "Pick a skill from the list to customize what it does. Changes save automatically."
                 )
             }
         }
@@ -172,7 +173,8 @@ struct SkillsRulesView: View {
                     DSEmptyState(
                         icon: "bolt",
                         title: "No Rules Yet",
-                        subtitle: "Rules guide Claude's behavior — they auto-inject into agent prompts when triggered.",
+                        subtitle: "Rules are automatic instructions for AI — they kick in when certain conditions are met, so you don't have to repeat yourself.",
+                        hint: "Example: \"Always use bullet points\" or \"Keep replies under 200 words\"",
                         action: { createNewRule() },
                         actionTitle: "Create Rule"
                     )
@@ -201,7 +203,7 @@ struct SkillsRulesView: View {
                 DSEmptyState(
                     icon: "bolt",
                     title: "Select a Rule",
-                    subtitle: "Choose a rule to edit its instruction and trigger. Changes auto-save."
+                    subtitle: "Pick a rule from the list to edit when it activates and what it tells AI to do. Changes save automatically."
                 )
             }
         }
@@ -398,7 +400,7 @@ private struct SkillInlineEditor: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("SYSTEM PROMPT")
+                Text("BACKGROUND INSTRUCTIONS")
                     .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, DS.Spacing.lg)
@@ -414,7 +416,7 @@ private struct SkillInlineEditor: View {
 
                 Divider().padding(.horizontal, DS.Spacing.lg)
 
-                Text("PROMPT TEMPLATE")
+                Text("WHAT TO DO")
                     .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, DS.Spacing.lg)
@@ -511,7 +513,7 @@ private struct RuleInlineEditor: View {
             Divider()
 
             HStack(spacing: DS.Spacing.md) {
-                Text("TRIGGER")
+                Text("WHEN TO ACTIVATE")
                     .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("always, note.tagged.meeting, task.created", text: $trigger)

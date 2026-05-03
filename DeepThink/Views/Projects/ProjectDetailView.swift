@@ -173,7 +173,7 @@ struct ProjectDetailView: View {
                 DSEmptyState(
                     icon: "checklist",
                     title: "No tasks yet",
-                    subtitle: "Add tasks to track work",
+                    subtitle: "Break this project into smaller steps you can check off",
                     action: createTaskInProject,
                     actionTitle: "Add Task"
                 )
@@ -231,7 +231,7 @@ struct ProjectDetailView: View {
                 DSEmptyState(
                     icon: "doc.text",
                     title: "No notes yet",
-                    subtitle: "Create notes for this project",
+                    subtitle: "Write down ideas, plans, or meeting notes for this project",
                     action: createNoteInProject,
                     actionTitle: "Add Note"
                 )

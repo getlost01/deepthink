@@ -6,9 +6,9 @@ import SwiftUI
 enum SidebarSection: String, Identifiable {
     case workspace = "Workspace"
     case knowledge = "Knowledge"
-    case ai = "AI Bot"
-    case integrations = "Integrations"
-    case agentConfig = "Agent Config"
+    case ai = "AI Chat"
+    case integrations = "Connections"
+    case agentConfig = "AI Assistants"
     case terminal = "Terminal"
     case settings = "Settings"
 
@@ -33,31 +33,43 @@ enum SidebarSection: String, Identifiable {
     var tooltip: String {
         switch self {
         case .workspace: "Projects, notes, and tasks"
-        case .knowledge: "Browse, search, and manage your knowledge base"
-        case .ai: "Chat with Claude AI using your knowledge"
-        case .integrations: "MCP servers and Claude AI settings"
-        case .agentConfig: "Custom AI agents, skills, and rules"
+        case .knowledge: "Save and search anything you learn"
+        case .ai: "Ask AI questions about your work"
+        case .integrations: "Add tools and services for AI to use"
+        case .agentConfig: "Create custom AI helpers for different tasks"
         case .terminal: "Built-in terminal sessions"
-        case .settings: "Claude model and configuration"
+        case .settings: "Choose AI model and preferences"
         }
     }
 
     var subtitle: String {
         switch self {
         case .workspace: "Your projects, notes, and tasks in one place"
-        case .knowledge: "Collect, browse, and search your knowledge"
-        case .ai: "Chat with AI that knows your workspace"
-        case .integrations: "Connect tools and configure Claude"
-        case .agentConfig: "Build custom AI workflows"
+        case .knowledge: "Save articles, ideas, and research in one place"
+        case .ai: "Ask questions, brainstorm, or get help with your work"
+        case .integrations: "Connect tools and services to make AI more powerful"
+        case .agentConfig: "Set up specialized AI helpers for different kinds of work"
         case .terminal: "Run commands and scripts"
         case .settings: "Model selection and usage"
+        }
+    }
+
+    var helpText: String {
+        switch self {
+        case .workspace: "This is your home base. Create projects to organize your work, write notes to capture ideas, and add tasks to track what needs doing."
+        case .knowledge: "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. Everything here can be used by AI to give you better answers."
+        case .ai: "Chat with AI that has access to your notes and knowledge. Pick an assistant suited to your task, or just ask a question."
+        case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
+        case .agentConfig: "Assistants are AI helpers with specific personalities and expertise. Use a template to get started, or build your own from scratch."
+        case .terminal: "A built-in command line for running scripts and system commands."
+        case .settings: "Choose which AI model to use and track your usage."
         }
     }
 }
 
 enum AgentConfigTab: String, CaseIterable, Identifiable {
-    case agents = "Agents"
-    case skillsAndRules = "Skills & Rules"
+    case agents = "Assistants"
+    case skillsAndRules = "Automations"
 
     var id: String { rawValue }
 

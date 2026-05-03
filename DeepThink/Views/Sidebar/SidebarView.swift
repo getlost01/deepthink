@@ -136,5 +136,6 @@ private struct SidebarItem: View {
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
         .help(section.tooltip)
+        .accessibilityHint(section.helpText)
     }
 }

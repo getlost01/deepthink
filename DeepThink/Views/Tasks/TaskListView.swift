@@ -147,7 +147,8 @@ struct TaskListView: View {
                     DSEmptyState(
                         icon: "checklist",
                         title: "No Tasks Yet",
-                        subtitle: "Track your work with tasks. Add priorities, due dates, and story points.",
+                        subtitle: "Keep track of what you need to do. Set priorities and due dates so nothing falls through the cracks.",
+                        hint: "Tasks can belong to a project, or stand on their own",
                         action: createTask,
                         actionTitle: "New Task"
                     )

@@ -22,6 +22,8 @@ struct ToolsHubView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.sm) {
+                DSHelpButton(text: SidebarSection.integrations.helpText)
+
                 Spacer()
 
                 Text("\(servers.filter(\.isEnabled).count) active")
@@ -48,7 +50,7 @@ struct ToolsHubView: View {
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .help("Import MCP servers from Claude config")
+                .help("Import connections from Claude config")
 
                 Button {
                     showAddSheet = true
@@ -92,8 +94,9 @@ struct ToolsHubView: View {
             if filteredServers.isEmpty {
                 DSEmptyState(
                     icon: "wrench.and.screwdriver",
-                    title: "No Tools Configured",
-                    subtitle: "MCP servers extend AI with web search, databases, file access, and more. Start with a preset or add your own.",
+                    title: "No Connections Yet",
+                    subtitle: "Connections give AI access to external tools like web search, file systems, and databases — making it much more helpful.",
+                    hint: "Start with a preset to see what's possible",
                     action: { showPresets = true },
                     actionTitle: "Browse Presets"
                 )
@@ -299,7 +302,7 @@ private struct AddServerSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Add MCP Server")
+                Text("Add Connection")
                     .font(DS.Font.heading)
                 Spacer()
                 Button("Cancel") { dismiss() }
@@ -327,7 +330,7 @@ private struct AddServerSheet: View {
 
             HStack {
                 Spacer()
-                Button("Add Server") {
+                Button("Add Connection") {
                     let server = MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description)
                     onAdd(server)
                     dismiss()

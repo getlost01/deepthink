@@ -71,7 +71,8 @@ struct ProjectListView: View {
                     DSEmptyState(
                         icon: "folder",
                         title: "No Projects Yet",
-                        subtitle: "Group related notes and tasks together",
+                        subtitle: "Projects keep related notes and tasks together — like a folder for everything about one goal or topic.",
+                        hint: "Example: \"Product Launch\", \"Home Renovation\", \"Research Paper\"",
                         action: createProject,
                         actionTitle: "New Project"
                     )

@@ -104,9 +104,10 @@ struct KnowledgeBrowserView: View {
                     DSEmptyState(
                         icon: "brain",
                         title: knowledge.entries.isEmpty ? "Start Building Your Knowledge" : "No Matches",
-                        subtitle: knowledge.entries.isEmpty ? "Scrape web pages, paste from clipboard, import files, or write entries manually. Everything you add here becomes searchable context for AI chat." : "Try a different search term or clear the filter.",
+                        subtitle: knowledge.entries.isEmpty ? "Save articles, paste text, import files, or write things down. Everything here becomes context that AI can use to give you better answers." : "Try a different search term or clear the filter.",
+                        hint: knowledge.entries.isEmpty ? "Try saving a web article you want to reference later" : nil,
                         action: knowledge.entries.isEmpty ? { showURLSheet = true } : nil,
-                        actionTitle: "Scrape a URL"
+                        actionTitle: "Save a Web Page"
                     )
                 } else {
                     ScrollView {
@@ -132,7 +133,7 @@ struct KnowledgeBrowserView: View {
                 DSEmptyState(
                     icon: "doc.text.magnifyingglass",
                     title: "Select an Entry",
-                    subtitle: "Pick a knowledge entry from the list to view, tag, or find linked notes. Entries are automatically available as context in AI chat."
+                    subtitle: "Pick something from your knowledge base to read, tag, or edit. AI automatically uses your knowledge when you chat."
                 )
             }
         }

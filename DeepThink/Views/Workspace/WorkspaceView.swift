@@ -26,6 +26,7 @@ struct WorkspaceView: View {
                     )
                 }
                 Spacer()
+                DSHelpButton(text: SidebarSection.workspace.helpText)
             }
 
             Divider()
@@ -59,7 +60,7 @@ struct WorkspaceView: View {
                 DSEmptyState(
                     icon: "folder",
                     title: "Select a Project",
-                    subtitle: "Projects group related notes and tasks. Select one from the left, or create a new one with the + button."
+                    subtitle: "Pick a project from the list to see its notes and tasks, or create a new one with the + button."
                 )
             }
         }

@@ -7,168 +7,170 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		EDTR00000001HTMLBUILDFILE1 /* editor.html in Resources */ = {isa = PBXBuildFile; fileRef = EDTR00000002HTMLFILEREF01 /* editor.html */; };
-		EDTR00000003JSBUNDLEBLD01 /* editor.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = EDTR00000004JSBUNDLEREF01 /* editor.bundle.js */; };
+		00EE80DC5F6EAF58288AD4C2 /* AllTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FFC935D0F417F106D4813F8 /* AllTasksView.swift */; };
 		028C3A821E65787E7225B6F7 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1826EF68957900D9E01F17B0 /* TaskListView.swift */; };
 		050B01269DCF81F7EA25E7E6 /* TaskInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A5BAF20115A6287910164A /* TaskInspectorView.swift */; };
-		05CF424BBC124DE82A74E328 /* KnowledgeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E4823A884C6643F4ED07A /* KnowledgeEntry.swift */; };
-		0B6B496B870E006396979B42 /* SkillFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 721E4B04A22A5DEDC0F1F7F9 /* SkillFileService.swift */; };
+		08BC8620EF79F498A7638158 /* editor.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = 6E5D80FD3C638E1DDAD6961D /* editor.bundle.js */; };
+		09A5B19621F51B4465925EFD /* DataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC481A9BCCB447E8BB39804 /* DataSource.swift */; };
+		0CE09CA803E5FFF48104D2A4 /* MarkdownEditorWithToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */; };
 		0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */; };
 		0F6DE790355F98D52B88A16E /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36CF5F5545352A9E8C751ED3 /* Note.swift */; };
 		0FF2A86195CF7229784E1974 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 306A8A7284D41C7FA40818BB /* NoteEditorView.swift */; };
 		1794973874E25BCBD75720EE /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3F4FB3354B14BF6E35411D4 /* SharedViews.swift */; };
 		193F0023B3928322C69E8830 /* StorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3FCAE699A5E746FA2001B06 /* StorageService.swift */; };
-		19A34305825A47C97D018952 /* DataCollectorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13904F639FFEC06B1258C024 /* DataCollectorService.swift */; };
 		2157513B9C5205D846321D27 /* TaskItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE774C4B2C861B287E9C4233 /* TaskItem.swift */; };
-		21E14463B9D02E655E5BE43A /* MCPCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2DF4C02A1142BB61867A04D /* MCPCatalogService.swift */; };
 		21FAB78247AB69A4977BF9B8 /* ToolsHubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1981FD26EE6BC702EE2B1280 /* ToolsHubView.swift */; };
+		25197FB5CEF847A07D60EB22 /* AgentFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */; };
+		2C8A38B25A929CA4C8827713 /* KnowledgeTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85C4A120A5ED9CAC14546A4E /* KnowledgeTimelineView.swift */; };
 		39319B50E10644A2419A3A0A /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F49D6DB09D27EE629FACCADE /* TerminalView.swift */; };
 		3938330849162EA8FC6CBB00 /* CommandPaletteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB17061789F454A1E30D7A79 /* CommandPaletteView.swift */; };
+		404E1248FFBA043A7FFE2D78 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 638F4F95363EC1F53FEE6C2A /* Conversation.swift */; };
 		426F6E951AA7D85D61A0C92B /* MarkdownRendererView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB73589E106C5A91025E8318 /* MarkdownRendererView.swift */; };
 		42FE832CEA39277DCE502D77 /* SwiftTerm in Frameworks */ = {isa = PBXBuildFile; productRef = E797C8A819CC586D7264F4D3 /* SwiftTerm */; };
 		46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB59FFDD446C6AEDD797236 /* AIChatView.swift */; };
+		4822038EF9FCAD2EAACF7444 /* SkillsRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A358CE99734BB73FD76E3219 /* SkillsRulesView.swift */; };
 		484EAB4E6352F976F8488CD4 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD984C2D8AA7167A72F4992 /* ProjectListView.swift */; };
 		4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B44CF060104523F7532E43C /* DeepThinkApp.swift */; };
 		4A07702CB750BA644FF75839 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385A4FAAC692A38BD53EDF64 /* AppState.swift */; };
 		4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC2A1370697934F16E2AF9D /* BacklinkService.swift */; };
-		4F694881A6549DAC4A1B1674 /* AgentFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = A17B4B79A1EDE0DD70E42261 /* AgentFile.swift */; };
 		512AFAF30803AD6957E45BA4 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 862B62F3DC17FE15D45C4581 /* TaskDetailView.swift */; };
-		54ED41F3A20B7CCE66F030B2 /* CollectorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CF440FB8FE941B3A36FFC5D /* CollectorScheduler.swift */; };
+		52AF5F01C27FD134F747C7E5 /* KnowledgeBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677B7F9B25D16E6CB30F0AC1 /* KnowledgeBrowserView.swift */; };
 		5CD76ED30916874BA82DA5AB /* CommandPaletteState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 256D9D261FD40BB77EDFE574 /* CommandPaletteState.swift */; };
 		6411604BCDA0FF0B68B1EE80 /* KnowledgeGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EA735EA8B612913B7083EA8 /* KnowledgeGraphView.swift */; };
-		6878433A945F962DBAA71C15 /* AutomationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CC4949930152F6F32A7C10 /* AutomationView.swift */; };
+		69D8369C734A2EB952AAE830 /* AgentFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F982D5E0D6F4474670D74BE3 /* AgentFile.swift */; };
 		6D349FF311BC466F3D3C8ED6 /* NoteVersionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743594E1DCCFCB283317BD30 /* NoteVersionsView.swift */; };
+		6EAE002F0366083098181E6D /* editor.html in Resources */ = {isa = PBXBuildFile; fileRef = 7F148F6620490B40C32AD286 /* editor.html */; };
 		732CF04187FBB3872901D153 /* VersioningService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3275C61AF584F63DAF20352 /* VersioningService.swift */; };
 		75274A244834AFCFD470C59C /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F03342B4E6B4D5436CD2AD64 /* SidebarView.swift */; };
 		75325BC5A52A723438738FD2 /* AIView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A627AB1ABCA65F8FFD7C7B9 /* AIView.swift */; };
 		75E8C6972A518B981E9A637F /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED8503AA4A4BAB1663817B95 /* FileTreeView.swift */; };
 		7A8E4B214AEA7699D519693F /* DeepSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */; };
-		7E4842F7BBE78ACEF82E558C /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A6346E5A0B7D696BE8E4472 /* KnowledgeService.swift */; };
-		84DE4C97928FC7A68536E53F /* KnowledgeBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBE04D18AA8435BAAA37F18E /* KnowledgeBrowserView.swift */; };
+		7E1D33B08BF6F77EB7DD5EE9 /* KnowledgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C223BF79E3501B2849D0061 /* KnowledgeView.swift */; };
+		7EA4E3A0F47DF9E591AEB963 /* KnowledgeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431213AB0C48A2EDE4799C6C /* KnowledgeEntry.swift */; };
+		7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */; };
+		85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */; };
+		866353BCAA3F9EF09DF6E835 /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24730C11D122CF0AEB59686 /* AgentListView.swift */; };
 		8AF9EBDF670E306EA30DA428 /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D86BA082EAA0134C406EC5 /* Tag.swift */; };
 		8B94A2A274C1F4D160B9C3FB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D7A4EF57F552986078971D26 /* Assets.xcassets */; };
 		8BBBEEC83A0299ED6C484E3E /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FD6E3C699838F6B6313A2D /* Enums.swift */; };
 		9356DECAB0CFE77A9A4D6BF5 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */; };
 		99AAF612C230A61EE4498BF1 /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49DACC2342FDEA5CD1242861 /* NoteListView.swift */; };
-		9A784ECD89C2D5C3C4CD49E7 /* AgentFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECE64784BBCDD89998C29696 /* AgentFileService.swift */; };
+		9BE035FAA2EB384ECA8ACC03 /* AutomationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C12FE837420908C2DEE2AF7 /* AutomationView.swift */; };
 		A5D2EDD3E4BB623620F826F3 /* MarkdownDocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75461489EB80060053543DF9 /* MarkdownDocView.swift */; };
 		A676C81F265FD7A1038E0A54 /* MCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0600BB6D0E20A8A684ED8D07 /* MCPService.swift */; };
 		A6EE9B3FF7DACA255C6D33D1 /* TerminalHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B41EEC463A03B371966AC1 /* TerminalHostView.swift */; };
 		A9367851C0D8E486A9985C78 /* DocsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CAEA60F9F1B6B18A25423FC /* DocsView.swift */; };
-		AAEE445AAF5E484C9D04E32C /* RuleFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC044229F368D5451B2E407 /* RuleFileService.swift */; };
+		AFE71788914D6B5412632786 /* DataCollectorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */; };
 		B40C93BBE9604F4B5427F9F2 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0784749C45091B5719161924 /* Project.swift */; };
 		B47B0C5B2114EB20F19D2969 /* ProjectInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17993B0BAF774FE82D40DCA1 /* ProjectInspectorView.swift */; };
-		B5104FC48507167AF2DE21EA /* SkillFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DCD4621A3FCBC201A701735 /* SkillFile.swift */; };
 		B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C23989015D98E60342D08F /* AIMessage.swift */; };
-		B7BC445089E3487D8E783A10 /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36574381A98A55BB834A5D1A /* AgentListView.swift */; };
-		C001000000000001A0000006 /* WorkspaceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C001000000000002A0000006 /* WorkspaceOverviewView.swift */; };
-		C001000000000001A0000007 /* AllNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C001000000000002A0000007 /* AllNotesView.swift */; };
-		C001000000000001A0000008 /* AllTasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C001000000000002A0000008 /* AllTasksView.swift */; };
-		C001000000000001A0000009 /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C001000000000002A0000009 /* IntegrationsView.swift */; };
-		CAE54DAC9A38B72D75C35286 /* SkillsRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0C34F3DAA5539F1BE0BF0BA /* SkillsRulesView.swift */; };
+		C6144C17B5AF935AF2018373 /* AllNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEABA7F13C07CD092954126 /* AllNotesView.swift */; };
 		CCDFAE51E527844637F13A09 /* ProjectDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D4DBF219661F83A81948C4 /* ProjectDetailView.swift */; };
+		CD1D06FC8788308AAF6602E7 /* SkillFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AB8CED762D0BEEEBFA7395D /* SkillFileService.swift */; };
+		D126BA9243631FF166D5EDAA /* WorkspaceOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */; };
 		D38B2333F328E296AA5B1722 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85913E0C3242EC5DDD5A16AC /* ContentView.swift */; };
 		D5A59CA9651B9337A12970DD /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BAAE89EE8E1949037A2AC7 /* MCPServer.swift */; };
 		D6D0841635A4FB2A684639EC /* NoteInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A892F8CF9A4456973A67EBB1 /* NoteInspectorView.swift */; };
-		D72F48B5A132026ACCB9F3AA /* DataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9331476EA0B2F5212587EB5E /* DataSource.swift */; };
 		D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */; };
 		DF281343B81BD514360F45C7 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BFA5828C333E058B73C0C4 /* Constants.swift */; };
 		E3A6451D6DCC41DC7A2CF240 /* TerminalSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */; };
+		E6B8A5C72B10B7C14529FA3A /* MCPCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */; };
+		E9E2CC89484D1D48939F76BA /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F9B8BDFB02C24F9F39BB04 /* WelcomeView.swift */; };
 		EC533D14ECC430F10582A1C1 /* NoteVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBEB102368C76D7041EBA1B /* NoteVersion.swift */; };
+		ECF461AD4516523ADFC9F773 /* SkillFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15F1316DBB5604DCB63BED10 /* SkillFile.swift */; };
 		EDDAAA898C3FECF2D63E897E /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE3B3F89EA7F9BAF3FD80471 /* Extensions.swift */; };
+		F08AFC211B77938F7CBD0481 /* RuleFileService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02EDE2230502601202B39705 /* RuleFileService.swift */; };
 		F2BD93CC141816B8F905D8CF /* WorkspaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0504053EE219B17048F459A7 /* WorkspaceView.swift */; };
 		F632E15BC4F4D38DB00F7919 /* NoteLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 537CE926D065F008EC744C10 /* NoteLink.swift */; };
 		F698D7CDD7BE6577F5F3C53F /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00321B3E3D5116C5303B7C3C /* TaskRowView.swift */; };
+		F74406A60949A191269B86CD /* KnowledgeExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */; };
+		FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */; };
 		FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C66CC1E57209BBE097F8539 /* SettingsView.swift */; };
-		FC1A2B3D4E5F6A7B8C9D0E1F /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1A2B3D4E5F6A7B8C9D0E10 /* ClaudeSettingsView.swift */; };
-		AA1B2C3D4E5F6A7B00000001 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */; };
-		AA1B2C3D4E5F6A7B00000003 /* KnowledgeExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */; };
-		AA1B2C3D4E5F6A7B00000005 /* KnowledgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */; };
-		AA1B2C3D4E5F6A7B00000007 /* KnowledgeTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */; };
-		AA1B2C3D4E5F6A7B00000009 /* MarkdownEditorWithToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B0000000A /* MarkdownEditorWithToggle.swift */; };
+		FD6D20B9B09705F3C0CCC6BA /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F257EA6BF7E39381490714F /* IntegrationsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		EDTR00000002HTMLFILEREF01 /* editor.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = editor.html; sourceTree = "<group>"; };
-		EDTR00000004JSBUNDLEREF01 /* editor.bundle.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = editor.bundle.js; sourceTree = "<group>"; };
 		00321B3E3D5116C5303B7C3C /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
+		02EDE2230502601202B39705 /* RuleFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleFileService.swift; sourceTree = "<group>"; };
 		0504053EE219B17048F459A7 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		0600BB6D0E20A8A684ED8D07 /* MCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPService.swift; sourceTree = "<group>"; };
 		0784749C45091B5719161924 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
-		13904F639FFEC06B1258C024 /* DataCollectorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DataCollectorService.swift; path = DeepThink/Services/DataCollectorService.swift; sourceTree = SOURCE_ROOT; };
+		0C223BF79E3501B2849D0061 /* KnowledgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeView.swift; sourceTree = "<group>"; };
+		1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeExtractionService.swift; sourceTree = "<group>"; };
+		15F1316DBB5604DCB63BED10 /* SkillFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFile.swift; sourceTree = "<group>"; };
 		17993B0BAF774FE82D40DCA1 /* ProjectInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectInspectorView.swift; sourceTree = "<group>"; };
 		1826EF68957900D9E01F17B0 /* TaskListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskListView.swift; sourceTree = "<group>"; };
 		1981FD26EE6BC702EE2B1280 /* ToolsHubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolsHubView.swift; sourceTree = "<group>"; };
-		1A6346E5A0B7D696BE8E4472 /* KnowledgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeService.swift; path = DeepThink/Services/KnowledgeService.swift; sourceTree = SOURCE_ROOT; };
 		256D9D261FD40BB77EDFE574 /* CommandPaletteState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteState.swift; sourceTree = "<group>"; };
 		306A8A7284D41C7FA40818BB /* NoteEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteEditorView.swift; sourceTree = "<group>"; };
-		36574381A98A55BB834A5D1A /* AgentListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AgentListView.swift; path = DeepThink/Views/Agents/AgentListView.swift; sourceTree = SOURCE_ROOT; };
 		36CF5F5545352A9E8C751ED3 /* Note.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Note.swift; sourceTree = "<group>"; };
 		37D86BA082EAA0134C406EC5 /* Tag.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tag.swift; sourceTree = "<group>"; };
 		385A4FAAC692A38BD53EDF64 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		3CAEA60F9F1B6B18A25423FC /* DocsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocsView.swift; sourceTree = "<group>"; };
-		3CF440FB8FE941B3A36FFC5D /* CollectorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CollectorScheduler.swift; path = DeepThink/Services/CollectorScheduler.swift; sourceTree = SOURCE_ROOT; };
+		431213AB0C48A2EDE4799C6C /* KnowledgeEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeEntry.swift; sourceTree = "<group>"; };
 		49DACC2342FDEA5CD1242861 /* NoteListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteListView.swift; sourceTree = "<group>"; };
+		4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeService.swift; sourceTree = "<group>"; };
+		4F257EA6BF7E39381490714F /* IntegrationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
 		4F275DFF4FDCF5E5906CA86E /* DeepThink.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DeepThink.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51BFA5828C333E058B73C0C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		537CE926D065F008EC744C10 /* NoteLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteLink.swift; sourceTree = "<group>"; };
-		552E4823A884C6643F4ED07A /* KnowledgeEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeEntry.swift; path = DeepThink/Models/KnowledgeEntry.swift; sourceTree = SOURCE_ROOT; };
 		5A627AB1ABCA65F8FFD7C7B9 /* AIView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIView.swift; sourceTree = "<group>"; };
-		5DCD4621A3FCBC201A701735 /* SkillFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SkillFile.swift; path = DeepThink/Models/SkillFile.swift; sourceTree = SOURCE_ROOT; };
+		5FFC935D0F417F106D4813F8 /* AllTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTasksView.swift; sourceTree = "<group>"; };
 		60BAAE89EE8E1949037A2AC7 /* MCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPServer.swift; sourceTree = "<group>"; };
+		638F4F95363EC1F53FEE6C2A /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Conversation.swift; sourceTree = "<group>"; };
+		677B7F9B25D16E6CB30F0AC1 /* KnowledgeBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBrowserView.swift; sourceTree = "<group>"; };
 		68C23989015D98E60342D08F /* AIMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIMessage.swift; sourceTree = "<group>"; };
-		721E4B04A22A5DEDC0F1F7F9 /* SkillFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SkillFileService.swift; path = DeepThink/Services/SkillFileService.swift; sourceTree = SOURCE_ROOT; };
+		6AC481A9BCCB447E8BB39804 /* DataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSource.swift; sourceTree = "<group>"; };
+		6E5D80FD3C638E1DDAD6961D /* editor.bundle.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = editor.bundle.js; sourceTree = "<group>"; };
 		743594E1DCCFCB283317BD30 /* NoteVersionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteVersionsView.swift; sourceTree = "<group>"; };
 		75461489EB80060053543DF9 /* MarkdownDocView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownDocView.swift; sourceTree = "<group>"; };
+		7AB8CED762D0BEEEBFA7395D /* SkillFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFileService.swift; sourceTree = "<group>"; };
 		7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
-		7BC044229F368D5451B2E407 /* RuleFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RuleFileService.swift; path = DeepThink/Services/RuleFileService.swift; sourceTree = SOURCE_ROOT; };
+		7C12FE837420908C2DEE2AF7 /* AutomationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationView.swift; sourceTree = "<group>"; };
 		7C66CC1E57209BBE097F8539 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
+		7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectorScheduler.swift; sourceTree = "<group>"; };
 		7EA735EA8B612913B7083EA8 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeGraphView.swift; sourceTree = "<group>"; };
+		7F148F6620490B40C32AD286 /* editor.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = editor.html; sourceTree = "<group>"; };
+		84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataCollectorService.swift; sourceTree = "<group>"; };
 		85913E0C3242EC5DDD5A16AC /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		85C4A120A5ED9CAC14546A4E /* KnowledgeTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeTimelineView.swift; sourceTree = "<group>"; };
 		862B62F3DC17FE15D45C4581 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskDetailView.swift; sourceTree = "<group>"; };
 		8AB59FFDD446C6AEDD797236 /* AIChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChatView.swift; sourceTree = "<group>"; };
 		8B44CF060104523F7532E43C /* DeepThinkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepThinkApp.swift; sourceTree = "<group>"; };
 		910C30AD98D17EE1056C22DE /* DeepThink.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DeepThink.entitlements; sourceTree = "<group>"; };
-		9331476EA0B2F5212587EB5E /* DataSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = DataSource.swift; path = DeepThink/Models/DataSource.swift; sourceTree = SOURCE_ROOT; };
+		94F9B8BDFB02C24F9F39BB04 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		9BBEB102368C76D7041EBA1B /* NoteVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteVersion.swift; sourceTree = "<group>"; };
-		A17B4B79A1EDE0DD70E42261 /* AgentFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AgentFile.swift; path = DeepThink/Models/AgentFile.swift; sourceTree = SOURCE_ROOT; };
+		A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownEditorWithToggle.swift; sourceTree = "<group>"; };
 		A3275C61AF584F63DAF20352 /* VersioningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersioningService.swift; sourceTree = "<group>"; };
+		A358CE99734BB73FD76E3219 /* SkillsRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsRulesView.swift; sourceTree = "<group>"; };
 		A3FCAE699A5E746FA2001B06 /* StorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageService.swift; sourceTree = "<group>"; };
 		A892F8CF9A4456973A67EBB1 /* NoteInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteInspectorView.swift; sourceTree = "<group>"; };
+		AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOverviewView.swift; sourceTree = "<group>"; };
+		AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPCatalogService.swift; sourceTree = "<group>"; };
 		AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepThinkCLIService.swift; sourceTree = "<group>"; };
-		BBE04D18AA8435BAAA37F18E /* KnowledgeBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeBrowserView.swift; path = DeepThink/Views/Knowledge/KnowledgeBrowserView.swift; sourceTree = SOURCE_ROOT; };
-		C001000000000002A0000006 /* WorkspaceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOverviewView.swift; sourceTree = "<group>"; };
-		C001000000000002A0000007 /* AllNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesView.swift; sourceTree = "<group>"; };
-		C001000000000002A0000008 /* AllTasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTasksView.swift; sourceTree = "<group>"; };
-		C001000000000002A0000009 /* IntegrationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntegrationsView.swift; sourceTree = "<group>"; };
-		C0C34F3DAA5539F1BE0BF0BA /* SkillsRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SkillsRulesView.swift; path = DeepThink/Views/SkillsRules/SkillsRulesView.swift; sourceTree = SOURCE_ROOT; };
-		C2DF4C02A1142BB61867A04D /* MCPCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MCPCatalogService.swift; path = DeepThink/Services/MCPCatalogService.swift; sourceTree = SOURCE_ROOT; };
+		AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFileService.swift; sourceTree = "<group>"; };
 		CB73589E106C5A91025E8318 /* MarkdownRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRendererView.swift; sourceTree = "<group>"; };
+		CDEABA7F13C07CD092954126 /* AllNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesView.swift; sourceTree = "<group>"; };
 		D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
 		D6FD6E3C699838F6B6313A2D /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
 		D7A4EF57F552986078971D26 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DB17061789F454A1E30D7A79 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		DBC2A1370697934F16E2AF9D /* BacklinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklinkService.swift; sourceTree = "<group>"; };
 		DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSession.swift; sourceTree = "<group>"; };
+		E24730C11D122CF0AEB59686 /* AgentListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentListView.swift; sourceTree = "<group>"; };
 		E3F4FB3354B14BF6E35411D4 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		E6D4DBF219661F83A81948C4 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
 		ECD984C2D8AA7167A72F4992 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
-		ECE64784BBCDD89998C29696 /* AgentFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AgentFileService.swift; path = DeepThink/Services/AgentFileService.swift; sourceTree = SOURCE_ROOT; };
 		ED8503AA4A4BAB1663817B95 /* FileTreeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		EE3B3F89EA7F9BAF3FD80471 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		EE774C4B2C861B287E9C4233 /* TaskItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskItem.swift; sourceTree = "<group>"; };
 		F03342B4E6B4D5436CD2AD64 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
-		F2CC4949930152F6F32A7C10 /* AutomationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AutomationView.swift; path = DeepThink/Views/Automation/AutomationView.swift; sourceTree = SOURCE_ROOT; };
 		F49D6DB09D27EE629FACCADE /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
 		F5A5BAF20115A6287910164A /* TaskInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskInspectorView.swift; sourceTree = "<group>"; };
 		F6B41EEC463A03B371966AC1 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
+		F982D5E0D6F4474670D74BE3 /* AgentFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFile.swift; sourceTree = "<group>"; };
 		FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSearchView.swift; sourceTree = "<group>"; };
-		FC1A2B3D4E5F6A7B8C9D0E10 /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
-		AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Conversation.swift; path = DeepThink/Models/Conversation.swift; sourceTree = SOURCE_ROOT; };
-		AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeExtractionService.swift; path = DeepThink/Services/KnowledgeExtractionService.swift; sourceTree = SOURCE_ROOT; };
-		AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeView.swift; path = DeepThink/Views/Knowledge/KnowledgeView.swift; sourceTree = SOURCE_ROOT; };
-		AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeTimelineView.swift; path = DeepThink/Views/Knowledge/KnowledgeTimelineView.swift; sourceTree = SOURCE_ROOT; };
-		AA1B2C3D4E5F6A7B0000000A /* MarkdownEditorWithToggle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MarkdownEditorWithToggle.swift; path = DeepThink/Views/Shared/MarkdownEditorWithToggle.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -210,13 +212,6 @@
 			path = Terminal;
 			sourceTree = "<group>";
 		};
-		2088F4B765493D390CDCD8DF /* Analysis */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Analysis;
-			sourceTree = "<group>";
-		};
 		25E962E33F99CAB988BD7F17 /* DeepSearch */ = {
 			isa = PBXGroup;
 			children = (
@@ -251,20 +246,28 @@
 		3383D49911C149471BFB1F97 /* Workspace */ = {
 			isa = PBXGroup;
 			children = (
+				CDEABA7F13C07CD092954126 /* AllNotesView.swift */,
+				5FFC935D0F417F106D4813F8 /* AllTasksView.swift */,
+				AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */,
 				0504053EE219B17048F459A7 /* WorkspaceView.swift */,
-				C001000000000002A0000006 /* WorkspaceOverviewView.swift */,
-				C001000000000002A0000007 /* AllNotesView.swift */,
-				C001000000000002A0000008 /* AllTasksView.swift */,
 			);
 			path = Workspace;
+			sourceTree = "<group>";
+		};
+		364FB929789B66DF8D4F8E19 /* Agents */ = {
+			isa = PBXGroup;
+			children = (
+				E24730C11D122CF0AEB59686 /* AgentListView.swift */,
+			);
+			path = Agents;
 			sourceTree = "<group>";
 		};
 		37D6F61E431B23DFB9DAB870 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				FC1A2B3D4E5F6A7B8C9D0E10 /* ClaudeSettingsView.swift */,
+				7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */,
+				4F257EA6BF7E39381490714F /* IntegrationsView.swift */,
 				7C66CC1E57209BBE097F8539 /* SettingsView.swift */,
-				C001000000000002A0000009 /* IntegrationsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -272,35 +275,50 @@
 		4826115129246EC45C2069F7 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
+				7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */,
+				84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */,
 				AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */,
+				1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */,
+				4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */,
+				AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */,
 				0600BB6D0E20A8A684ED8D07 /* MCPService.swift */,
+				02EDE2230502601202B39705 /* RuleFileService.swift */,
+				7AB8CED762D0BEEEBFA7395D /* SkillFileService.swift */,
 				A3FCAE699A5E746FA2001B06 /* StorageService.swift */,
 				A3275C61AF584F63DAF20352 /* VersioningService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
 		};
+		4FB6EAD080FAE297789124A6 /* SkillsRules */ = {
+			isa = PBXGroup;
+			children = (
+				A358CE99734BB73FD76E3219 /* SkillsRulesView.swift */,
+			);
+			path = SkillsRules;
+			sourceTree = "<group>";
+		};
 		6372EA5B33DC5CA902A14153 /* Views */ = {
 			isa = PBXGroup;
 			children = (
 				85913E0C3242EC5DDD5A16AC /* ContentView.swift */,
+				364FB929789B66DF8D4F8E19 /* Agents */,
 				BF44C7D40BE76179DAFE4AB1 /* AI */,
-				2088F4B765493D390CDCD8DF /* Analysis */,
+				6ED08336360BCCD0737C580C /* Automation */,
 				EF7FA233F182B3FCB79197F0 /* CommandPalette */,
-				8E81F1B5F7CED5AEB54788C6 /* Context */,
 				25E962E33F99CAB988BD7F17 /* DeepSearch */,
 				9C567DD7169A411E9B316110 /* Docs */,
+				BF16D63BAF179FEA3133D853 /* Knowledge */,
 				0DA13E31242007EA05FF001C /* KnowledgeGraph */,
-				DDE22AF49B4033B502635C61 /* Memory */,
 				BB62AE060EB91288CD0D701B /* Notes */,
 				FDB9C1E02F37E60DFFB43F0E /* Projects */,
-				74CF91164E90A0D8B52642BF /* Search */,
 				37D6F61E431B23DFB9DAB870 /* Settings */,
 				AE3C4AB48A9AE3413110EAA7 /* Shared */,
 				2F91C831D6D3D39A6C0642DD /* Sidebar */,
-				B54754BBF8A0E142C2A5F636 /* Tags */,
+				4FB6EAD080FAE297789124A6 /* SkillsRules */,
 				CABD7B97A12FD64ED1348A1F /* Tasks */,
 				1BA81BAC29A12D7C192F68A3 /* Terminal */,
 				CA51CB06B30F2D1727A7E3AC /* Tools */,
@@ -309,28 +327,22 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
+		6ED08336360BCCD0737C580C /* Automation */ = {
+			isa = PBXGroup;
+			children = (
+				7C12FE837420908C2DEE2AF7 /* AutomationView.swift */,
+			);
+			path = Automation;
+			sourceTree = "<group>";
+		};
 		6FD9C3393140DC6D26AA4CCE /* Resources */ = {
 			isa = PBXGroup;
 			children = (
 				D7A4EF57F552986078971D26 /* Assets.xcassets */,
-				EDTR00000002HTMLFILEREF01,
-				EDTR00000004JSBUNDLEREF01,
+				6E5D80FD3C638E1DDAD6961D /* editor.bundle.js */,
+				7F148F6620490B40C32AD286 /* editor.html */,
 			);
 			path = Resources;
-			sourceTree = "<group>";
-		};
-		74CF91164E90A0D8B52642BF /* Search */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Search;
-			sourceTree = "<group>";
-		};
-		8E81F1B5F7CED5AEB54788C6 /* Context */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Context;
 			sourceTree = "<group>";
 		};
 		924A03EB41FE78F4C4C70EB7 /* Products */ = {
@@ -356,8 +368,10 @@
 			children = (
 				8AB59FFDD446C6AEDD797236 /* AIChatView.swift */,
 				7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */,
+				A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */,
 				CB73589E106C5A91025E8318 /* MarkdownRendererView.swift */,
 				E3F4FB3354B14BF6E35411D4 /* SharedViews.swift */,
+				94F9B8BDFB02C24F9F39BB04 /* WelcomeView.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -367,50 +381,28 @@
 			children = (
 				2C7A5F3FCD9B491B374FEB75 /* DeepThink */,
 				924A03EB41FE78F4C4C70EB7 /* Products */,
-				F2CC4949930152F6F32A7C10 /* AutomationView.swift */,
-				9331476EA0B2F5212587EB5E /* DataSource.swift */,
-				552E4823A884C6643F4ED07A /* KnowledgeEntry.swift */,
-				5DCD4621A3FCBC201A701735 /* SkillFile.swift */,
-				1A6346E5A0B7D696BE8E4472 /* KnowledgeService.swift */,
-				721E4B04A22A5DEDC0F1F7F9 /* SkillFileService.swift */,
-				7BC044229F368D5451B2E407 /* RuleFileService.swift */,
-				13904F639FFEC06B1258C024 /* DataCollectorService.swift */,
-				BBE04D18AA8435BAAA37F18E /* KnowledgeBrowserView.swift */,
-				C0C34F3DAA5539F1BE0BF0BA /* SkillsRulesView.swift */,
-				A17B4B79A1EDE0DD70E42261 /* AgentFile.swift */,
-				ECE64784BBCDD89998C29696 /* AgentFileService.swift */,
-				36574381A98A55BB834A5D1A /* AgentListView.swift */,
-				C2DF4C02A1142BB61867A04D /* MCPCatalogService.swift */,
-				3CF440FB8FE941B3A36FFC5D /* CollectorScheduler.swift */,
-				AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */,
-				AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */,
-				AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */,
-				AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */,
-				AA1B2C3D4E5F6A7B0000000A /* MarkdownEditorWithToggle.swift */,
 			);
 			sourceTree = "<group>";
 		};
 		B51AA3BAC1ABAA3414A687C6 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				F982D5E0D6F4474670D74BE3 /* AgentFile.swift */,
 				68C23989015D98E60342D08F /* AIMessage.swift */,
+				638F4F95363EC1F53FEE6C2A /* Conversation.swift */,
+				6AC481A9BCCB447E8BB39804 /* DataSource.swift */,
 				D6FD6E3C699838F6B6313A2D /* Enums.swift */,
+				431213AB0C48A2EDE4799C6C /* KnowledgeEntry.swift */,
 				60BAAE89EE8E1949037A2AC7 /* MCPServer.swift */,
 				36CF5F5545352A9E8C751ED3 /* Note.swift */,
 				537CE926D065F008EC744C10 /* NoteLink.swift */,
 				9BBEB102368C76D7041EBA1B /* NoteVersion.swift */,
 				0784749C45091B5719161924 /* Project.swift */,
+				15F1316DBB5604DCB63BED10 /* SkillFile.swift */,
 				37D86BA082EAA0134C406EC5 /* Tag.swift */,
 				EE774C4B2C861B287E9C4233 /* TaskItem.swift */,
 			);
 			path = Models;
-			sourceTree = "<group>";
-		};
-		B54754BBF8A0E142C2A5F636 /* Tags */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Tags;
 			sourceTree = "<group>";
 		};
 		BB62AE060EB91288CD0D701B /* Notes */ = {
@@ -422,6 +414,16 @@
 				743594E1DCCFCB283317BD30 /* NoteVersionsView.swift */,
 			);
 			path = Notes;
+			sourceTree = "<group>";
+		};
+		BF16D63BAF179FEA3133D853 /* Knowledge */ = {
+			isa = PBXGroup;
+			children = (
+				677B7F9B25D16E6CB30F0AC1 /* KnowledgeBrowserView.swift */,
+				85C4A120A5ED9CAC14546A4E /* KnowledgeTimelineView.swift */,
+				0C223BF79E3501B2849D0061 /* KnowledgeView.swift */,
+			);
+			path = Knowledge;
 			sourceTree = "<group>";
 		};
 		BF44C7D40BE76179DAFE4AB1 /* AI */ = {
@@ -449,13 +451,6 @@
 				00321B3E3D5116C5303B7C3C /* TaskRowView.swift */,
 			);
 			path = Tasks;
-			sourceTree = "<group>";
-		};
-		DDE22AF49B4033B502635C61 /* Memory */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Memory;
 			sourceTree = "<group>";
 		};
 		EF7FA233F182B3FCB79197F0 /* CommandPalette */ = {
@@ -548,8 +543,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8B94A2A274C1F4D160B9C3FB /* Assets.xcassets in Resources */,
-				EDTR00000001HTMLBUILDFILE1,
-				EDTR00000003JSBUNDLEBLD01,
+				08BC8620EF79F498A7638158 /* editor.bundle.js in Resources */,
+				6EAE002F0366083098181E6D /* editor.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -572,7 +567,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "RESOURCES=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"${RESOURCES}\"\n\n# CLI binary\nif [ -f \"${SRCROOT}/cli/out/deepthink\" ]; then\n  cp \"${SRCROOT}/cli/out/deepthink\" \"${RESOURCES}/deepthink-cli\"\nelif [ -f \"${SRCROOT}/cli/deepthink\" ]; then\n  cp \"${SRCROOT}/cli/deepthink\" \"${RESOURCES}/deepthink-cli\"\nfi\n\n# MCP server binary\nif [ -f \"${SRCROOT}/cli/out/deepthink-mcp\" ]; then\n  cp \"${SRCROOT}/cli/out/deepthink-mcp\" \"${RESOURCES}/deepthink-mcp\"\nfi\n";
+			shellScript = "if [ -f \"${SRCROOT}/cli/deepthink\" ]; then\n  mkdir -p \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n  cp \"${SRCROOT}/cli/deepthink\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/deepthink-cli\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -584,13 +579,24 @@
 				46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */,
 				B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */,
 				75325BC5A52A723438738FD2 /* AIView.swift in Sources */,
+				69D8369C734A2EB952AAE830 /* AgentFile.swift in Sources */,
+				25197FB5CEF847A07D60EB22 /* AgentFileService.swift in Sources */,
+				866353BCAA3F9EF09DF6E835 /* AgentListView.swift in Sources */,
+				C6144C17B5AF935AF2018373 /* AllNotesView.swift in Sources */,
+				00EE80DC5F6EAF58288AD4C2 /* AllTasksView.swift in Sources */,
 				4A07702CB750BA644FF75839 /* AppState.swift in Sources */,
+				9BE035FAA2EB384ECA8ACC03 /* AutomationView.swift in Sources */,
 				4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,
+				7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */,
+				FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */,
 				5CD76ED30916874BA82DA5AB /* CommandPaletteState.swift in Sources */,
 				3938330849162EA8FC6CBB00 /* CommandPaletteView.swift in Sources */,
 				DF281343B81BD514360F45C7 /* Constants.swift in Sources */,
 				D38B2333F328E296AA5B1722 /* ContentView.swift in Sources */,
+				404E1248FFBA043A7FFE2D78 /* Conversation.swift in Sources */,
+				AFE71788914D6B5412632786 /* DataCollectorService.swift in Sources */,
+				09A5B19621F51B4465925EFD /* DataSource.swift in Sources */,
 				7A8E4B214AEA7699D519693F /* DeepSearchView.swift in Sources */,
 				4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */,
 				D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */,
@@ -599,10 +605,19 @@
 				8BBBEEC83A0299ED6C484E3E /* Enums.swift in Sources */,
 				EDDAAA898C3FECF2D63E897E /* Extensions.swift in Sources */,
 				75E8C6972A518B981E9A637F /* FileTreeView.swift in Sources */,
+				FD6D20B9B09705F3C0CCC6BA /* IntegrationsView.swift in Sources */,
+				52AF5F01C27FD134F747C7E5 /* KnowledgeBrowserView.swift in Sources */,
+				7EA4E3A0F47DF9E591AEB963 /* KnowledgeEntry.swift in Sources */,
+				F74406A60949A191269B86CD /* KnowledgeExtractionService.swift in Sources */,
 				6411604BCDA0FF0B68B1EE80 /* KnowledgeGraphView.swift in Sources */,
+				85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */,
+				2C8A38B25A929CA4C8827713 /* KnowledgeTimelineView.swift in Sources */,
+				7E1D33B08BF6F77EB7DD5EE9 /* KnowledgeView.swift in Sources */,
+				E6B8A5C72B10B7C14529FA3A /* MCPCatalogService.swift in Sources */,
 				D5A59CA9651B9337A12970DD /* MCPServer.swift in Sources */,
 				A676C81F265FD7A1038E0A54 /* MCPService.swift in Sources */,
 				A5D2EDD3E4BB623620F826F3 /* MarkdownDocView.swift in Sources */,
+				0CE09CA803E5FFF48104D2A4 /* MarkdownEditorWithToggle.swift in Sources */,
 				426F6E951AA7D85D61A0C92B /* MarkdownRendererView.swift in Sources */,
 				0F6DE790355F98D52B88A16E /* Note.swift in Sources */,
 				0FF2A86195CF7229784E1974 /* NoteEditorView.swift in Sources */,
@@ -615,10 +630,13 @@
 				CCDFAE51E527844637F13A09 /* ProjectDetailView.swift in Sources */,
 				B47B0C5B2114EB20F19D2969 /* ProjectInspectorView.swift in Sources */,
 				484EAB4E6352F976F8488CD4 /* ProjectListView.swift in Sources */,
-				FC1A2B3D4E5F6A7B8C9D0E1F /* ClaudeSettingsView.swift in Sources */,
+				F08AFC211B77938F7CBD0481 /* RuleFileService.swift in Sources */,
 				FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */,
 				1794973874E25BCBD75720EE /* SharedViews.swift in Sources */,
 				75274A244834AFCFD470C59C /* SidebarView.swift in Sources */,
+				ECF461AD4516523ADFC9F773 /* SkillFile.swift in Sources */,
+				CD1D06FC8788308AAF6602E7 /* SkillFileService.swift in Sources */,
+				4822038EF9FCAD2EAACF7444 /* SkillsRulesView.swift in Sources */,
 				193F0023B3928322C69E8830 /* StorageService.swift in Sources */,
 				8AF9EBDF670E306EA30DA428 /* Tag.swift in Sources */,
 				512AFAF30803AD6957E45BA4 /* TaskDetailView.swift in Sources */,
@@ -631,31 +649,9 @@
 				39319B50E10644A2419A3A0A /* TerminalView.swift in Sources */,
 				21FAB78247AB69A4977BF9B8 /* ToolsHubView.swift in Sources */,
 				732CF04187FBB3872901D153 /* VersioningService.swift in Sources */,
+				E9E2CC89484D1D48939F76BA /* WelcomeView.swift in Sources */,
+				D126BA9243631FF166D5EDAA /* WorkspaceOverviewView.swift in Sources */,
 				F2BD93CC141816B8F905D8CF /* WorkspaceView.swift in Sources */,
-				C001000000000001A0000006 /* WorkspaceOverviewView.swift in Sources */,
-				C001000000000001A0000007 /* AllNotesView.swift in Sources */,
-				C001000000000001A0000008 /* AllTasksView.swift in Sources */,
-				C001000000000001A0000009 /* IntegrationsView.swift in Sources */,
-				6878433A945F962DBAA71C15 /* AutomationView.swift in Sources */,
-				D72F48B5A132026ACCB9F3AA /* DataSource.swift in Sources */,
-				05CF424BBC124DE82A74E328 /* KnowledgeEntry.swift in Sources */,
-				B5104FC48507167AF2DE21EA /* SkillFile.swift in Sources */,
-				7E4842F7BBE78ACEF82E558C /* KnowledgeService.swift in Sources */,
-				0B6B496B870E006396979B42 /* SkillFileService.swift in Sources */,
-				AAEE445AAF5E484C9D04E32C /* RuleFileService.swift in Sources */,
-				19A34305825A47C97D018952 /* DataCollectorService.swift in Sources */,
-				84DE4C97928FC7A68536E53F /* KnowledgeBrowserView.swift in Sources */,
-				CAE54DAC9A38B72D75C35286 /* SkillsRulesView.swift in Sources */,
-				4F694881A6549DAC4A1B1674 /* AgentFile.swift in Sources */,
-				9A784ECD89C2D5C3C4CD49E7 /* AgentFileService.swift in Sources */,
-				B7BC445089E3487D8E783A10 /* AgentListView.swift in Sources */,
-				21E14463B9D02E655E5BE43A /* MCPCatalogService.swift in Sources */,
-				54ED41F3A20B7CCE66F030B2 /* CollectorScheduler.swift in Sources */,
-				AA1B2C3D4E5F6A7B00000001 /* Conversation.swift in Sources */,
-				AA1B2C3D4E5F6A7B00000003 /* KnowledgeExtractionService.swift in Sources */,
-				AA1B2C3D4E5F6A7B00000005 /* KnowledgeView.swift in Sources */,
-				AA1B2C3D4E5F6A7B00000007 /* KnowledgeTimelineView.swift in Sources */,
-				AA1B2C3D4E5F6A7B00000009 /* MarkdownEditorWithToggle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

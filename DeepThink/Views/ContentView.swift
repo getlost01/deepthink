@@ -4,20 +4,29 @@ import SwiftData
 struct ContentView: View {
     @Environment(AppState.self) private var appState
     @Environment(CommandPaletteState.self) private var commandPaletteState
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
-        HStack(spacing: 0) {
-            SidebarView()
+        if !hasCompletedOnboarding {
+            WelcomeView {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    hasCompletedOnboarding = true
+                }
+            }
+        } else {
+            HStack(spacing: 0) {
+                SidebarView()
 
-            Divider()
+                Divider()
 
-            ContentRouter()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .overlay {
-            if appState.showCommandPalette {
-                CommandPaletteView()
-                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                ContentRouter()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .overlay {
+                if appState.showCommandPalette {
+                    CommandPaletteView()
+                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                }
             }
         }
     }
