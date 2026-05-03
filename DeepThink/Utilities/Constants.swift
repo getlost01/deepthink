@@ -35,19 +35,18 @@ enum DeepThinkPaths {
     }
 
     static var bundledMCPPath: String? {
-        if let bundled = Bundle.main.resourceURL?
-            .appendingPathComponent("mcp-server.ts").path,
-           FileManager.default.fileExists(atPath: bundled) {
-            return bundled
-        }
-        return nil
+        Bundle.main.resourceURL?
+            .appendingPathComponent("deepthink-mcp").path
     }
 
-    static var mcpServerPath: String {
-        if let bundled = bundledMCPPath { return bundled }
-        let devPath = devCLIDir + "/src/mcp-server.ts"
-        if FileManager.default.fileExists(atPath: devPath) { return devPath }
-        return localBin + "/deepthink-mcp-server.ts"
+    static var mcpBinaryPath: String {
+        let candidates = [
+            bundledMCPPath,
+            localBin + "/deepthink-mcp",
+            devCLIDir + "/out/deepthink-mcp",
+        ].compactMap { $0 }
+        return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
+            ?? localBin + "/deepthink-mcp"
     }
 
     static var cliBinaryCandidates: [String] {
@@ -61,13 +60,4 @@ enum DeepThinkPaths {
         return candidates
     }
 
-    static var cliInstallCandidates: [String] {
-        var candidates: [String] = []
-        if let bundled = bundledCLIPath { candidates.append(bundled) }
-        candidates.append(contentsOf: [
-            devCLIDir + "/out/deepthink",
-            devCLIDir + "/deepthink",
-        ])
-        return candidates
-    }
 }

@@ -188,8 +188,8 @@ struct AIChatView: View {
         }
         let wsServer = MCPServer(
             name: "DeepThink Workspace",
-            command: "bun",
-            args: "run \(DeepThinkPaths.mcpServerPath)",
+            command: DeepThinkPaths.mcpBinaryPath,
+            args: "",
             category: "Workspace",
             description: "Manage tasks, notes, and projects"
         )

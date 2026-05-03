@@ -412,7 +412,7 @@ struct SkillFileEditorView: View {
 
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "info.circle").font(.system(size: 10))
-                        Text("Saved as .md file in ~/Documents/DeepThink/configs/skills/")
+                        Text("Saved as .md file in ~/Documents/DeepThink/.claude/commands/")
                             .font(DS.Font.caption)
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
@@ -504,7 +504,7 @@ struct RuleFileEditorView: View {
 
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "info.circle").font(.system(size: 10))
-                        Text("Saved as .md file in ~/Documents/DeepThink/configs/rules/")
+                        Text("Saved as .md file in ~/Documents/DeepThink/.claude/rules/")
                             .font(DS.Font.caption)
                     }
                     .foregroundStyle(DS.Colors.textTertiary)

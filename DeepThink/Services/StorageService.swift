@@ -15,16 +15,18 @@ final class StorageService {
     var dataURL: URL { baseURL.appendingPathComponent("data") }
     var storeURL: URL { dataURL.appendingPathComponent("deepthink.store") }
 
-    // MARK: - Configs
+    // MARK: - .claude (single source of truth for CLI + app)
 
-    var configsURL: URL { baseURL.appendingPathComponent("configs") }
-    var mcpConfigURL: URL { configsURL.appendingPathComponent("mcp") }
-    var claudeConfigURL: URL { configsURL.appendingPathComponent("claude") }
-    var skillsConfigURL: URL { configsURL.appendingPathComponent("skills") }
-    var rulesConfigURL: URL { configsURL.appendingPathComponent("rules") }
+    var claudeDir: URL { baseURL.appendingPathComponent(".claude") }
+    var commandsURL: URL { claudeDir.appendingPathComponent("commands") }
+    var rulesConfigURL: URL { claudeDir.appendingPathComponent("rules") }
+    var claudeSettingsFile: URL { claudeDir.appendingPathComponent("settings.json") }
+    var claudeCacheURL: URL { claudeDir.appendingPathComponent("cache") }
+    var agentsURL: URL { claudeDir.appendingPathComponent("agents") }
 
-    var mcpServerConfigFile: URL { mcpConfigURL.appendingPathComponent("servers.json") }
-    var mcpTempConfigFile: URL { mcpConfigURL.appendingPathComponent("active-config.json") }
+    var skillsConfigURL: URL { commandsURL }
+    var mcpTempConfigFile: URL { claudeCacheURL.appendingPathComponent("mcp-active.json") }
+    var mcpServerConfigFile: URL { claudeCacheURL.appendingPathComponent("servers.json") }
 
     // MARK: - Knowledge Base
 
@@ -83,7 +85,7 @@ final class StorageService {
         let dirs = [
             dataURL,
             // Configs
-            configsURL, mcpConfigURL, claudeConfigURL, skillsConfigURL, rulesConfigURL,
+            claudeDir, commandsURL, rulesConfigURL, claudeCacheURL, agentsURL,
             // Knowledge
             knowledgeURL, knowledgeProjectsURL, knowledgeIntegrationsURL, knowledgeArchiveURL,
             knowledgeWebURL, knowledgeClipboardURL, knowledgeScriptsURL,
@@ -158,11 +160,11 @@ final class StorageService {
         ```
         DeepThink/
         ├── data/                # App database
-        ├── configs/
-        │   ├── mcp/             # MCP server configurations
-        │   ├── claude/          # Claude CLI settings
-        │   ├── skills/          # Custom skills
-        │   └── rules/           # System prompts & rules
+        ├── .claude/             # Shared config (CLI + app)
+        │   ├── commands/        # Skills as slash commands
+        │   ├── rules/           # System prompts & rules
+        │   ├── settings.json    # MCP servers, permissions
+        │   └── cache/           # Catalog cache, temp configs
         ├── knowledge/
         │   ├── projects/        # Per-project knowledge base
         │   ├── integrations/    # MCP data (Slack, GitHub, etc.)

@@ -7,7 +7,7 @@ final class AgentFileService {
     var agents: [AgentFile] = []
 
     private let fm = FileManager.default
-    private var agentsDir: URL { StorageService.shared.configsURL.appendingPathComponent("agents") }
+    private var agentsDir: URL { StorageService.shared.agentsURL }
 
     private init() {}
 

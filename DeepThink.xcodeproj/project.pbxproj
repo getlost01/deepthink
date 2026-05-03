@@ -557,7 +557,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "RESOURCES=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"${RESOURCES}\"\n\nif [ -f \"${SRCROOT}/cli/deepthink\" ]; then\n  cp \"${SRCROOT}/cli/deepthink\" \"${RESOURCES}/deepthink-cli\"\nfi\n\nif [ -f \"${SRCROOT}/cli/src/mcp-server.ts\" ]; then\n  cp \"${SRCROOT}/cli/src/mcp-server.ts\" \"${RESOURCES}/mcp-server.ts\"\nfi\n";
+			shellScript = "RESOURCES=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"${RESOURCES}\"\n\n# CLI binary\nif [ -f \"${SRCROOT}/cli/out/deepthink\" ]; then\n  cp \"${SRCROOT}/cli/out/deepthink\" \"${RESOURCES}/deepthink-cli\"\nelif [ -f \"${SRCROOT}/cli/deepthink\" ]; then\n  cp \"${SRCROOT}/cli/deepthink\" \"${RESOURCES}/deepthink-cli\"\nfi\n\n# MCP server binary\nif [ -f \"${SRCROOT}/cli/out/deepthink-mcp\" ]; then\n  cp \"${SRCROOT}/cli/out/deepthink-mcp\" \"${RESOURCES}/deepthink-mcp\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

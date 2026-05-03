@@ -8,7 +8,7 @@ final class MCPCatalogService {
     var isLoading = false
     var lastFetchedAt: Date?
 
-    private let cacheFile = StorageService.shared.configsURL.appendingPathComponent("mcp-catalog-cache.json")
+    private let cacheFile = StorageService.shared.claudeCacheURL.appendingPathComponent("mcp-catalog-cache.json")
     private let searchQueries = [
         "keywords:mcp-server",
         "@modelcontextprotocol",

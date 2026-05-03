@@ -201,11 +201,10 @@ struct DeepThinkApp: App {
 
             let hasWorkspace = existing.contains { $0.name == "DeepThink Workspace" }
             if !hasWorkspace {
-                let mcpPath = DeepThinkPaths.mcpServerPath
                 let server = MCPServer(
                     name: "DeepThink Workspace",
-                    command: "bun",
-                    args: "run \(mcpPath)",
+                    command: DeepThinkPaths.mcpBinaryPath,
+                    args: "",
                     category: "Workspace",
                     description: "Manage tasks, notes, and projects in your DeepThink workspace"
                 )
@@ -219,28 +218,38 @@ struct DeepThinkApp: App {
         DispatchQueue.global(qos: .utility).async {
             let fm = FileManager.default
             let installDir = DeepThinkPaths.localBin
-            let installPath = installDir + "/deepthink"
-
-            var sourcePath: String?
-            if let bundled = Bundle.main.resourceURL?.appendingPathComponent("deepthink-cli").path,
-               fm.isExecutableFile(atPath: bundled) {
-                sourcePath = bundled
-            } else {
-                sourcePath = DeepThinkPaths.cliInstallCandidates.first { fm.isExecutableFile(atPath: $0) }
-            }
-
-            guard let source = sourcePath else { return }
 
             if !fm.fileExists(atPath: installDir) {
                 try? fm.createDirectory(atPath: installDir, withIntermediateDirectories: true)
             }
 
-            try? fm.removeItem(atPath: installPath)
-            try? fm.copyItem(atPath: source, toPath: installPath)
-            try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: installPath)
-
-            StorageService.shared.writeLog("CLI installed: \(installPath)", to: "app")
+            Self.installBinary(named: "deepthink-cli", as: "deepthink", fm: fm, installDir: installDir)
+            Self.installBinary(named: "deepthink-mcp", as: "deepthink-mcp", fm: fm, installDir: installDir)
         }
+    }
+
+    private static func installBinary(named bundleName: String, as installName: String, fm: FileManager, installDir: String) {
+        let installPath = installDir + "/" + installName
+
+        var sourcePath: String?
+        if let bundled = Bundle.main.resourceURL?.appendingPathComponent(bundleName).path,
+           fm.isExecutableFile(atPath: bundled) {
+            sourcePath = bundled
+        } else {
+            let devCandidates = [
+                Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/out/" + installName },
+                Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/" + installName },
+            ].compactMap { $0 }
+            sourcePath = devCandidates.first { fm.isExecutableFile(atPath: $0) }
+        }
+
+        guard let source = sourcePath else { return }
+
+        try? fm.removeItem(atPath: installPath)
+        try? fm.copyItem(atPath: source, toPath: installPath)
+        try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: installPath)
+
+        StorageService.shared.writeLog("\(installName) installed: \(installPath)", to: "app")
     }
 }
 
