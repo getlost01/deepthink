@@ -52,13 +52,13 @@ final class AppState {
 
     func navigateToNote(_ id: UUID) {
         selectedSection = .workspace
-        workspaceTab = .projects
+        workspaceTab = .notes
         selectedNoteID = id
     }
 
     func navigateToTask(_ id: UUID) {
         selectedSection = .workspace
-        workspaceTab = .projects
+        workspaceTab = .tasks
         selectedTaskID = id
     }
 

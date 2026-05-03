@@ -135,6 +135,7 @@ struct ToolsHubView: View {
                 modelContext.insert(server)
             }
         }
+        .dsPage()
     }
 
     private func testServer(_ server: MCPServer) {

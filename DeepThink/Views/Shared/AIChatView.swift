@@ -13,6 +13,8 @@ struct AIChatView: View {
     @State private var showSaveToKnowledge = false
     @State private var isSavingKnowledge = false
     @State private var currentConversation: Conversation?
+    @State private var chatTask: Task<Void, Never>?
+    @State private var lastFailedMessage: String?
     @FocusState private var inputFocused: Bool
 
     private var agentService: AgentFileService { AgentFileService.shared }
@@ -147,7 +149,7 @@ struct AIChatView: View {
                         }
 
                         ForEach(appState.chatMessages) { message in
-                            ChatBubble(message: message)
+                            ChatBubble(message: message, onRetry: message.role == .error ? retryLastMessage : nil)
                                 .id(message.id)
                         }
 
@@ -184,13 +186,27 @@ struct AIChatView: View {
                     .focused($inputFocused)
                     .onSubmit { sendMessage() }
 
-                Button(action: sendMessage) {
-                    Image(systemName: "arrow.up.circle.fill")
-                        .font(.system(size: DS.IconSize.xl))
-                        .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
+                if appState.isChatProcessing {
+                    Button {
+                        chatTask?.cancel()
+                        appState.isChatProcessing = false
+                        appState.chatProcessingStartTime = nil
+                    } label: {
+                        Image(systemName: "stop.circle.fill")
+                            .font(.system(size: DS.IconSize.xl))
+                            .foregroundStyle(DS.Colors.danger)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .help("Cancel request")
+                } else {
+                    Button(action: sendMessage) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: DS.IconSize.xl))
+                            .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
-                .buttonStyle(.plainPointer)
-                .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || appState.isChatProcessing)
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
@@ -244,6 +260,7 @@ struct AIChatView: View {
         appState.chatMessages.append(AIMessage(role: .user, content: text))
         persistMessage(role: "user", content: text)
         inputText = ""
+        lastFailedMessage = text
         appState.isChatProcessing = true
         appState.chatProcessingStartTime = Date()
 
@@ -256,7 +273,7 @@ struct AIChatView: View {
 
         let ragContext = KnowledgeService.shared.ragContext(for: text)
 
-        Task {
+        chatTask = Task {
             do {
                 let response: String
 
@@ -280,6 +297,8 @@ struct AIChatView: View {
                     systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
                 }
 
+                try Task.checkCancellation()
+
                 if servers.isEmpty {
                     response = try await ClaudeService.shared.query(fullPrompt, systemPrompt: systemPrompt)
                 } else {
@@ -289,9 +308,18 @@ struct AIChatView: View {
                         systemPrompt: systemPrompt
                     )
                 }
+
+                try Task.checkCancellation()
+
                 await MainActor.run {
                     appState.chatMessages.append(AIMessage(role: .assistant, content: response))
                     persistMessage(role: "assistant", content: response)
+                    appState.isChatProcessing = false
+                    appState.chatProcessingStartTime = nil
+                    lastFailedMessage = nil
+                }
+            } catch is CancellationError {
+                await MainActor.run {
                     appState.isChatProcessing = false
                     appState.chatProcessingStartTime = nil
                 }
@@ -304,6 +332,15 @@ struct AIChatView: View {
                 }
             }
         }
+    }
+
+    private func retryLastMessage() {
+        guard let msg = lastFailedMessage else { return }
+        if let last = appState.chatMessages.last, last.role == .error {
+            appState.chatMessages.removeLast()
+        }
+        inputText = msg
+        sendMessage()
     }
 
     // MARK: - Persistence (Feature 5)
@@ -514,6 +551,7 @@ private struct WelcomePrompts: View {
 
 struct ChatBubble: View {
     let message: AIMessage
+    var onRetry: (() -> Void)? = nil
     @State private var isHovered = false
 
     private var timeString: String {
@@ -539,11 +577,27 @@ struct ChatBubble: View {
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: DS.Spacing.xs) {
                 if message.role == .error {
-                    Text(message.content)
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.danger)
-                        .padding(DS.Spacing.md)
-                        .background(DS.Colors.danger.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        Text(message.content)
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.danger)
+
+                        if let onRetry {
+                            Button(action: onRetry) {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    Image(systemName: "arrow.clockwise")
+                                        .font(.system(size: 10, weight: .medium))
+                                    Text("Retry")
+                                        .font(DS.Font.small)
+                                        .fontWeight(.medium)
+                                }
+                                .foregroundStyle(DS.Colors.accent)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                    .padding(DS.Spacing.md)
+                    .background(DS.Colors.danger.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 } else if let attributed = try? AttributedString(markdown: message.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                     Text(attributed)
                         .font(DS.Font.body)

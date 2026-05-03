@@ -6,6 +6,8 @@ struct SkillsRulesView: View {
     @State private var selectedRule: RuleFile?
     @State private var showRunSheet = false
     @State private var skillToRun: SkillFile?
+    @State private var showDeleteConfirm = false
+    @State private var deleteTarget: String = ""
 
     private var skillService: SkillFileService { SkillFileService.shared }
     private var ruleService: RuleFileService { RuleFileService.shared }
@@ -58,6 +60,19 @@ struct SkillsRulesView: View {
             if let skill = skillToRun {
                 SkillRunSheet(skill: skill)
             }
+        }
+        .confirmationDialog("Delete \"\(deleteTarget)\"?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if mode == .skills, let skill = selectedSkill {
+                    skillService.delete(skill: skill)
+                    selectedSkill = nil
+                } else if mode == .rules, let rule = selectedRule {
+                    ruleService.delete(rule: rule)
+                    selectedRule = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete this \(mode == .skills ? "skill" : "rule").")
         }
     }
 
@@ -115,8 +130,8 @@ struct SkillsRulesView: View {
                     skillToRun = skill
                     showRunSheet = true
                 } onDelete: {
-                    skillService.delete(skill: skill)
-                    selectedSkill = nil
+                    deleteTarget = skill.name
+                    showDeleteConfirm = true
                 }
             } else {
                 DSEmptyState(
@@ -179,8 +194,8 @@ struct SkillsRulesView: View {
         } right: {
             if let rule = selectedRule {
                 RuleInlineEditor(rule: rule) {
-                    ruleService.delete(rule: rule)
-                    selectedRule = nil
+                    deleteTarget = rule.name
+                    showDeleteConfirm = true
                 }
             } else {
                 DSEmptyState(
@@ -193,6 +208,7 @@ struct SkillsRulesView: View {
     }
 
     private func createNewSkill() {
+        let countBefore = skillService.skills.count
         SkillFileService.shared.create(
             name: "New Skill",
             category: "General",
@@ -200,10 +216,13 @@ struct SkillsRulesView: View {
             systemPrompt: "",
             promptTemplate: "{{input}}"
         )
-        selectedSkill = skillService.skills.first { $0.name == "New Skill" }
+        if skillService.skills.count > countBefore {
+            selectedSkill = skillService.skills.last
+        }
     }
 
     private func createNewRule() {
+        let countBefore = ruleService.rules.count
         RuleFileService.shared.create(
             name: "New Rule",
             trigger: "always",
@@ -211,7 +230,9 @@ struct SkillsRulesView: View {
             category: "General",
             instruction: ""
         )
-        selectedRule = ruleService.rules.first { $0.name == "New Rule" }
+        if ruleService.rules.count > countBefore {
+            selectedRule = ruleService.rules.last
+        }
     }
 }
 

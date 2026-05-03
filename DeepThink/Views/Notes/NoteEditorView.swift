@@ -19,6 +19,10 @@ struct NoteEditorView: View {
 
                 Spacer()
 
+                Text("\(note.wordCount) words")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+
                 DSToolbarButton(icon: "clock.arrow.circlepath", size: DS.IconSize.md) {
                     showVersions = true
                 }
@@ -36,7 +40,10 @@ struct NoteEditorView: View {
         .sheet(isPresented: $showVersions) {
             NoteVersionsView(note: note)
         }
-        .onAppear { startVersionTimer() }
+        .onAppear {
+            startVersionTimer()
+            if note.title.isEmpty { titleFocused = true }
+        }
         .onDisappear { versionTimer?.cancel() }
     }
 

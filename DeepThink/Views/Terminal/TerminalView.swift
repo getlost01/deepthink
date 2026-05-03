@@ -5,6 +5,8 @@ struct DeepThinkTerminalView: View {
     @State private var sessions: [TerminalSession] = []
     @State private var activeSessionID: UUID?
     @State private var isAnalyzing = false
+    @State private var analysisResult: String?
+    @State private var showAnalysisSheet = false
 
     private var activeSession: TerminalSession? {
         sessions.first { $0.id == activeSessionID }
@@ -61,6 +63,11 @@ struct DeepThinkTerminalView: View {
                 addSession()
             }
         }
+        .sheet(isPresented: $showAnalysisSheet) {
+            if let result = analysisResult {
+                TerminalAnalysisSheet(text: result)
+            }
+        }
     }
 
     // MARK: - Session Management
@@ -99,7 +106,8 @@ struct DeepThinkTerminalView: View {
                 let analysis = try await ClaudeService.shared.analyzeCLIOutput(buffer)
                 await MainActor.run {
                     isAnalyzing = false
-                    showAnalysisAlert(analysis)
+                    analysisResult = analysis
+                    showAnalysisSheet = true
                 }
             } catch {
                 await MainActor.run {
@@ -109,18 +117,63 @@ struct DeepThinkTerminalView: View {
         }
     }
 
-    private func showAnalysisAlert(_ text: String) {
-        let alert = NSAlert()
-        alert.messageText = "AI Analysis"
-        alert.informativeText = String(text.prefix(2000))
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: "Copy")
-        alert.addButton(withTitle: "OK")
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+}
+
+// MARK: - Analysis Sheet
+
+struct TerminalAnalysisSheet: View {
+    let text: String
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "wand.and.rays")
+                    .foregroundStyle(DS.Colors.accent)
+                Text("AI Analysis")
+                    .font(DS.Font.heading)
+                Spacer()
+                Button {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 9))
+                        Text("Copy")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .buttonStyle(.plainPointer)
+
+                Button("Done") { dismiss() }
+                    .font(DS.Font.body)
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.accent)
+            }
+            .padding(DS.Spacing.lg)
+            .background(.bar)
+
+            Divider()
+
+            ScrollView {
+                if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                    Text(attributed)
+                        .font(DS.Font.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DS.Spacing.lg)
+                } else {
+                    Text(text)
+                        .font(DS.Font.body)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DS.Spacing.lg)
+                }
+            }
         }
+        .frame(width: 560, height: 460)
     }
 }
 
@@ -146,14 +199,12 @@ private struct TerminalTabButton: View {
                     .lineLimit(1)
 
                 if canClose && (isActive || isHovered) {
-                    Button {
-                        onClose()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plainPointer)
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 16, height: 16)
+                        .contentShape(Rectangle())
+                        .onTapGesture { onClose() }
                 }
             }
             .padding(.horizontal, DS.Spacing.sm)

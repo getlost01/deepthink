@@ -3,6 +3,7 @@ import SwiftUI
 struct AgentListView: View {
     @Environment(AppState.self) private var appState
     @State private var selectedAgent: AgentFile?
+    @State private var showDeleteConfirm = false
 
     private var agentService: AgentFileService { AgentFileService.shared }
 
@@ -53,8 +54,7 @@ struct AgentListView: View {
                     appState.selectedAgentPath = agent.filePath.path
                     appState.selectedSection = .ai
                 } onDelete: {
-                    agentService.delete(agent: agent)
-                    selectedAgent = nil
+                    showDeleteConfirm = true
                 }
             } else {
                 DSEmptyState(
@@ -65,9 +65,20 @@ struct AgentListView: View {
             }
         }
         .onAppear { agentService.reload() }
+        .confirmationDialog("Delete Agent?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let agent = selectedAgent {
+                    agentService.delete(agent: agent)
+                    selectedAgent = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(selectedAgent?.name ?? "")\" and its system prompt.")
+        }
     }
 
     private func createNewAgent() {
+        let countBefore = agentService.agents.count
         agentService.create(
             name: "New Agent",
             role: "Describe this agent's role",
@@ -76,7 +87,9 @@ struct AgentListView: View {
             systemPrompt: "You are a helpful assistant.",
             knowledgeScope: []
         )
-        selectedAgent = agentService.agents.first { $0.name == "New Agent" }
+        if agentService.agents.count > countBefore {
+            selectedAgent = agentService.agents.last
+        }
     }
 }
 

@@ -83,6 +83,54 @@ struct KnowledgeGraphView: View {
     }
 
     var body: some View {
+        VStack(spacing: 0) {
+            DSToolbarBar {
+                Text("Knowledge Graph")
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                Spacer()
+
+                HStack(spacing: DS.Spacing.sm) {
+                    ForEach(GraphLayoutMode.allCases) { mode in
+                        Button {
+                            layoutMode = mode
+                        } label: {
+                            Text(mode.rawValue)
+                                .font(DS.Font.small)
+                                .fontWeight(layoutMode == mode ? .semibold : .regular)
+                                .foregroundStyle(layoutMode == mode ? .white : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(layoutMode == mode ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+
+                DSToolbarButton(icon: "arrow.counterclockwise", size: DS.IconSize.sm) {
+                    withAnimation(DS.Animation.standard) {
+                        scale = 1.0
+                        offset = .zero
+                    }
+                }
+                .help("Reset zoom & position")
+
+                DSToolbarButton(icon: "arrow.triangle.2.circlepath", size: DS.IconSize.sm) {
+                    buildAndLayout(in: canvasSize)
+                }
+                .help("Re-layout graph")
+
+                if let nodeID = selectedNodeID, let note = notes.first(where: { $0.id == nodeID }) {
+                    Text(note.title)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.accent)
+                        .lineLimit(1)
+                }
+            }
+
+            Divider()
+
         GeometryReader { geo in
             let transformedContent = ZStack {
                 DS.Colors.surface
@@ -156,8 +204,7 @@ struct KnowledgeGraphView: View {
                     applyLayout(in: canvasSize)
                 }
         }
-        .navigationTitle("Knowledge Graph")
-        .toolbar { toolbarContent }
+        }
     }
 
     // MARK: - Node View
@@ -260,48 +307,6 @@ struct KnowledgeGraphView: View {
                     }
                 }
         )
-    }
-
-    // MARK: - Toolbar
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .automatic) {
-            Picker("Layout", selection: $layoutMode) {
-                ForEach(GraphLayoutMode.allCases) { mode in
-                    Text(mode.rawValue).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 200)
-        }
-        ToolbarItem(placement: .automatic) {
-            Button {
-                withAnimation(DS.Animation.standard) {
-                    scale = 1.0
-                    offset = .zero
-                }
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-            }
-            .help("Reset zoom & position")
-        }
-        ToolbarItem(placement: .automatic) {
-            Button {
-                buildAndLayout(in: canvasSize)
-            } label: {
-                Image(systemName: "arrow.triangle.2.circlepath")
-            }
-            .help("Re-layout graph")
-        }
-        if let nodeID = selectedNodeID, let note = notes.first(where: { $0.id == nodeID }) {
-            ToolbarItem(placement: .automatic) {
-                Text(note.title)
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(1)
-            }
-        }
     }
 
     // MARK: - Gestures

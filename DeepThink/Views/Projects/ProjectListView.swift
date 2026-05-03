@@ -9,6 +9,8 @@ struct ProjectListView: View {
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var showArchived = false
+    @State private var projectToDelete: Project?
+    @State private var showDeleteConfirm = false
 
     private var projects: [Project] {
         var result = showArchived ? allProjects : allProjects.filter { !$0.isArchived }
@@ -57,10 +59,8 @@ struct ProjectListView: View {
                             }
                             Divider()
                             Button("Delete", role: .destructive) {
-                                if appState.selectedProjectID == project.id {
-                                    appState.selectedProjectID = nil
-                                }
-                                modelContext.delete(project)
+                                projectToDelete = project
+                                showDeleteConfirm = true
                             }
                         }
                 }
@@ -91,6 +91,19 @@ struct ProjectListView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewProject)) { _ in
             createProject()
+        }
+        .confirmationDialog("Delete Project?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let project = projectToDelete {
+                    if appState.selectedProjectID == project.id {
+                        appState.selectedProjectID = nil
+                    }
+                    modelContext.delete(project)
+                    projectToDelete = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(projectToDelete?.name ?? "")\" and all its notes and tasks.")
         }
     }
 
@@ -133,14 +146,22 @@ private struct ProjectCard: View {
 
             HStack(spacing: DS.Spacing.sm) {
                 if project.notes.count > 0 {
-                    Text("\(project.notes.count)")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                    HStack(spacing: 2) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 8))
+                        Text("\(project.notes.count)")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.textTertiary)
                 }
                 if project.openTaskCount > 0 {
-                    Text("\(project.openTaskCount)")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.accent)
+                    HStack(spacing: 2) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 8))
+                        Text("\(project.openTaskCount)")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
                 }
             }
         }

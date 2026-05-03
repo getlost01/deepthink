@@ -47,12 +47,10 @@ struct WorkspaceView: View {
 
     @ViewBuilder
     private var projectsContent: some View {
-        HStack(spacing: 0) {
+        ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             ProjectListView()
-                .dsListPanel()
-
-            Divider()
-
+                .background(DS.Colors.surface)
+        } right: {
             if let project = selectedProject {
                 ProjectDetailView(project: project)
                     .id(project.id)

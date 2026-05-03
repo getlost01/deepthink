@@ -9,6 +9,7 @@ struct KnowledgeBrowserView: View {
     @State private var showURLSheet = false
     @State private var showNewEntry = false
     @State private var showScriptSheet = false
+    @State private var showDeleteConfirm = false
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
@@ -78,27 +79,23 @@ struct KnowledgeBrowserView: View {
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.md)
 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: DS.Spacing.xs) {
-                        FilterChip(label: "All", icon: "tray.full", isSelected: sourceFilter == nil) {
-                            sourceFilter = nil
-                        }
+                HStack(spacing: DS.Spacing.sm) {
+                    Picker("Source", selection: $sourceFilter) {
+                        Text("All Sources").tag(nil as String?)
                         ForEach(sources, id: \.self) { source in
-                            FilterChip(
-                                label: source.capitalized,
-                                icon: iconFor(source),
-                                isSelected: sourceFilter == source
-                            ) {
-                                sourceFilter = sourceFilter == source ? nil : source
-                            }
+                            Label(source.capitalized, systemImage: iconFor(source)).tag(source as String?)
                         }
-                        Spacer()
-                        Text("\(filteredEntries.count) entries")
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
                     }
-                    .padding(.horizontal, DS.Spacing.lg)
+                    .pickerStyle(.menu)
+                    .font(DS.Font.caption)
+
+                    Spacer()
+
+                    Text("\(filteredEntries.count) entries")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
                 }
+                .padding(.horizontal, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.sm)
 
                 Divider()
@@ -129,8 +126,7 @@ struct KnowledgeBrowserView: View {
         } right: {
             if let entry = selectedEntry {
                 KnowledgeDetailView(entry: entry) {
-                    KnowledgeService.shared.deleteEntry(entry)
-                    selectedEntry = nil
+                    showDeleteConfirm = true
                 }
             } else {
                 DSEmptyState(
@@ -144,6 +140,16 @@ struct KnowledgeBrowserView: View {
         .sheet(isPresented: $showURLSheet) { URLScrapeSheet() }
         .sheet(isPresented: $showNewEntry) { NewKnowledgeSheet() }
         .sheet(isPresented: $showScriptSheet) { ScriptRunSheet() }
+        .confirmationDialog("Delete Entry?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let entry = selectedEntry {
+                    KnowledgeService.shared.deleteEntry(entry)
+                    selectedEntry = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
+        }
     }
 
     private func captureClipboard() {
@@ -253,31 +259,6 @@ private struct EntryRow: View {
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
-    }
-}
-
-// MARK: - Filter Chip
-
-private struct FilterChip: View {
-    let label: String
-    let icon: String
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: 9, weight: .medium))
-                Text(label)
-                    .font(DS.Font.small)
-            }
-            .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
-            .padding(.horizontal, DS.Spacing.sm + 2)
-            .padding(.vertical, DS.Spacing.xs + 1)
-            .background(isSelected ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-        }
-        .buttonStyle(.plainPointer)
     }
 }
 

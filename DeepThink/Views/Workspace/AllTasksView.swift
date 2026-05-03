@@ -10,6 +10,8 @@ struct AllTasksView: View {
     @State private var searchText: String = ""
     @State private var statusFilter: TaskStatus?
     @State private var priorityFilter: TaskPriority?
+    @State private var taskToDelete: TaskItem?
+    @State private var showDeleteConfirm = false
 
     private var filteredTasks: [TaskItem] {
         var result = tasks
@@ -38,32 +40,30 @@ struct AllTasksView: View {
     }
 
     var body: some View {
-        HSplitView {
-            // Left panel: task list
+        ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             VStack(spacing: 0) {
                 VStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search tasks...")
 
-                    // Status filter pills
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            statusPill(title: "All", status: nil)
-                            statusPill(title: "In Progress", status: .inProgress)
-                            statusPill(title: "To Do", status: .todo)
-                            statusPill(title: "Backlog", status: .backlog)
-                            statusPill(title: "Done", status: .done)
+                    HStack(spacing: DS.Spacing.sm) {
+                        Picker("Status", selection: $statusFilter) {
+                            Text("All Statuses").tag(nil as TaskStatus?)
+                            ForEach(TaskStatus.allCases) { s in
+                                Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
+                            }
                         }
-                    }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
 
-                    // Priority filter
-                    Picker("Priority", selection: $priorityFilter) {
-                        Text("All Priorities").tag(nil as TaskPriority?)
-                        ForEach(TaskPriority.allCases) { priority in
-                            Label(priority.rawValue, systemImage: priority.icon).tag(priority as TaskPriority?)
+                        Picker("Priority", selection: $priorityFilter) {
+                            Text("All Priorities").tag(nil as TaskPriority?)
+                            ForEach(TaskPriority.allCases) { p in
+                                Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
                     }
-                    .pickerStyle(.menu)
-                    .font(DS.Font.caption)
                 }
                 .padding(DS.Spacing.md)
 
@@ -82,11 +82,6 @@ struct AllTasksView: View {
                     )) { task in
                         taskRow(task)
                             .tag(task.id)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { deleteTask(task) } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                             .contextMenu {
                                 Button { appState.selectedTaskID = task.id } label: {
                                     Label("Open", systemImage: "doc.text")
@@ -99,7 +94,7 @@ struct AllTasksView: View {
                                     Label("Mark Done", systemImage: "checkmark.circle")
                                 }
                                 Divider()
-                                Button(role: .destructive) { deleteTask(task) } label: {
+                                Button(role: .destructive) { taskToDelete = task; showDeleteConfirm = true } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
@@ -107,10 +102,8 @@ struct AllTasksView: View {
                     .listStyle(.plain)
                 }
             }
-            .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
             .background(DS.Colors.surface)
-
-            // Right panel: detail
+        } right: {
             if let task = selectedTask {
                 TaskDetailView(task: task)
                     .id(task.id)
@@ -121,14 +114,22 @@ struct AllTasksView: View {
                     title: "Select a Task",
                     subtitle: "Choose a task from the list to view details."
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in
             let task = TaskItem(title: "")
             modelContext.insert(task)
             appState.selectedTaskID = task.id
+        }
+        .confirmationDialog("Delete Task?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let task = taskToDelete {
+                    deleteTask(task)
+                    taskToDelete = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(taskToDelete?.title.isEmpty == false ? taskToDelete!.title : "Untitled")\".")
         }
     }
 
@@ -140,27 +141,6 @@ struct AllTasksView: View {
     }
 
     // MARK: - Components
-
-    @ViewBuilder
-    private func statusPill(title: String, status: TaskStatus?) -> some View {
-        let isSelected = statusFilter == status
-
-        Button {
-            statusFilter = status
-        } label: {
-            Text(title)
-                .font(DS.Font.small)
-                .fontWeight(.medium)
-                .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
-                .padding(.horizontal, DS.Spacing.sm)
-                .padding(.vertical, DS.Spacing.xs)
-                .background(
-                    isSelected ? (status?.color ?? DS.Colors.accent) : DS.Colors.fillSecondary,
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plainPointer)
-    }
 
     @ViewBuilder
     private func taskRow(_ task: TaskItem) -> some View {

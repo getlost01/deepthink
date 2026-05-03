@@ -10,19 +10,19 @@ struct NoteVersionsView: View {
     @State private var showDiff = false
 
     var body: some View {
-        HSplitView {
+        ResizableSplitView(minLeftWidth: 200, minRightWidth: 350) {
             List(selection: Binding(
                 get: { selectedVersion?.id },
                 set: { id in selectedVersion = versions.first { $0.id == id } }
             )) {
                 if versions.isEmpty {
-                    VStack(spacing: 8) {
+                    VStack(spacing: DS.Spacing.sm) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.title2)
-                            .foregroundStyle(.tertiary)
+                            .font(.system(size: 24, weight: .light))
+                            .foregroundStyle(DS.Colors.textTertiary)
                         Text("No versions yet")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
@@ -32,37 +32,40 @@ struct NoteVersionsView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack {
                                 Text("v\(version.versionNumber)")
-                                    .font(.caption)
+                                    .font(DS.Font.small)
                                     .fontWeight(.bold)
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
-                                    .background(.blue.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+                                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                                 Spacer()
                                 Text(version.createdAt.relativeFormatted)
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
                             }
                             Text(version.title.isEmpty ? "Untitled" : version.title)
+                                .font(DS.Font.body)
                                 .fontWeight(.medium)
                                 .lineLimit(1)
                             Text("\(version.wordCount) words")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textSecondary)
                         }
                         .tag(version.id)
                         .padding(.vertical, 2)
                     }
                 }
             }
-            .frame(minWidth: 200, idealWidth: 250, maxWidth: 300)
-
+            .listStyle(.plain)
+            .background(DS.Colors.surface)
+        } right: {
             if let version = selectedVersion {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         Text("Version \(version.versionNumber)")
-                            .font(.headline)
+                            .font(DS.Font.heading)
                         Text("— \(version.createdAt, style: .date)")
-                            .foregroundStyle(.secondary)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
                         Spacer()
                         Button("Restore This Version") {
                             VersioningService.shared.restore(note: note, from: version, context: modelContext)
@@ -71,41 +74,38 @@ struct NoteVersionsView: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                     }
-                    .padding(12)
+                    .padding(DS.Spacing.md)
                     .background(.bar)
 
                     Divider()
 
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                             Text(version.title)
-                                .font(.title2)
-                                .fontWeight(.semibold)
+                                .font(DS.Font.title)
 
                             Divider()
 
                             if let attributed = try? AttributedString(markdown: version.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
                                 Text(attributed)
+                                    .font(DS.Font.body)
                                     .textSelection(.enabled)
                             } else {
                                 Text(version.content)
-                                    .font(.body.monospaced())
+                                    .font(DS.Font.mono)
                                     .textSelection(.enabled)
                             }
                         }
-                        .padding(16)
+                        .padding(DS.Spacing.lg)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 36))
-                        .foregroundStyle(.tertiary)
-                    Text("Select a version to preview")
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DSEmptyState(
+                    icon: "clock.arrow.circlepath",
+                    title: "Select a Version",
+                    subtitle: "Choose a version from the list to preview and restore."
+                )
             }
         }
         .frame(minWidth: 700, minHeight: 400)

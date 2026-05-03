@@ -9,6 +9,8 @@ struct AllNotesView: View {
 
     @State private var searchText: String = ""
     @State private var filterProjectID: UUID?
+    @State private var noteToDelete: Note?
+    @State private var showDeleteConfirm = false
 
     private var filteredNotes: [Note] {
         var result = notes
@@ -33,8 +35,7 @@ struct AllNotesView: View {
     }
 
     var body: some View {
-        HSplitView {
-            // Left panel: note list
+        ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             VStack(spacing: 0) {
                 VStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search notes...")
@@ -65,17 +66,12 @@ struct AllNotesView: View {
                     )) { note in
                         noteRow(note)
                             .tag(note.id)
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) { deleteNote(note) } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
-                            }
                             .contextMenu {
                                 Button { appState.selectedNoteID = note.id } label: {
                                     Label("Open", systemImage: "doc.text")
                                 }
                                 Divider()
-                                Button(role: .destructive) { deleteNote(note) } label: {
+                                Button(role: .destructive) { noteToDelete = note; showDeleteConfirm = true } label: {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
@@ -83,10 +79,8 @@ struct AllNotesView: View {
                     .listStyle(.plain)
                 }
             }
-            .frame(minWidth: 240, idealWidth: 280, maxWidth: 360)
             .background(DS.Colors.surface)
-
-            // Right panel: editor
+        } right: {
             if let note = selectedNote {
                 NoteEditorView(note: note)
                     .id(note.id)
@@ -97,14 +91,22 @@ struct AllNotesView: View {
                     title: "Select a Note",
                     subtitle: "Choose a note from the list to start editing."
                 )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in
             let note = Note(title: "")
             modelContext.insert(note)
             appState.selectedNoteID = note.id
+        }
+        .confirmationDialog("Delete Note?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let note = noteToDelete {
+                    deleteNote(note)
+                    noteToDelete = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(noteToDelete?.title.isEmpty == false ? noteToDelete!.title : "Untitled")\".")
         }
     }
 

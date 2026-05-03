@@ -440,7 +440,7 @@ private struct ModelFamilyCard: View {
             .background(
                 isSelected
                     ? family.color.opacity(0.10)
-                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
+                    : (isHovered ? DS.Colors.fill : DS.Colors.fillSecondary),
                 in: RoundedRectangle(cornerRadius: DS.Radius.md)
             )
             .overlay(
@@ -496,7 +496,7 @@ private struct VersionPill: View {
             .background(
                 isSelected
                     ? version.family.color.opacity(0.10)
-                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
+                    : (isHovered ? DS.Colors.fill : DS.Colors.fillSecondary),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .overlay(
@@ -565,7 +565,7 @@ private struct TokenOptionButton: View {
                 .background(
                     isSelected
                         ? DS.Colors.accent.opacity(0.10)
-                        : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fillSecondary),
+                        : (isHovered ? DS.Colors.fill : DS.Colors.fillSecondary),
                     in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                 )
                 .overlay(
