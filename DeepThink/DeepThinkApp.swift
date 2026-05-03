@@ -240,7 +240,25 @@ struct DeepThinkApp: App {
 
             Self.installBinary(named: "deepthink-cli", as: "deepthink", fm: fm, installDir: installDir)
             Self.installBinary(named: "deepthink-mcp", as: "deepthink-mcp", fm: fm, installDir: installDir)
+            Self.installMCPConfig(fm: fm, mcpBinaryPath: installDir + "/deepthink-mcp")
         }
+    }
+
+    private static func installMCPConfig(fm: FileManager, mcpBinaryPath: String) {
+        let mcpConfigPath = StorageService.shared.baseURL.appendingPathComponent(".mcp.json")
+
+        let config: [String: Any] = [
+            "mcpServers": [
+                "deepthink": [
+                    "command": mcpBinaryPath,
+                    "args": [] as [String]
+                ]
+            ]
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: config, options: .prettyPrinted) else { return }
+        try? data.write(to: mcpConfigPath)
+        StorageService.shared.writeLog("MCP config installed: \(mcpConfigPath.path)", to: "app")
     }
 
     private static func installBinary(named bundleName: String, as installName: String, fm: FileManager, installDir: String) {
