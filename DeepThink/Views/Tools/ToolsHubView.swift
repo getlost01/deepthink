@@ -319,7 +319,7 @@ private struct AddServerSheet: View {
                     Text("Add Server")
                         .font(DS.Font.body)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.xl)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(canAdd ? DS.Colors.accent : DS.Colors.accent.opacity(0.5), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -578,7 +578,7 @@ private struct PresetServersSheet: View {
                         } label: {
                             Text(cat)
                                 .font(DS.Font.small)
-                                .foregroundStyle(selectedCategory == cat ? .white : DS.Colors.textSecondary)
+                                .foregroundStyle(selectedCategory == cat ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm + 2)
                                 .padding(.vertical, DS.Spacing.xs + 1)
                                 .background(selectedCategory == cat ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))

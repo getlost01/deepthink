@@ -27,7 +27,7 @@ struct ClaudeSettingsView: View {
         VStack(spacing: DS.Spacing.lg) {
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 24))
+                    .font(.system(size: DS.IconSize.xxl))
                     .foregroundStyle(DS.Colors.warning)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
@@ -52,7 +52,7 @@ struct ClaudeSettingsView: View {
                             .font(DS.Font.body)
                             .fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.vertical, DS.Spacing.md)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
@@ -419,7 +419,7 @@ private struct ModelFamilyCard: View {
         Button(action: action) {
             VStack(spacing: DS.Spacing.sm) {
                 Image(systemName: family.icon)
-                    .font(.system(size: 22, weight: .medium))
+                    .font(.system(size: DS.IconSize.xxl, weight: .medium))
                     .foregroundStyle(isSelected ? family.color : DS.Colors.textSecondary)
                     .frame(height: 28)
 
@@ -475,8 +475,8 @@ private struct VersionPill: View {
                 if version.isLatest {
                     Text("Latest")
                         .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
+                        .foregroundStyle(DS.Colors.onAccent)
+                        .padding(.horizontal, DS.Spacing.xs)
                         .padding(.vertical, 1)
                         .background(version.family.color, in: Capsule())
                 }

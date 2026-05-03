@@ -99,7 +99,7 @@ struct KnowledgeGraphView: View {
                             Text(mode.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(layoutMode == mode ? .semibold : .regular)
-                                .foregroundStyle(layoutMode == mode ? .white : DS.Colors.textSecondary)
+                                .foregroundStyle(layoutMode == mode ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, DS.Spacing.xs)
                                 .background(layoutMode == mode ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -171,7 +171,7 @@ struct KnowledgeGraphView: View {
 
                         let lineWidth: CGFloat = isHighlighted ? 2 : 1
                         let color = isHighlighted
-                            ? Color.accentColor.opacity(opacity)
+                            ? DS.Colors.accent.opacity(opacity)
                             : Color.primary.opacity(opacity)
 
                         context.stroke(path, with: .color(color), lineWidth: lineWidth)
@@ -218,16 +218,16 @@ struct KnowledgeGraphView: View {
         let radius = CGFloat(max(24, min(48, 20 + node.connectionCount * 4)))
 
         let fillColor: Color = {
-            if isSelected { return Color.accentColor }
-            if isNeighbor { return Color.accentColor.opacity(0.5) }
-            return Color.accentColor.opacity(0.2)
+            if isSelected { return DS.Colors.accent }
+            if isNeighbor { return DS.Colors.accent.opacity(0.5) }
+            return DS.Colors.accent.opacity(0.2)
         }()
 
         ZStack {
             // Glow for selected
             if isSelected {
                 Circle()
-                    .fill(Color.accentColor.opacity(0.15))
+                    .fill(DS.Colors.accent.opacity(0.15))
                     .frame(width: radius + 16, height: radius + 16)
                     .blur(radius: 6)
             }
@@ -238,13 +238,13 @@ struct KnowledgeGraphView: View {
                 .shadow(color: isSelected ? .accentColor.opacity(0.4) : .clear, radius: 8)
                 .overlay(
                     Circle()
-                        .strokeBorder(isHovered ? Color.accentColor : Color.clear, lineWidth: 2)
+                        .strokeBorder(isHovered ? DS.Colors.accent : Color.clear, lineWidth: 2)
                 )
 
             Text(String(node.title.prefix(2)))
                 .font(DS.Font.caption)
                 .fontWeight(.bold)
-                .foregroundStyle(isSelected ? .white : DS.Colors.textPrimary)
+                .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.textPrimary)
 
             // Title label below
             VStack(spacing: 0) {

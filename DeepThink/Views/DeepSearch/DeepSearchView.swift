@@ -88,7 +88,7 @@ struct DeepSearchView: View {
                             Text(mode.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(searchMode == mode ? .semibold : .regular)
-                                .foregroundStyle(searchMode == mode ? .white : DS.Colors.textSecondary)
+                                .foregroundStyle(searchMode == mode ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.lg)
                                 .padding(.vertical, DS.Spacing.sm)
                                 .background(searchMode == mode ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))

@@ -51,13 +51,13 @@ struct WelcomeView: View {
                 let step = steps[currentStep]
 
                 Image(systemName: step.icon)
-                    .font(.system(size: 48, weight: .light))
+                    .font(DS.Font.hero)
                     .foregroundStyle(DS.Colors.accent)
                     .frame(height: 60)
 
                 VStack(spacing: DS.Spacing.md) {
                     Text(step.title)
-                        .font(.system(size: 24, weight: .bold))
+                        .font(DS.Font.display)
                         .foregroundStyle(DS.Colors.textPrimary)
 
                     Text(step.subtitle)
@@ -131,7 +131,7 @@ struct WelcomeView: View {
                         Text(currentStep < steps.count - 1 ? "Next" : "Get Started")
                             .font(DS.Font.body)
                             .fontWeight(.semibold)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(DS.Colors.onAccent)
                             .padding(.horizontal, DS.Spacing.xxl)
                             .padding(.vertical, DS.Spacing.md)
                             .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))

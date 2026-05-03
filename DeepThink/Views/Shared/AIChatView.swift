@@ -112,7 +112,7 @@ struct AIChatView: View {
             } label: {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: selectedAgent?.icon ?? "brain.head.profile")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: DS.IconSize.sm, weight: .semibold))
                         .foregroundStyle(DS.Colors.accent)
                     Text(selectedAgent?.name ?? "Default Assistant")
                         .font(DS.Font.caption)
@@ -145,12 +145,12 @@ struct AIChatView: View {
                             HStack(spacing: 4) {
                                 ProgressView().controlSize(.mini)
                                 Text("Saving...")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(DS.Font.buttonSmall)
                             }
                             .foregroundStyle(DS.Colors.textTertiary)
                         } else {
                             Text("Save to Knowledge")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(DS.Font.buttonSmall)
                                 .foregroundStyle(DS.Colors.accent)
                         }
                     }
@@ -280,12 +280,12 @@ struct AIChatView: View {
                             withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                         } label: {
                             Image(systemName: "arrow.down")
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: DS.IconSize.sm, weight: .semibold))
                                 .foregroundStyle(DS.Colors.textSecondary)
                                 .frame(width: 32, height: 32)
                                 .background(.ultraThinMaterial, in: Circle())
                                 .overlay(Circle().strokeBorder(DS.Colors.border, lineWidth: 1))
-                                .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                                .shadow(color: DS.Colors.subtleShadow, radius: 4, y: 2)
                         }
                         .buttonStyle(.plainPointer)
                         .padding(DS.Spacing.lg)
@@ -304,13 +304,13 @@ struct AIChatView: View {
             if hasContext {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "paperclip")
-                        .font(.system(size: 9, weight: .medium))
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
 
                     if let project = appState.currentProjectName {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "folder")
-                                .font(.system(size: 8))
+                                .font(.system(size: DS.IconSize.xs))
                             Text(project)
                                 .font(DS.Font.small)
                         }
@@ -320,7 +320,7 @@ struct AIChatView: View {
                     if let noteTitle = appState.currentNoteTitle, !noteTitle.isEmpty {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "doc.text")
-                                .font(.system(size: 8))
+                                .font(.system(size: DS.IconSize.xs))
                             Text(noteTitle)
                                 .font(DS.Font.small)
                                 .lineLimit(1)
@@ -344,7 +344,7 @@ struct AIChatView: View {
                 TextField("Ask DeepThink anything...", text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(2...3)
-                    .font(.system(size: 13))
+                    .font(DS.Font.body)
                     .focused($inputFocused)
                     .frame(minHeight: 36, alignment: .topLeading)
                     .scrollIndicators(.hidden)
@@ -366,7 +366,8 @@ struct AIChatView: View {
 
                 HStack(spacing: DS.Spacing.sm) {
                     Text("Type **/** for skills")
-                        .font(.system(size: 9))
+                        .font(DS.Font.micro)
+                        .fontWeight(.regular)
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     if !activeServers.isEmpty {
@@ -375,7 +376,7 @@ struct AIChatView: View {
                                 Image(systemName: "wrench.and.screwdriver")
                                     .font(.system(size: 8))
                                 Text("MCP")
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(DS.Font.micro)
                             }
                             .foregroundStyle(useMCP ? DS.Colors.accent : DS.Colors.textTertiary)
                         }
@@ -391,7 +392,7 @@ struct AIChatView: View {
                             appState.chatProcessingStartTime = nil
                         } label: {
                             Image(systemName: "stop.circle.fill")
-                                .font(.system(size: 20))
+                                .font(.system(size: DS.IconSize.xl))
                                 .foregroundStyle(DS.Colors.danger)
                         }
                         .buttonStyle(.plainPointer)
@@ -399,8 +400,8 @@ struct AIChatView: View {
                     } else {
                         Button(action: sendMessage) {
                             Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 20))
-                                .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary.opacity(0.4) : DS.Colors.accent)
+                                .font(.system(size: DS.IconSize.xl))
+                                .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary.opacity(DS.Opacity.disabled) : DS.Colors.accent)
                         }
                         .buttonStyle(.plainPointer)
                         .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -410,9 +411,9 @@ struct AIChatView: View {
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
             .background(DS.Colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(inputFocused ? DS.Colors.borderFocused : DS.Colors.border, lineWidth: 1)
             )
             .popover(isPresented: $showSlashMenu, attachmentAnchor: .point(.topLeading), arrowEdge: .bottom) {

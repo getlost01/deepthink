@@ -304,10 +304,10 @@ private struct AgentRow: View {
                 if let _ = agent.model {
                     Text(agent.modelDisplayName)
                         .font(DS.Font.small)
-                        .foregroundStyle(.blue)
-                        .padding(.horizontal, 5)
+                        .foregroundStyle(DS.Colors.accent)
+                        .padding(.horizontal, DS.Spacing.xs)
                         .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.08), in: Capsule())
+                        .background(DS.Colors.accentFill, in: Capsule())
                 }
             }
             .padding(.horizontal, DS.Spacing.md)
@@ -354,7 +354,7 @@ private struct AgentDetailEditor: View {
                     } label: {
                         Image(systemName: ic)
                             .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(icon == ic ? .white : DS.Colors.textTertiary)
+                            .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textTertiary)
                             .frame(width: 22, height: 22)
                             .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: Circle())
                     }
@@ -383,7 +383,7 @@ private struct AgentDetailEditor: View {
                             .font(DS.Font.small)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .padding(.horizontal, DS.Spacing.md)
                     .padding(.vertical, DS.Spacing.xs + 2)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))

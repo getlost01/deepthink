@@ -12,7 +12,7 @@ struct TerminalHostView: NSViewRepresentable {
         let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         termView.font = font
         termView.nativeForegroundColor = .white
-        termView.nativeBackgroundColor = NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0)
+        termView.nativeBackgroundColor = DS.Colors.terminalNS
         termView.optionAsMetaKey = true
 
         session.terminalView = termView

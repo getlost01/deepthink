@@ -108,7 +108,7 @@ struct TaskListView: View {
                             Text(filter.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(smartFilter == filter ? .semibold : .regular)
-                                .foregroundStyle(smartFilter == filter ? .white : DS.Colors.textSecondary)
+                                .foregroundStyle(smartFilter == filter ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm + 2)
                                 .padding(.vertical, DS.Spacing.xs + 1)
                                 .background(smartFilter == filter ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
@@ -159,12 +159,21 @@ struct TaskListView: View {
 
             Divider()
 
-            List(selection: $appState.selectedTaskID) {
-                ForEach(groupedTasks, id: \.0) { status, tasks in
-                    Section {
-                        ForEach(tasks) { task in
-                            TaskRowView(task: task)
-                                .tag(task.id)
+            ScrollView {
+                LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                    ForEach(groupedTasks, id: \.0) { status, tasks in
+                        Section {
+                            ForEach(tasks) { task in
+                                let isSelected = appState.selectedTaskID == task.id
+                                Button {
+                                    appState.selectedTaskID = task.id
+                                } label: {
+                                    TaskRowView(task: task)
+                                        .padding(.horizontal, DS.Spacing.sm)
+                                        .background(isSelected ? DS.Colors.accentFill : .clear)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plainPointer)
                                 .contextMenu {
                                     ForEach(TaskStatus.allCases) { newStatus in
                                         Button("Mark as \(newStatus.rawValue)") {
@@ -175,21 +184,25 @@ struct TaskListView: View {
                                     Divider()
                                     Button("Delete", role: .destructive) { deleteTask(task) }
                                 }
-                        }
-                    } header: {
-                        HStack(spacing: DS.Spacing.sm) {
-                            Image(systemName: status.icon)
-                                .font(.system(size: DS.IconSize.sm, weight: .medium))
-                                .foregroundStyle(status.color)
-                            Text(status.rawValue)
-                                .font(DS.Font.caption)
-                                .fontWeight(.medium)
-                            DSPill(text: "\(tasks.count)", color: status.color)
+                            }
+                        } header: {
+                            HStack(spacing: DS.Spacing.sm) {
+                                Image(systemName: status.icon)
+                                    .font(.system(size: DS.IconSize.sm, weight: .medium))
+                                    .foregroundStyle(status.color)
+                                Text(status.rawValue)
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.medium)
+                                DSPill(text: "\(tasks.count)", color: status.color)
+                            }
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(DS.Colors.surfaceElevated)
                         }
                     }
                 }
             }
-            .listStyle(.inset)
             .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
             .onKeyPress(.downArrow) { moveSelection(1); return .handled }
             .onKeyPress(.escape) { appState.selectedTaskID = nil; return .handled }

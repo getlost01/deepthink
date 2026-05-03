@@ -30,18 +30,18 @@ struct ChatBubble: View {
                     TextField("Edit message...", text: $editText, axis: .vertical)
                         .textFieldStyle(.plain)
                         .lineLimit(2...6)
-                        .font(.system(size: 13))
+                        .font(DS.Font.body)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.md)
-                        .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.accent.opacity(0.25), lineWidth: 1))
+                        .background(DS.Colors.accent.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(0.25), lineWidth: 1))
 
                     HStack(spacing: DS.Spacing.sm) {
                         Button {
                             isEditing = false
                         } label: {
                             Text("Cancel")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(DS.Font.buttonSmall)
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                         .buttonStyle(.plainPointer)
@@ -51,8 +51,9 @@ struct ChatBubble: View {
                             onEdit?(editText)
                         } label: {
                             Text("Send")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.white)
+                                .font(DS.Font.buttonSmall)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(DS.Colors.onAccent)
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, 3)
                                 .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -68,9 +69,9 @@ struct ChatBubble: View {
                             isEditing = true
                         } label: {
                             Image(systemName: "pencil")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(.system(size: DS.IconSize.sm, weight: .medium))
                                 .foregroundStyle(DS.Colors.textTertiary)
-                                .frame(width: 24, height: 24)
+                                .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
                                 .background(DS.Colors.fill, in: Circle())
                         }
                         .buttonStyle(.plainPointer)
@@ -79,14 +80,14 @@ struct ChatBubble: View {
                     }
 
                     Text(message.content)
-                        .font(.system(size: 13))
+                        .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.textPrimary)
                         .textSelection(.enabled)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.md)
                         .frame(maxWidth: 560, alignment: .trailing)
-                        .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.accent.opacity(0.12), lineWidth: 1))
+                        .background(DS.Colors.accent.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(DS.Opacity.subtle), lineWidth: 1))
                 }
             }
         }
@@ -106,9 +107,9 @@ struct ChatBubble: View {
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         )
                     )
-                    .frame(width: 24, height: 24)
+                    .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
                 Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: DS.IconSize.sm, weight: .semibold))
                     .foregroundStyle(DS.Colors.accent)
             }
             .padding(.top, DS.Spacing.md)
@@ -126,9 +127,9 @@ struct ChatBubble: View {
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: 9, weight: .medium))
+                                .font(.system(size: DS.IconSize.xs, weight: .medium))
                             Text(copied ? "Copied" : "Copy")
-                                .font(.system(size: 10, weight: .medium))
+                                .font(DS.Font.buttonSmall)
                         }
                         .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textTertiary)
                     }
@@ -140,9 +141,9 @@ struct ChatBubble: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: "doc.text.badge.plus")
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
                                 Text("Save as Note")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(DS.Font.buttonSmall)
                             }
                             .foregroundStyle(DS.Colors.textTertiary)
                         }
@@ -155,9 +156,9 @@ struct ChatBubble: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: "checklist.checked")
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
                                 Text("Create Task")
-                                    .font(.system(size: 10, weight: .medium))
+                                    .font(DS.Font.buttonSmall)
                             }
                             .foregroundStyle(DS.Colors.textTertiary)
                         }
@@ -165,7 +166,7 @@ struct ChatBubble: View {
                     }
 
                     Text(message.timestamp.formatted(.dateTime.hour().minute()))
-                        .font(.system(size: 10))
+                        .font(DS.Font.buttonSmall)
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     if message.isStreaming {
@@ -176,8 +177,8 @@ struct ChatBubble: View {
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.bottom, DS.Spacing.sm)
             }
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.border, lineWidth: 0.5))
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.border, lineWidth: 0.5))
 
             Spacer(minLength: 40)
         }
@@ -192,23 +193,24 @@ struct ChatBubble: View {
                     .fill(DS.Colors.danger.opacity(0.10))
                     .frame(width: 28, height: 28)
                 Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: DS.IconSize.sm, weight: .semibold))
                     .foregroundStyle(DS.Colors.danger)
             }
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                 Text(message.content)
-                    .font(.system(size: 13))
-                    .foregroundStyle(DS.Colors.danger.opacity(0.9))
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.danger)
 
                 if let onRetry {
                     Button(action: onRetry) {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: DS.IconSize.sm, weight: .semibold))
                             Text("Retry")
-                                .font(.system(size: 11, weight: .semibold))
+                                .font(DS.Font.caption)
+                                .fontWeight(.semibold)
                         }
                         .foregroundStyle(DS.Colors.accent)
                         .padding(.horizontal, DS.Spacing.md)

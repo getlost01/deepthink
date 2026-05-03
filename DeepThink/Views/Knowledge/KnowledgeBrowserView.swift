@@ -74,7 +74,7 @@ struct KnowledgeBrowserView: View {
                                 .font(DS.Font.small)
                                 .fontWeight(.medium)
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.md)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -512,15 +512,15 @@ struct URLScrapeSheet: View {
                 } label: {
                     HStack(spacing: DS.Spacing.sm) {
                         if isScraping {
-                            ProgressView().controlSize(.small).tint(.white)
+                            ProgressView().controlSize(.small).tint(DS.Colors.onAccent)
                         }
                         Text(isScraping ? "Scraping..." : "Scrape & Save")
                             .font(DS.Font.body).fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
-                    .background(urlText.isEmpty ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .background(urlText.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(urlText.isEmpty || isScraping)
@@ -567,10 +567,10 @@ struct NewKnowledgeSheet: View {
                 Button(action: save) {
                     Text("Save")
                         .font(DS.Font.body).fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.sm)
-                        .background(title.isEmpty ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(title.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(title.isEmpty)
@@ -645,14 +645,14 @@ struct ScriptRunSheet: View {
                     Task { await run() }
                 } label: {
                     HStack(spacing: DS.Spacing.sm) {
-                        if isRunning { ProgressView().controlSize(.small).tint(.white) }
+                        if isRunning { ProgressView().controlSize(.small).tint(DS.Colors.onAccent) }
                         Text(isRunning ? "Running..." : "Run & Save")
                             .font(DS.Font.body).fontWeight(.semibold)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
-                    .background(command.isEmpty ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .background(command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(command.isEmpty || isRunning)
@@ -745,12 +745,12 @@ private struct NewFolderSheet: View {
                     Text("Create Folder")
                         .font(DS.Font.body)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DS.Spacing.md)
                         .background(
                             folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                ? DS.Colors.accent.opacity(0.5)
+                                ? DS.Colors.accent.opacity(DS.Opacity.disabled)
                                 : DS.Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )

@@ -123,13 +123,13 @@ struct RawMarkdownEditor: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $text)
-                .font(.system(size: 13, weight: .regular, design: .monospaced))
+                .font(DS.Font.mono)
                 .scrollContentBackground(.hidden)
                 .padding(DS.Spacing.md)
 
             if text.isEmpty {
                 Text(placeholder)
-                    .font(.system(size: 13, design: .monospaced))
+                    .font(DS.Font.mono)
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(DS.Spacing.md)
                     .padding(.leading, 5)

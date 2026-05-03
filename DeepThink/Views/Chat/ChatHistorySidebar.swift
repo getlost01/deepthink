@@ -60,28 +60,28 @@ struct ChatHistorySidebar: View {
 
             Divider()
 
-            HStack(spacing: 6) {
+            HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 10))
+                    .font(.system(size: DS.IconSize.sm))
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.plain)
-                    .font(.system(size: 11))
+                    .font(DS.Font.caption)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.xs)
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             .padding(.horizontal, pad)
-            .padding(.vertical, 8)
+            .padding(.vertical, DS.Spacing.sm)
 
             if filtered.isEmpty {
                 Spacer()
-                VStack(spacing: 6) {
+                VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 18, weight: .light))
+                        .font(.system(size: DS.IconSize.xl, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text(searchText.isEmpty ? "No conversations" : "No results")
-                        .font(.system(size: 11))
+                        .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 Spacer()
@@ -90,12 +90,13 @@ struct ChatHistorySidebar: View {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(sections) { section in
                             Text(section.title)
-                                .font(.system(size: 9, weight: .bold))
+                                .font(DS.Font.micro)
+                                .fontWeight(.bold)
                                 .foregroundStyle(DS.Colors.textTertiary)
                                 .textCase(.uppercase)
                                 .padding(.horizontal, pad)
-                                .padding(.top, 10)
-                                .padding(.bottom, 4)
+                                .padding(.top, DS.Spacing.md)
+                                .padding(.bottom, DS.Spacing.xs)
 
                             ForEach(section.items) { conv in
                                 HistoryRow(
@@ -109,8 +110,8 @@ struct ChatHistorySidebar: View {
                             }
                         }
                     }
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.bottom, DS.Spacing.sm)
                 }
             }
         }
@@ -127,26 +128,28 @@ private struct HistoryRow: View {
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 6) {
+            HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "bubble.left")
-                    .font(.system(size: 9))
+                    .font(.system(size: DS.IconSize.xs))
                     .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                    .frame(width: 14)
+                    .frame(width: DS.IconSize.md)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(conversation.title.isEmpty ? "Untitled" : conversation.title)
-                        .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                        .font(DS.Font.caption)
+                        .fontWeight(isSelected ? .semibold : .regular)
                         .foregroundStyle(DS.Colors.textPrimary)
                         .lineLimit(1)
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         if let agent = conversation.agentName {
                             Text(agent)
-                                .font(.system(size: 9, weight: .medium))
+                                .font(DS.Font.micro)
                                 .foregroundStyle(DS.Colors.accent)
                         }
                         Text(conversation.updatedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
-                            .font(.system(size: 9))
+                            .font(DS.Font.micro)
+                            .fontWeight(.regular)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
                 }
@@ -162,8 +165,8 @@ private struct HistoryRow: View {
                     .buttonStyle(.plainPointer)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm)
             .background(
                 isSelected ? DS.Colors.accentFill :
                     (isHovered ? DS.Colors.fillSecondary : .clear),

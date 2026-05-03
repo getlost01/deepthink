@@ -47,11 +47,20 @@ struct ProjectListView: View {
 
             Divider()
 
-            List(selection: $appState.selectedProjectID) {
-                ForEach(projects) { project in
-                    ProjectCard(project: project)
-                        .tag(project.id)
-                        .listRowInsets(EdgeInsets(top: 2, leading: DS.Spacing.sm, bottom: 2, trailing: DS.Spacing.sm))
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(projects) { project in
+                        let isSelected = appState.selectedProjectID == project.id
+                        Button {
+                            appState.selectedProjectID = project.id
+                        } label: {
+                            ProjectCard(project: project)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, 2)
+                                .background(isSelected ? DS.Colors.accentFill : .clear)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plainPointer)
                         .contextMenu {
                             Button(project.isArchived ? "Unarchive" : "Archive") {
                                 project.isArchived.toggle()
@@ -63,9 +72,9 @@ struct ProjectListView: View {
                                 showDeleteConfirm = true
                             }
                         }
+                    }
                 }
             }
-            .listStyle(.inset)
             .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
             .onKeyPress(.downArrow) { moveSelection(1); return .handled }
             .onKeyPress(.escape) { appState.selectedProjectID = nil; return .handled }

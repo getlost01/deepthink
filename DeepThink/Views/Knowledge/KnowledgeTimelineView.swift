@@ -59,7 +59,7 @@ struct KnowledgeTimelineView: View {
                                 .font(DS.Font.small)
                                 .fontWeight(.medium)
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.md)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))

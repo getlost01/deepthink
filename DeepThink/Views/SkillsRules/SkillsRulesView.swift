@@ -28,7 +28,7 @@ struct SkillsRulesView: View {
                             Text(m.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(mode == m ? .semibold : .regular)
-                                .foregroundStyle(mode == m ? .white : DS.Colors.textSecondary)
+                                .foregroundStyle(mode == m ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.lg)
                                 .padding(.vertical, DS.Spacing.sm)
                                 .background(mode == m ? DS.Colors.accent : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -396,7 +396,7 @@ private struct SkillInlineEditor: View {
                             .font(DS.Font.small)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .padding(.horizontal, DS.Spacing.md)
                     .padding(.vertical, DS.Spacing.xs + 2)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -423,7 +423,7 @@ private struct SkillInlineEditor: View {
                     .padding(.bottom, DS.Spacing.xs)
 
                 TextEditor(text: $systemPrompt)
-                    .font(.system(size: 12, design: .monospaced))
+                    .font(DS.Font.monoSmall)
                     .scrollContentBackground(.hidden)
                     .frame(height: 80)
                     .padding(.horizontal, DS.Spacing.md)
@@ -616,11 +616,11 @@ struct SkillRunSheet: View {
                         Task { await run() }
                     } label: {
                         HStack(spacing: DS.Spacing.sm) {
-                            if isRunning { ProgressView().controlSize(.small).tint(.white) }
+                            if isRunning { ProgressView().controlSize(.small).tint(DS.Colors.onAccent) }
                             Text(isRunning ? "Running..." : "Run")
                                 .font(DS.Font.body).fontWeight(.semibold)
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(DS.Colors.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DS.Spacing.md)
                         .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))

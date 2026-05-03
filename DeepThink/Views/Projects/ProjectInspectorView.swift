@@ -53,7 +53,7 @@ private struct ProjectInspectorContent: View {
                                     Image(systemName: "checkmark")
                                         .font(.caption2)
                                         .fontWeight(.bold)
-                                        .foregroundStyle(.white)
+                                        .foregroundStyle(DS.Colors.onAccent)
                                 }
                             }
                             .onTapGesture {

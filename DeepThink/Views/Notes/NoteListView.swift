@@ -69,46 +69,55 @@ struct NoteListView: View {
 
             Divider()
 
-            List(selection: $appState.selectedNoteID) {
-                ForEach(filteredNotes) { note in
-                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            if note.isPinned {
-                                Image(systemName: "pin.fill")
-                                    .font(.system(size: DS.IconSize.sm))
-                                    .foregroundStyle(DS.Colors.warning)
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(filteredNotes) { note in
+                        let isSelected = appState.selectedNoteID == note.id
+                        Button {
+                            appState.selectedNoteID = note.id
+                        } label: {
+                            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    if note.isPinned {
+                                        Image(systemName: "pin.fill")
+                                            .font(.system(size: DS.IconSize.sm))
+                                            .foregroundStyle(DS.Colors.warning)
+                                    }
+                                    Text(note.title.isEmpty ? "Untitled" : note.title)
+                                        .font(DS.Font.body)
+                                        .fontWeight(.medium)
+                                        .lineLimit(1)
+                                        .foregroundStyle(DS.Colors.textPrimary)
+                                }
+                                HStack {
+                                    Text(note.firstLine)
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    Text(note.modifiedAt.relativeFormatted)
+                                        .font(DS.Font.small)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
                             }
-                            Text(note.title.isEmpty ? "Untitled" : note.title)
-                                .font(DS.Font.body)
-                                .fontWeight(.medium)
-                                .lineLimit(1)
+                            .padding(.horizontal, DS.Spacing.lg)
+                            .padding(.vertical, DS.Spacing.sm)
+                            .background(isSelected ? DS.Colors.accentFill : .clear)
+                            .contentShape(Rectangle())
                         }
-                        HStack {
-                            Text(note.firstLine)
-                                .font(DS.Font.caption)
-                                .foregroundStyle(DS.Colors.textSecondary)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(note.modifiedAt.relativeFormatted)
-                                .font(DS.Font.small)
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                    }
-                    .padding(.vertical, DS.Spacing.xs)
-                    .tag(note.id)
-                    .contextMenu {
-                        Button(note.isPinned ? "Unpin" : "Pin") {
-                            note.isPinned.toggle()
-                        }
-                        Divider()
-                        Button("Delete", role: .destructive) {
-                            deleteNote(note)
+                        .buttonStyle(.plainPointer)
+                        .contextMenu {
+                            Button(note.isPinned ? "Unpin" : "Pin") {
+                                note.isPinned.toggle()
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                deleteNote(note)
+                            }
                         }
                     }
                 }
-                .onDelete(perform: deleteNotes)
             }
-            .listStyle(.inset)
             .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
             .onKeyPress(.downArrow) { moveSelection(1); return .handled }
             .onKeyPress(.escape) { appState.selectedNoteID = nil; return .handled }

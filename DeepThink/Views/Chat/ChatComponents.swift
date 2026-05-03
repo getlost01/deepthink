@@ -22,12 +22,12 @@ struct ThinkingIndicator: View {
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: useMCP ? "wrench.and.screwdriver" : "sparkles")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: DS.IconSize.sm, weight: .semibold))
                 .foregroundStyle(DS.Colors.accent)
                 .opacity(pulse ? 0.4 : 1.0)
 
             Text(label)
-                .font(.system(size: 13))
+                .font(DS.Font.body)
                 .foregroundStyle(DS.Colors.textSecondary)
 
             Text(elapsedText)
@@ -78,12 +78,12 @@ struct WelcomePrompts: View {
                         .fill(DS.Colors.accent.opacity(0.12))
                         .frame(width: 48, height: 48)
                     Image(systemName: "sparkles")
-                        .font(.system(size: 22, weight: .medium))
+                        .font(.system(size: DS.IconSize.xxl, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
                 }
 
                 Text("How can I help?")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(DS.Font.titleLarge)
                     .foregroundStyle(DS.Colors.textPrimary)
 
                 Text("Your notes, tasks, and knowledge are always in context.")
@@ -114,7 +114,7 @@ struct SuggestionChip: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: icon)
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: DS.IconSize.sm, weight: .semibold))
                     .foregroundStyle(DS.Colors.accent)
                 Text(title)
                     .font(DS.Font.caption)
@@ -156,13 +156,13 @@ struct ChatContentView: View {
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         ) {
             Text(attributed)
-                .font(.system(size: 13))
+                .font(DS.Font.body)
                 .foregroundStyle(DS.Colors.textPrimary)
                 .textSelection(.enabled)
                 .lineSpacing(3)
         } else {
             Text(content)
-                .font(.system(size: 13))
+                .font(DS.Font.body)
                 .foregroundStyle(DS.Colors.textPrimary)
                 .textSelection(.enabled)
                 .lineSpacing(3)

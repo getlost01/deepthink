@@ -50,6 +50,166 @@ deepthink agents list
 deepthink agents chat researcher "What do we know about X?"
 ```
 
+## MCP Server
+
+DeepThink ships an MCP server (`deepthink-mcp`) that lets any MCP-compatible client — Claude CLI, Claude Desktop, Cursor, Windsurf, VS Code, etc. — manage your full workspace through natural language: tasks, notes, projects, knowledge base, memory, agents, rules, and skills.
+
+### Install
+
+```bash
+# Build the MCP binary (requires Bun)
+cd cli && bun install && bun run build:mcp && cd ..
+
+# Symlink globally
+mkdir -p ~/.local/bin
+ln -sf "$(pwd)/cli/out/deepthink-mcp" ~/.local/bin/deepthink-mcp
+```
+
+### Configure
+
+Add to your MCP client's config file:
+
+**Claude CLI** (`~/.claude.json`):
+
+```json
+{
+  "mcpServers": {
+    "deepthink": {
+      "command": "deepthink-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "deepthink": {
+      "command": "/Users/YOUR_USERNAME/.local/bin/deepthink-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+**Cursor / VS Code** (`.cursor/mcp.json` or `.vscode/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "deepthink": {
+      "command": "deepthink-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+### Available Tools (41 total)
+
+**Workspace** (16 tools)
+
+| Tool | Description |
+|------|-------------|
+| `workspace_list_tasks` | List tasks (filter by status, priority, project) |
+| `workspace_get_task` | Get task by ID or name |
+| `workspace_create_task` | Create task with title, status, priority, points, due date, project |
+| `workspace_update_task` | Update any task fields |
+| `workspace_delete_task` | Delete a task |
+| `workspace_list_notes` | List notes (filter by project, pinned) |
+| `workspace_get_note` | Get note by ID or title |
+| `workspace_create_note` | Create note with markdown content |
+| `workspace_update_note` | Update note fields |
+| `workspace_delete_note` | Delete a note |
+| `workspace_list_projects` | List all projects with counts |
+| `workspace_get_project` | Get project by ID or name |
+| `workspace_create_project` | Create project with name, summary, color |
+| `workspace_update_project` | Update project fields |
+| `workspace_delete_project` | Delete project (items become unassigned) |
+| `workspace_summary` | Full workspace overview: counts, recent items, status breakdown |
+
+**Knowledge Base** (8 tools)
+
+| Tool | Description |
+|------|-------------|
+| `knowledge_stats` | Knowledge base overview: project count, integrations, archives |
+| `knowledge_list_projects` | List all knowledge projects |
+| `knowledge_load_project` | Load project knowledge: context, decisions, artifacts |
+| `knowledge_save_project` | Save knowledge to a project (context, decision, or artifact) |
+| `knowledge_search` | Search across all integration data by keyword |
+| `knowledge_list_integrations` | List all integration sources and channels |
+| `knowledge_load_integration` | Load recent entries from a source/channel |
+| `knowledge_capture` | Capture data from an external source into the knowledge base |
+
+**Memory** (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `memory_stats` | Short-term and long-term entry counts |
+| `memory_save` | Save a memory entry with tags to short or long-term storage |
+| `memory_recall` | Search memories by keyword across both layers |
+| `memory_promote` | Promote a short-term memory to long-term |
+| `memory_clear_short_term` | Clear all short-term memories |
+
+**Agents** (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `agent_list` | List all AI agents with roles, models, knowledge scopes |
+| `agent_get` | Get full agent details including system prompt |
+| `agent_create` | Create a new agent with name, role, system prompt, knowledge scope |
+| `agent_delete` | Delete an agent |
+
+**Rules** (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `rule_list` | List all rules with triggers and categories |
+| `rule_get` | Get full rule details including instruction text |
+| `rule_create` | Create a rule with trigger condition and instruction |
+| `rule_delete` | Delete a rule |
+
+**Skills** (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `skill_list` | List all slash-command skills |
+| `skill_get` | Get full skill details including prompt template |
+| `skill_create` | Create a skill with system prompt and `{{input}}` template |
+| `skill_delete` | Delete a skill |
+
+### Resources
+
+MCP resources for read-only access:
+
+| URI | Description |
+|-----|-------------|
+| `deepthink://tasks` | All tasks as JSON |
+| `deepthink://notes` | All notes as JSON |
+| `deepthink://projects` | All projects as JSON |
+| `deepthink://knowledge/stats` | Knowledge base overview |
+| `deepthink://knowledge/projects` | All knowledge projects |
+| `deepthink://knowledge/integrations` | Integration sources and channels |
+| `deepthink://memory/stats` | Memory entry counts |
+
+### Example Usage
+
+Once configured, just talk to Claude naturally:
+
+```
+> "Create a high-priority task called 'Ship v2.0' due 2026-05-10 in the DeepThink project"
+> "What tasks are in progress right now?"
+> "Show me a summary of my workspace"
+> "Search my knowledge base for API migration notes"
+> "Save this decision to the DeepThink project knowledge"
+> "Create an agent called 'DevOps Expert' that knows about infrastructure"
+> "Add a rule that triggers on code reviews to check for security issues"
+> "What memories do I have about deployment?"
+```
+
 ## Features
 
 | Feature | Description |

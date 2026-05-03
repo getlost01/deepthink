@@ -16,21 +16,30 @@ enum DS {
         static let sm: CGFloat = 6
         static let md: CGFloat = 8
         static let lg: CGFloat = 12
+        static let xl: CGFloat = 14
+        static let pill: CGFloat = 20
     }
 
     enum IconSize {
+        static let xs: CGFloat = 9
         static let sm: CGFloat = 12
         static let md: CGFloat = 14
         static let lg: CGFloat = 16
         static let xl: CGFloat = 20
+        static let xxl: CGFloat = 24
     }
 
     enum Font {
+        static let hero: SwiftUI.Font = .system(size: 48, weight: .light)
+        static let display: SwiftUI.Font = .system(size: 24, weight: .bold)
+        static let titleLarge: SwiftUI.Font = .system(size: 20, weight: .semibold)
         static let title: SwiftUI.Font = .system(size: 18, weight: .semibold)
         static let heading: SwiftUI.Font = .system(size: 14, weight: .semibold)
         static let body: SwiftUI.Font = .system(size: 13)
         static let caption: SwiftUI.Font = .system(size: 11)
         static let small: SwiftUI.Font = .system(size: 10, weight: .medium)
+        static let micro: SwiftUI.Font = .system(size: 9, weight: .medium)
+        static let buttonSmall: SwiftUI.Font = .system(size: 10, weight: .medium)
         static let mono: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
         static let monoSmall: SwiftUI.Font = .system(size: 11, weight: .regular, design: .monospaced)
     }
@@ -42,6 +51,7 @@ enum DS {
             colors: [Color(hue: 0.61, saturation: 0.65, brightness: 1.0), Color(hue: 0.65, saturation: 0.75, brightness: 0.92)],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
+        static let onAccent = Color.white
 
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .textBackgroundColor)
@@ -59,8 +69,21 @@ enum DS {
         static let success = Color(hue: 0.38, saturation: 0.70, brightness: 0.82)
         static let warning = Color(hue: 0.09, saturation: 0.75, brightness: 0.95)
         static let danger = Color(hue: 0.0, saturation: 0.72, brightness: 0.90)
+        static let knowledge = Color(hue: 0.75, saturation: 0.5, brightness: 0.85)
+
+        static let terminal = Color(NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0))
+        static let terminalNS = NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0)
 
         static let cardShadow = Color.black.opacity(0.06)
+        static let modalShadow = Color.black.opacity(0.25)
+        static let subtleShadow = Color.black.opacity(0.10)
+    }
+
+    enum Opacity {
+        static let hover: Double = 0.08
+        static let subtle: Double = 0.12
+        static let disabled: Double = 0.5
+        static let overlayBg: Double = 0.35
     }
 
     enum Layout {
@@ -345,7 +368,7 @@ struct DSEmptyState: View {
                             .font(DS.Font.caption)
                             .fontWeight(.medium)
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.Colors.onAccent)
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.vertical, DS.Spacing.sm)
                     .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -806,7 +829,7 @@ struct DSCalendarPicker: View {
                                 .font(DS.Font.caption)
                                 .fontWeight(isToday ? .bold : .regular)
                                 .foregroundStyle(
-                                    isSelected ? .white :
+                                    isSelected ? DS.Colors.onAccent :
                                     isPast ? DS.Colors.textTertiary :
                                     isToday ? DS.Colors.accent :
                                     DS.Colors.textPrimary
@@ -858,7 +881,7 @@ struct DSCalendarPicker: View {
         } label: {
             Text(label)
                 .font(DS.Font.small)
-                .foregroundStyle(isSelected ? .white : DS.Colors.textSecondary)
+                .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.textSecondary)
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs)
                 .background(

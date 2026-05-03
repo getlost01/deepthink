@@ -25,9 +25,9 @@ struct ActiveRulesBar: View {
                                 Image(systemName: rule.icon)
                                     .font(.system(size: 7))
                                 Text(rule.name)
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(DS.Font.micro)
                             }
-                            .padding(.horizontal, 6)
+                            .padding(.horizontal, DS.Spacing.sm)
                             .padding(.vertical, 2)
                             .background(
                                 isActive ? DS.Colors.accentFill : DS.Colors.fill,

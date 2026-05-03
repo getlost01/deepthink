@@ -12,19 +12,19 @@ struct CommandPaletteView: View {
         @Bindable var state = state
 
         ZStack {
-            Color.black.opacity(0.35)
+            Color.black.opacity(DS.Opacity.overlayBg)
                 .ignoresSafeArea()
                 .onTapGesture { dismiss() }
 
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 14))
+                        .font(.system(size: DS.IconSize.md))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     TextField("Search commands, notes, tasks...", text: $state.query)
                         .textFieldStyle(.plain)
-                        .font(.system(size: 16))
+                        .font(.system(size: DS.IconSize.lg))
                         .onSubmit {
                             if state.executeSelected() { dismiss() }
                         }
@@ -34,7 +34,7 @@ struct CommandPaletteView: View {
                             state.query = ""
                         } label: {
                             Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 12))
+                                .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                         .buttonStyle(.plainPointer)
@@ -53,7 +53,8 @@ struct CommandPaletteView: View {
 
                             ForEach(sections) { section in
                                 Text(section.title.uppercased())
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(DS.Font.micro)
+                                    .fontWeight(.bold)
                                     .foregroundStyle(DS.Colors.textTertiary)
                                     .padding(.horizontal, DS.Spacing.lg)
                                     .padding(.top, DS.Spacing.md)
@@ -76,7 +77,7 @@ struct CommandPaletteView: View {
                             if flatItems.isEmpty && !state.query.isEmpty {
                                 VStack(spacing: DS.Spacing.sm) {
                                     Image(systemName: "magnifyingglass")
-                                        .font(.system(size: 20, weight: .light))
+                                        .font(.system(size: DS.IconSize.xl, weight: .light))
                                         .foregroundStyle(DS.Colors.textTertiary)
                                     Text("No results for \"\(state.query)\"")
                                         .font(DS.Font.body)
@@ -130,7 +131,7 @@ struct CommandPaletteView: View {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
                     .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
             }
-            .shadow(color: .black.opacity(0.25), radius: 30, y: 10)
+            .shadow(color: DS.Colors.modalShadow, radius: 30, y: 10)
             .padding(.top, 80)
             .frame(maxHeight: .infinity, alignment: .top)
         }
@@ -211,20 +212,20 @@ private struct PaletteItemRow: View {
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
             Image(systemName: itemIcon)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 20)
-                .foregroundStyle(isSelected ? .white : iconColor)
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .frame(width: DS.IconSize.xl)
+                .foregroundStyle(isSelected ? DS.Colors.onAccent : iconColor)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
                     .font(DS.Font.body)
-                    .foregroundStyle(isSelected ? .white : DS.Colors.textPrimary)
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.textPrimary)
                     .lineLimit(1)
 
                 if let subtitle = itemSubtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(DS.Font.small)
-                        .foregroundStyle(isSelected ? .white.opacity(0.6) : DS.Colors.textTertiary)
+                        .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.6) : DS.Colors.textTertiary)
                         .lineLimit(1)
                 }
             }
@@ -233,20 +234,20 @@ private struct PaletteItemRow: View {
 
             if let shortcut = itemShortcut {
                 Text(shortcut)
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? .white.opacity(0.7) : DS.Colors.textTertiary)
-                    .padding(.horizontal, 6)
+                    .font(.system(size: DS.IconSize.sm, weight: .medium, design: .rounded))
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.7) : DS.Colors.textTertiary)
+                    .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, 3)
                     .background(
-                        (isSelected ? AnyShapeStyle(.white.opacity(0.15)) : AnyShapeStyle(DS.Colors.border)),
-                        in: RoundedRectangle(cornerRadius: 4)
+                        (isSelected ? AnyShapeStyle(DS.Colors.onAccent.opacity(0.15)) : AnyShapeStyle(DS.Colors.border)),
+                        in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                     )
             }
 
             if let section = itemSection {
                 Text(section)
                     .font(DS.Font.small)
-                    .foregroundStyle(isSelected ? .white.opacity(0.5) : DS.Colors.textTertiary)
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.5) : DS.Colors.textTertiary)
             }
         }
         .padding(.horizontal, DS.Spacing.md)
@@ -276,7 +277,7 @@ private struct PaletteItemRow: View {
             case .note: DS.Colors.accent
             case .task: DS.Colors.success
             case .project: DS.Colors.warning
-            case .knowledge: Color(hue: 0.75, saturation: 0.5, brightness: 0.85)
+            case .knowledge: DS.Colors.knowledge
             }
         }
     }
@@ -311,9 +312,9 @@ private struct KeyHint: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 9, weight: .medium, design: .rounded))
-            .padding(.horizontal, 4)
+            .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
+            .padding(.horizontal, DS.Spacing.xs)
             .padding(.vertical, 2)
-            .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: 3))
+            .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }

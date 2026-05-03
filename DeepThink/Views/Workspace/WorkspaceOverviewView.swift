@@ -48,9 +48,9 @@ struct WorkspaceOverviewView: View {
                 // Stat cards
                 HStack(spacing: DS.Spacing.md) {
                     statCard(icon: "folder", label: "Projects", count: projects.count, color: DS.Colors.accent)
-                    statCard(icon: "doc.text", label: "Notes", count: notes.count, color: Color(hue: 0.55, saturation: 0.6, brightness: 0.85))
-                    statCard(icon: "checklist", label: "Tasks", count: tasks.count, color: Color(hue: 0.38, saturation: 0.6, brightness: 0.8))
-                    statCard(icon: "circle.lefthalf.filled", label: "In Progress", count: inProgressCount, color: Color(hue: 0.09, saturation: 0.7, brightness: 0.9))
+                    statCard(icon: "doc.text", label: "Notes", count: notes.count, color: DS.Colors.knowledge)
+                    statCard(icon: "checklist", label: "Tasks", count: tasks.count, color: DS.Colors.success)
+                    statCard(icon: "circle.lefthalf.filled", label: "In Progress", count: inProgressCount, color: DS.Colors.warning)
                 }
 
                 // Completion progress
@@ -420,7 +420,7 @@ struct WorkspaceOverviewView: View {
             if let hint {
                 Text(hint)
                     .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary.opacity(0.7))
+                    .foregroundStyle(DS.Colors.textTertiary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
