@@ -5,10 +5,6 @@ struct SidebarView: View {
     @Environment(AppState.self) private var appState
     @State private var isExpanded = true
 
-    private var mainSections: [SidebarSection] {
-        SidebarSection.mainSections
-    }
-
     var body: some View {
         @Bindable var appState = appState
 
@@ -32,7 +28,7 @@ struct SidebarView: View {
             Divider()
 
             VStack(spacing: DS.Spacing.xs) {
-                ForEach(mainSections) { section in
+                ForEach(SidebarSection.topSections) { section in
                     SidebarItem(
                         section: section,
                         isSelected: appState.selectedSection == section,
@@ -44,6 +40,38 @@ struct SidebarView: View {
             }
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.top, DS.Spacing.md)
+
+            Divider()
+                .padding(.vertical, DS.Spacing.sm)
+
+            VStack(spacing: DS.Spacing.xs) {
+                ForEach(SidebarSection.mainSections) { section in
+                    SidebarItem(
+                        section: section,
+                        isSelected: appState.selectedSection == section,
+                        isExpanded: isExpanded
+                    ) {
+                        appState.selectedSection = section
+                    }
+                }
+            }
+            .padding(.horizontal, DS.Spacing.sm)
+
+            Divider()
+                .padding(.vertical, DS.Spacing.sm)
+
+            VStack(spacing: DS.Spacing.xs) {
+                ForEach(SidebarSection.toolSections) { section in
+                    SidebarItem(
+                        section: section,
+                        isSelected: appState.selectedSection == section,
+                        isExpanded: isExpanded
+                    ) {
+                        appState.selectedSection = section
+                    }
+                }
+            }
+            .padding(.horizontal, DS.Spacing.sm)
 
             Spacer()
 

@@ -79,7 +79,7 @@ struct DocRendererView: View {
             }
             .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

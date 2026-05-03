@@ -38,11 +38,13 @@ struct ContentRouter: View {
     var body: some View {
         Group {
             switch appState.selectedSection {
+            case .recent:
+                RecentView()
             case .workspace:
                 WorkspaceView()
             case .knowledge:
                 KnowledgeView()
-            case .ai:
+            case .aiAssistant:
                 AIView()
             case .integrations:
                 IntegrationsView()
@@ -51,7 +53,7 @@ struct ContentRouter: View {
             case .settings:
                 ClaudeSettingsView()
             case nil:
-                WorkspaceView()
+                RecentView()
             }
         }
     }

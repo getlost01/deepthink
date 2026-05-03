@@ -54,7 +54,7 @@ struct AgentListView: View {
             if let agent = selectedAgent {
                 AgentDetailEditor(agent: agent) {
                     appState.selectedAgentPath = agent.filePath.path
-                    appState.selectedSection = .ai
+                    appState.selectedSection = .aiAssistant
                 } onDelete: {
                     showDeleteConfirm = true
                 }
@@ -192,7 +192,7 @@ private struct AgentTemplateSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -317,6 +317,7 @@ private struct AgentRow: View {
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -397,7 +398,7 @@ private struct AgentDetailEditor: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

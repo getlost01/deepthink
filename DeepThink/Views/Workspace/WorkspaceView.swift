@@ -32,8 +32,6 @@ struct WorkspaceView: View {
             Divider()
 
             switch appState.workspaceTab {
-            case .overview:
-                WorkspaceOverviewView()
             case .projects:
                 projectsContent
             case .notes:

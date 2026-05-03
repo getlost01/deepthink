@@ -3,12 +3,12 @@ import SwiftUI
 
 @Observable
 final class AppState {
-    var selectedSection: SidebarSection? = .workspace
+    var selectedSection: SidebarSection? = .recent
     var showCommandPalette: Bool = false
     var searchQuery: String = ""
 
     // Workspace sub-navigation
-    var workspaceTab: WorkspaceTab = .overview
+    var workspaceTab: WorkspaceTab = .projects
     var selectedNoteID: UUID?
     var selectedTaskID: UUID?
     var selectedProjectID: UUID?
@@ -39,6 +39,7 @@ final class AppState {
     var selectedContextChannel: String?
     var selectedContextItemPath: String?
     var contextSearchQuery: String = ""
+    var selectedKnowledgeEntryID: String?
 
     // Active context for skills/rules
     var currentNoteContent: String?
@@ -83,6 +84,11 @@ final class AppState {
         selectedSection = .knowledge
         selectedContextSource = source
         selectedContextChannel = channel
+    }
+
+    func navigateToKnowledgeEntry(_ entryID: String) {
+        selectedSection = .knowledge
+        selectedKnowledgeEntryID = entryID
     }
 
     func navigateToNote(_ id: UUID) {

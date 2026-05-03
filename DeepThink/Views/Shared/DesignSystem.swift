@@ -44,7 +44,7 @@ enum DS {
         )
 
         static let surface = Color(nsColor: .controlBackgroundColor)
-        static let surfaceElevated = Color(nsColor: .windowBackgroundColor)
+        static let surfaceElevated = Color(nsColor: .textBackgroundColor)
         static let fill = Color(hue: 0.63, saturation: 0.04, brightness: 0.50).opacity(0.07)
         static let fillSecondary = Color(hue: 0.63, saturation: 0.05, brightness: 0.50).opacity(0.10)
 
@@ -171,7 +171,7 @@ struct DSToolbarBar<Content: View>: View {
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.md)
-        .background(.bar)
+        .background(DS.Colors.surfaceElevated)
     }
 }
 
@@ -196,9 +196,10 @@ struct DSTabButton: View {
                         .font(DS.Font.caption)
                         .fontWeight(isSelected ? .semibold : .regular)
                 }
-                .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                .foregroundStyle(isSelected ? DS.Colors.textPrimary : (isHovered ? DS.Colors.textPrimary : DS.Colors.textSecondary))
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
+                .background(isHovered && !isSelected ? DS.Colors.fillSecondary : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                 Rectangle()
                     .fill(isSelected ? DS.Colors.accent : .clear)
@@ -208,6 +209,7 @@ struct DSTabButton: View {
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -364,6 +366,7 @@ struct DSEmptyState: View {
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
         }
+        .padding(DS.Spacing.lg)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

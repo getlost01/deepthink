@@ -59,7 +59,7 @@ struct SlashCommandMenu: View {
                                     in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                                 )
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.plainPointer)
                         }
                     }
                     .padding(.horizontal, DS.Spacing.xs)

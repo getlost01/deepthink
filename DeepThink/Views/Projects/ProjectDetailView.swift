@@ -88,7 +88,7 @@ struct ProjectDetailView: View {
 
                 TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
                     .textFieldStyle(.plain)
-                    .font(DS.Font.body)
+                    .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(3)
 
@@ -143,13 +143,13 @@ struct ProjectDetailView: View {
                 let totalHeight = geo.size.height
                 let handleHeight: CGFloat = 8
                 let available = totalHeight - handleHeight
-                let topHeight = max(available * splitRatio, available * minPaneRatio)
+                let clampedRatio = min(max(splitRatio, minPaneRatio), 1 - minPaneRatio)
+                let topHeight = available * clampedRatio
                 let bottomHeight = available - topHeight
 
                 VStack(spacing: 0) {
                     tasksPane
                         .frame(height: topHeight)
-                        .clipped()
 
                     DSSplitHandle(axis: .horizontal)
                         .gesture(
@@ -162,7 +162,6 @@ struct ProjectDetailView: View {
 
                     notesPane
                         .frame(height: bottomHeight)
-                        .clipped()
                 }
             }
         }
@@ -200,22 +199,27 @@ struct ProjectDetailView: View {
             Divider()
 
             if project.tasks.isEmpty {
-                DSEmptyState(
-                    icon: "checklist",
-                    title: "No tasks yet",
-                    subtitle: "Break this project into smaller steps you can check off",
-                    action: createTaskInProject,
-                    actionTitle: "Add Task"
-                )
+                ScrollView {
+                    DSEmptyState(
+                        icon: "checklist",
+                        title: "No tasks yet",
+                        subtitle: "Break this project into smaller steps you can check off",
+                        action: createTaskInProject,
+                        actionTitle: "Add Task"
+                    )
+                    .frame(minHeight: 200)
+                }
             } else {
                 ScrollView {
                     VStack(spacing: 1) {
                         ForEach(project.tasks.sorted(by: { $0.status.sortOrder < $1.status.sortOrder })) { task in
-                            ProjectTaskRow(task: task) {
+                            ProjectTaskRow(task: task, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToTaskInProject(task.id)
                                 }
-                            }
+                            }, onDelete: {
+                                modelContext.delete(task)
+                            })
                         }
                     }
                     .background(DS.Colors.border)
@@ -258,22 +262,27 @@ struct ProjectDetailView: View {
             Divider()
 
             if project.notes.isEmpty {
-                DSEmptyState(
-                    icon: "doc.text",
-                    title: "No notes yet",
-                    subtitle: "Write down ideas, plans, or meeting notes for this project",
-                    action: createNoteInProject,
-                    actionTitle: "Add Note"
-                )
+                ScrollView {
+                    DSEmptyState(
+                        icon: "doc.text",
+                        title: "No notes yet",
+                        subtitle: "Write down ideas, plans, or meeting notes for this project",
+                        action: createNoteInProject,
+                        actionTitle: "Add Note"
+                    )
+                    .frame(minHeight: 200)
+                }
             } else {
                 ScrollView {
                     VStack(spacing: 1) {
                         ForEach(project.notes.sorted(by: { $0.modifiedAt > $1.modifiedAt })) { note in
-                            ProjectNoteRow(note: note) {
+                            ProjectNoteRow(note: note, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToNoteInProject(note.id)
                                 }
-                            }
+                            }, onDelete: {
+                                modelContext.delete(note)
+                            })
                         }
                     }
                     .background(DS.Colors.border)
@@ -309,6 +318,7 @@ struct ProjectDetailView: View {
 private struct ProjectTaskRow: View {
     let task: TaskItem
     let action: () -> Void
+    var onDelete: (() -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -323,6 +333,17 @@ private struct ProjectTaskRow: View {
                     .font(DS.Font.body)
                     .lineLimit(1)
                     .foregroundStyle(task.status == .done ? DS.Colors.textTertiary : DS.Colors.textPrimary)
+
+                if !task.subtasks.isEmpty {
+                    let done = task.subtasks.filter { $0.status == .done }.count
+                    HStack(spacing: 2) {
+                        Image(systemName: "checklist")
+                            .font(.system(size: 8))
+                        Text("\(done)/\(task.subtasks.count)")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(done == task.subtasks.count ? DS.Colors.success : DS.Colors.textTertiary)
+                }
 
                 Spacer()
 
@@ -344,13 +365,24 @@ private struct ProjectTaskRow: View {
                     .opacity(isHovered ? 1 : 0)
             }
             .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.sm + 2)
+            .padding(.vertical, DS.Spacing.md)
             .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.surface)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .contextMenu {
+            Button(action: action) {
+                Label("Open", systemImage: "doc.text")
+            }
+            if let onDelete {
+                Divider()
+                Button(role: .destructive, action: onDelete) {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 }
 
@@ -359,6 +391,7 @@ private struct ProjectTaskRow: View {
 private struct ProjectNoteRow: View {
     let note: Note
     let action: () -> Void
+    var onDelete: (() -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -386,12 +419,23 @@ private struct ProjectNoteRow: View {
                     .opacity(isHovered ? 1 : 0)
             }
             .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.sm + 2)
+            .padding(.vertical, DS.Spacing.md)
             .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.surface)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .contextMenu {
+            Button(action: action) {
+                Label("Open", systemImage: "doc.text")
+            }
+            if let onDelete {
+                Divider()
+                Button(role: .destructive, action: onDelete) {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 }

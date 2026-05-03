@@ -4,20 +4,17 @@ import SwiftData
 struct TaskBoardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
-    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+    let tasks: [TaskItem]
 
     private let columns: [TaskStatus] = [.backlog, .todo, .inProgress, .done]
 
     private func tasksFor(_ status: TaskStatus) -> [TaskItem] {
-        var tasks = allTasks.filter { $0.status == status && $0.parent == nil }
-        if let projectID = appState.filterProjectID {
-            tasks = tasks.filter { $0.project?.id == projectID }
-        }
-        return tasks.sorted { $0.priority.sortOrder < $1.priority.sortOrder }
+        tasks.filter { $0.status == status }
+            .sorted { $0.priority.sortOrder < $1.priority.sortOrder }
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
+        ScrollView(.horizontal, showsIndicators: true) {
             HStack(alignment: .top, spacing: DS.Spacing.md) {
                 ForEach(columns, id: \.self) { status in
                     boardColumn(status: status, tasks: tasksFor(status))
@@ -25,41 +22,61 @@ struct TaskBoardView: View {
             }
             .padding(DS.Spacing.xl)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     @ViewBuilder
     private func boardColumn(status: TaskStatus, tasks: [TaskItem]) -> some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: status.icon)
-                    .font(.system(size: DS.IconSize.sm, weight: .medium))
-                    .foregroundStyle(status.color)
+                Circle()
+                    .fill(status.color)
+                    .frame(width: 8, height: 8)
                 Text(status.rawValue)
                     .font(DS.Font.caption)
                     .fontWeight(.semibold)
                     .foregroundStyle(DS.Colors.textPrimary)
-                DSPill(text: "\(tasks.count)", color: status.color)
+                Text("\(tasks.count)")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
                 Spacer()
-            }
 
-            if tasks.isEmpty {
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .fill(DS.Colors.fill)
-                    .frame(height: 60)
-                    .overlay(
-                        Text("No tasks")
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    )
-            } else {
-                ForEach(tasks) { task in
-                    boardCard(task: task)
+                Button {
+                    let task = TaskItem(title: "")
+                    task.status = status
+                    modelContext.insert(task)
+                    appState.selectedTaskID = task.id
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 20, height: 20)
+                }
+                .buttonStyle(.plainPointer)
+            }
+            .padding(.bottom, DS.Spacing.xs)
+
+            ScrollView(.vertical, showsIndicators: false) {
+                LazyVStack(spacing: DS.Spacing.md) {
+                    if tasks.isEmpty {
+                        RoundedRectangle(cornerRadius: DS.Radius.md)
+                            .fill(DS.Colors.fill)
+                            .frame(height: 48)
+                            .overlay(
+                                Text("No tasks")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            )
+                    } else {
+                        ForEach(tasks) { task in
+                            boardCard(task: task)
+                        }
+                    }
                 }
             }
-
-            Spacer()
         }
-        .frame(width: 260)
+        .frame(width: 280)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     @ViewBuilder
@@ -67,7 +84,7 @@ struct TaskBoardView: View {
         Button {
             appState.selectedTaskID = task.id
         } label: {
-            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 Text(task.title.isEmpty ? "Untitled" : task.title)
                     .font(DS.Font.body)
                     .fontWeight(.medium)
@@ -77,7 +94,7 @@ struct TaskBoardView: View {
 
                 HStack(spacing: DS.Spacing.sm) {
                     if task.priority != .none {
-                        HStack(spacing: 2) {
+                        HStack(spacing: 3) {
                             Image(systemName: task.priority.icon)
                                 .font(.system(size: 9, weight: .medium))
                             Text(task.priority.rawValue)
@@ -87,7 +104,7 @@ struct TaskBoardView: View {
                     }
 
                     if let due = task.dueDate {
-                        HStack(spacing: 2) {
+                        HStack(spacing: 3) {
                             Image(systemName: "calendar")
                                 .font(.system(size: 9))
                             Text(due.shortFormatted)
@@ -98,13 +115,13 @@ struct TaskBoardView: View {
 
                     if !task.subtasks.isEmpty {
                         let done = task.subtasks.filter { $0.status == .done }.count
-                        HStack(spacing: 2) {
-                            Image(systemName: "list.bullet")
+                        HStack(spacing: 3) {
+                            Image(systemName: "checklist")
                                 .font(.system(size: 9))
                             Text("\(done)/\(task.subtasks.count)")
                                 .font(DS.Font.small)
                         }
-                        .foregroundStyle(DS.Colors.textTertiary)
+                        .foregroundStyle(done == task.subtasks.count ? DS.Colors.success : DS.Colors.textTertiary)
                     }
 
                     Spacer()
@@ -133,8 +150,8 @@ struct TaskBoardView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(DS.Spacing.md)
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .padding(DS.Spacing.lg)
+            .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(
@@ -152,6 +169,10 @@ struct TaskBoardView: View {
                     task.status = newStatus
                     task.modifiedAt = Date()
                 }
+            }
+            Divider()
+            Button("Delete", role: .destructive) {
+                modelContext.delete(task)
             }
         }
     }

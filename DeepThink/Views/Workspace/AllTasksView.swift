@@ -13,13 +13,26 @@ struct AllTasksView: View {
     @State private var taskToDelete: TaskItem?
     @State private var showDeleteConfirm = false
     @State private var viewMode: TaskViewMode = .list
+    @State private var smartFilter: SmartFilter = .all
 
     enum TaskViewMode: String {
         case list, board
     }
 
+    enum SmartFilter: String, CaseIterable {
+        case all = "All"
+        case overdue = "Overdue"
+    }
+
     private var filteredTasks: [TaskItem] {
-        var result = tasks
+        var result = tasks.filter { $0.parent == nil }
+
+        switch smartFilter {
+        case .all:
+            break
+        case .overdue:
+            result = result.filter { $0.isOverdue }
+        }
 
         if let statusFilter {
             result = result.filter { $0.status == statusFilter }
@@ -54,23 +67,71 @@ struct AllTasksView: View {
 
     private var boardLayout: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.sm) {
-                Spacer()
-                viewModeToggle
+            VStack(spacing: DS.Spacing.sm) {
+                HStack(spacing: DS.Spacing.sm) {
+                    DSSearchField(text: $searchText, placeholder: "Search tasks...")
+                    viewModeToggle
+                }
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DS.Spacing.sm) {
+                        smartFilterChips
+
+                        Picker(selection: $statusFilter) {
+                            Text("All Statuses").tag(nil as TaskStatus?)
+                            ForEach(TaskStatus.allCases) { s in
+                                Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
+                            }
+                        } label: { EmptyView() }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
+                        .fixedSize()
+
+                        Picker(selection: $priorityFilter) {
+                            Text("All Priorities").tag(nil as TaskPriority?)
+                            ForEach(TaskPriority.allCases) { p in
+                                Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
+                            }
+                        } label: { EmptyView() }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
+                        .fixedSize()
+                    }
+                }
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(.bar)
 
             Divider()
 
-            TaskBoardView()
+            TaskBoardView(tasks: filteredTasks)
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in
             let task = TaskItem(title: "")
             modelContext.insert(task)
             appState.selectedTaskID = task.id
             viewMode = .list
+        }
+    }
+
+    private var smartFilterChips: some View {
+        HStack(spacing: DS.Spacing.xs) {
+            ForEach(SmartFilter.allCases, id: \.self) { filter in
+                Button {
+                    withAnimation(DS.Animation.quick) { smartFilter = filter }
+                } label: {
+                    Text(filter.rawValue)
+                        .font(DS.Font.caption)
+                        .fontWeight(smartFilter == filter ? .semibold : .regular)
+                        .foregroundStyle(smartFilter == filter ? DS.Colors.accent : DS.Colors.textSecondary)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 1)
+                        .background(
+                            smartFilter == filter ? DS.Colors.accentFill : DS.Colors.fill,
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plainPointer)
+            }
         }
     }
 
@@ -104,29 +165,35 @@ struct AllTasksView: View {
         ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             VStack(spacing: 0) {
                 VStack(spacing: DS.Spacing.sm) {
-                    DSSearchField(text: $searchText, placeholder: "Search tasks...")
-
                     HStack(spacing: DS.Spacing.sm) {
-                        Picker("Status", selection: $statusFilter) {
-                            Text("All Statuses").tag(nil as TaskStatus?)
-                            ForEach(TaskStatus.allCases) { s in
-                                Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .font(DS.Font.caption)
-
-                        Picker("Priority", selection: $priorityFilter) {
-                            Text("All Priorities").tag(nil as TaskPriority?)
-                            ForEach(TaskPriority.allCases) { p in
-                                Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .font(DS.Font.caption)
-
-                        Spacer()
+                        DSSearchField(text: $searchText, placeholder: "Search tasks...")
                         viewModeToggle
+                    }
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: DS.Spacing.sm) {
+                            smartFilterChips
+
+                            Picker(selection: $statusFilter) {
+                                Text("All Statuses").tag(nil as TaskStatus?)
+                                ForEach(TaskStatus.allCases) { s in
+                                    Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
+                                }
+                            } label: { EmptyView() }
+                            .pickerStyle(.menu)
+                            .font(DS.Font.caption)
+                            .fixedSize()
+
+                            Picker(selection: $priorityFilter) {
+                                Text("All Priorities").tag(nil as TaskPriority?)
+                                ForEach(TaskPriority.allCases) { p in
+                                    Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
+                                }
+                            } label: { EmptyView() }
+                            .pickerStyle(.menu)
+                            .font(DS.Font.caption)
+                            .fixedSize()
+                        }
                     }
                 }
                 .padding(DS.Spacing.md)
@@ -215,7 +282,7 @@ struct AllTasksView: View {
                 .foregroundStyle(task.status.color)
                 .frame(width: 18)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(task.title.isEmpty ? "Untitled" : task.title)
                     .font(DS.Font.body)
                     .fontWeight(.medium)
@@ -232,6 +299,17 @@ struct AllTasksView: View {
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
+
+                    if !task.subtasks.isEmpty {
+                        let done = task.subtasks.filter { $0.status == .done }.count
+                        HStack(spacing: 2) {
+                            Image(systemName: "checklist")
+                                .font(.system(size: 8))
+                            Text("\(done)/\(task.subtasks.count)")
+                                .font(DS.Font.small)
+                        }
+                        .foregroundStyle(done == task.subtasks.count ? DS.Colors.success : DS.Colors.textTertiary)
+                    }
                 }
             }
 
@@ -243,6 +321,6 @@ struct AllTasksView: View {
                     .foregroundStyle(task.isOverdue ? DS.Colors.danger : DS.Colors.textTertiary)
             }
         }
-        .padding(.vertical, DS.Spacing.xs)
+        .padding(.vertical, DS.Spacing.sm)
     }
 }

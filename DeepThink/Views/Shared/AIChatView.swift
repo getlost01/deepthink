@@ -59,6 +59,9 @@ struct AIChatView: View {
                     onNewChat: {
                         appState.chatMessages.removeAll()
                         currentConversation = nil
+                    },
+                    onClose: {
+                        withAnimation(DS.Animation.standard) { showHistory = false }
                     }
                 )
                 .frame(width: 240)
@@ -133,7 +136,7 @@ struct AIChatView: View {
 
             Spacer()
 
-            HStack(spacing: DS.Spacing.xs) {
+            HStack(spacing: DS.Spacing.sm) {
                 if !appState.chatMessages.isEmpty {
                     Button {
                         saveConversationToKnowledge()
@@ -199,7 +202,7 @@ struct AIChatView: View {
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
-        .background(.bar)
+        .background(DS.Colors.surfaceElevated)
     }
 
     // MARK: - Messages
@@ -295,10 +298,50 @@ struct AIChatView: View {
 
     // MARK: - Input
 
+    private var contextIndicator: some View {
+        let hasContext = appState.currentNoteTitle != nil || appState.currentProjectName != nil
+        return Group {
+            if hasContext {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "paperclip")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+
+                    if let project = appState.currentProjectName {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "folder")
+                                .font(.system(size: 8))
+                            Text(project)
+                                .font(DS.Font.small)
+                        }
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    }
+
+                    if let noteTitle = appState.currentNoteTitle, !noteTitle.isEmpty {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "doc.text")
+                                .font(.system(size: 8))
+                            Text(noteTitle)
+                                .font(DS.Font.small)
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
+            }
+        }
+    }
+
     private var chatInput: some View {
         VStack(spacing: 0) {
             VStack(spacing: 0) {
-                TextField("Message DeepThink...", text: $inputText, axis: .vertical)
+                contextIndicator
+
+                TextField("Ask DeepThink anything...", text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(2...3)
                     .font(.system(size: 13))
@@ -388,7 +431,7 @@ struct AIChatView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.md)
-        .background(.bar)
+        .background(DS.Colors.surfaceElevated)
     }
 
     // MARK: - Actions

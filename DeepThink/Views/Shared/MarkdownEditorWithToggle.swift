@@ -16,7 +16,7 @@ struct MarkdownEditorWithToggle: View {
     @Binding var text: String
     var placeholder: String = "Start writing..."
     var onSave: (() -> Void)? = nil
-    var autoSaveInterval: TimeInterval = 10
+    var autoSaveInterval: TimeInterval = 3
 
     @State private var mode: EditorMode = .rich
     @State private var autoSaveTask: Task<Void, Never>?
@@ -25,34 +25,45 @@ struct MarkdownEditorWithToggle: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.xs) {
-                ForEach(EditorMode.allCases, id: \.self) { m in
-                    Button {
-                        withAnimation(DS.Animation.quick) { mode = m }
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: m.icon)
-                                .font(.system(size: 9, weight: .medium))
-                            Text(m.rawValue)
-                                .font(DS.Font.small)
-                                .fontWeight(.medium)
+            HStack(spacing: DS.Spacing.sm) {
+                HStack(spacing: 0) {
+                    ForEach(EditorMode.allCases, id: \.self) { m in
+                        Button {
+                            withAnimation(DS.Animation.quick) { mode = m }
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: m.icon)
+                                    .font(.system(size: 9, weight: .medium))
+                                Text(m.rawValue)
+                                    .font(DS.Font.small)
+                                    .fontWeight(.medium)
+                            }
+                            .foregroundStyle(mode == m ? DS.Colors.accent : DS.Colors.textTertiary)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs + 2)
+                            .background(mode == m ? DS.Colors.accentFill : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
-                        .foregroundStyle(mode == m ? .white : DS.Colors.textSecondary)
-                        .padding(.horizontal, DS.Spacing.sm + 2)
-                        .padding(.vertical, DS.Spacing.xs + 1)
-                        .background(mode == m ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .buttonStyle(.plainPointer)
                     }
-                    .buttonStyle(.plainPointer)
                 }
+                .padding(2)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm + 2))
 
                 Spacer()
 
-                if isDirty {
-                    HStack(spacing: DS.Spacing.xs) {
+                HStack(spacing: DS.Spacing.xs) {
+                    if isDirty {
                         Circle()
                             .fill(DS.Colors.warning)
                             .frame(width: 6, height: 6)
                         Text("Unsaved")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundStyle(DS.Colors.success)
+                        Text("Synced")
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
@@ -60,11 +71,9 @@ struct MarkdownEditorWithToggle: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(.bar)
-            .zIndex(1)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
-                .zIndex(1)
 
             switch mode {
             case .rich:

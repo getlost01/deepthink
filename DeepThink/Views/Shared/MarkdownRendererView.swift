@@ -38,7 +38,7 @@ struct MarkdownSplitEditor: View {
                 .padding(.trailing, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.xs)
             }
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

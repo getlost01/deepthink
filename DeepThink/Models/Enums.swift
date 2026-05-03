@@ -4,24 +4,34 @@ import SwiftUI
 // MARK: - Navigation
 
 enum SidebarSection: String, Identifiable {
+    case recent = "Recent"
     case workspace = "Workspace"
     case knowledge = "Knowledge"
-    case ai = "AI"
-    case integrations = "Connections"
+    case aiAssistant = "AI Assistant"
+    case integrations = "Integration"
     case terminal = "Terminal"
     case settings = "Settings"
 
     var id: String { rawValue }
 
+    static var topSections: [SidebarSection] {
+        [.recent]
+    }
+
     static var mainSections: [SidebarSection] {
-        [.workspace, .knowledge, .ai, .integrations, .terminal]
+        [.workspace, .knowledge, .aiAssistant]
+    }
+
+    static var toolSections: [SidebarSection] {
+        [.integrations, .terminal]
     }
 
     var icon: String {
         switch self {
+        case .recent: "clock.arrow.circlepath"
         case .workspace: "square.grid.2x2"
         case .knowledge: "brain"
-        case .ai: "sparkles"
+        case .aiAssistant: "message.and.waveform"
         case .integrations: "puzzlepiece.extension"
         case .terminal: "terminal"
         case .settings: "gear"
@@ -30,9 +40,10 @@ enum SidebarSection: String, Identifiable {
 
     var tooltip: String {
         switch self {
+        case .recent: "Recent activity across your workspace"
         case .workspace: "Projects, notes, and tasks"
         case .knowledge: "Save and search anything you learn"
-        case .ai: "Chat, assistants, and automations"
+        case .aiAssistant: "Chat, assistants, and automations"
         case .integrations: "Add tools and services for AI to use"
         case .terminal: "Built-in terminal sessions"
         case .settings: "Choose AI model and preferences"
@@ -41,9 +52,10 @@ enum SidebarSection: String, Identifiable {
 
     var subtitle: String {
         switch self {
+        case .recent: "See what happened recently across your workspace"
         case .workspace: "Your projects, notes, and tasks in one place"
         case .knowledge: "Save articles, ideas, and research in one place"
-        case .ai: "Chat with AI, manage assistants and automations"
+        case .aiAssistant: "Chat with AI, manage assistants and automations"
         case .integrations: "Connect tools and services to make AI more powerful"
         case .terminal: "Run commands and scripts"
         case .settings: "Model selection and usage"
@@ -52,9 +64,10 @@ enum SidebarSection: String, Identifiable {
 
     var helpText: String {
         switch self {
+        case .recent: "See all recent activity — notes edited, tasks completed, knowledge added — in one timeline."
         case .workspace: "This is your home base. Create projects to organize your work, write notes to capture ideas, and add tasks to track what needs doing."
         case .knowledge: "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. Everything here can be used by AI to give you better answers."
-        case .ai: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
+        case .aiAssistant: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
         case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
         case .terminal: "A built-in command line for running scripts and system commands."
         case .settings: "Choose which AI model to use and track your usage."
@@ -77,7 +90,6 @@ enum AgentConfigTab: String, CaseIterable, Identifiable {
 }
 
 enum WorkspaceTab: String, CaseIterable, Identifiable {
-    case overview = "Overview"
     case projects = "Projects"
     case notes = "Notes"
     case tasks = "Tasks"
@@ -86,7 +98,6 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .overview: "house"
         case .projects: "folder"
         case .notes: "doc.text"
         case .tasks: "checklist"

@@ -40,19 +40,6 @@ struct ToolsHubView: View {
                 .controlSize(.small)
 
                 Button {
-                    importFromClaude()
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "square.and.arrow.down")
-                        Text("Import")
-                    }
-                    .font(DS.Font.caption)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Import connections from Claude config")
-
-                Button {
                     showAddSheet = true
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
@@ -66,7 +53,7 @@ struct ToolsHubView: View {
             }
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.vertical, DS.Spacing.md)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -95,7 +82,7 @@ struct ToolsHubView: View {
                 DSEmptyState(
                     icon: "wrench.and.screwdriver",
                     title: "No Connections Yet",
-                    subtitle: "Connections give AI access to external tools like web search, file systems, and databases — making it much more helpful.",
+                    subtitle: "Connections give AI access to external tools like web search, file systems, and databases.",
                     hint: "Start with a preset to see what's possible",
                     action: { showPresets = true },
                     actionTitle: "Browse Presets"
@@ -125,7 +112,7 @@ struct ToolsHubView: View {
                 }
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(.bar)
+                .background(DS.Colors.surfaceElevated)
             }
         }
         .sheet(isPresented: $showAddSheet) {
@@ -167,33 +154,6 @@ struct ToolsHubView: View {
     private func deleteServer(_ server: MCPServer) {
         guard !server.isCore else { return }
         modelContext.delete(server)
-    }
-
-    private func importFromClaude() {
-        let discovered = MCPService.shared.discoverFromClaudeConfig()
-        let existingNames = Set(servers.map(\.name))
-        var imported = 0
-
-        for item in discovered {
-            guard !existingNames.contains(item.name) else { continue }
-            let server = MCPServer(
-                name: item.name,
-                command: item.command,
-                args: item.args,
-                category: item.category,
-                description: item.description
-            )
-            modelContext.insert(server)
-            imported += 1
-        }
-
-        if imported > 0 {
-            testResult = "Imported \(imported) server(s) from Claude config"
-        } else if discovered.isEmpty {
-            testResult = "No Claude config found at ~/.claude.json"
-        } else {
-            testResult = "All discovered servers already exist"
-        }
     }
 }
 
@@ -289,58 +249,252 @@ private struct ToolCard: View {
     }
 }
 
+// MARK: - Add Server Sheet (redesigned)
+
 private struct AddServerSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @State private var inputMode: InputMode = .form
     @State private var name = ""
     @State private var command = ""
     @State private var args = ""
     @State private var envVars = ""
     @State private var category = "General"
     @State private var description = ""
+    @State private var extraFields: [ExtraField] = []
+    @State private var jsonText = ""
+    @State private var jsonError: String?
     let onAdd: (MCPServer) -> Void
+
+    enum InputMode: String, CaseIterable {
+        case form = "Form"
+        case json = "JSON"
+    }
+
+    struct ExtraField: Identifiable {
+        let id = UUID()
+        var key: String = ""
+        var value: String = ""
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Add Connection")
+                Text("Add MCP Server")
                     .font(DS.Font.heading)
                 Spacer()
+
+                Picker(selection: $inputMode) {
+                    ForEach(InputMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
+                } label: { EmptyView() }
+                .pickerStyle(.segmented)
+                .frame(width: 140)
+
                 Button("Cancel") { dismiss() }
                     .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
-            Form {
-                TextField("Name", text: $name)
-                TextField("Command", text: $command)
-                    .font(DS.Font.mono)
-                TextField("Arguments", text: $args)
-                    .font(DS.Font.mono)
-                TextField("Category", text: $category)
-                TextField("Description", text: $description)
-                TextField("Environment Variables (KEY=VALUE per line)", text: $envVars, axis: .vertical)
-                    .lineLimit(3...6)
-                    .font(DS.Font.mono)
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    if inputMode == .form {
+                        formContent
+                    } else {
+                        jsonContent
+                    }
+                }
+                .padding(DS.Spacing.lg)
             }
-            .padding(DS.Spacing.lg)
 
             Divider()
 
             HStack {
                 Spacer()
-                Button("Add Connection") {
-                    let server = MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description)
-                    onAdd(server)
-                    dismiss()
+                Button(action: addServer) {
+                    Text("Add Server")
+                        .font(DS.Font.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, DS.Spacing.xl)
+                        .padding(.vertical, DS.Spacing.sm)
+                        .background(canAdd ? DS.Colors.accent : DS.Colors.accent.opacity(0.5), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(name.isEmpty || command.isEmpty)
+                .buttonStyle(.plainPointer)
+                .disabled(!canAdd)
             }
             .padding(DS.Spacing.lg)
         }
-        .frame(width: 480, height: 440)
+        .frame(width: 520, height: 520)
+    }
+
+    private var canAdd: Bool {
+        if inputMode == .json {
+            return !jsonText.isEmpty && jsonError == nil
+        }
+        return !name.isEmpty && !command.isEmpty
+    }
+
+    @ViewBuilder
+    private var formContent: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            fieldRow(label: "Name", text: $name, placeholder: "My MCP Server")
+            fieldRow(label: "Command", text: $command, placeholder: "npx -y @modelcontextprotocol/server-xxx", mono: true)
+            fieldRow(label: "Arguments", text: $args, placeholder: "Optional arguments", mono: true)
+            fieldRow(label: "Category", text: $category, placeholder: "General")
+            fieldRow(label: "Description", text: $description, placeholder: "What does this server do?")
+
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                Text("Environment Variables")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                TextField("KEY=VALUE (one per line)", text: $envVars, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.mono)
+                    .lineLimit(2...4)
+                    .dsInputField()
+            }
+
+            // Extra fields
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                HStack {
+                    Text("Extra Fields")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Spacer()
+                    Button {
+                        extraFields.append(ExtraField())
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(DS.Colors.accent)
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+
+                ForEach($extraFields) { $field in
+                    HStack(spacing: DS.Spacing.sm) {
+                        TextField("Key", text: $field.key)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.mono)
+                            .dsInputField()
+                            .frame(width: 120)
+                        TextField("Value", text: $field.value)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.mono)
+                            .dsInputField()
+                        Button {
+                            extraFields.removeAll { $0.id == field.id }
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var jsonContent: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text("Paste MCP server JSON configuration")
+                .font(DS.Font.caption)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            TextEditor(text: $jsonText)
+                .font(DS.Font.mono)
+                .frame(minHeight: 200)
+                .padding(DS.Spacing.sm)
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                        .strokeBorder(DS.Colors.border, lineWidth: 1)
+                )
+                .onChange(of: jsonText) { _, newValue in
+                    validateJSON(newValue)
+                }
+
+            if let jsonError {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(DS.Colors.danger)
+                    Text(jsonError)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.danger)
+                }
+            }
+
+            Text("Example: {\"command\": \"npx\", \"args\": \"-y @server/name\", \"env\": {\"API_KEY\": \"...\"}}")
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textTertiary)
+        }
+    }
+
+    @ViewBuilder
+    private func fieldRow(label: String, text: Binding<String>, placeholder: String, mono: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            Text(label)
+                .font(DS.Font.caption)
+                .foregroundStyle(DS.Colors.textSecondary)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.plain)
+                .font(mono ? DS.Font.mono : DS.Font.body)
+                .dsInputField()
+        }
+    }
+
+    private func validateJSON(_ text: String) {
+        guard !text.isEmpty else { jsonError = nil; return }
+        guard let data = text.data(using: .utf8) else { jsonError = "Invalid text"; return }
+        do {
+            let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+            if obj == nil { jsonError = "Must be a JSON object" } else { jsonError = nil }
+        } catch {
+            jsonError = error.localizedDescription
+        }
+    }
+
+    private func addServer() {
+        if inputMode == .json {
+            addFromJSON()
+        } else {
+            let server = MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description)
+            onAdd(server)
+        }
+        dismiss()
+    }
+
+    private func addFromJSON() {
+        guard let data = jsonText.data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+
+        let serverName = obj["name"] as? String ?? "Unnamed Server"
+        let serverCommand = obj["command"] as? String ?? ""
+        let serverArgs: String
+        if let argsArray = obj["args"] as? [String] {
+            serverArgs = argsArray.joined(separator: " ")
+        } else {
+            serverArgs = obj["args"] as? String ?? ""
+        }
+
+        var envString = ""
+        if let env = obj["env"] as? [String: String] {
+            envString = env.map { "\($0.key)=\($0.value)" }.joined(separator: "\n")
+        }
+
+        let serverCategory = obj["category"] as? String ?? "General"
+        let serverDesc = obj["description"] as? String ?? ""
+
+        let server = MCPServer(name: serverName, command: serverCommand, args: serverArgs, envVars: envString, category: serverCategory, description: serverDesc)
+        onAdd(server)
     }
 }
 
@@ -374,7 +528,6 @@ private struct PresetServersSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack(spacing: DS.Spacing.md) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("MCP Server Catalog")
@@ -409,16 +562,14 @@ private struct PresetServersSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
-            // Search
             DSSearchField(text: $searchText, placeholder: "Search MCP servers...")
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
 
-            // Category filter
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
                     ForEach(categories, id: \.self) { cat in
@@ -447,7 +598,6 @@ private struct PresetServersSheet: View {
 
             Divider()
 
-            // Package list
             if catalog.packages.isEmpty && !catalog.isLoading {
                 DSEmptyState(
                     icon: "puzzlepiece.extension",
@@ -562,5 +712,6 @@ private struct CatalogRow: View {
         .background(isHovered ? DS.Colors.fillSecondary : .clear)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

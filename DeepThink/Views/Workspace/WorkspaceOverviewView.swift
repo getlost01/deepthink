@@ -298,23 +298,13 @@ struct WorkspaceOverviewView: View {
                     DSSectionHeader(title: "Quick Actions")
 
                     HStack(spacing: DS.Spacing.md) {
-                        DSActionButton(title: "New Note", icon: "plus") {
-                            appState.workspaceTab = .notes
-                            NotificationCenter.default.post(name: .createNewNote, object: nil)
-                        }
-
-                        DSActionButton(title: "New Task", icon: "plus") {
-                            appState.workspaceTab = .tasks
-                            NotificationCenter.default.post(name: .createNewTask, object: nil)
-                        }
-
                         DSActionButton(title: "New Project", icon: "plus") {
                             appState.workspaceTab = .projects
                             NotificationCenter.default.post(name: .createNewProject, object: nil)
                         }
 
                         DSActionButton(title: "Ask AI", icon: "sparkles") {
-                            appState.navigate(to: .ai)
+                            appState.navigate(to: .aiAssistant)
                         }
                     }
                 }

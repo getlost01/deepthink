@@ -98,7 +98,7 @@ struct DeepSearchView: View {
                 }
             }
             .padding(DS.Spacing.xl)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

@@ -3,6 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct KnowledgeBrowserView: View {
+    @Environment(AppState.self) private var appState
     @State private var searchText = ""
     @State private var folderFilter: String?
     @State private var selectedEntry: KnowledgeEntry?
@@ -12,6 +13,7 @@ struct KnowledgeBrowserView: View {
     @State private var showDeleteConfirm = false
     @State private var showNewFolder = false
     @State private var newFolderName = ""
+    @State private var newFolderIcon = "folder"
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
@@ -32,6 +34,7 @@ struct KnowledgeBrowserView: View {
     var body: some View {
         ResizableSplitView(minLeftWidth: 300, minRightWidth: 400) {
             VStack(spacing: 0) {
+                // Search + Add
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search knowledge...")
 
@@ -59,6 +62,9 @@ struct KnowledgeBrowserView: View {
                             Button { showNewEntry = true } label: {
                                 Label("Write New", systemImage: "pencil")
                             }
+                            Button { showNewFolder = true } label: {
+                                Label("New Folder", systemImage: "folder.badge.plus")
+                            }
                         }
                     } label: {
                         HStack(spacing: DS.Spacing.xs) {
@@ -80,30 +86,21 @@ struct KnowledgeBrowserView: View {
                 .padding(.vertical, DS.Spacing.md)
 
                 HStack(spacing: DS.Spacing.sm) {
-                    Picker("Folder", selection: $folderFilter) {
+                    Picker(selection: $folderFilter) {
                         Text("All Folders").tag(nil as String?)
                         ForEach(knowledge.folders, id: \.self) { folder in
                             Label(folder, systemImage: "folder").tag(folder as String?)
                         }
-                    }
+                    } label: { EmptyView() }
                     .pickerStyle(.menu)
                     .font(DS.Font.caption)
-
-                    Button {
-                        showNewFolder = true
-                    } label: {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plainPointer)
-                    .help("Create new folder")
-
-                    Spacer()
+                    .fixedSize()
 
                     Text("\(filteredEntries.count) entries")
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
+
+                    Spacer()
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.sm)
@@ -142,7 +139,7 @@ struct KnowledgeBrowserView: View {
                                     }
                                 }
                                 if entry.id != filteredEntries.last?.id {
-                                    Divider().padding(.leading, 48)
+                                    Divider()
                                 }
                             }
                         }
@@ -158,11 +155,23 @@ struct KnowledgeBrowserView: View {
                 DSEmptyState(
                     icon: "doc.text.magnifyingglass",
                     title: "Select an Entry",
-                    subtitle: "Pick something from your knowledge base to read, tag, or edit. AI automatically uses your knowledge when you chat."
+                    subtitle: "Pick something from your knowledge base to read, tag, or edit."
                 )
             }
         }
-        .onAppear { knowledge.reload() }
+        .onAppear {
+            knowledge.reload()
+            if let entryID = appState.selectedKnowledgeEntryID {
+                selectedEntry = knowledge.entries.first { $0.id == entryID }
+                appState.selectedKnowledgeEntryID = nil
+            }
+        }
+        .onChange(of: appState.selectedKnowledgeEntryID) { _, newID in
+            if let entryID = newID {
+                selectedEntry = knowledge.entries.first { $0.id == entryID }
+                appState.selectedKnowledgeEntryID = nil
+            }
+        }
         .sheet(isPresented: $showURLSheet) { URLScrapeSheet() }
         .sheet(isPresented: $showNewEntry) { NewKnowledgeSheet() }
         .sheet(isPresented: $showScriptSheet) { ScriptRunSheet() }
@@ -176,19 +185,17 @@ struct KnowledgeBrowserView: View {
         } message: {
             Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
         }
-        .alert("New Folder", isPresented: $showNewFolder) {
-            TextField("Folder name", text: $newFolderName)
-            Button("Create") {
-                let name = newFolderName.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !name.isEmpty {
-                    KnowledgeService.shared.createFolder(named: name)
-                    folderFilter = name
-                    newFolderName = ""
-                }
+        .sheet(isPresented: $showNewFolder) {
+            NewFolderSheet(
+                folderName: $newFolderName,
+                folderIcon: $newFolderIcon,
+                isPresented: $showNewFolder
+            ) { name, icon in
+                KnowledgeService.shared.createFolder(named: name)
+                folderFilter = name
+                newFolderName = ""
+                newFolderIcon = "folder"
             }
-            Button("Cancel", role: .cancel) { newFolderName = "" }
-        } message: {
-            Text("Create a folder to organize your knowledge entries.")
         }
     }
 
@@ -227,18 +234,6 @@ struct KnowledgeBrowserView: View {
             knowledge.reload()
         }
     }
-
-    private func iconFor(_ source: String) -> String {
-        switch source {
-        case "url": return "globe"
-        case "folder": return "folder"
-        case "clipboard": return "doc.on.clipboard"
-        case "manual": return "pencil"
-        case "script": return "terminal"
-        case "mcp": return "puzzlepiece.extension"
-        default: return "doc.text"
-        }
-    }
 }
 
 // MARK: - Entry Row
@@ -252,57 +247,49 @@ private struct EntryRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
-                        .frame(width: 30, height: 30)
-                    Image(systemName: entry.sourceIcon)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     Text(entry.title)
                         .font(DS.Font.body)
-                        .fontWeight(isSelected ? .semibold : .regular)
+                        .fontWeight(.medium)
                         .foregroundStyle(DS.Colors.textPrimary)
                         .lineLimit(1)
 
                     HStack(spacing: DS.Spacing.sm) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "folder")
-                                .font(.system(size: 8))
-                            Text(entry.folder)
-                        }
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                        Text(entry.folder)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textSecondary)
 
-                        if !entry.tags.isEmpty {
-                            Text(entry.tags.prefix(2).joined(separator: ", "))
-                                .font(DS.Font.small)
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
+                        Text("·")
+                            .foregroundStyle(DS.Colors.textTertiary)
+
+                        Text(entry.source)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
                 }
 
                 Spacer()
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(entry.importedAt.relativeFormatted)
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Text(entry.formattedSize)
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                }
+                Text(entry.importedAt.relativeFormatted)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .opacity(isHovered ? 1 : 0)
             }
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm + 2)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
             .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+        }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -315,6 +302,7 @@ struct KnowledgeDetailView: View {
     @State private var isAutoTagging = false
     @State private var editableContent: String = ""
     @State private var hasLoaded = false
+    @State private var showCopied = false
 
     private var linkedNotes: [Note] {
         BacklinkService.shared.notesLinkedTo(entry: entry, notes: allNotes)
@@ -322,87 +310,117 @@ struct KnowledgeDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.md) {
-                Image(systemName: entry.sourceIcon)
-                    .font(.system(size: DS.IconSize.md))
-                    .foregroundStyle(DS.Colors.accent)
+            VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                Text(entry.title)
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(entry.title)
-                        .font(DS.Font.heading)
-                    HStack(spacing: DS.Spacing.sm) {
-                        Text(entry.source)
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                        Text(entry.formattedSize)
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                        Text(entry.importedAt.formatted(date: .abbreviated, time: .shortened))
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
+                HStack(spacing: DS.Spacing.sm) {
+                    Text(entry.source)
+                    Text("·")
+                    Text(entry.formattedSize)
+                    Text("·")
+                    Text(entry.importedAt.formatted(date: .abbreviated, time: .shortened))
                 }
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textTertiary)
 
-                Spacer()
-
-                if !linkedNotes.isEmpty {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "link")
-                            .font(.system(size: 9))
-                        Text("\(linkedNotes.count) linked")
-                            .font(DS.Font.small)
-                    }
-                    .foregroundStyle(DS.Colors.accent)
-                    .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, 3)
-                    .background(DS.Colors.accentFill, in: Capsule())
-                    .help(linkedNotes.map(\.title).joined(separator: ", "))
-                }
-
-                Button {
-                    autoTagEntry()
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        if isAutoTagging {
-                            ProgressView().controlSize(.mini)
-                        } else {
-                            Image(systemName: "tag")
-                                .font(.system(size: 9))
+                HStack(spacing: DS.Spacing.md) {
+                    Button {
+                        autoTagEntry()
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            if isAutoTagging {
+                                ProgressView().controlSize(.mini)
+                            } else {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: DS.IconSize.sm))
+                            }
+                            Text(isAutoTagging ? "Generating..." : "Generate Tags")
+                                .font(DS.Font.caption)
                         }
-                        Text("Auto-Tag")
-                            .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.accent)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
-                    .foregroundStyle(DS.Colors.accent)
-                }
-                .buttonStyle(.plainPointer)
-                .disabled(isAutoTagging)
+                    .buttonStyle(.plainPointer)
+                    .disabled(isAutoTagging)
 
-                if let url = entry.sourceURL {
-                    DSToolbarButton(icon: "link", size: DS.IconSize.sm) {
-                        if let u = URL(string: url) { NSWorkspace.shared.open(u) }
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(editableContent, forType: .string)
+                        withAnimation(DS.Animation.quick) { showCopied = true }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(DS.Animation.quick) { showCopied = false }
+                        }
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                                .font(.system(size: DS.IconSize.sm))
+                            Text(showCopied ? "Copied!" : "Copy")
+                                .font(DS.Font.caption)
+                        }
+                        .foregroundStyle(showCopied ? DS.Colors.success : DS.Colors.textSecondary)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
-                }
+                    .buttonStyle(.plainPointer)
 
-                Button {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(editableContent, forType: .string)
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "doc.on.doc")
-                            .font(.system(size: 9))
-                        Text("Copy")
-                            .font(DS.Font.small)
+                    if let url = entry.sourceURL {
+                        Button {
+                            if let u = URL(string: url) { NSWorkspace.shared.open(u) }
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: DS.IconSize.sm))
+                                Text("Open Source")
+                                    .font(DS.Font.caption)
+                            }
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .padding(.horizontal, DS.Spacing.sm + 2)
+                            .padding(.vertical, DS.Spacing.xs + 2)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
                     }
-                    .foregroundStyle(DS.Colors.textSecondary)
-                }
-                .buttonStyle(.plainPointer)
 
-                DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
-                    onDelete()
+                    if !linkedNotes.isEmpty {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "link")
+                                .font(.system(size: 9))
+                            Text("\(linkedNotes.count) linked")
+                                .font(DS.Font.small)
+                        }
+                        .foregroundStyle(DS.Colors.accent)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.accentFill, in: Capsule())
+                    }
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "trash")
+                                .font(.system(size: DS.IconSize.sm))
+                            Text("Delete")
+                                .font(DS.Font.caption)
+                        }
+                        .foregroundStyle(DS.Colors.danger)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
                 }
             }
-            .padding(DS.Spacing.lg)
-            .background(.bar)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -413,7 +431,7 @@ struct KnowledgeDetailView: View {
                     }
                     Spacer()
                 }
-                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
 
                 Divider()
@@ -423,12 +441,12 @@ struct KnowledgeDetailView: View {
                 text: $editableContent,
                 placeholder: "Write knowledge entry content...",
                 onSave: { saveEntry() },
-                autoSaveInterval: 10
+                autoSaveInterval: 3
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { editableContent = entry.content; hasLoaded = true }
-        .onChange(of: entry.id) { editableContent = entry.content }
+        .onChange(of: entry.id) { editableContent = entry.content; showCopied = false }
     }
 
     private func saveEntry() {
@@ -472,11 +490,11 @@ struct URLScrapeSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
-            VStack(spacing: DS.Spacing.xl) {
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 DSLabeledTextField(label: "URL", text: $urlText, placeholder: "https://example.com/docs")
                 DSLabeledTextField(label: "Title (optional)", text: $titleText, placeholder: "Auto-detected from page")
 
@@ -507,9 +525,10 @@ struct URLScrapeSheet: View {
                 .buttonStyle(.plainPointer)
                 .disabled(urlText.isEmpty || isScraping)
             }
-            .padding(DS.Spacing.xl)
+            .padding(DS.Spacing.lg)
         }
-        .frame(width: 450, height: 320)
+        .frame(width: 450)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @MainActor
@@ -544,6 +563,7 @@ struct NewKnowledgeSheet: View {
                     .font(DS.Font.body)
                     .buttonStyle(.plainPointer)
                     .foregroundStyle(DS.Colors.textSecondary)
+                    .padding(.trailing, DS.Spacing.sm)
                 Button(action: save) {
                     Text("Save")
                         .font(DS.Font.body).fontWeight(.semibold)
@@ -556,18 +576,19 @@ struct NewKnowledgeSheet: View {
                 .disabled(title.isEmpty)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
-            VStack(spacing: DS.Spacing.lg) {
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 DSLabeledTextField(label: "Title", text: $title, placeholder: "Entry title")
                 DSLabeledTextField(label: "Tags (comma-separated)", text: $tags, placeholder: "api, docs, reference")
                 DSLabeledTextEditor(label: "Content", text: $content, minHeight: 200)
             }
-            .padding(DS.Spacing.xl)
+            .padding(DS.Spacing.lg)
         }
-        .frame(width: 550, height: 500)
+        .frame(width: 550)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private func save() {
@@ -597,11 +618,11 @@ struct ScriptRunSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
-            VStack(spacing: DS.Spacing.xl) {
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 DSLabeledTextField(label: "Shell Command", text: $command, placeholder: "curl -s https://api.example.com | jq .")
 
                 HStack(spacing: DS.Spacing.xs) {
@@ -636,9 +657,10 @@ struct ScriptRunSheet: View {
                 .buttonStyle(.plainPointer)
                 .disabled(command.isEmpty || isRunning)
             }
-            .padding(DS.Spacing.xl)
+            .padding(DS.Spacing.lg)
         }
-        .frame(width: 480, height: 320)
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @MainActor
@@ -652,5 +674,93 @@ struct ScriptRunSheet: View {
             try? await Task.sleep(nanoseconds: 1_000_000_000)
             dismiss()
         }
+    }
+}
+
+// MARK: - New Folder Sheet
+
+private struct NewFolderSheet: View {
+    @Binding var folderName: String
+    @Binding var folderIcon: String
+    @Binding var isPresented: Bool
+    let onCreate: (String, String) -> Void
+
+    private let iconOptions = [
+        "folder", "folder.fill", "book.closed", "doc.text",
+        "star", "heart", "bookmark", "lightbulb",
+        "globe", "link", "tag", "archivebox",
+        "cpu", "hammer", "wrench", "paintbrush",
+        "graduationcap", "briefcase", "building.2", "person.2"
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("New Folder")
+                    .font(DS.Font.heading)
+                Spacer()
+                Button("Cancel") { isPresented = false; folderName = "" }
+                    .font(DS.Font.body)
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+            .padding(DS.Spacing.lg)
+            .background(DS.Colors.surfaceElevated)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                DSLabeledTextField(label: "Folder Name", text: $folderName, placeholder: "e.g. Research, APIs, Notes")
+
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                    Text("Icon")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(40), spacing: DS.Spacing.sm), count: 8), spacing: DS.Spacing.sm) {
+                        ForEach(iconOptions, id: \.self) { icon in
+                            Button {
+                                folderIcon = icon
+                            } label: {
+                                Image(systemName: icon)
+                                    .font(.system(size: 14))
+                                    .foregroundStyle(folderIcon == icon ? DS.Colors.accent : DS.Colors.textSecondary)
+                                    .frame(width: 36, height: 36)
+                                    .background(
+                                        folderIcon == icon ? DS.Colors.accentFill : DS.Colors.fill,
+                                        in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                    )
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                }
+
+                Button {
+                    let name = folderName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !name.isEmpty else { return }
+                    onCreate(name, folderIcon)
+                    isPresented = false
+                } label: {
+                    Text("Create Folder")
+                        .font(DS.Font.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DS.Spacing.md)
+                        .background(
+                            folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                ? DS.Colors.accent.opacity(0.5)
+                                : DS.Colors.accent,
+                            in: RoundedRectangle(cornerRadius: DS.Radius.md)
+                        )
+                }
+                .buttonStyle(.plainPointer)
+                .disabled(folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            .padding(DS.Spacing.lg)
+        }
+        .frame(width: 420)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }

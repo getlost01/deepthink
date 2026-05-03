@@ -26,6 +26,7 @@ final class ContextEngine {
 
     private let chunkSize = 600
     private let chunkOverlap = 100
+    let indexQueue = DispatchQueue(label: "com.deepthink.contextengine.index")
 
     private init() {}
 

@@ -7,8 +7,7 @@ struct NoteEditorView: View {
     @State private var saveTask: Task<Void, Never>?
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
-    @State private var showVersions = false
-    @State private var versionTimer: Task<Void, Never>?
+    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
     @State private var showSkillMenu = false
 
     var body: some View {
@@ -26,9 +25,36 @@ struct NoteEditorView: View {
                     .foregroundStyle(DS.Colors.textTertiary)
 
                 Menu {
+                    Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
+                    Divider()
+                    ForEach(projects) { project in
+                        Button {
+                            note.project = project
+                            note.modifiedAt = Date()
+                        } label: {
+                            Label(project.name, systemImage: "folder")
+                        }
+                    }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "folder")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(note.project.map { Color(hex: $0.color) } ?? DS.Colors.textTertiary)
+                        Text(note.project?.name ?? "Project")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(note.project != nil ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+
+                Menu {
                     ForEach(SkillFileService.shared.skills) { skill in
                         Button {
-                            appState.navigate(to: .ai)
+                            appState.navigate(to: .aiAssistant)
                             appState.pendingSkillExecution = skill
                         } label: {
                             Label(skill.name, systemImage: skill.icon)
@@ -48,11 +74,6 @@ struct NoteEditorView: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .help("Run AI skill on this note")
-
-                DSToolbarButton(icon: "clock.arrow.circlepath", size: DS.IconSize.md) {
-                    showVersions = true
-                }
-                .help("Version History")
             }
             .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
@@ -66,16 +87,11 @@ struct NoteEditorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: note.content) { debouncedSave() }
         .onChange(of: note.title) { debouncedSave() }
-        .sheet(isPresented: $showVersions) {
-            NoteVersionsView(note: note)
-        }
         .onAppear {
-            startVersionTimer()
             if note.title.isEmpty { titleFocused = true }
             publishNoteContext()
         }
         .onDisappear {
-            versionTimer?.cancel()
             appState.currentNoteContent = nil
             appState.currentNoteTitle = nil
             appState.currentNoteTags = []
@@ -110,17 +126,5 @@ struct NoteEditorView: View {
         appState.currentNoteContent = note.content
         appState.currentNoteTitle = note.title
         appState.currentNoteTags = note.tags.map(\.name)
-    }
-
-    private func startVersionTimer() {
-        versionTimer = Task {
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(60))
-                guard !Task.isCancelled else { break }
-                await MainActor.run {
-                    VersioningService.shared.snapshotIfChanged(note: note, context: modelContext)
-                }
-            }
-        }
     }
 }

@@ -2,19 +2,22 @@ import SwiftUI
 
 enum IntegrationsTab: String, CaseIterable, Identifiable {
     case mcpServers = "MCP Servers"
-    case claude = "Claude AI"
+    case agents = "Assistants"
+    case skillsAndRules = "Automations"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .mcpServers: "puzzlepiece.extension"
-        case .claude: "sparkles"
+        case .agents: "person.2.circle"
+        case .skillsAndRules: "sparkles"
         }
     }
 }
 
 struct IntegrationsView: View {
+    @Environment(AppState.self) private var appState
     @State private var selectedTab: IntegrationsTab = .mcpServers
 
     var body: some View {
@@ -40,11 +43,18 @@ struct IntegrationsView: View {
                 switch selectedTab {
                 case .mcpServers:
                     ToolsHubView()
-                case .claude:
-                    ClaudeSettingsView()
+                case .agents:
+                    AgentListView()
+                case .skillsAndRules:
+                    SkillsRulesView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .onChange(of: appState.agentConfigTab) { _, newTab in
+            if appState.selectedSection == .integrations {
+                selectedTab = newTab == .agents ? .agents : .skillsAndRules
+            }
         }
     }
 }

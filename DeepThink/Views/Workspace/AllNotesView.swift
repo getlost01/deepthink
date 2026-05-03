@@ -12,6 +12,14 @@ struct AllNotesView: View {
     @State private var noteToDelete: Note?
     @State private var showDeleteConfirm = false
 
+    private var pinnedNotes: [Note] {
+        filteredNotes.filter { $0.isPinned }
+    }
+
+    private var unpinnedNotes: [Note] {
+        filteredNotes.filter { !$0.isPinned }
+    }
+
     private var filteredNotes: [Note] {
         var result = notes
 
@@ -40,14 +48,19 @@ struct AllNotesView: View {
                 VStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search notes...")
 
-                    Picker("Project", selection: $filterProjectID) {
-                        Text("All Projects").tag(nil as UUID?)
-                        ForEach(projects) { project in
-                            Text(project.name).tag(project.id as UUID?)
-                        }
+                    HStack {
+                        Picker(selection: $filterProjectID) {
+                            Text("All Projects").tag(nil as UUID?)
+                            ForEach(projects) { project in
+                                Text(project.name).tag(project.id as UUID?)
+                            }
+                        } label: { EmptyView() }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
+                        .fixedSize()
+
+                        Spacer()
                     }
-                    .pickerStyle(.menu)
-                    .font(DS.Font.caption)
                 }
                 .padding(DS.Spacing.md)
 
@@ -61,21 +74,35 @@ struct AllNotesView: View {
                         hint: searchText.isEmpty ? "Try creating a note for your next meeting or idea" : nil
                     )
                 } else {
-                    List(filteredNotes, selection: Binding(
+                    List(selection: Binding(
                         get: { appState.selectedNoteID },
                         set: { appState.selectedNoteID = $0 }
-                    )) { note in
-                        noteRow(note)
-                            .tag(note.id)
-                            .contextMenu {
-                                Button { appState.selectedNoteID = note.id } label: {
-                                    Label("Open", systemImage: "doc.text")
+                    )) {
+                        if !pinnedNotes.isEmpty {
+                            Section {
+                                ForEach(pinnedNotes) { note in
+                                    noteRow(note)
+                                        .tag(note.id)
+                                        .contextMenu { noteContextMenu(note) }
                                 }
-                                Divider()
-                                Button(role: .destructive) { noteToDelete = note; showDeleteConfirm = true } label: {
-                                    Label("Delete", systemImage: "trash")
+                            } header: {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    Image(systemName: "pin.fill")
+                                        .font(.system(size: 8))
+                                    Text("Pinned")
+                                        .font(DS.Font.small)
                                 }
+                                .foregroundStyle(DS.Colors.textTertiary)
                             }
+                        }
+
+                        Section {
+                            ForEach(unpinnedNotes) { note in
+                                noteRow(note)
+                                    .tag(note.id)
+                                    .contextMenu { noteContextMenu(note) }
+                            }
+                        }
                     }
                     .listStyle(.plain)
                 }
@@ -111,6 +138,23 @@ struct AllNotesView: View {
         }
     }
 
+    @ViewBuilder
+    private func noteContextMenu(_ note: Note) -> some View {
+        Button { appState.selectedNoteID = note.id } label: {
+            Label("Open", systemImage: "doc.text")
+        }
+        Button {
+            note.isPinned.toggle()
+            note.modifiedAt = Date()
+        } label: {
+            Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+        }
+        Divider()
+        Button(role: .destructive) { noteToDelete = note; showDeleteConfirm = true } label: {
+            Label("Delete", systemImage: "trash")
+        }
+    }
+
     private func deleteNote(_ note: Note) {
         if appState.selectedNoteID == note.id {
             appState.selectedNoteID = nil
@@ -127,12 +171,19 @@ struct AllNotesView: View {
                     .foregroundStyle(.orange)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                 Text(note.title.isEmpty ? "Untitled" : note.title)
                     .font(DS.Font.body)
                     .fontWeight(.medium)
                     .foregroundStyle(DS.Colors.textPrimary)
                     .lineLimit(1)
+
+                if !note.content.isEmpty {
+                    Text(note.content.prefix(60).replacingOccurrences(of: "\n", with: " "))
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                }
 
                 HStack(spacing: DS.Spacing.xs) {
                     if let project = note.project {
@@ -149,6 +200,6 @@ struct AllNotesView: View {
 
             Spacer()
         }
-        .padding(.vertical, DS.Spacing.xs)
+        .padding(.vertical, DS.Spacing.sm)
     }
 }

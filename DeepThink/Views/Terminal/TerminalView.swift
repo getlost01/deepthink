@@ -153,7 +153,7 @@ struct TerminalAnalysisSheet: View {
                     .foregroundStyle(DS.Colors.accent)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

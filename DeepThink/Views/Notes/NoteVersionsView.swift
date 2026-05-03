@@ -75,7 +75,7 @@ struct NoteVersionsView: View {
                         .controlSize(.small)
                     }
                     .padding(DS.Spacing.md)
-                    .background(.bar)
+                    .background(DS.Colors.surfaceElevated)
 
                     Divider()
 

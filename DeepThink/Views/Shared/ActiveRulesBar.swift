@@ -36,7 +36,7 @@ struct ActiveRulesBar: View {
                             .foregroundStyle(isActive ? DS.Colors.accent : DS.Colors.textTertiary)
                             .opacity(isActive ? 1.0 : 0.5)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.plainPointer)
                         .help(isActive ? "Disable \(rule.name)" : "Enable \(rule.name)")
                     }
                 }

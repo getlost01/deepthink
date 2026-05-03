@@ -7,6 +7,7 @@ struct ChatHistorySidebar: View {
     let onSelect: (Conversation) -> Void
     let onDelete: (Conversation) -> Void
     let onNewChat: () -> Void
+    var onClose: (() -> Void)? = nil
     @State private var searchText = ""
     @State private var hoveredID: UUID?
 
@@ -48,6 +49,11 @@ struct ChatHistorySidebar: View {
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
+                if let onClose {
+                    DSToolbarButton(icon: "xmark", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
+                        onClose()
+                    }
+                }
             }
             .padding(.horizontal, pad)
             .frame(height: DS.Layout.toolbarHeight)
@@ -153,7 +159,7 @@ private struct HistoryRow: View {
                             .font(.system(size: 7, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.plainPointer)
                 }
             }
             .padding(.horizontal, 8)
@@ -165,6 +171,6 @@ private struct HistoryRow: View {
             )
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.plainPointer)
     }
 }

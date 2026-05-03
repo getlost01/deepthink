@@ -76,22 +76,27 @@ struct DeepThinkApp: App {
 
                 Divider()
 
+                Button("Go to Recent") {
+                    appState.navigate(to: .recent)
+                }
+                .keyboardShortcut("0", modifiers: .command)
+
                 Button("Go to Workspace") {
                     appState.navigate(to: .workspace)
                 }
                 .keyboardShortcut("1", modifiers: .command)
 
-                Button("Go to AI") {
-                    appState.navigate(to: .ai)
-                }
-                .keyboardShortcut("2", modifiers: .command)
-
                 Button("Go to Knowledge") {
                     appState.navigate(to: .knowledge)
                 }
+                .keyboardShortcut("2", modifiers: .command)
+
+                Button("Go to AI Assistant") {
+                    appState.navigate(to: .aiAssistant)
+                }
                 .keyboardShortcut("3", modifiers: .command)
 
-                Button("Go to Connections") {
+                Button("Go to Integration") {
                     appState.navigate(to: .integrations)
                 }
                 .keyboardShortcut("4", modifiers: .command)
@@ -109,10 +114,17 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("1", modifiers: [.command, .shift])
 
-                Button("Knowledge") {
-                    appState.navigate(to: .knowledge)
+                Button("Notes Tab") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .notes
                 }
                 .keyboardShortcut("2", modifiers: [.command, .shift])
+
+                Button("Tasks Tab") {
+                    appState.selectedSection = .workspace
+                    appState.workspaceTab = .tasks
+                }
+                .keyboardShortcut("3", modifiers: [.command, .shift])
             }
         }
         .defaultSize(width: 1200, height: 800)
@@ -122,7 +134,7 @@ struct DeepThinkApp: App {
         let state = appState
         let skillCommands = SkillFileService.shared.skills.map { skill in
             Command(title: "Run: \(skill.name)", icon: skill.icon, shortcut: nil, section: "Skills") {
-                state.navigate(to: .ai)
+                state.navigate(to: .aiAssistant)
                 state.pendingSkillExecution = skill
             }
         }
@@ -146,41 +158,40 @@ struct DeepThinkApp: App {
             },
 
             // Navigate
+            Command(title: "Recent", icon: "clock.arrow.circlepath", shortcut: "⌘0", section: "Navigate") {
+                appState.navigate(to: .recent)
+            },
             Command(title: "Workspace", icon: "square.grid.2x2", shortcut: "⌘1", section: "Navigate") {
                 appState.navigate(to: .workspace)
             },
-            Command(title: "Overview", icon: "house", shortcut: "⇧⌘1", section: "Navigate") {
-                appState.selectedSection = .workspace
-                appState.workspaceTab = .overview
-            },
-            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘2", section: "Navigate") {
+            Command(title: "Projects", icon: "folder", shortcut: "⇧⌘1", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .projects
             },
-            Command(title: "All Notes", icon: "doc.text", shortcut: "⇧⌘3", section: "Navigate") {
+            Command(title: "All Notes", icon: "doc.text", shortcut: "⇧⌘2", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .notes
             },
-            Command(title: "All Tasks", icon: "checklist", shortcut: "⇧⌘4", section: "Navigate") {
+            Command(title: "All Tasks", icon: "checklist", shortcut: "⇧⌘3", section: "Navigate") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .tasks
             },
-            Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
-                appState.navigate(to: .ai)
-            },
-            Command(title: "Knowledge", icon: "brain", shortcut: "⌘3", section: "Navigate") {
+            Command(title: "Knowledge", icon: "brain", shortcut: "⌘2", section: "Navigate") {
                 appState.navigate(to: .knowledge)
             },
-            Command(title: "Connections", icon: "puzzlepiece.extension", shortcut: "⌘4", section: "Navigate") {
+            Command(title: "AI Assistant", icon: "message.and.waveform", shortcut: "⌘3", section: "Navigate") {
+                appState.navigate(to: .aiAssistant)
+            },
+            Command(title: "Integration", icon: "cable.connector", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .integrations)
             },
             Command(title: "Assistants", icon: "person.2.circle", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .ai)
                 appState.agentConfigTab = .agents
+                appState.navigate(to: .integrations)
             },
             Command(title: "Automations", icon: "sparkles", shortcut: nil, section: "Navigate") {
-                appState.navigate(to: .ai)
                 appState.agentConfigTab = .skillsAndRules
+                appState.navigate(to: .integrations)
             },
             Command(title: "Terminal", icon: "terminal", shortcut: "⌘5", section: "Navigate") {
                 appState.navigate(to: .terminal)

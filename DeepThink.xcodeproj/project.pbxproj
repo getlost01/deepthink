@@ -96,6 +96,7 @@
 		FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */; };
 		FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C66CC1E57209BBE097F8539 /* SettingsView.swift */; };
 		FD6D20B9B09705F3C0CCC6BA /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F257EA6BF7E39381490714F /* IntegrationsView.swift */; };
+3DF3E22A3F2DA588BBD79666 /* RecentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101DAE59A12AAAD6506C98C5 /* RecentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -189,6 +190,7 @@
 		F6B41EEC463A03B371966AC1 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
 		F982D5E0D6F4474670D74BE3 /* AgentFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFile.swift; sourceTree = "<group>"; };
 		FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSearchView.swift; sourceTree = "<group>"; };
+101DAE59A12AAAD6506C98C5 /* RecentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecentView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -333,6 +335,7 @@
 		6372EA5B33DC5CA902A14153 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				8A633AC177F73DB302D457B9 /* Recent */,
 				85913E0C3242EC5DDD5A16AC /* ContentView.swift */,
 				364FB929789B66DF8D4F8E19 /* Agents */,
 				BF44C7D40BE76179DAFE4AB1 /* AI */,
@@ -515,6 +518,14 @@
 			path = Projects;
 			sourceTree = "<group>";
 		};
+8A633AC177F73DB302D457B9 /* Recent */ = {
+			isa = PBXGroup;
+			children = (
+				101DAE59A12AAAD6506C98C5 /* RecentView.swift */,
+			);
+			path = Recent;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -611,6 +622,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3DF3E22A3F2DA588BBD79666 /* RecentView.swift in Sources */,
 				46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */,
 				B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */,
 				75325BC5A52A723438738FD2 /* AIView.swift in Sources */,

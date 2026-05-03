@@ -287,6 +287,7 @@ private struct SkillRow: View {
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -333,6 +334,7 @@ private struct RuleRow: View {
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -408,7 +410,7 @@ private struct SkillInlineEditor: View {
                 }
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -521,7 +523,7 @@ private struct RuleInlineEditor: View {
                 }
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -602,7 +604,7 @@ struct SkillRunSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(.bar)
+            .background(DS.Colors.surfaceElevated)
 
             Divider()
 

@@ -23,7 +23,7 @@ final class KnowledgeService {
 
         // Rebuild TF-IDF index with snapshot of entries
         let snapshot = entries
-        DispatchQueue.global(qos: .utility).async {
+        ContextEngine.shared.indexQueue.async {
             ContextEngine.shared.rebuildIndex(with: snapshot)
         }
     }
