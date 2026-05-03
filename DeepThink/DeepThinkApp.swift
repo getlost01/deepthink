@@ -9,7 +9,7 @@ struct DeepThinkApp: App {
     var sharedModelContainer: ModelContainer = {
         StorageService.shared.ensureDirectoryStructure()
 
-        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self])
+        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self])
         let config = ModelConfiguration(
             schema: schema,
             url: StorageService.shared.storeURL,
@@ -85,20 +85,25 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("2", modifiers: .command)
 
-                Button("Go to Terminal") {
-                    appState.navigate(to: .terminal)
+                Button("Go to Knowledge") {
+                    appState.navigate(to: .knowledge)
                 }
                 .keyboardShortcut("3", modifiers: .command)
 
-                Button("Go to Intelligence") {
-                    appState.navigate(to: .intelligence)
+                Button("Go to Integrations") {
+                    appState.navigate(to: .integrations)
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
-                Button("Go to Settings") {
-                    appState.navigate(to: .settings)
+                Button("Go to Agent Config") {
+                    appState.navigate(to: .agentConfig)
                 }
-                .keyboardShortcut(",", modifiers: .command)
+                .keyboardShortcut("5", modifiers: .command)
+
+                Button("Go to Terminal") {
+                    appState.navigate(to: .terminal)
+                }
+                .keyboardShortcut("6", modifiers: .command)
 
                 Divider()
 
@@ -108,9 +113,8 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("1", modifiers: [.command, .shift])
 
-                Button("Knowledge Base") {
-                    appState.selectedSection = .workspace
-                    appState.workspaceTab = .knowledge
+                Button("Knowledge") {
+                    appState.navigate(to: .knowledge)
                 }
                 .keyboardShortcut("2", modifiers: [.command, .shift])
             }
@@ -157,37 +161,30 @@ struct DeepThinkApp: App {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .tasks
             },
-            Command(title: "Knowledge Base", icon: "brain", shortcut: "⇧⌘5", section: "Navigate") {
-                appState.selectedSection = .workspace
-                appState.workspaceTab = .knowledge
-            },
             Command(title: "AI Chat", icon: "sparkles", shortcut: "⌘2", section: "Navigate") {
-                appState.selectedSection = .ai
-                appState.aiMode = .chat
+                appState.navigate(to: .ai)
             },
-            Command(title: "AI Search", icon: "sparkle.magnifyingglass", shortcut: "⇧⌘F", section: "Navigate") {
-                appState.selectedSection = .ai
-                appState.aiMode = .search
+            Command(title: "Knowledge", icon: "brain", shortcut: "⌘3", section: "Navigate") {
+                appState.navigate(to: .knowledge)
             },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘3", section: "Navigate") {
-                appState.navigate(to: .terminal)
+            Command(title: "Integrations", icon: "puzzlepiece.extension", shortcut: "⌘4", section: "Navigate") {
+                appState.navigate(to: .integrations)
             },
-            Command(title: "Intelligence", icon: "brain", shortcut: "⌘4", section: "Navigate") {
-                appState.navigate(to: .intelligence)
-            },
-            Command(title: "Knowledge Base", icon: "book", shortcut: "⇧⌘6", section: "Navigate") {
-                appState.selectedSection = .intelligence
-                appState.automationTab = .knowledge
+            Command(title: "Agent Config", icon: "person.2.circle", shortcut: "⌘5", section: "Navigate") {
+                appState.navigate(to: .agentConfig)
             },
             Command(title: "Agents", icon: "person.2.circle", shortcut: "⇧⌘7", section: "Navigate") {
-                appState.selectedSection = .intelligence
-                appState.automationTab = .agents
+                appState.selectedSection = .agentConfig
+                appState.agentConfigTab = .agents
             },
             Command(title: "Skills & Rules", icon: "sparkles", shortcut: "⇧⌘8", section: "Navigate") {
-                appState.selectedSection = .intelligence
-                appState.automationTab = .skillsAndRules
+                appState.selectedSection = .agentConfig
+                appState.agentConfigTab = .skillsAndRules
             },
-            Command(title: "Settings", icon: "gearshape", shortcut: "⌘,", section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘6", section: "Navigate") {
+                appState.navigate(to: .terminal)
+            },
+            Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)
             },
         ])
@@ -206,9 +203,15 @@ struct DeepThinkApp: App {
                     command: DeepThinkPaths.mcpBinaryPath,
                     args: "",
                     category: "Workspace",
-                    description: "Manage tasks, notes, and projects in your DeepThink workspace"
+                    description: "Core integration — manages tasks, notes, and projects in your DeepThink workspace",
+                    isCore: true
                 )
                 context.insert(server)
+                try? context.save()
+            } else {
+                for server in existing where server.name == "DeepThink Workspace" && !server.isCore {
+                    server.isCore = true
+                }
                 try? context.save()
             }
         }

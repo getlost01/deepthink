@@ -46,6 +46,20 @@ struct NoteEditorView: View {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
             note.modifiedAt = Date()
+            scheduleKnowledgeExtraction()
+        }
+    }
+
+    @State private var extractionTask: Task<Void, Never>?
+
+    private func scheduleKnowledgeExtraction() {
+        extractionTask?.cancel()
+        extractionTask = Task {
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled else { return }
+            await KnowledgeExtractionService.shared.extractFromNote(
+                id: note.id, title: note.title, content: note.content
+            )
         }
     }
 

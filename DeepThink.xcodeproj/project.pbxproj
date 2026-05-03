@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		"'EDTR00000001HTMLBUILDFILE1'" = {isa = PBXBuildFile; fileRef = EDTR00000002HTMLFILEREF01; };
-		"'EDTR00000003JSBUNDLEBLD01'" = {isa = PBXBuildFile; fileRef = EDTR00000004JSBUNDLEREF01; };
+		EDTR00000001HTMLBUILDFILE1 /* editor.html in Resources */ = {isa = PBXBuildFile; fileRef = EDTR00000002HTMLFILEREF01 /* editor.html */; };
+		EDTR00000003JSBUNDLEBLD01 /* editor.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = EDTR00000004JSBUNDLEREF01 /* editor.bundle.js */; };
 		028C3A821E65787E7225B6F7 /* TaskListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1826EF68957900D9E01F17B0 /* TaskListView.swift */; };
 		050B01269DCF81F7EA25E7E6 /* TaskInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A5BAF20115A6287910164A /* TaskInspectorView.swift */; };
 		05CF424BBC124DE82A74E328 /* KnowledgeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 552E4823A884C6643F4ED07A /* KnowledgeEntry.swift */; };
@@ -81,11 +81,15 @@
 		F698D7CDD7BE6577F5F3C53F /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00321B3E3D5116C5303B7C3C /* TaskRowView.swift */; };
 		FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C66CC1E57209BBE097F8539 /* SettingsView.swift */; };
 		FC1A2B3D4E5F6A7B8C9D0E1F /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1A2B3D4E5F6A7B8C9D0E10 /* ClaudeSettingsView.swift */; };
+		AA1B2C3D4E5F6A7B00000001 /* Conversation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */; };
+		AA1B2C3D4E5F6A7B00000003 /* KnowledgeExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */; };
+		AA1B2C3D4E5F6A7B00000005 /* KnowledgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */; };
+		AA1B2C3D4E5F6A7B00000007 /* KnowledgeTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		"'EDTR00000002HTMLFILEREF01'" = {isa = PBXFileReference; lastKnownFileType = text.html; path = editor.html; sourceTree = "<group>"; };
-		"'EDTR00000004JSBUNDLEREF01'" = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = editor.bundle.js; sourceTree = "<group>"; };
+		EDTR00000002HTMLFILEREF01 /* editor.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = editor.html; sourceTree = "<group>"; };
+		EDTR00000004JSBUNDLEREF01 /* editor.bundle.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = editor.bundle.js; sourceTree = "<group>"; };
 		00321B3E3D5116C5303B7C3C /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
 		0504053EE219B17048F459A7 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
 		0600BB6D0E20A8A684ED8D07 /* MCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPService.swift; sourceTree = "<group>"; };
@@ -159,6 +163,10 @@
 		F6B41EEC463A03B371966AC1 /* TerminalHostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalHostView.swift; sourceTree = "<group>"; };
 		FAE05F57FDD22C97693A2C23 /* DeepSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepSearchView.swift; sourceTree = "<group>"; };
 		FC1A2B3D4E5F6A7B8C9D0E10 /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
+		AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Conversation.swift; path = DeepThink/Models/Conversation.swift; sourceTree = SOURCE_ROOT; };
+		AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeExtractionService.swift; path = DeepThink/Services/KnowledgeExtractionService.swift; sourceTree = SOURCE_ROOT; };
+		AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeView.swift; path = DeepThink/Views/Knowledge/KnowledgeView.swift; sourceTree = SOURCE_ROOT; };
+		AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = KnowledgeTimelineView.swift; path = DeepThink/Views/Knowledge/KnowledgeTimelineView.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -372,6 +380,10 @@
 				36574381A98A55BB834A5D1A /* AgentListView.swift */,
 				C2DF4C02A1142BB61867A04D /* MCPCatalogService.swift */,
 				3CF440FB8FE941B3A36FFC5D /* CollectorScheduler.swift */,
+				AA1B2C3D4E5F6A7B00000002 /* Conversation.swift */,
+				AA1B2C3D4E5F6A7B00000004 /* KnowledgeExtractionService.swift */,
+				AA1B2C3D4E5F6A7B00000006 /* KnowledgeView.swift */,
+				AA1B2C3D4E5F6A7B00000008 /* KnowledgeTimelineView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -636,6 +648,10 @@
 				B7BC445089E3487D8E783A10 /* AgentListView.swift in Sources */,
 				21E14463B9D02E655E5BE43A /* MCPCatalogService.swift in Sources */,
 				54ED41F3A20B7CCE66F030B2 /* CollectorScheduler.swift in Sources */,
+				AA1B2C3D4E5F6A7B00000001 /* Conversation.swift in Sources */,
+				AA1B2C3D4E5F6A7B00000003 /* KnowledgeExtractionService.swift in Sources */,
+				AA1B2C3D4E5F6A7B00000005 /* KnowledgeView.swift in Sources */,
+				AA1B2C3D4E5F6A7B00000007 /* KnowledgeTimelineView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

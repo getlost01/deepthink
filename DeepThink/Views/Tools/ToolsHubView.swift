@@ -161,6 +161,7 @@ struct ToolsHubView: View {
     }
 
     private func deleteServer(_ server: MCPServer) {
+        guard !server.isCore else { return }
         modelContext.delete(server)
     }
 
@@ -235,6 +236,19 @@ private struct ToolCard: View {
                 .lineLimit(1)
 
             HStack(spacing: DS.Spacing.sm) {
+                if server.isCore {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 8))
+                        Text("Core")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, 2)
+                    .background(DS.Colors.accentFill, in: Capsule())
+                }
+
                 Button("Test", action: onTest)
                     .font(DS.Font.small)
                     .buttonStyle(.bordered)
@@ -242,12 +256,14 @@ private struct ToolCard: View {
 
                 Spacer()
 
-                Button(role: .destructive, action: onDelete) {
-                    Image(systemName: "trash")
-                        .font(DS.Font.small)
+                if !server.isCore {
+                    Button(role: .destructive, action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(DS.Font.small)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.danger.opacity(0.5))
                 }
-                .buttonStyle(.plainPointer)
-                .foregroundStyle(DS.Colors.danger.opacity(0.5))
             }
         }
         .padding(DS.Spacing.md)

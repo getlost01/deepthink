@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-struct AutomationView: View {
+struct AgentConfigView: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
@@ -9,14 +9,14 @@ struct AutomationView: View {
 
         VStack(spacing: 0) {
             DSToolbarBar {
-                ForEach(AutomationTab.allCases) { tab in
+                ForEach(AgentConfigTab.allCases) { tab in
                     DSTabButton(
                         title: tab.rawValue,
                         icon: tab.icon,
-                        isSelected: appState.automationTab == tab
+                        isSelected: appState.agentConfigTab == tab
                     ) {
                         withAnimation(DS.Animation.quick) {
-                            appState.automationTab = tab
+                            appState.agentConfigTab = tab
                         }
                     }
                 }
@@ -26,9 +26,7 @@ struct AutomationView: View {
             Divider()
 
             Group {
-                switch appState.automationTab {
-                case .knowledge:
-                    KnowledgeBrowserView()
+                switch appState.agentConfigTab {
                 case .agents:
                     AgentListView()
                 case .skillsAndRules:

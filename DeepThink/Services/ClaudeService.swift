@@ -102,19 +102,44 @@ final class ClaudeService {
 
     static let maxTokenOptions = [4096, 8192, 16384, 32768]
 
-    private let claudePath: String
+    var claudePath: String
+    var customCLIPath: String? {
+        didSet {
+            if let path = customCLIPath, FileManager.default.isExecutableFile(atPath: path) {
+                claudePath = path
+                UserDefaults.standard.set(path, forKey: "claudeCLIPath")
+                fetchCLIVersion()
+            }
+        }
+    }
+
+    private static let defaultCandidates = [
+        "\(NSHomeDirectory())/.local/bin/claude",
+        "/usr/local/bin/claude",
+        "/opt/homebrew/bin/claude"
+    ]
 
     private init() {
-        let candidates = [
-            "\(NSHomeDirectory())/.local/bin/claude",
-            "/usr/local/bin/claude",
-            "/opt/homebrew/bin/claude"
-        ]
-        self.claudePath = candidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
+        if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
+           FileManager.default.isExecutableFile(atPath: saved) {
+            self.claudePath = saved
+            self.customCLIPath = saved
+        } else {
+            self.claudePath = Self.defaultCandidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
+        }
         fetchCLIVersion()
     }
 
     var isAvailable: Bool { !claudePath.isEmpty }
+
+    func rescan() {
+        if let saved = customCLIPath, FileManager.default.isExecutableFile(atPath: saved) {
+            claudePath = saved
+        } else {
+            claudePath = Self.defaultCandidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
+        }
+        fetchCLIVersion()
+    }
 
     private func fetchCLIVersion() {
         guard isAvailable else { return }

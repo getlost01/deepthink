@@ -197,6 +197,7 @@ struct DSTabButton: View {
                     .fill(isSelected ? DS.Colors.accent : .clear)
                     .frame(height: 2)
             }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }

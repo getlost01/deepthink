@@ -3,28 +3,59 @@ import SwiftUI
 
 // MARK: - Navigation
 
-enum SidebarSection: String, CaseIterable, Identifiable {
+enum SidebarSection: String, Identifiable {
     case workspace = "Workspace"
-    case ai = "AI"
+    case knowledge = "Knowledge"
+    case ai = "AI Bot"
+    case integrations = "Integrations"
+    case agentConfig = "Agent Config"
     case terminal = "Terminal"
-    case intelligence = "Intelligence"
     case settings = "Settings"
 
     var id: String { rawValue }
 
+    static var mainSections: [SidebarSection] {
+        [.workspace, .knowledge, .ai, .integrations, .agentConfig, .terminal]
+    }
+
     var icon: String {
         switch self {
         case .workspace: "square.grid.2x2"
+        case .knowledge: "brain"
         case .ai: "sparkles"
+        case .integrations: "puzzlepiece.extension"
+        case .agentConfig: "person.2.circle"
         case .terminal: "terminal"
-        case .intelligence: "brain"
         case .settings: "gear"
+        }
+    }
+
+    var tooltip: String {
+        switch self {
+        case .workspace: "Projects, notes, and tasks"
+        case .knowledge: "Browse, search, and manage your knowledge base"
+        case .ai: "Chat with Claude AI using your knowledge"
+        case .integrations: "MCP servers and Claude AI settings"
+        case .agentConfig: "Custom AI agents, skills, and rules"
+        case .terminal: "Built-in terminal sessions"
+        case .settings: "Claude model and configuration"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .workspace: "Your projects, notes, and tasks in one place"
+        case .knowledge: "Collect, browse, and search your knowledge"
+        case .ai: "Chat with AI that knows your workspace"
+        case .integrations: "Connect tools and configure Claude"
+        case .agentConfig: "Build custom AI workflows"
+        case .terminal: "Run commands and scripts"
+        case .settings: "Model selection and usage"
         }
     }
 }
 
-enum AutomationTab: String, CaseIterable, Identifiable {
-    case knowledge = "Knowledge"
+enum AgentConfigTab: String, CaseIterable, Identifiable {
     case agents = "Agents"
     case skillsAndRules = "Skills & Rules"
 
@@ -32,7 +63,6 @@ enum AutomationTab: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
-        case .knowledge: "book"
         case .agents: "person.2.circle"
         case .skillsAndRules: "sparkles"
         }
@@ -44,7 +74,6 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
     case projects = "Projects"
     case notes = "Notes"
     case tasks = "Tasks"
-    case knowledge = "Knowledge Base"
 
     var id: String { rawValue }
 
@@ -54,24 +83,10 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
         case .projects: "folder"
         case .notes: "doc.text"
         case .tasks: "checklist"
-        case .knowledge: "brain"
         }
     }
 }
 
-enum AIMode: String, CaseIterable, Identifiable {
-    case chat = "Chat"
-    case search = "Search"
-
-    var id: String { rawValue }
-
-    var icon: String {
-        switch self {
-        case .chat: "bubble.left.and.bubble.right"
-        case .search: "sparkle.magnifyingglass"
-        }
-    }
-}
 
 // MARK: - Tasks
 

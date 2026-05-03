@@ -181,8 +181,7 @@ struct DeepSearchView: View {
 
         if searchMode == .web {
             Task {
-                let cliResult = await DeepThinkCLIService.shared.search(query: q)
-                let parsed = cliResult.success ? Self.parseWebResults(cliResult.output) : []
+                let parsed: [WebResult] = []
 
                 await MainActor.run {
                     webResults = parsed

@@ -8,10 +8,11 @@ struct AIChatView: View {
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
 
-    @State private var messages: [AIMessage] = []
     @State private var inputText = ""
-    @State private var isProcessing = false
     @State private var useMCP = true
+    @State private var showSaveToKnowledge = false
+    @State private var isSavingKnowledge = false
+    @State private var currentConversation: Conversation?
     @FocusState private var inputFocused: Bool
 
     private var agentService: AgentFileService { AgentFileService.shared }
@@ -37,11 +38,10 @@ struct AIChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
-                // Agent picker
                 Menu {
                     Button {
                         appState.selectedAgentPath = nil
-                        messages.removeAll()
+                        appState.chatMessages.removeAll()
                     } label: {
                         Label("Default Assistant", systemImage: "brain.head.profile")
                     }
@@ -51,7 +51,7 @@ struct AIChatView: View {
                     ForEach(agentService.agents) { agent in
                         Button {
                             appState.selectedAgentPath = agent.filePath.path
-                            messages.removeAll()
+                            appState.chatMessages.removeAll()
                         } label: {
                             Label(agent.name, systemImage: agent.icon)
                         }
@@ -98,13 +98,34 @@ struct AIChatView: View {
                     .controlSize(.mini)
                 }
 
-                if isProcessing {
-                    ProgressView()
-                        .scaleEffect(0.7)
+                if !appState.chatMessages.isEmpty {
+                    Button {
+                        saveConversationToKnowledge()
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            if isSavingKnowledge {
+                                ProgressView().controlSize(.mini)
+                            } else {
+                                Image(systemName: "brain.head.profile.fill")
+                                    .font(.system(size: 9))
+                            }
+                            Text("Save to Knowledge")
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundStyle(DS.Colors.accent)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs + 1)
+                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
+                    .disabled(isSavingKnowledge)
+                    .help("Extract knowledge from this conversation")
                 }
 
                 DSToolbarButton(icon: "trash", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
-                    messages.removeAll()
+                    appState.chatMessages.removeAll()
+                    currentConversation = nil
                 }
                 .help("Clear chat")
             }
@@ -117,7 +138,7 @@ struct AIChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: DS.Spacing.lg) {
-                        if messages.isEmpty {
+                        if appState.chatMessages.isEmpty && !appState.isChatProcessing {
                             WelcomePrompts { prompt in
                                 inputText = prompt
                                 sendMessage()
@@ -125,15 +146,29 @@ struct AIChatView: View {
                             .padding(.top, DS.Spacing.xxl)
                         }
 
-                        ForEach(messages) { message in
+                        ForEach(appState.chatMessages) { message in
                             ChatBubble(message: message)
                                 .id(message.id)
+                        }
+
+                        if appState.isChatProcessing {
+                            ThinkingIndicator(startTime: appState.chatProcessingStartTime ?? Date())
+                                .id("thinking")
                         }
                     }
                     .padding(DS.Spacing.xl)
                 }
-                .onChange(of: messages.count) {
-                    if let last = messages.last {
+                .onChange(of: appState.chatMessages.count) {
+                    if appState.isChatProcessing {
+                        withAnimation { proxy.scrollTo("thinking", anchor: .bottom) }
+                    } else if let last = appState.chatMessages.last {
+                        withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
+                    }
+                }
+                .onChange(of: appState.isChatProcessing) {
+                    if appState.isChatProcessing {
+                        withAnimation { proxy.scrollTo("thinking", anchor: .bottom) }
+                    } else if let last = appState.chatMessages.last {
                         withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
@@ -142,7 +177,7 @@ struct AIChatView: View {
             Divider()
 
             HStack(alignment: .bottom, spacing: DS.Spacing.md) {
-                TextField("Ask Claude anything...", text: $inputText, axis: .vertical)
+                TextField("Ask anything — AI searches your knowledge automatically...", text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(1...6)
                     .font(DS.Font.body)
@@ -155,7 +190,7 @@ struct AIChatView: View {
                         .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || isProcessing)
+                .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty || appState.isChatProcessing)
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
@@ -168,6 +203,11 @@ struct AIChatView: View {
                 appState.pendingChatMessage = nil
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { sendMessage() }
             }
+        }
+        .alert("Saved to Knowledge", isPresented: $showSaveToKnowledge) {
+            Button("OK") {}
+        } message: {
+            Text("Key insights from this conversation have been extracted and saved to your knowledge base.")
         }
     }
 
@@ -201,9 +241,11 @@ struct AIChatView: View {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
-        messages.append(AIMessage(role: .user, content: text))
+        appState.chatMessages.append(AIMessage(role: .user, content: text))
+        persistMessage(role: "user", content: text)
         inputText = ""
-        isProcessing = true
+        appState.isChatProcessing = true
+        appState.chatProcessingStartTime = Date()
 
         let ctx = workspaceContext
         let isWorkspace = isWorkspaceRequest(text)
@@ -212,10 +254,22 @@ struct AIChatView: View {
             servers = ensureWorkspaceServer(in: servers)
         }
 
+        let ragContext = KnowledgeService.shared.ragContext(for: text)
+
         Task {
             do {
                 let response: String
-                let fullPrompt = ctx.isEmpty ? text : "Workspace context:\n\(ctx)\n\nUser: \(text)"
+
+                var contextParts: [String] = []
+                if let rag = ragContext { contextParts.append(rag) }
+                if !ctx.isEmpty { contextParts.append("# Workspace Context\n\n\(ctx)") }
+
+                let fullPrompt: String
+                if contextParts.isEmpty {
+                    fullPrompt = text
+                } else {
+                    fullPrompt = contextParts.joined(separator: "\n\n") + "\n\nUser: \(text)"
+                }
 
                 let systemPrompt: String
                 if let agent = selectedAgent {
@@ -223,7 +277,7 @@ struct AIChatView: View {
                 } else if isWorkspace {
                     systemPrompt = "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
                 } else {
-                    systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting."
+                    systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
                 }
 
                 if servers.isEmpty {
@@ -236,56 +290,212 @@ struct AIChatView: View {
                     )
                 }
                 await MainActor.run {
-                    messages.append(AIMessage(role: .assistant, content: response))
-                    isProcessing = false
+                    appState.chatMessages.append(AIMessage(role: .assistant, content: response))
+                    persistMessage(role: "assistant", content: response)
+                    appState.isChatProcessing = false
+                    appState.chatProcessingStartTime = nil
                 }
             } catch {
                 await MainActor.run {
-                    messages.append(AIMessage(role: .error, content: error.localizedDescription))
-                    isProcessing = false
+                    appState.chatMessages.append(AIMessage(role: .error, content: error.localizedDescription))
+                    persistMessage(role: "error", content: error.localizedDescription)
+                    appState.isChatProcessing = false
+                    appState.chatProcessingStartTime = nil
+                }
+            }
+        }
+    }
+
+    // MARK: - Persistence (Feature 5)
+
+    private func persistMessage(role: String, content: String) {
+        if currentConversation == nil {
+            let title = String(content.prefix(60))
+            let conv = Conversation(title: title, agentName: selectedAgent?.name)
+            modelContext.insert(conv)
+            currentConversation = conv
+        }
+
+        let msg = ChatMessage(role: role, content: content)
+        msg.conversation = currentConversation
+        modelContext.insert(msg)
+        currentConversation?.updatedAt = Date()
+        try? modelContext.save()
+    }
+
+    // MARK: - Save to Knowledge (Feature 11)
+
+    private func saveConversationToKnowledge() {
+        isSavingKnowledge = true
+        let messages = appState.chatMessages
+        Task {
+            let success = await KnowledgeExtractionService.shared.extractFromConversation(messages: messages)
+            await MainActor.run {
+                isSavingKnowledge = false
+                if success {
+                    showSaveToKnowledge = true
                 }
             }
         }
     }
 }
 
+// MARK: - Thinking Indicator
+
+private struct ThinkingIndicator: View {
+    let startTime: Date
+    @State private var elapsedSeconds: Int = 0
+    @State private var dotPhase: Int = 0
+
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private let dotTimer = Timer.publish(every: 0.4, on: .main, in: .common).autoconnect()
+
+    private let thinkingPhrases = [
+        "Thinking", "Reasoning", "Analyzing", "Processing", "Reflecting"
+    ]
+
+    private var currentPhrase: String {
+        let index = (elapsedSeconds / 8) % thinkingPhrases.count
+        return thinkingPhrases[index]
+    }
+
+    private var dots: String {
+        String(repeating: ".", count: (dotPhase % 3) + 1)
+    }
+
+    private var elapsedText: String {
+        if elapsedSeconds < 60 {
+            return "\(elapsedSeconds)s"
+        }
+        let mins = elapsedSeconds / 60
+        let secs = elapsedSeconds % 60
+        return "\(mins)m \(secs)s"
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: DS.Spacing.md) {
+            ThinkingOrb()
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text(currentPhrase + dots)
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(minWidth: 100, alignment: .leading)
+                        .contentTransition(.numericText())
+
+                    Text(elapsedText)
+                        .font(DS.Font.monoSmall)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .contentTransition(.numericText())
+                }
+                .padding(DS.Spacing.md)
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            }
+
+            Spacer(minLength: 80)
+        }
+        .onReceive(timer) { _ in
+            withAnimation(.easeInOut(duration: 0.3)) {
+                elapsedSeconds = Int(Date().timeIntervalSince(startTime))
+            }
+        }
+        .onReceive(dotTimer) { _ in
+            dotPhase += 1
+        }
+    }
+}
+
+private struct ThinkingOrb: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        Canvas { context, size in
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius = min(size.width, size.height) / 2 - 2
+
+            for i in 0..<3 {
+                let offset = CGFloat(i) * .pi * 2 / 3
+                let x = center.x + cos(phase + offset) * radius * 0.4
+                let y = center.y + sin(phase + offset) * radius * 0.4
+                let dotRadius = radius * 0.22
+
+                let opacity = 0.4 + 0.6 * (1 + cos(phase * 2 + offset)) / 2
+
+                context.opacity = opacity
+                context.fill(
+                    Path(ellipseIn: CGRect(
+                        x: x - dotRadius,
+                        y: y - dotRadius,
+                        width: dotRadius * 2,
+                        height: dotRadius * 2
+                    )),
+                    with: .color(Color.accentColor)
+                )
+            }
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                phase = .pi * 2
+            }
+        }
+    }
+}
+
+// MARK: - Welcome Prompts
+
 private struct WelcomePrompts: View {
     let onSelect: (String) -> Void
 
     private let suggestions = [
-        ("Summarize my recent work", "sparkles"),
-        ("What tasks need attention?", "exclamationmark.triangle"),
-        ("Help me write a design doc", "doc.text"),
-        ("Analyze my project progress", "chart.bar"),
-        ("Search the web for...", "globe"),
-        ("Query my database", "cylinder"),
+        ("Summarize my recent notes", "doc.text.magnifyingglass", "Get a quick overview of your latest writing"),
+        ("What tasks need attention?", "exclamationmark.triangle", "Find overdue or high-priority tasks"),
+        ("Help me write a design doc", "pencil.and.outline", "Draft documents with AI assistance"),
+        ("Analyze my project progress", "chart.bar", "Review how your projects are tracking"),
+        ("What do I know about...", "brain", "Search your knowledge base with AI"),
+        ("Break down this task", "list.bullet.indent", "Split complex work into actionable steps"),
     ]
 
     var body: some View {
         VStack(spacing: DS.Spacing.xl) {
             VStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 32, weight: .light))
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.bottom, DS.Spacing.sm)
                 Text("How can I help?")
                     .font(DS.Font.title)
                     .foregroundStyle(DS.Colors.textPrimary)
-                Text("Ask me anything about your workspace, or try a suggestion below")
+                Text("I have access to your notes, tasks, and knowledge base. Ask me anything or pick a suggestion.")
                     .font(DS.Font.body)
                     .foregroundStyle(DS.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: 420)
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: DS.Spacing.sm) {
-                ForEach(suggestions, id: \.0) { title, icon in
+                ForEach(suggestions, id: \.0) { title, icon, hint in
                     Button {
                         onSelect(title)
                     } label: {
                         HStack(spacing: DS.Spacing.md) {
                             Image(systemName: icon)
-                                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                                .font(.system(size: DS.IconSize.md, weight: .medium))
                                 .foregroundStyle(DS.Colors.accent)
-                                .frame(width: 20)
-                            Text(title)
-                                .font(DS.Font.body)
-                                .foregroundStyle(DS.Colors.textPrimary)
-                                .lineLimit(1)
+                                .frame(width: 24, height: 24)
+                                .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(title)
+                                    .font(DS.Font.body)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(DS.Colors.textPrimary)
+                                    .lineLimit(1)
+                                Text(hint)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                    .lineLimit(1)
+                            }
                             Spacer()
                         }
                         .padding(DS.Spacing.md)
@@ -294,15 +504,21 @@ private struct WelcomePrompts: View {
                     .buttonStyle(.plainPointer)
                 }
             }
-            .frame(maxWidth: 520)
+            .frame(maxWidth: 560)
         }
         .frame(maxWidth: .infinity)
     }
 }
 
+// MARK: - Chat Bubble
+
 struct ChatBubble: View {
     let message: AIMessage
     @State private var isHovered = false
+
+    private var timeString: String {
+        message.timestamp.formatted(.dateTime.hour().minute())
+    }
 
     var body: some View {
         HStack(alignment: .top, spacing: DS.Spacing.md) {
@@ -351,11 +567,18 @@ struct ChatBubble: View {
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 }
+
+                Text(timeString)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .opacity(isHovered ? 1 : 0)
             }
 
             if message.role != .user {
                 Spacer(minLength: 80)
             }
         }
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

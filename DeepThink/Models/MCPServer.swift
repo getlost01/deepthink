@@ -12,8 +12,9 @@ final class MCPServer {
     var category: String = "General"
     var serverDescription: String = ""
     var addedAt: Date = Date()
+    var isCore: Bool = false
 
-    init(name: String, command: String, args: String = "", envVars: String = "", category: String = "General", description: String = "") {
+    init(name: String, command: String, args: String = "", envVars: String = "", category: String = "General", description: String = "", isCore: Bool = false) {
         self.id = UUID()
         self.name = name
         self.command = command
@@ -23,6 +24,7 @@ final class MCPServer {
         self.serverDescription = description
         self.isEnabled = true
         self.addedAt = Date()
+        self.isCore = isCore
     }
 
     var argsArray: [String] {

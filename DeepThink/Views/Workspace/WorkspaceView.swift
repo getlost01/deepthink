@@ -39,8 +39,6 @@ struct WorkspaceView: View {
                 AllNotesView()
             case .tasks:
                 AllTasksView()
-            case .knowledge:
-                KnowledgeGraphView()
             }
         }
     }
@@ -63,7 +61,7 @@ struct WorkspaceView: View {
                 DSEmptyState(
                     icon: "folder",
                     title: "Select a Project",
-                    subtitle: "Projects group related notes and tasks together. Create one to get organized."
+                    subtitle: "Projects group related notes and tasks. Select one from the left, or create a new one with the + button."
                 )
             }
         }

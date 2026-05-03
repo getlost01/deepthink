@@ -31,14 +31,18 @@ struct ContentRouter: View {
             switch appState.selectedSection {
             case .workspace:
                 WorkspaceView()
+            case .knowledge:
+                KnowledgeView()
             case .ai:
                 AIView()
+            case .integrations:
+                IntegrationsView()
+            case .agentConfig:
+                AgentConfigView()
             case .terminal:
                 DeepThinkTerminalView()
-            case .intelligence:
-                AutomationView()
             case .settings:
-                SettingsView()
+                ClaudeSettingsView()
             case nil:
                 WorkspaceView()
             }

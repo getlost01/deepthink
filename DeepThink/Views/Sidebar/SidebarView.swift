@@ -6,7 +6,7 @@ struct SidebarView: View {
     @State private var isExpanded = true
 
     private var mainSections: [SidebarSection] {
-        [.workspace, .ai, .terminal, .intelligence]
+        SidebarSection.mainSections
     }
 
     var body: some View {
@@ -135,6 +135,6 @@ private struct SidebarItem: View {
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
-        .help(isExpanded ? "" : section.rawValue)
+        .help(section.tooltip)
     }
 }

@@ -23,12 +23,16 @@ final class AppState {
     var projectDetailMode: ProjectDetailMode = .overview
 
     // AI sub-navigation
-    var aiMode: AIMode = .chat
     var pendingChatMessage: String?
     var selectedAgentPath: String?
 
-    // Automation sub-navigation
-    var automationTab: AutomationTab = .knowledge
+    // Chat state (persists across tab switches)
+    var chatMessages: [AIMessage] = []
+    var isChatProcessing = false
+    var chatProcessingStartTime: Date?
+
+    // Agent Config sub-navigation
+    var agentConfigTab: AgentConfigTab = .agents
 
     // Context sub-navigation
     var selectedContextSource: String?
@@ -41,8 +45,7 @@ final class AppState {
     }
 
     func navigateToContext(source: String? = nil, channel: String? = nil) {
-        selectedSection = .intelligence
-        automationTab = .knowledge
+        selectedSection = .knowledge
         selectedContextSource = source
         selectedContextChannel = channel
     }

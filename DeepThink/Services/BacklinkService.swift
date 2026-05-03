@@ -68,4 +68,41 @@ final class BacklinkService {
 
         return Array(nodes.values).filter { !$0.connections.isEmpty }
     }
+
+    // MARK: - Knowledge Entry Links (Feature 8)
+
+    func knowledgeEntriesLinkedTo(note: Note) -> [KnowledgeEntry] {
+        let titleLower = note.title.lowercased()
+        let contentWords = Set(
+            note.content.lowercased()
+                .components(separatedBy: .whitespacesAndNewlines)
+                .filter { $0.count > 3 }
+        )
+
+        return KnowledgeService.shared.entries.filter { entry in
+            let entryTitleLower = entry.title.lowercased()
+            if note.content.lowercased().contains(entryTitleLower) && entryTitleLower.count > 4 { return true }
+            if entry.content.lowercased().contains(titleLower) && titleLower.count > 4 { return true }
+            let entryWords = Set(entry.tags.map { $0.lowercased() })
+            if !entryWords.isEmpty && !entryWords.intersection(contentWords).isEmpty { return true }
+            return false
+        }
+    }
+
+    func notesLinkedTo(entry: KnowledgeEntry, notes: [Note]) -> [Note] {
+        let entryTitleLower = entry.title.lowercased()
+        let entryTags = Set(entry.tags.map { $0.lowercased() })
+
+        return notes.filter { note in
+            if note.content.lowercased().contains(entryTitleLower) && entryTitleLower.count > 4 { return true }
+            if entry.content.lowercased().contains(note.title.lowercased()) && note.title.count > 4 { return true }
+            let noteWords = Set(
+                note.content.lowercased()
+                    .components(separatedBy: .whitespacesAndNewlines)
+                    .filter { $0.count > 3 }
+            )
+            if !entryTags.isEmpty && !entryTags.intersection(noteWords).isEmpty { return true }
+            return false
+        }
+    }
 }

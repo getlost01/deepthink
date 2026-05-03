@@ -82,7 +82,7 @@ final class MCPService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = StorageService.shared.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--mcp-config", configPath]
+                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID, "--mcp-config", configPath]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -115,6 +115,16 @@ final class MCPService {
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(ClaudeService.CLIResponse.self, from: jsonData),
                        let result = response.result {
+                        let cost = response.total_cost_usd
+                        let duration = response.duration_ms
+                        DispatchQueue.main.async {
+                            ClaudeService.shared.totalQueries += 1
+                            if let cost {
+                                ClaudeService.shared.totalCostUSD += cost
+                                ClaudeService.shared.lastQueryCostUSD = cost
+                            }
+                            ClaudeService.shared.lastQueryDurationMs = duration
+                        }
                         continuation.resume(returning: result)
                     } else {
                         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)

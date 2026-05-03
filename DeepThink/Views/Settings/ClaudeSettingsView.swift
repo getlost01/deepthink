@@ -1,12 +1,16 @@
 import SwiftUI
 
 struct ClaudeSettingsView: View {
-    private var claude = ClaudeService.shared
+    private var claude: ClaudeService { ClaudeService.shared }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xxl) {
+                if !claude.isAvailable {
+                    setupBanner
+                }
                 statusCard
+                cliPathSection
                 modelSection
                 configSection
                 usageSection
@@ -14,6 +18,162 @@ struct ClaudeSettingsView: View {
             .padding(DS.Spacing.xl)
         }
         .dsPage()
+    }
+
+    // MARK: - Setup Banner
+
+    @ViewBuilder
+    private var setupBanner: some View {
+        VStack(spacing: DS.Spacing.lg) {
+            HStack(spacing: DS.Spacing.md) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(DS.Colors.warning)
+
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    Text("Claude CLI Required")
+                        .font(DS.Font.heading)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Text("DeepThink needs Claude CLI to power AI chat, knowledge extraction, auto-tagging, and search. Install it or select the path below.")
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+                Spacer()
+            }
+
+            HStack(spacing: DS.Spacing.md) {
+                Button {
+                    NSWorkspace.shared.open(URL(string: "https://claude.ai/code")!)
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "arrow.down.circle")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Install Claude CLI")
+                            .font(DS.Font.body)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.md)
+                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                }
+                .buttonStyle(.plainPointer)
+
+                Button {
+                    selectCLIPath()
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "folder")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Select CLI Path")
+                            .font(DS.Font.body)
+                    }
+                    .foregroundStyle(DS.Colors.textPrimary)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.md)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .buttonStyle(.plainPointer)
+
+                Button {
+                    claude.rescan()
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Re-scan")
+                            .font(DS.Font.body)
+                    }
+                    .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .buttonStyle(.plainPointer)
+
+                Spacer()
+            }
+        }
+        .padding(DS.Spacing.lg)
+        .background(DS.Colors.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.3), lineWidth: 1))
+    }
+
+    // MARK: - CLI Path
+
+    @ViewBuilder
+    private var cliPathSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "CLI Path")
+
+            DSCard {
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    HStack {
+                        Text("CURRENT PATH")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Spacer()
+                        if claude.isAvailable {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.sm))
+                                    .foregroundStyle(DS.Colors.success)
+                                Text("Found")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.success)
+                            }
+                        } else {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.sm))
+                                    .foregroundStyle(DS.Colors.danger)
+                                Text("Not found")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.danger)
+                            }
+                        }
+                    }
+
+                    Text(claude.claudePath.isEmpty ? "No CLI path configured" : claude.claudePath)
+                        .font(DS.Font.mono)
+                        .foregroundStyle(claude.isAvailable ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                        .textSelection(.enabled)
+                        .padding(DS.Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                    HStack(spacing: DS.Spacing.sm) {
+                        Button("Browse...") { selectCLIPath() }
+                            .font(DS.Font.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                        Button("Re-scan Default Paths") { claude.rescan() }
+                            .font(DS.Font.caption)
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                        Spacer()
+
+                        Text("Auto-checks: ~/.local/bin, /usr/local/bin, /opt/homebrew/bin")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func selectCLIPath() {
+        let panel = NSOpenPanel()
+        panel.title = "Select Claude CLI Binary"
+        panel.message = "Locate the 'claude' executable on your system"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: "/usr/local/bin")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            claude.customCLIPath = url.path
+        }
     }
 
     // MARK: - Status Card

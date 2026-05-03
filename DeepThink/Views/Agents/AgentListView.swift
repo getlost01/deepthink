@@ -12,8 +12,8 @@ struct AgentListView: View {
             if agentService.agents.isEmpty {
                 DSEmptyState(
                     icon: "person.2.circle",
-                    title: "No Agents",
-                    subtitle: "Agents are AI personas with specific roles, skills, and knowledge. Chat with them in AI view.",
+                    title: "Create Your First Agent",
+                    subtitle: "Agents are specialized AI personas — give them a role, pick which knowledge they can access, and chat with them in AI Bot. Try a Researcher, Code Reviewer, or Writer.",
                     action: { showEditor = true },
                     actionTitle: "Create Agent"
                 )
@@ -37,7 +37,6 @@ struct AgentListView: View {
                             AgentCard(agent: agent) {
                                 appState.selectedAgentPath = agent.filePath.path
                                 appState.selectedSection = .ai
-                                appState.aiMode = .chat
                             } onEdit: {
                                 selectedAgent = agent
                                 showEditor = true

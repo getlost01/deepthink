@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import UniformTypeIdentifiers
 
 struct KnowledgeBrowserView: View {
@@ -109,9 +110,9 @@ struct KnowledgeBrowserView: View {
 
                 if filteredEntries.isEmpty {
                     DSEmptyState(
-                        icon: "book",
-                        title: knowledge.entries.isEmpty ? "Knowledge Base Empty" : "No Matches",
-                        subtitle: knowledge.entries.isEmpty ? "Add knowledge from URLs, files, clipboard, or write your own." : "Try a different search or filter.",
+                        icon: "brain",
+                        title: knowledge.entries.isEmpty ? "Start Building Your Knowledge" : "No Matches",
+                        subtitle: knowledge.entries.isEmpty ? "Scrape web pages, paste from clipboard, import files, or write entries manually. Everything you add here becomes searchable context for AI chat." : "Try a different search term or clear the filter.",
                         action: knowledge.entries.isEmpty ? { showURLSheet = true } : nil,
                         actionTitle: "Scrape a URL"
                     )
@@ -145,7 +146,7 @@ struct KnowledgeBrowserView: View {
                 DSEmptyState(
                     icon: "doc.text.magnifyingglass",
                     title: "Select an Entry",
-                    subtitle: "Choose a knowledge entry to preview its content."
+                    subtitle: "Pick a knowledge entry from the list to view, tag, or find linked notes. Entries are automatically available as context in AI chat."
                 )
             }
         }
@@ -295,10 +296,15 @@ private struct FilterChip: View {
 struct KnowledgeDetailView: View {
     let entry: KnowledgeEntry
     let onDelete: () -> Void
+    @Query private var allNotes: [Note]
+    @State private var isAutoTagging = false
+
+    private var linkedNotes: [Note] {
+        BacklinkService.shared.notesLinkedTo(entry: entry, notes: allNotes)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             HStack(spacing: DS.Spacing.md) {
                 Image(systemName: entry.sourceIcon)
                     .font(.system(size: DS.IconSize.md))
@@ -321,6 +327,24 @@ struct KnowledgeDetailView: View {
                 }
 
                 Spacer()
+
+                Button {
+                    autoTagEntry()
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        if isAutoTagging {
+                            ProgressView().controlSize(.mini)
+                        } else {
+                            Image(systemName: "tag")
+                                .font(.system(size: 9))
+                        }
+                        Text("Auto-Tag")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                }
+                .buttonStyle(.plainPointer)
+                .disabled(isAutoTagging)
 
                 if let url = entry.sourceURL {
                     DSToolbarButton(icon: "link", size: DS.IconSize.sm) {
@@ -351,7 +375,6 @@ struct KnowledgeDetailView: View {
 
             Divider()
 
-            // Tags
             if !entry.tags.isEmpty {
                 HStack(spacing: DS.Spacing.xs) {
                     ForEach(entry.tags, id: \.self) { tag in
@@ -365,17 +388,56 @@ struct KnowledgeDetailView: View {
                 Divider()
             }
 
-            // Content
             ScrollView {
-                Text(entry.content)
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(DS.Spacing.lg)
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    Text(entry.content)
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !linkedNotes.isEmpty {
+                        Divider()
+
+                        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "link")
+                                    .font(.system(size: DS.IconSize.sm))
+                                    .foregroundStyle(DS.Colors.accent)
+                                Text("Linked Notes")
+                                    .font(DS.Font.heading)
+                            }
+
+                            ForEach(linkedNotes) { note in
+                                HStack(spacing: DS.Spacing.sm) {
+                                    Image(systemName: "doc.text")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                    Text(note.title)
+                                        .font(DS.Font.body)
+                                        .foregroundStyle(DS.Colors.textPrimary)
+                                    Spacer()
+                                    Text("\(note.wordCount) words")
+                                        .font(DS.Font.small)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                                .padding(.vertical, DS.Spacing.xs)
+                            }
+                        }
+                    }
+                }
+                .padding(DS.Spacing.lg)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func autoTagEntry() {
+        isAutoTagging = true
+        Task {
+            await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: entry)
+            await MainActor.run { isAutoTagging = false }
+        }
     }
 }
 
