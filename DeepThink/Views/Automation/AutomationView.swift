@@ -21,7 +21,7 @@ struct AgentConfigView: View {
                     }
                 }
                 Spacer()
-                DSHelpButton(text: SidebarSection.agentConfig.helpText)
+                DSHelpButton(text: SidebarSection.ai.helpText)
             }
 
             Divider()

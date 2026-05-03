@@ -92,15 +92,44 @@ struct ProjectDetailView: View {
                     .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(3)
 
-                if project.totalStoryPoints > 0 {
-                    let progress = Double(project.completedStoryPoints) / Double(project.totalStoryPoints)
-                    HStack(spacing: DS.Spacing.md) {
-                        ProgressView(value: progress)
-                            .tint(DS.Colors.accent)
-                            .frame(maxWidth: 200)
-                        Text("\(Int(progress * 100))%")
-                            .font(DS.Font.caption)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                if !project.tasks.isEmpty {
+                    let total = project.tasks.count
+                    let done = project.completedTaskCount
+                    let progress = Double(done) / Double(total)
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        HStack(spacing: DS.Spacing.md) {
+                            ProgressView(value: progress)
+                                .tint(Color(hex: project.color))
+
+                            Text("\(done)/\(total) tasks")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textTertiary)
+
+                            if project.totalStoryPoints > 0 {
+                                Text("·")
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                Text("\(project.completedStoryPoints)/\(project.totalStoryPoints) pts")
+                                    .font(DS.Font.caption)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                        }
+
+                        HStack(spacing: DS.Spacing.md) {
+                            ForEach(TaskStatus.allCases) { status in
+                                let count = project.tasks.filter { $0.status == status }.count
+                                if count > 0 {
+                                    HStack(spacing: DS.Spacing.xs) {
+                                        Circle()
+                                            .fill(status.color)
+                                            .frame(width: 6, height: 6)
+                                        Text("\(count) \(status.rawValue)")
+                                            .font(DS.Font.small)
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

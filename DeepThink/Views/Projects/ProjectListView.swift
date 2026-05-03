@@ -66,6 +66,9 @@ struct ProjectListView: View {
                 }
             }
             .listStyle(.inset)
+            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+            .onKeyPress(.escape) { appState.selectedProjectID = nil; return .handled }
             .overlay {
                 if projects.isEmpty {
                     DSEmptyState(
@@ -112,6 +115,17 @@ struct ProjectListView: View {
         let project = Project(name: "New Project")
         modelContext.insert(project)
         appState.selectedProjectID = project.id
+    }
+
+    private func moveSelection(_ direction: Int) {
+        guard !projects.isEmpty else { return }
+        if let current = appState.selectedProjectID,
+           let idx = projects.firstIndex(where: { $0.id == current }) {
+            let next = min(max(idx + direction, 0), projects.count - 1)
+            appState.selectedProjectID = projects[next].id
+        } else {
+            appState.selectedProjectID = projects[direction > 0 ? 0 : projects.count - 1].id
+        }
     }
 }
 

@@ -7,8 +7,9 @@ struct AIChatView: View {
     @Query(filter: #Predicate<MCPServer> { $0.isEnabled }) private var activeServers: [MCPServer]
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
-
     @Query(sort: \Conversation.updatedAt, order: .reverse) private var conversations: [Conversation]
+
+    var onShowConfig: ((AgentConfigTab) -> Void)?
 
     @State private var inputText = ""
     @State private var useMCP = true
@@ -21,13 +22,11 @@ struct AIChatView: View {
     @State private var isScrolledUp = false
     @FocusState private var inputFocused: Bool
 
-    // Slash commands
     @State private var showSlashMenu = false
     @State private var slashFilter = ""
     @State private var slashSelectedIndex = 0
 
     private var skillService: SkillFileService { SkillFileService.shared }
-
     private var agentService: AgentFileService { AgentFileService.shared }
 
     private var selectedAgent: AgentFile? {
@@ -43,286 +42,15 @@ struct AIChatView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // MARK: - Chat Area
             VStack(spacing: 0) {
-                // MARK: - Toolbar
-                HStack(spacing: DS.Spacing.md) {
-                    // Agent selector
-                    Menu {
-                        Button {
-                            appState.selectedAgentPath = nil
-                            appState.chatMessages.removeAll()
-                        } label: {
-                            Label("Default Assistant", systemImage: "brain.head.profile")
-                        }
-
-                        Divider()
-
-                        ForEach(agentService.agents) { agent in
-                            Button {
-                                appState.selectedAgentPath = agent.filePath.path
-                                appState.chatMessages.removeAll()
-                            } label: {
-                                Label(agent.name, systemImage: agent.icon)
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: selectedAgent?.icon ?? "brain.head.profile")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(DS.Colors.accent)
-                            Text(selectedAgent?.name ?? "Default Assistant")
-                                .font(DS.Font.caption)
-                                .fontWeight(.semibold)
-                                .foregroundStyle(DS.Colors.textPrimary)
-                            Image(systemName: "chevron.up.chevron.down")
-                                .font(.system(size: 7, weight: .bold))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs + 1)
-                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-
-                    ActiveRulesBar(
-                        rules: RuleFileService.shared.matchingRules(for: appState.activeContextDictionary),
-                        disabledRuleIDs: Bindable(appState).disabledRuleIDs
-                    )
-
-                    Spacer()
-
-                    HStack(spacing: DS.Spacing.xs) {
-                        if !appState.chatMessages.isEmpty {
-                            Button {
-                                saveConversationToKnowledge()
-                            } label: {
-                                if isSavingKnowledge {
-                                    HStack(spacing: 4) {
-                                        ProgressView().controlSize(.mini)
-                                        Text("Saving...")
-                                            .font(.system(size: 10, weight: .medium))
-                                    }
-                                    .foregroundStyle(DS.Colors.textTertiary)
-                                } else {
-                                    Text("Save to Knowledge")
-                                        .font(.system(size: 10, weight: .medium))
-                                        .foregroundStyle(DS.Colors.accent)
-                                }
-                            }
-                            .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, DS.Spacing.xs)
-                            .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                            .buttonStyle(.plainPointer)
-                            .disabled(isSavingKnowledge)
-                            .help("Extract insights and save to knowledge base")
-                        }
-
-                        DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
-                            appState.chatMessages.removeAll()
-                            currentConversation = nil
-                        }
-                        .help("New conversation")
-
-                        DSToolbarButton(
-                            icon: "clock.arrow.circlepath",
-                            color: showHistory ? DS.Colors.accent : DS.Colors.textSecondary,
-                            size: DS.IconSize.sm
-                        ) {
-                            withAnimation(DS.Animation.standard) { showHistory.toggle() }
-                        }
-                        .help(showHistory ? "Hide history" : "Show history")
-                    }
-                }
-                .frame(height: DS.Layout.toolbarHeight)
-                .padding(.horizontal, DS.Spacing.lg)
-                .background(.bar)
-
+                chatToolbar
                 Divider()
+                chatMessages
+                chatInput
+            }
 
-                // MARK: - Messages
-                ZStack(alignment: .bottomTrailing) {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            VStack(spacing: 0) {
-                                if appState.chatMessages.isEmpty && !appState.isChatProcessing {
-                                    WelcomePrompts { prompt in
-                                        inputText = prompt
-                                        sendMessage()
-                                    }
-                                    .padding(.top, 80)
-                                }
-
-                                LazyVStack(spacing: 0) {
-                                    ForEach(Array(appState.chatMessages.enumerated()), id: \.element.id) { index, message in
-                                        ChatBubble(
-                                            message: message,
-                                            onRetry: message.role == .error ? retryLastMessage : nil,
-                                            onEdit: message.role == .user ? { newText in
-                                                editAndResend(at: index, newText: newText)
-                                            } : nil
-                                        )
-                                        .id(message.id)
-                                        .padding(.top, index == 0 ? DS.Spacing.xl : 0)
-                                    }
-
-                                    if appState.isChatProcessing {
-                                        ThinkingIndicator(
-                                            startTime: appState.chatProcessingStartTime ?? Date(),
-                                            useMCP: useMCP && !activeServers.isEmpty
-                                        )
-                                        .id("thinking")
-                                        .padding(.horizontal, DS.Spacing.xl)
-                                        .padding(.vertical, DS.Spacing.md)
-                                    }
-
-                                    Color.clear.frame(height: 1).id("bottom")
-                                }
-                                .frame(maxWidth: 860)
-                                .frame(maxWidth: .infinity)
-                            }
-                            .padding(.bottom, DS.Spacing.lg)
-                            .background(
-                                GeometryReader { geo in
-                                    Color.clear.preference(
-                                        key: ScrollOffsetKey.self,
-                                        value: geo.frame(in: .named("chatScroll")).maxY
-                                    )
-                                }
-                            )
-                        }
-                        .coordinateSpace(name: "chatScroll")
-                        .onPreferenceChange(ScrollOffsetKey.self) { maxY in
-                            isScrolledUp = maxY > 800
-                        }
-                        .onChange(of: appState.chatMessages.count) {
-                            scrollToEnd(proxy)
-                        }
-                        .onChange(of: appState.isChatProcessing) {
-                            scrollToEnd(proxy)
-                        }
-                        .overlay(alignment: .bottomTrailing) {
-                            if isScrolledUp && !appState.chatMessages.isEmpty {
-                                Button {
-                                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
-                                } label: {
-                                    Image(systemName: "arrow.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundStyle(DS.Colors.textSecondary)
-                                        .frame(width: 32, height: 32)
-                                        .background(.ultraThinMaterial, in: Circle())
-                                        .overlay(Circle().strokeBorder(DS.Colors.border, lineWidth: 1))
-                                        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
-                                }
-                                .buttonStyle(.plainPointer)
-                                .padding(DS.Spacing.lg)
-                                .transition(.scale.combined(with: .opacity))
-                            }
-                        }
-                    }
-                }
-
-                // MARK: - Input Area
-                VStack(spacing: 0) {
-                    VStack(spacing: 0) {
-                        TextField("Message DeepThink...", text: $inputText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(2...3)
-                        .font(.system(size: 13))
-                        .focused($inputFocused)
-                        .frame(minHeight: 36, alignment: .topLeading)
-                        .scrollIndicators(.hidden)
-                        .onSubmit {
-                            if showSlashMenu {
-                                let filtered = filteredSlashSkills
-                                if !filtered.isEmpty {
-                                    let idx = min(slashSelectedIndex, filtered.count - 1)
-                                    showSlashMenu = false
-                                    inputText = "/\(filtered[idx].commandName) "
-                                    return
-                                }
-                            }
-                            sendMessage()
-                        }
-                        .onChange(of: inputText) { _, newValue in
-                            updateSlashMenu(newValue)
-                        }
-
-                    HStack(spacing: DS.Spacing.sm) {
-                        Text("Type **/** for skills")
-                            .font(.system(size: 9))
-                            .foregroundStyle(DS.Colors.textTertiary)
-
-                        if !activeServers.isEmpty {
-                            Toggle(isOn: $useMCP) {
-                                HStack(spacing: 2) {
-                                    Image(systemName: "wrench.and.screwdriver")
-                                        .font(.system(size: 8))
-                                    Text("MCP")
-                                        .font(.system(size: 9, weight: .medium))
-                                }
-                                .foregroundStyle(useMCP ? DS.Colors.accent : DS.Colors.textTertiary)
-                            }
-                            .toggleStyle(.switch)
-                            .controlSize(.mini)
-                        }
-
-                        Spacer()
-                        if appState.isChatProcessing {
-                            Button {
-                                chatTask?.cancel()
-                                appState.isChatProcessing = false
-                                appState.chatProcessingStartTime = nil
-                            } label: {
-                                Image(systemName: "stop.circle.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(DS.Colors.danger)
-                            }
-                            .buttonStyle(.plainPointer)
-                            .help("Stop generating")
-                        } else {
-                            Button(action: sendMessage) {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.system(size: 20))
-                                    .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary.opacity(0.4) : DS.Colors.accent)
-                            }
-                            .buttonStyle(.plainPointer)
-                            .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
-                        }
-                    }
-                }
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(inputFocused ? DS.Colors.accent.opacity(0.35) : DS.Colors.border, lineWidth: 1)
-                )
-                .popover(isPresented: $showSlashMenu, attachmentAnchor: .point(.topLeading), arrowEdge: .bottom) {
-                    SlashCommandMenu(
-                        skills: skillService.skills,
-                        filter: slashFilter,
-                        selectedIndex: $slashSelectedIndex
-                    ) { skill in
-                        showSlashMenu = false
-                        inputText = "/\(skill.commandName) "
-                    }
-                        .frame(width: 280)
-                    }
-                }
-                .frame(maxWidth: 860)
-                .frame(maxWidth: .infinity)
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.md)
-                .background(.bar)
-            } // end chat VStack
-
-            // MARK: - History Sidebar (Right)
             if showHistory {
                 Divider()
-
                 ChatHistorySidebar(
                     conversations: conversations.filter { !$0.isArchived },
                     currentID: currentConversation?.id,
@@ -336,7 +64,7 @@ struct AIChatView: View {
                 .frame(width: 240)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
-        } // end HStack
+        }
         .onAppear {
             inputFocused = true
             if let pending = appState.pendingChatMessage {
@@ -358,34 +86,330 @@ struct AIChatView: View {
         }
     }
 
+    // MARK: - Toolbar
+
+    private var chatToolbar: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Menu {
+                Button {
+                    appState.selectedAgentPath = nil
+                    appState.chatMessages.removeAll()
+                } label: {
+                    Label("Default Assistant", systemImage: "brain.head.profile")
+                }
+                Divider()
+                ForEach(agentService.agents) { agent in
+                    Button {
+                        appState.selectedAgentPath = agent.filePath.path
+                        appState.chatMessages.removeAll()
+                    } label: {
+                        Label(agent.name, systemImage: agent.icon)
+                    }
+                }
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: selectedAgent?.icon ?? "brain.head.profile")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(DS.Colors.accent)
+                    Text(selectedAgent?.name ?? "Default Assistant")
+                        .font(DS.Font.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 7, weight: .bold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs + 1)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+
+            ActiveRulesBar(
+                rules: RuleFileService.shared.matchingRules(for: appState.activeContextDictionary),
+                disabledRuleIDs: Bindable(appState).disabledRuleIDs
+            )
+
+            Spacer()
+
+            HStack(spacing: DS.Spacing.xs) {
+                if !appState.chatMessages.isEmpty {
+                    Button {
+                        saveConversationToKnowledge()
+                    } label: {
+                        if isSavingKnowledge {
+                            HStack(spacing: 4) {
+                                ProgressView().controlSize(.mini)
+                                Text("Saving...")
+                                    .font(.system(size: 10, weight: .medium))
+                            }
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        } else {
+                            Text("Save to Knowledge")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(DS.Colors.accent)
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .buttonStyle(.plainPointer)
+                    .disabled(isSavingKnowledge)
+                }
+
+                if let onShowConfig {
+                    Menu {
+                        Button {
+                            onShowConfig(.agents)
+                        } label: {
+                            Label("Assistants", systemImage: "person.2.circle")
+                        }
+                        Button {
+                            onShowConfig(.skillsAndRules)
+                        } label: {
+                            Label("Automations", systemImage: "gearshape.2")
+                        }
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .frame(width: 28, height: 28)
+                    }
+                    .menuStyle(.borderlessButton)
+                    .frame(width: 28)
+                    .help("Assistants & Automations")
+                }
+
+                DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
+                    appState.chatMessages.removeAll()
+                    currentConversation = nil
+                }
+                .help("New conversation")
+
+                DSToolbarButton(
+                    icon: "clock.arrow.circlepath",
+                    color: showHistory ? DS.Colors.accent : DS.Colors.textSecondary,
+                    size: DS.IconSize.sm
+                ) {
+                    withAnimation(DS.Animation.standard) { showHistory.toggle() }
+                }
+                .help(showHistory ? "Hide history" : "Show history")
+            }
+        }
+        .frame(height: DS.Layout.toolbarHeight)
+        .padding(.horizontal, DS.Spacing.lg)
+        .background(.bar)
+    }
+
+    // MARK: - Messages
+
+    private var chatMessages: some View {
+        ZStack(alignment: .bottomTrailing) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        if appState.chatMessages.isEmpty && !appState.isChatProcessing {
+                            WelcomePrompts { prompt in
+                                inputText = prompt
+                                sendMessage()
+                            }
+                            .padding(.top, 80)
+                        }
+
+                        LazyVStack(spacing: 0) {
+                            ForEach(Array(appState.chatMessages.enumerated()), id: \.element.id) { index, message in
+                                ChatBubble(
+                                    message: message,
+                                    onRetry: message.role == .error ? retryLastMessage : nil,
+                                    onEdit: message.role == .user ? { newText in
+                                        editAndResend(at: index, newText: newText)
+                                    } : nil,
+                                    onSaveAsNote: message.role == .assistant ? { content in
+                                        saveAsNote(content)
+                                    } : nil,
+                                    onCreateTask: message.role == .assistant ? { content in
+                                        createTaskFromChat(content)
+                                    } : nil
+                                )
+                                .id(message.id)
+                                .padding(.top, index == 0 ? DS.Spacing.xl : 0)
+                            }
+
+                            if appState.isChatProcessing {
+                                ThinkingIndicator(
+                                    startTime: appState.chatProcessingStartTime ?? Date(),
+                                    useMCP: useMCP && !activeServers.isEmpty
+                                )
+                                .id("thinking")
+                                .padding(.horizontal, DS.Spacing.xl)
+                                .padding(.vertical, DS.Spacing.md)
+                            }
+
+                            Color.clear.frame(height: 1).id("bottom")
+                        }
+                        .frame(maxWidth: 860)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding(.bottom, DS.Spacing.lg)
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: ScrollOffsetKey.self,
+                                value: geo.frame(in: .named("chatScroll")).maxY
+                            )
+                        }
+                    )
+                }
+                .coordinateSpace(name: "chatScroll")
+                .onPreferenceChange(ScrollOffsetKey.self) { maxY in
+                    isScrolledUp = maxY > 800
+                }
+                .onChange(of: appState.chatMessages.count) {
+                    scrollToEnd(proxy)
+                }
+                .onChange(of: appState.isChatProcessing) {
+                    scrollToEnd(proxy)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if isScrolledUp && !appState.chatMessages.isEmpty {
+                        Button {
+                            withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                        } label: {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(DS.Colors.textSecondary)
+                                .frame(width: 32, height: 32)
+                                .background(.ultraThinMaterial, in: Circle())
+                                .overlay(Circle().strokeBorder(DS.Colors.border, lineWidth: 1))
+                                .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+                        }
+                        .buttonStyle(.plainPointer)
+                        .padding(DS.Spacing.lg)
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Input
+
+    private var chatInput: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 0) {
+                TextField("Message DeepThink...", text: $inputText, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...3)
+                    .font(.system(size: 13))
+                    .focused($inputFocused)
+                    .frame(minHeight: 36, alignment: .topLeading)
+                    .scrollIndicators(.hidden)
+                    .onSubmit {
+                        if showSlashMenu {
+                            let filtered = filteredSlashSkills
+                            if !filtered.isEmpty {
+                                let idx = min(slashSelectedIndex, filtered.count - 1)
+                                showSlashMenu = false
+                                inputText = "/\(filtered[idx].commandName) "
+                                return
+                            }
+                        }
+                        sendMessage()
+                    }
+                    .onChange(of: inputText) { _, newValue in
+                        updateSlashMenu(newValue)
+                    }
+
+                HStack(spacing: DS.Spacing.sm) {
+                    Text("Type **/** for skills")
+                        .font(.system(size: 9))
+                        .foregroundStyle(DS.Colors.textTertiary)
+
+                    if !activeServers.isEmpty {
+                        Toggle(isOn: $useMCP) {
+                            HStack(spacing: 2) {
+                                Image(systemName: "wrench.and.screwdriver")
+                                    .font(.system(size: 8))
+                                Text("MCP")
+                                    .font(.system(size: 9, weight: .medium))
+                            }
+                            .foregroundStyle(useMCP ? DS.Colors.accent : DS.Colors.textTertiary)
+                        }
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                    }
+
+                    Spacer()
+                    if appState.isChatProcessing {
+                        Button {
+                            chatTask?.cancel()
+                            appState.isChatProcessing = false
+                            appState.chatProcessingStartTime = nil
+                        } label: {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(DS.Colors.danger)
+                        }
+                        .buttonStyle(.plainPointer)
+                        .help("Stop generating")
+                    } else {
+                        Button(action: sendMessage) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary.opacity(0.4) : DS.Colors.accent)
+                        }
+                        .buttonStyle(.plainPointer)
+                        .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(inputFocused ? DS.Colors.borderFocused : DS.Colors.border, lineWidth: 1)
+            )
+            .popover(isPresented: $showSlashMenu, attachmentAnchor: .point(.topLeading), arrowEdge: .bottom) {
+                SlashCommandMenu(
+                    skills: skillService.skills,
+                    filter: slashFilter,
+                    selectedIndex: $slashSelectedIndex
+                ) { skill in
+                    showSlashMenu = false
+                    inputText = "/\(skill.commandName) "
+                }
+                .frame(width: 280)
+            }
+        }
+        .frame(maxWidth: 860)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.md)
+        .background(.bar)
+    }
+
+    // MARK: - Actions
+
+    private func saveAsNote(_ content: String) {
+        let title = String(content.prefix(60)).trimmingCharacters(in: .whitespacesAndNewlines)
+        let note = Note(title: title, content: content)
+        modelContext.insert(note)
+        try? modelContext.save()
+    }
+
+    private func createTaskFromChat(_ content: String) {
+        let title = String(content.prefix(80)).trimmingCharacters(in: .whitespacesAndNewlines)
+        let task = TaskItem(title: title)
+        task.detail = content
+        modelContext.insert(task)
+        try? modelContext.save()
+    }
+
     private func scrollToEnd(_ proxy: ScrollViewProxy) {
         withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
-    }
-
-    private static let workspaceKeywords = [
-        "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
-        "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
-        "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
-    ]
-
-    private func isWorkspaceRequest(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        return Self.workspaceKeywords.contains { lower.contains($0) }
-    }
-
-    private func ensureWorkspaceServer(in servers: [MCPServer]) -> [MCPServer] {
-        if servers.contains(where: { $0.name == "DeepThink Workspace" }) {
-            return servers
-        }
-        let wsServer = MCPServer(
-            name: "DeepThink Workspace",
-            command: DeepThinkPaths.mcpBinaryPath,
-            args: "",
-            category: "Workspace",
-            description: "Manage tasks, notes, and projects"
-        )
-        wsServer.isEnabled = true
-        return [wsServer] + servers
     }
 
     // MARK: - Slash Commands
@@ -444,7 +468,7 @@ struct AIChatView: View {
         }
     }
 
-    // MARK: - Conversation History (Compacted)
+    // MARK: - Conversation History
 
     private func buildConversationHistory(currentMessage: String) -> String {
         let messages = appState.chatMessages.filter { $0.role != .error }
@@ -453,21 +477,18 @@ struct AIChatView: View {
 
         let total = prior.count
 
-        // 10+ messages: summary + last 4 (user full, assistant compacted)
         if total > 8, let convID = currentConversation?.id,
            let summary = ContextEngine.shared.getCachedSummary(for: convID) {
             let recent = Array(prior.suffix(4))
             return "# Conversation summary\n\(summary)\n\n# Recent\n\(compactMessages(recent))"
         }
 
-        // 5-8 messages: compact older, last 2 exchanges full
         if total > 4 {
             let older = Array(prior.prefix(total - 4))
             let recent = Array(prior.suffix(4))
             return "# Earlier\n\(compactMessages(older))\n\n# Recent\n\(formatMessages(recent))"
         }
 
-        // 1-4 messages: user messages full, assistant compacted
         return "# Conversation\n\(formatMessages(prior))"
     }
 
@@ -512,6 +533,32 @@ struct AIChatView: View {
         return rules.map { "## Rule: \($0.name)\n\($0.instruction)" }.joined(separator: "\n\n")
     }
 
+    // MARK: - Send
+
+    private static let workspaceKeywords = [
+        "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
+        "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
+        "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
+    ]
+
+    private func isWorkspaceRequest(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return Self.workspaceKeywords.contains { lower.contains($0) }
+    }
+
+    private func ensureWorkspaceServer(in servers: [MCPServer]) -> [MCPServer] {
+        if servers.contains(where: { $0.name == "DeepThink Workspace" }) { return servers }
+        let wsServer = MCPServer(
+            name: "DeepThink Workspace",
+            command: DeepThinkPaths.mcpBinaryPath,
+            args: "",
+            category: "Workspace",
+            description: "Manage tasks, notes, and projects"
+        )
+        wsServer.isEnabled = true
+        return [wsServer] + servers
+    }
+
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
@@ -532,28 +579,21 @@ struct AIChatView: View {
 
         let isWorkspace = isWorkspaceRequest(text)
         var servers = useMCP ? Array(activeServers) : []
-        if isWorkspace {
-            servers = ensureWorkspaceServer(in: servers)
-        }
+        if isWorkspace { servers = ensureWorkspaceServer(in: servers) }
 
-        // Smart context: query-relevant workspace + TF-IDF RAG
         let ctx = smartWorkspaceContext(for: text)
         let projectScope = notes.first { $0.id == appState.selectedNoteID }?.project?.name
         let agentScope = selectedAgent?.knowledgeScope
         let ragContext = KnowledgeService.shared.ragContext(for: text, projectScope: projectScope, agentScope: agentScope)
-
         let conversationHistory = buildConversationHistory(currentMessage: text)
 
         chatTask = Task {
-            // Rolling compaction: summarize when conversation grows
             if appState.chatMessages.count >= 8, let convID = currentConversation?.id {
                 let existing = ContextEngine.shared.getCachedSummary(for: convID)
                 let shouldUpdate = existing == nil || appState.chatMessages.count % 6 == 0
                 if shouldUpdate {
                     let toSummarize = Array(appState.chatMessages.prefix(appState.chatMessages.count - 4))
-                    var prompt = toSummarize.map { msg in
-                        msg
-                    }
+                    var prompt = toSummarize.map { $0 }
                     if let prev = existing {
                         prompt.insert(AIMessage(role: .assistant, content: "[Previous summary: \(prev)]"), at: 0)
                     }
@@ -615,9 +655,7 @@ struct AIChatView: View {
                     }
                 } else {
                     response = try await MCPService.shared.queryWithMCP(
-                        prompt: fullPrompt,
-                        servers: servers,
-                        systemPrompt: systemPrompt
+                        prompt: fullPrompt, servers: servers, systemPrompt: systemPrompt
                     )
                     await MainActor.run {
                         appState.chatMessages.append(AIMessage(role: .assistant, content: response))
@@ -639,7 +677,6 @@ struct AIChatView: View {
                     }
                 }
 
-                // Auto-extract knowledge every 6 messages
                 if appState.chatMessages.count > 0 && appState.chatMessages.count % 6 == 0 {
                     let msgs = appState.chatMessages
                     Task.detached(priority: .background) {
@@ -678,7 +715,7 @@ struct AIChatView: View {
         sendMessage()
     }
 
-    // MARK: - Persistence (Feature 5)
+    // MARK: - Persistence
 
     private func persistMessage(role: String, content: String) {
         if currentConversation == nil {
@@ -687,15 +724,12 @@ struct AIChatView: View {
             modelContext.insert(conv)
             currentConversation = conv
         }
-
         let msg = ChatMessage(role: role, content: content)
         msg.conversation = currentConversation
         modelContext.insert(msg)
         currentConversation?.updatedAt = Date()
         try? modelContext.save()
     }
-
-    // MARK: - History
 
     private func loadConversation(_ conversation: Conversation) {
         showHistory = false
@@ -720,8 +754,6 @@ struct AIChatView: View {
         try? modelContext.save()
     }
 
-    // MARK: - Auto Title
-
     private func autoTitleConversation(_ conv: Conversation, userMessage: String, assistantMessage: String) async {
         let prompt = "Generate a 3-5 word title for this conversation. Output ONLY the title, nothing else.\n\nUser: \(userMessage.prefix(200))\nAssistant: \(assistantMessage.prefix(300))"
         if let title = try? await ClaudeService.shared.query(prompt, systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.") {
@@ -735,8 +767,6 @@ struct AIChatView: View {
         }
     }
 
-    // MARK: - Save to Knowledge (Feature 11)
-
     private func saveConversationToKnowledge() {
         isSavingKnowledge = true
         let messages = appState.chatMessages
@@ -744,586 +774,8 @@ struct AIChatView: View {
             let success = await KnowledgeExtractionService.shared.extractFromConversation(messages: messages)
             await MainActor.run {
                 isSavingKnowledge = false
-                if success {
-                    showSaveToKnowledge = true
-                }
+                if success { showSaveToKnowledge = true }
             }
         }
     }
 }
-
-// MARK: - Thinking Indicator
-
-private struct ThinkingIndicator: View {
-    let startTime: Date
-    var useMCP: Bool = false
-    @State private var elapsedSeconds: Int = 0
-    @State private var pulse = false
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    private var label: String {
-        useMCP ? "Using tools..." : "Thinking..."
-    }
-
-    private var elapsedText: String {
-        if elapsedSeconds < 60 { return "\(elapsedSeconds)s" }
-        return "\(elapsedSeconds / 60)m \(elapsedSeconds % 60)s"
-    }
-
-    var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: useMCP ? "wrench.and.screwdriver" : "sparkles")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(DS.Colors.accent)
-                .opacity(pulse ? 0.4 : 1.0)
-
-            Text(label)
-                .font(.system(size: 13))
-                .foregroundStyle(DS.Colors.textSecondary)
-
-            Text(elapsedText)
-                .font(DS.Font.monoSmall)
-                .foregroundStyle(DS.Colors.textTertiary)
-                .contentTransition(.numericText())
-
-            Spacer()
-        }
-        .padding(.horizontal, DS.Spacing.md)
-        .padding(.vertical, DS.Spacing.sm)
-        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: 10))
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                pulse = true
-            }
-        }
-        .onReceive(timer) { _ in
-            withAnimation(.easeInOut(duration: 0.3)) {
-                elapsedSeconds = Int(Date().timeIntervalSince(startTime))
-            }
-        }
-    }
-}
-
-// MARK: - Welcome Prompts
-
-private struct WelcomePrompts: View {
-    let onSelect: (String) -> Void
-
-    private let suggestions = [
-        ("Summarize my recent notes", "doc.text.magnifyingglass"),
-        ("What tasks need attention?", "exclamationmark.triangle"),
-        ("Help me write a design doc", "pencil.and.outline"),
-        ("Analyze my project progress", "chart.bar"),
-        ("Search my knowledge base", "brain"),
-        ("Break down a complex task", "list.bullet.indent"),
-    ]
-
-    var body: some View {
-        VStack(spacing: DS.Spacing.xxl) {
-            VStack(spacing: DS.Spacing.md) {
-                ZStack {
-                    Circle()
-                        .fill(DS.Colors.accent.opacity(0.08))
-                        .frame(width: 64, height: 64)
-                    Circle()
-                        .fill(DS.Colors.accent.opacity(0.12))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(DS.Colors.accent)
-                }
-
-                Text("How can I help?")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(DS.Colors.textPrimary)
-
-                Text("Your notes, tasks, and knowledge are always in context.")
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textTertiary)
-            }
-
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: DS.Spacing.sm)], spacing: DS.Spacing.sm) {
-                ForEach(suggestions, id: \.0) { title, icon in
-                    SuggestionChip(title: title, icon: icon) { onSelect(title) }
-                }
-            }
-            .frame(maxWidth: 600)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-private struct SuggestionChip: View {
-    let title: String
-    let icon: String
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(DS.Colors.accent)
-                Text(title)
-                    .font(DS.Font.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm + 1)
-            .background(
-                isHovered ? DS.Colors.fillSecondary : DS.Colors.fill,
-                in: RoundedRectangle(cornerRadius: 20)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 1)
-            )
-        }
-        .buttonStyle(.plainPointer)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
-    }
-}
-
-// MARK: - Chat Bubble
-
-struct ChatBubble: View {
-    let message: AIMessage
-    var onRetry: (() -> Void)? = nil
-    var onEdit: ((String) -> Void)? = nil
-    @State private var copied = false
-    @State private var isEditing = false
-    @State private var editText = ""
-    @State private var isHovered = false
-
-    var body: some View {
-        if message.role == .user {
-            userBubble
-        } else if message.role == .error {
-            errorBubble
-        } else {
-            assistantBubble
-        }
-    }
-
-    // MARK: - User Message
-
-    private var userBubble: some View {
-        HStack {
-            Spacer(minLength: 120)
-
-            if isEditing {
-                VStack(alignment: .trailing, spacing: DS.Spacing.xs) {
-                    TextField("Edit message...", text: $editText, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(2...6)
-                        .font(.system(size: 13))
-                        .padding(.horizontal, DS.Spacing.lg)
-                        .padding(.vertical, DS.Spacing.md)
-                        .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.accent.opacity(0.25), lineWidth: 1))
-
-                    HStack(spacing: DS.Spacing.sm) {
-                        Button {
-                            isEditing = false
-                        } label: {
-                            Text("Cancel")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-
-                        Button {
-                            isEditing = false
-                            onEdit?(editText)
-                        } label: {
-                            Text("Send")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, 3)
-                                .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-                }
-            } else {
-                HStack(spacing: DS.Spacing.xs) {
-                    if isHovered && onEdit != nil {
-                        Button {
-                            editText = message.content
-                            isEditing = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .frame(width: 24, height: 24)
-                                .background(DS.Colors.fill, in: Circle())
-                        }
-                        .buttonStyle(.plainPointer)
-                        .help("Edit message")
-                        .transition(.opacity)
-                    }
-
-                    Text(message.content)
-                        .font(.system(size: 13))
-                        .foregroundStyle(DS.Colors.textPrimary)
-                        .textSelection(.enabled)
-                        .padding(.horizontal, DS.Spacing.lg)
-                        .padding(.vertical, DS.Spacing.md)
-                        .frame(maxWidth: 560, alignment: .trailing)
-                        .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
-                        .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.accent.opacity(0.12), lineWidth: 1))
-                }
-            }
-        }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.sm)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
-    }
-
-    // MARK: - Assistant Message
-
-    private var assistantBubble: some View {
-        HStack(alignment: .top, spacing: DS.Spacing.sm) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(
-                        LinearGradient(
-                            colors: [DS.Colors.accent.opacity(0.14), DS.Colors.accent.opacity(0.06)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 24, height: 24)
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(DS.Colors.accent)
-            }
-            .padding(.top, DS.Spacing.md)
-
-            VStack(alignment: .leading, spacing: 0) {
-                ChatContentView(content: message.content)
-                    .padding(DS.Spacing.md)
-
-                HStack(spacing: DS.Spacing.sm) {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(message.content, forType: .string)
-                        copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: 9, weight: .medium))
-                            Text(copied ? "Copied" : "Copy")
-                                .font(.system(size: 10, weight: .medium))
-                        }
-                        .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plainPointer)
-
-                    Text(message.timestamp.formatted(.dateTime.hour().minute()))
-                        .font(.system(size: 10))
-                        .foregroundStyle(DS.Colors.textTertiary)
-
-                    if message.isStreaming {
-                        ProgressView()
-                            .controlSize(.mini)
-                    }
-                }
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
-            }
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(DS.Colors.border, lineWidth: 0.5))
-
-            Spacer(minLength: 40)
-        }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.sm)
-    }
-
-    // MARK: - Error Message
-
-    private var errorBubble: some View {
-        HStack(alignment: .top, spacing: DS.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(DS.Colors.danger.opacity(0.10))
-                    .frame(width: 28, height: 28)
-                Image(systemName: "exclamationmark.triangle")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(DS.Colors.danger)
-            }
-            .padding(.top, 2)
-
-            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                Text(message.content)
-                    .font(.system(size: 13))
-                    .foregroundStyle(DS.Colors.danger.opacity(0.9))
-
-                if let onRetry {
-                    Button(action: onRetry) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: 10, weight: .semibold))
-                            Text("Retry")
-                                .font(.system(size: 11, weight: .semibold))
-                        }
-                        .foregroundStyle(DS.Colors.accent)
-                        .padding(.horizontal, DS.Spacing.md)
-                        .padding(.vertical, DS.Spacing.xs + 1)
-                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    }
-                    .buttonStyle(.plainPointer)
-                }
-            }
-
-            Spacer(minLength: 60)
-        }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.sm)
-    }
-}
-
-// MARK: - Chat History Sidebar
-
-private struct ChatHistorySidebar: View {
-    let conversations: [Conversation]
-    let currentID: UUID?
-    let onSelect: (Conversation) -> Void
-    let onDelete: (Conversation) -> Void
-    let onNewChat: () -> Void
-    @State private var searchText = ""
-    @State private var hoveredID: UUID?
-
-    private var filtered: [Conversation] {
-        let convs = conversations.prefix(100).map { $0 }
-        if searchText.isEmpty { return convs }
-        let q = searchText.lowercased()
-        return convs.filter { $0.title.lowercased().contains(q) }
-    }
-
-    private struct Section: Identifiable {
-        let title: String
-        let items: [Conversation]
-        var id: String { title }
-    }
-
-    private var sections: [Section] {
-        let cal = Calendar.current
-        let now = Date()
-        let grouped = Dictionary(grouping: filtered) { (conv: Conversation) -> String in
-            if cal.isDateInToday(conv.updatedAt) { return "Today" }
-            if cal.isDateInYesterday(conv.updatedAt) { return "Yesterday" }
-            if conv.updatedAt > cal.date(byAdding: .day, value: -7, to: now)! { return "This Week" }
-            return "Older"
-        }
-        return ["Today", "Yesterday", "This Week", "Older"]
-            .compactMap { key in
-                guard let items = grouped[key], !items.isEmpty else { return nil }
-                return Section(title: key, items: items)
-            }
-    }
-
-    private let pad: CGFloat = 12
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Header
-            HStack {
-                Text("History")
-                    .font(DS.Font.heading)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                Spacer()
-            }
-            .padding(.horizontal, pad)
-            .frame(height: DS.Layout.toolbarHeight)
-
-            Divider()
-
-            // Search
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 10))
-                    .foregroundStyle(DS.Colors.textTertiary)
-                TextField("Search...", text: $searchText)
-                    .textFieldStyle(.plain)
-                    .font(.system(size: 11))
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-            .padding(.horizontal, pad)
-            .padding(.vertical, 8)
-
-            // List
-            if filtered.isEmpty {
-                Spacer()
-                VStack(spacing: 6) {
-                    Image(systemName: "bubble.left.and.bubble.right")
-                        .font(.system(size: 18, weight: .light))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Text(searchText.isEmpty ? "No conversations" : "No results")
-                        .font(.system(size: 11))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                }
-                Spacer()
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(sections) { section in
-                            Text(section.title)
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .textCase(.uppercase)
-                                .padding(.horizontal, pad)
-                                .padding(.top, 10)
-                                .padding(.bottom, 4)
-
-                            ForEach(section.items) { conv in
-                                HistoryRow(
-                                    conversation: conv,
-                                    isSelected: currentID == conv.id,
-                                    isHovered: hoveredID == conv.id,
-                                    onSelect: { onSelect(conv) },
-                                    onDelete: { onDelete(conv) }
-                                )
-                                .onHover { hoveredID = $0 ? conv.id : nil }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 4)
-                    .padding(.bottom, 8)
-                }
-            }
-        }
-        .background(DS.Colors.surfaceElevated)
-    }
-}
-
-// MARK: - History Row
-
-private struct HistoryRow: View {
-    let conversation: Conversation
-    let isSelected: Bool
-    let isHovered: Bool
-    let onSelect: () -> Void
-    let onDelete: () -> Void
-
-    var body: some View {
-        Button(action: onSelect) {
-            HStack(spacing: 6) {
-                Image(systemName: "bubble.left")
-                    .font(.system(size: 9))
-                    .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                    .frame(width: 14)
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(conversation.title.isEmpty ? "Untitled" : conversation.title)
-                        .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                        .foregroundStyle(DS.Colors.textPrimary)
-                        .lineLimit(1)
-
-                    HStack(spacing: 4) {
-                        if let agent = conversation.agentName {
-                            Text(agent)
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundStyle(DS.Colors.accent)
-                        }
-                        Text(conversation.updatedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
-                            .font(.system(size: 9))
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                if isHovered {
-                    Button(action: onDelete) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                isSelected ? DS.Colors.accentFill :
-                    (isHovered ? DS.Colors.fillSecondary : .clear),
-                in: RoundedRectangle(cornerRadius: DS.Radius.sm)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// MARK: - Chat Content View (Markdown + Code Blocks)
-
-private struct ChatContentView: View {
-    let content: String
-
-    private var isRichMarkdown: Bool {
-        content.contains("```") || content.contains("| ") || content.contains("# ") || content.contains("## ")
-    }
-
-    var body: some View {
-        if isRichMarkdown {
-            ChatMarkdownView(markdown: content)
-        } else if let attributed = try? AttributedString(
-            markdown: content,
-            options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
-        ) {
-            Text(attributed)
-                .font(.system(size: 13))
-                .foregroundStyle(DS.Colors.textPrimary)
-                .textSelection(.enabled)
-                .lineSpacing(3)
-        } else {
-            Text(content)
-                .font(.system(size: 13))
-                .foregroundStyle(DS.Colors.textPrimary)
-                .textSelection(.enabled)
-                .lineSpacing(3)
-        }
-    }
-}
-
-// MARK: - Scroll Offset Key
-
-private struct ScrollOffsetKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-// MARK: - Bubble Shape
-
-private struct BubbleShape: Shape, InsettableShape {
-    let isUser: Bool
-    var insetAmount: CGFloat = 0
-
-    func path(in rect: CGRect) -> Path {
-        UnevenRoundedRectangle(
-            topLeadingRadius: isUser ? 16 : 4,
-            bottomLeadingRadius: 16,
-            bottomTrailingRadius: isUser ? 4 : 16,
-            topTrailingRadius: 16
-        )
-        .path(in: rect.insetBy(dx: insetAmount, dy: insetAmount))
-    }
-
-    func inset(by amount: CGFloat) -> BubbleShape {
-        BubbleShape(isUser: isUser, insetAmount: insetAmount + amount)
-    }
-}
-

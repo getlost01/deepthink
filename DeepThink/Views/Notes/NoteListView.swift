@@ -109,6 +109,9 @@ struct NoteListView: View {
                 .onDelete(perform: deleteNotes)
             }
             .listStyle(.inset)
+            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+            .onKeyPress(.escape) { appState.selectedNoteID = nil; return .handled }
             .overlay {
                 if filteredNotes.isEmpty {
                     DSEmptyState(
@@ -147,5 +150,16 @@ struct NoteListView: View {
 
     private func deleteNotes(at offsets: IndexSet) {
         for index in offsets { deleteNote(filteredNotes[index]) }
+    }
+
+    private func moveSelection(_ direction: Int) {
+        guard !filteredNotes.isEmpty else { return }
+        if let current = appState.selectedNoteID,
+           let idx = filteredNotes.firstIndex(where: { $0.id == current }) {
+            let next = min(max(idx + direction, 0), filteredNotes.count - 1)
+            appState.selectedNoteID = filteredNotes[next].id
+        } else {
+            appState.selectedNoteID = filteredNotes[direction > 0 ? 0 : filteredNotes.count - 1].id
+        }
     }
 }

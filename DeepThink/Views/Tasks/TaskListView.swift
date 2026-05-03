@@ -9,14 +9,41 @@ struct TaskListView: View {
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var filterStatus: TaskStatus?
+    @State private var smartFilter: SmartFilter = .all
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
 
+    enum SmartFilter: String, CaseIterable {
+        case all = "All"
+        case today = "Today"
+        case upcoming = "Upcoming"
+        case overdue = "Overdue"
+    }
+
     private var filteredTasks: [TaskItem] {
-        var tasks = allTasks
+        var tasks = allTasks.filter { $0.parent == nil }
         if let projectID = appState.filterProjectID {
             tasks = tasks.filter { $0.project?.id == projectID }
         }
         if let filterStatus { tasks = tasks.filter { $0.status == filterStatus } }
+
+        let cal = Calendar.current
+        switch smartFilter {
+        case .all: break
+        case .today:
+            tasks = tasks.filter { task in
+                guard let due = task.dueDate else { return false }
+                return cal.isDateInToday(due) && task.status != .done && task.status != .cancelled
+            }
+        case .upcoming:
+            let weekFromNow = cal.date(byAdding: .day, value: 7, to: Date())!
+            tasks = tasks.filter { task in
+                guard let due = task.dueDate else { return false }
+                return due <= weekFromNow && due >= Date() && task.status != .done && task.status != .cancelled
+            }
+        case .overdue:
+            tasks = tasks.filter { $0.isOverdue }
+        }
+
         if !debouncedSearch.isEmpty {
             let lowered = debouncedSearch.lowercased()
             tasks = tasks.filter { $0.title.lowercased().contains(lowered) || $0.detail.lowercased().contains(lowered) }
@@ -70,7 +97,28 @@ struct TaskListView: View {
 
             DSSearchField(text: $searchText, placeholder: "Search tasks...")
                 .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
+                .padding(.bottom, DS.Spacing.xs)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.Spacing.xs) {
+                    ForEach(SmartFilter.allCases, id: \.self) { filter in
+                        Button {
+                            smartFilter = filter
+                        } label: {
+                            Text(filter.rawValue)
+                                .font(DS.Font.small)
+                                .fontWeight(smartFilter == filter ? .semibold : .regular)
+                                .foregroundStyle(smartFilter == filter ? .white : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm + 2)
+                                .padding(.vertical, DS.Spacing.xs + 1)
+                                .background(smartFilter == filter ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+                .padding(.horizontal, DS.Spacing.md)
+            }
+            .padding(.bottom, DS.Spacing.sm)
 
             if let projectName = filterProjectName {
                 HStack(spacing: DS.Spacing.sm) {
@@ -142,6 +190,9 @@ struct TaskListView: View {
                 }
             }
             .listStyle(.inset)
+            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+            .onKeyPress(.escape) { appState.selectedTaskID = nil; return .handled }
             .overlay {
                 if groupedTasks.isEmpty {
                     DSEmptyState(
@@ -177,5 +228,17 @@ struct TaskListView: View {
     private func deleteTask(_ task: TaskItem) {
         if appState.selectedTaskID == task.id { appState.selectedTaskID = nil }
         modelContext.delete(task)
+    }
+
+    private func moveSelection(_ direction: Int) {
+        let allItems = groupedTasks.flatMap { $0.1 }
+        guard !allItems.isEmpty else { return }
+        if let current = appState.selectedTaskID,
+           let idx = allItems.firstIndex(where: { $0.id == current }) {
+            let next = min(max(idx + direction, 0), allItems.count - 1)
+            appState.selectedTaskID = allItems[next].id
+        } else {
+            appState.selectedTaskID = allItems[direction > 0 ? 0 : allItems.count - 1].id
+        }
     }
 }

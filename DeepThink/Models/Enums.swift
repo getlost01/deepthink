@@ -6,16 +6,15 @@ import SwiftUI
 enum SidebarSection: String, Identifiable {
     case workspace = "Workspace"
     case knowledge = "Knowledge"
-    case ai = "AI Chat"
+    case ai = "AI"
     case integrations = "Connections"
-    case agentConfig = "AI Assistants"
     case terminal = "Terminal"
     case settings = "Settings"
 
     var id: String { rawValue }
 
     static var mainSections: [SidebarSection] {
-        [.workspace, .knowledge, .ai, .integrations, .agentConfig, .terminal]
+        [.workspace, .knowledge, .ai, .integrations, .terminal]
     }
 
     var icon: String {
@@ -24,7 +23,6 @@ enum SidebarSection: String, Identifiable {
         case .knowledge: "brain"
         case .ai: "sparkles"
         case .integrations: "puzzlepiece.extension"
-        case .agentConfig: "person.2.circle"
         case .terminal: "terminal"
         case .settings: "gear"
         }
@@ -34,9 +32,8 @@ enum SidebarSection: String, Identifiable {
         switch self {
         case .workspace: "Projects, notes, and tasks"
         case .knowledge: "Save and search anything you learn"
-        case .ai: "Ask AI questions about your work"
+        case .ai: "Chat, assistants, and automations"
         case .integrations: "Add tools and services for AI to use"
-        case .agentConfig: "Create custom AI helpers for different tasks"
         case .terminal: "Built-in terminal sessions"
         case .settings: "Choose AI model and preferences"
         }
@@ -46,9 +43,8 @@ enum SidebarSection: String, Identifiable {
         switch self {
         case .workspace: "Your projects, notes, and tasks in one place"
         case .knowledge: "Save articles, ideas, and research in one place"
-        case .ai: "Ask questions, brainstorm, or get help with your work"
+        case .ai: "Chat with AI, manage assistants and automations"
         case .integrations: "Connect tools and services to make AI more powerful"
-        case .agentConfig: "Set up specialized AI helpers for different kinds of work"
         case .terminal: "Run commands and scripts"
         case .settings: "Model selection and usage"
         }
@@ -58,9 +54,8 @@ enum SidebarSection: String, Identifiable {
         switch self {
         case .workspace: "This is your home base. Create projects to organize your work, write notes to capture ideas, and add tasks to track what needs doing."
         case .knowledge: "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. Everything here can be used by AI to give you better answers."
-        case .ai: "Chat with AI that has access to your notes and knowledge. Pick an assistant suited to your task, or just ask a question."
+        case .ai: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
         case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
-        case .agentConfig: "Assistants are AI helpers with specific personalities and expertise. Use a template to get started, or build your own from scratch."
         case .terminal: "A built-in command line for running scripts and system commands."
         case .settings: "Choose which AI model to use and track your usage."
         }
@@ -123,11 +118,11 @@ enum TaskStatus: String, Codable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .backlog: .secondary
-        case .todo: .blue
-        case .inProgress: .orange
-        case .done: .green
-        case .cancelled: .red
+        case .backlog: Color(hue: 0.0, saturation: 0.0, brightness: 0.55)
+        case .todo: Color(hue: 0.61, saturation: 0.65, brightness: 0.95)
+        case .inProgress: Color(hue: 0.09, saturation: 0.78, brightness: 0.95)
+        case .done: Color(hue: 0.38, saturation: 0.72, brightness: 0.80)
+        case .cancelled: Color(hue: 0.0, saturation: 0.60, brightness: 0.75)
         }
     }
 
@@ -163,11 +158,11 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .none: .secondary
-        case .low: .blue
-        case .medium: .orange
-        case .high: .orange
-        case .urgent: .red
+        case .none: Color(hue: 0.0, saturation: 0.0, brightness: 0.55)
+        case .low: Color(hue: 0.58, saturation: 0.55, brightness: 0.85)
+        case .medium: Color(hue: 0.12, saturation: 0.70, brightness: 0.92)
+        case .high: Color(hue: 0.06, saturation: 0.80, brightness: 0.95)
+        case .urgent: Color(hue: 0.0, saturation: 0.78, brightness: 0.92)
         }
     }
 

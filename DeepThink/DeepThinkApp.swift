@@ -96,15 +96,10 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
-                Button("Go to AI Assistants") {
-                    appState.navigate(to: .agentConfig)
-                }
-                .keyboardShortcut("5", modifiers: .command)
-
                 Button("Go to Terminal") {
                     appState.navigate(to: .terminal)
                 }
-                .keyboardShortcut("6", modifiers: .command)
+                .keyboardShortcut("5", modifiers: .command)
 
                 Divider()
 
@@ -179,18 +174,15 @@ struct DeepThinkApp: App {
             Command(title: "Connections", icon: "puzzlepiece.extension", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .integrations)
             },
-            Command(title: "AI Assistants", icon: "person.2.circle", shortcut: "⌘5", section: "Navigate") {
-                appState.navigate(to: .agentConfig)
-            },
-            Command(title: "Assistants", icon: "person.2.circle", shortcut: "⇧⌘7", section: "Navigate") {
-                appState.selectedSection = .agentConfig
+            Command(title: "Assistants", icon: "person.2.circle", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .ai)
                 appState.agentConfigTab = .agents
             },
-            Command(title: "Automations", icon: "sparkles", shortcut: "⇧⌘8", section: "Navigate") {
-                appState.selectedSection = .agentConfig
+            Command(title: "Automations", icon: "sparkles", shortcut: nil, section: "Navigate") {
+                appState.navigate(to: .ai)
                 appState.agentConfigTab = .skillsAndRules
             },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘6", section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘5", section: "Navigate") {
                 appState.navigate(to: .terminal)
             },
             Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {

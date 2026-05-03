@@ -46,8 +46,6 @@ struct ContentRouter: View {
                 AIView()
             case .integrations:
                 IntegrationsView()
-            case .agentConfig:
-                AgentConfigView()
             case .terminal:
                 DeepThinkTerminalView()
             case .settings:

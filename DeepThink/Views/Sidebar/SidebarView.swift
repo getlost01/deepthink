@@ -107,23 +107,30 @@ private struct SidebarItem: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: section.icon)
-                    .font(.system(size: DS.IconSize.lg, weight: .medium))
-                    .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textTertiary)
-                    .frame(width: 24, height: 24)
+            HStack(spacing: 0) {
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(isSelected ? DS.Colors.accent : .clear)
+                    .frame(width: 3, height: 18)
+                    .padding(.trailing, DS.Spacing.xs)
 
-                if isExpanded {
-                    Text(section.rawValue)
-                        .font(DS.Font.body)
-                        .fontWeight(isSelected ? .semibold : .regular)
-                        .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
-                        .lineLimit(1)
-                    Spacer()
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: section.icon)
+                        .font(.system(size: DS.IconSize.lg, weight: .medium))
+                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
+                        .frame(width: 24, height: 24)
+
+                    if isExpanded {
+                        Text(section.rawValue)
+                            .font(DS.Font.body)
+                            .fontWeight(isSelected ? .semibold : .regular)
+                            .foregroundStyle(isSelected ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                            .lineLimit(1)
+                        Spacer()
+                    }
                 }
+                .padding(.horizontal, DS.Spacing.xs)
+                .padding(.vertical, DS.Spacing.sm)
             }
-            .padding(.horizontal, DS.Spacing.sm)
-            .padding(.vertical, DS.Spacing.sm)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 isSelected

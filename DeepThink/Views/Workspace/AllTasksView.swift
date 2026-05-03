@@ -12,6 +12,11 @@ struct AllTasksView: View {
     @State private var priorityFilter: TaskPriority?
     @State private var taskToDelete: TaskItem?
     @State private var showDeleteConfirm = false
+    @State private var viewMode: TaskViewMode = .list
+
+    enum TaskViewMode: String {
+        case list, board
+    }
 
     private var filteredTasks: [TaskItem] {
         var result = tasks
@@ -40,6 +45,62 @@ struct AllTasksView: View {
     }
 
     var body: some View {
+        if viewMode == .board {
+            boardLayout
+        } else {
+            listLayout
+        }
+    }
+
+    private var boardLayout: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.sm) {
+                Spacer()
+                viewModeToggle
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(.bar)
+
+            Divider()
+
+            TaskBoardView()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in
+            let task = TaskItem(title: "")
+            modelContext.insert(task)
+            appState.selectedTaskID = task.id
+            viewMode = .list
+        }
+    }
+
+    private var viewModeToggle: some View {
+        HStack(spacing: 0) {
+            Button {
+                viewMode = .list
+            } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(viewMode == .list ? DS.Colors.accent : DS.Colors.textTertiary)
+                    .frame(width: 28, height: 24)
+            }
+            .buttonStyle(.plainPointer)
+
+            Button {
+                viewMode = .board
+            } label: {
+                Image(systemName: "rectangle.split.3x1")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(viewMode == .board ? DS.Colors.accent : DS.Colors.textTertiary)
+                    .frame(width: 28, height: 24)
+            }
+            .buttonStyle(.plainPointer)
+        }
+        .padding(.horizontal, 2)
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+    }
+
+    private var listLayout: some View {
         ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             VStack(spacing: 0) {
                 VStack(spacing: DS.Spacing.sm) {
@@ -63,6 +124,9 @@ struct AllTasksView: View {
                         }
                         .pickerStyle(.menu)
                         .font(DS.Font.caption)
+
+                        Spacer()
+                        viewModeToggle
                     }
                 }
                 .padding(DS.Spacing.md)

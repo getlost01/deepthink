@@ -2,11 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct TaskDetailView: View {
+    @Environment(\.modelContext) private var modelContext
     @Bindable var task: TaskItem
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
     @State private var showCustomPoints = false
     @State private var customPointsText = ""
     @State private var showCalendar = false
+    @State private var newSubtaskTitle = ""
+    @State private var showSubtasks = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -93,6 +96,93 @@ struct TaskDetailView: View {
             }
             .padding(.bottom, DS.Spacing.md)
 
+            // Subtasks
+            VStack(alignment: .leading, spacing: 0) {
+                Button {
+                    withAnimation(DS.Animation.quick) { showSubtasks.toggle() }
+                } label: {
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: showSubtasks ? "chevron.down" : "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .frame(width: 12)
+                        Text("Subtasks")
+                            .font(DS.Font.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        if !task.subtasks.isEmpty {
+                            let done = task.subtasks.filter { $0.status == .done }.count
+                            Text("\(done)/\(task.subtasks.count)")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plainPointer)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
+
+                if showSubtasks {
+                    VStack(spacing: 0) {
+                        ForEach(task.subtasks.sorted(by: { $0.createdAt < $1.createdAt })) { sub in
+                            HStack(spacing: DS.Spacing.sm) {
+                                Button {
+                                    withAnimation(DS.Animation.quick) {
+                                        sub.status = sub.status == .done ? .todo : .done
+                                        sub.modifiedAt = Date()
+                                    }
+                                } label: {
+                                    Image(systemName: sub.status == .done ? "checkmark.circle.fill" : "circle")
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(sub.status == .done ? DS.Colors.success : DS.Colors.textTertiary)
+                                }
+                                .buttonStyle(.plainPointer)
+
+                                Text(sub.title)
+                                    .font(DS.Font.body)
+                                    .strikethrough(sub.status == .done)
+                                    .foregroundStyle(sub.status == .done ? DS.Colors.textTertiary : DS.Colors.textPrimary)
+                                    .lineLimit(1)
+
+                                Spacer()
+
+                                Button {
+                                    modelContext.delete(sub)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 8, weight: .bold))
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                                .buttonStyle(.plainPointer)
+                                .opacity(0.5)
+                            }
+                            .padding(.horizontal, DS.Spacing.xl)
+                            .padding(.vertical, DS.Spacing.xs + 1)
+                        }
+
+                        HStack(spacing: DS.Spacing.sm) {
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 13))
+                                .foregroundStyle(DS.Colors.textTertiary)
+
+                            TextField("Add subtask...", text: $newSubtaskTitle)
+                                .textFieldStyle(.plain)
+                                .font(DS.Font.body)
+                                .onSubmit {
+                                    addSubtask()
+                                }
+                        }
+                        .padding(.horizontal, DS.Spacing.xl)
+                        .padding(.vertical, DS.Spacing.xs + 1)
+                    }
+                }
+
+                Divider()
+                    .padding(.top, DS.Spacing.xs)
+            }
+
             // Rich markdown editor (toolbar is built-in)
             RichMarkdownEditor(text: $task.detail)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -105,6 +195,16 @@ struct TaskDetailView: View {
         .sheet(isPresented: $showCustomPoints) {
             CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
         }
+    }
+
+    private func addSubtask() {
+        let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        let sub = TaskItem(title: title)
+        sub.parent = task
+        sub.project = task.project
+        modelContext.insert(sub)
+        newSubtaskTitle = ""
     }
 
     private var dueDateColor: Color {

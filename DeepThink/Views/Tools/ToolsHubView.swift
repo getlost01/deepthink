@@ -348,7 +348,7 @@ private struct PresetServersSheet: View {
     @Environment(\.dismiss) private var dismiss
     let onAdd: (MCPServer) -> Void
 
-    private var catalog: MCPCatalogService { MCPCatalogService.shared }
+    private let catalog = MCPCatalogService.shared
 
     @State private var searchText = ""
     @State private var selectedCategory = "All"

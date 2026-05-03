@@ -36,24 +36,31 @@ enum DS {
     }
 
     enum Colors {
-        static let accent = Color.accentColor
-        static let accentFill = Color.accentColor.opacity(0.10)
+        static let accent = Color(hue: 0.61, saturation: 0.72, brightness: 0.98)
+        static let accentFill = accent.opacity(0.12)
+        static let accentGradient = LinearGradient(
+            colors: [Color(hue: 0.61, saturation: 0.65, brightness: 1.0), Color(hue: 0.65, saturation: 0.75, brightness: 0.92)],
+            startPoint: .topLeading, endPoint: .bottomTrailing
+        )
 
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .windowBackgroundColor)
-        static let fill = Color.primary.opacity(0.04)
-        static let fillSecondary = Color.primary.opacity(0.06)
+        static let fill = Color(hue: 0.63, saturation: 0.04, brightness: 0.50).opacity(0.07)
+        static let fillSecondary = Color(hue: 0.63, saturation: 0.05, brightness: 0.50).opacity(0.10)
 
-        static let border = Color.primary.opacity(0.08)
-        static let borderHover = Color.primary.opacity(0.14)
+        static let border = Color.primary.opacity(0.10)
+        static let borderHover = Color.primary.opacity(0.18)
+        static let borderFocused = accent.opacity(0.45)
 
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
-        static let textTertiary = Color.primary.opacity(0.40)
+        static let textTertiary = Color.primary.opacity(0.45)
 
-        static let success = Color.green
-        static let warning = Color.orange
-        static let danger = Color.red
+        static let success = Color(hue: 0.38, saturation: 0.70, brightness: 0.82)
+        static let warning = Color(hue: 0.09, saturation: 0.75, brightness: 0.95)
+        static let danger = Color(hue: 0.0, saturation: 0.72, brightness: 0.90)
+
+        static let cardShadow = Color.black.opacity(0.06)
     }
 
     enum Layout {
@@ -590,6 +597,7 @@ extension View {
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(DS.Colors.border, lineWidth: 1)
             )
+            .shadow(color: DS.Colors.cardShadow, radius: 4, y: 2)
     }
 
     func dsPage() -> some View {
