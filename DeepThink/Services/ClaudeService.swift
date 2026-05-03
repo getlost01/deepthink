@@ -40,13 +40,21 @@ final class ClaudeService {
 
         var modelID: String { id }
 
-        static let latestOpus = ModelVersion(id: "claude-opus-4-6", family: .opus, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
-        static let latestSonnet = ModelVersion(id: "claude-sonnet-4-6", family: .sonnet, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "16K", inputCostPer1M: "$3", outputCostPer1M: "$15")
-        static let latestHaiku = ModelVersion(id: "claude-haiku-4-5-20251001", family: .haiku, version: "4.5", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
+        static let opus47 = ModelVersion(id: "claude-opus-4-7", family: .opus, version: "4.7", suffix: "Latest", isLatest: true, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let opus46 = ModelVersion(id: "claude-opus-4-6", family: .opus, version: "4.6", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let opus45 = ModelVersion(id: "claude-opus-4-5-20250414", family: .opus, version: "4.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
 
-        static let opus47 = ModelVersion(id: "claude-opus-4-7", family: .opus, version: "4.7", suffix: "Preview", isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let sonnet46 = ModelVersion(id: "claude-sonnet-4-6", family: .sonnet, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "16K", inputCostPer1M: "$3", outputCostPer1M: "$15")
         static let sonnet45 = ModelVersion(id: "claude-sonnet-4-5-20241022", family: .sonnet, version: "4.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$3", outputCostPer1M: "$15")
+        static let sonnet37 = ModelVersion(id: "claude-3-7-sonnet-20250219", family: .sonnet, version: "3.7", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$3", outputCostPer1M: "$15")
+
+        static let haiku45 = ModelVersion(id: "claude-haiku-4-5-20251001", family: .haiku, version: "4.5", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
         static let haiku35 = ModelVersion(id: "claude-3-5-haiku-20241022", family: .haiku, version: "3.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
+
+        // Legacy aliases
+        static let latestOpus = opus47
+        static let latestSonnet = sonnet46
+        static let latestHaiku = haiku45
     }
 
     enum ModelFamily: String, CaseIterable, Identifiable {
@@ -59,16 +67,16 @@ final class ClaudeService {
         var color: Color {
             switch self {
             case .haiku: .cyan
-            case .sonnet: .blue
-            case .opus: .blue
+            case .sonnet: Color(hue: 0.08, saturation: 0.75, brightness: 0.95)
+            case .opus: Color(hue: 0.75, saturation: 0.6, brightness: 0.85)
             }
         }
 
         var icon: String {
             switch self {
-            case .haiku: "hare"
-            case .sonnet: "scalemass"
-            case .opus: "brain.head.profile"
+            case .haiku: "bolt.fill"
+            case .sonnet: "sparkles"
+            case .opus: "diamond.fill"
             }
         }
 
@@ -82,9 +90,9 @@ final class ClaudeService {
 
         var versions: [ModelVersion] {
             switch self {
-            case .haiku: [.latestHaiku, .haiku35]
-            case .sonnet: [.latestSonnet, .sonnet45]
-            case .opus: [.opus47, .latestOpus]
+            case .haiku: [.haiku45, .haiku35]
+            case .sonnet: [.sonnet46, .sonnet45, .sonnet37]
+            case .opus: [.opus47, .opus46, .opus45]
             }
         }
 
