@@ -29,10 +29,8 @@ struct KnowledgeBrowserView: View {
     private let sources = ["url", "folder", "clipboard", "manual", "script", "mcp"]
 
     var body: some View {
-        HStack(spacing: 0) {
-            // List
+        ResizableSplitView(minLeftWidth: 300, minRightWidth: 400) {
             VStack(spacing: 0) {
-                // Toolbar
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search knowledge...")
 
@@ -80,7 +78,6 @@ struct KnowledgeBrowserView: View {
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.md)
 
-                // Filter chips
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DS.Spacing.xs) {
                         FilterChip(label: "All", icon: "tray.full", isSelected: sourceFilter == nil) {
@@ -95,9 +92,7 @@ struct KnowledgeBrowserView: View {
                                 sourceFilter = sourceFilter == source ? nil : source
                             }
                         }
-
                         Spacer()
-
                         Text("\(filteredEntries.count) entries")
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
@@ -123,7 +118,6 @@ struct KnowledgeBrowserView: View {
                                 EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id) {
                                     selectedEntry = entry
                                 }
-
                                 if entry.id != filteredEntries.last?.id {
                                     Divider().padding(.leading, 48)
                                 }
@@ -132,11 +126,7 @@ struct KnowledgeBrowserView: View {
                     }
                 }
             }
-            .frame(minWidth: 350)
-
-            Divider()
-
-            // Detail
+        } right: {
             if let entry = selectedEntry {
                 KnowledgeDetailView(entry: entry) {
                     KnowledgeService.shared.deleteEntry(entry)
@@ -298,6 +288,8 @@ struct KnowledgeDetailView: View {
     let onDelete: () -> Void
     @Query private var allNotes: [Note]
     @State private var isAutoTagging = false
+    @State private var editableContent: String = ""
+    @State private var hasLoaded = false
 
     private var linkedNotes: [Note] {
         BacklinkService.shared.notesLinkedTo(entry: entry, notes: allNotes)
@@ -328,6 +320,20 @@ struct KnowledgeDetailView: View {
 
                 Spacer()
 
+                if !linkedNotes.isEmpty {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "link")
+                            .font(.system(size: 9))
+                        Text("\(linkedNotes.count) linked")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, 3)
+                    .background(DS.Colors.accentFill, in: Capsule())
+                    .help(linkedNotes.map(\.title).joined(separator: ", "))
+                }
+
                 Button {
                     autoTagEntry()
                 } label: {
@@ -354,7 +360,7 @@ struct KnowledgeDetailView: View {
 
                 Button {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(entry.content, forType: .string)
+                    NSPasteboard.general.setString(editableContent, forType: .string)
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "doc.on.doc")
@@ -388,48 +394,27 @@ struct KnowledgeDetailView: View {
                 Divider()
             }
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                    Text(entry.content)
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.textPrimary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    if !linkedNotes.isEmpty {
-                        Divider()
-
-                        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                            HStack(spacing: DS.Spacing.xs) {
-                                Image(systemName: "link")
-                                    .font(.system(size: DS.IconSize.sm))
-                                    .foregroundStyle(DS.Colors.accent)
-                                Text("Linked Notes")
-                                    .font(DS.Font.heading)
-                            }
-
-                            ForEach(linkedNotes) { note in
-                                HStack(spacing: DS.Spacing.sm) {
-                                    Image(systemName: "doc.text")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                    Text(note.title)
-                                        .font(DS.Font.body)
-                                        .foregroundStyle(DS.Colors.textPrimary)
-                                    Spacer()
-                                    Text("\(note.wordCount) words")
-                                        .font(DS.Font.small)
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                }
-                                .padding(.vertical, DS.Spacing.xs)
-                            }
-                        }
-                    }
-                }
-                .padding(DS.Spacing.lg)
-            }
+            MarkdownEditorWithToggle(
+                text: $editableContent,
+                placeholder: "Write knowledge entry content...",
+                onSave: { saveEntry() },
+                autoSaveInterval: 10
+            )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { editableContent = entry.content; hasLoaded = true }
+        .onChange(of: entry.id) { editableContent = entry.content }
+    }
+
+    private func saveEntry() {
+        guard hasLoaded else { return }
+        let (frontmatter, _) = KnowledgeService.shared.parseFrontmatter(
+            (try? String(contentsOf: entry.filePath, encoding: .utf8)) ?? ""
+        )
+        var md = "---\n"
+        for (key, value) in frontmatter { md += "\(key): \(value)\n" }
+        md += "---\n\n\(editableContent)"
+        try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
     }
 
     private func autoTagEntry() {
