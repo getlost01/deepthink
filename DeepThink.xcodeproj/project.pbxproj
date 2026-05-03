@@ -30,6 +30,7 @@
 		46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AB59FFDD446C6AEDD797236 /* AIChatView.swift */; };
 		AA1111111111111111111111 /* SlashCommandMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2222222222222222222222 /* SlashCommandMenu.swift */; };
 		AA3333333333333333333333 /* ActiveRulesBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4444444444444444444444 /* ActiveRulesBar.swift */; };
+		BB5555555555555555555555 /* ChatMarkdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB6666666666666666666666 /* ChatMarkdownView.swift */; };
 		4822038EF9FCAD2EAACF7444 /* SkillsRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A358CE99734BB73FD76E3219 /* SkillsRulesView.swift */; };
 		484EAB4E6352F976F8488CD4 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECD984C2D8AA7167A72F4992 /* ProjectListView.swift */; };
 		4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B44CF060104523F7532E43C /* DeepThinkApp.swift */; };
@@ -144,6 +145,7 @@
 		8AB59FFDD446C6AEDD797236 /* AIChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIChatView.swift; sourceTree = "<group>"; };
 		AA2222222222222222222222 /* SlashCommandMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandMenu.swift; sourceTree = "<group>"; };
 		AA4444444444444444444444 /* ActiveRulesBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActiveRulesBar.swift; sourceTree = "<group>"; };
+		BB6666666666666666666666 /* ChatMarkdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMarkdownView.swift; sourceTree = "<group>"; };
 		8B44CF060104523F7532E43C /* DeepThinkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepThinkApp.swift; sourceTree = "<group>"; };
 		910C30AD98D17EE1056C22DE /* DeepThink.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DeepThink.entitlements; sourceTree = "<group>"; };
 		94F9B8BDFB02C24F9F39BB04 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
@@ -377,6 +379,7 @@
 			children = (
 				AA4444444444444444444444 /* ActiveRulesBar.swift */,
 				8AB59FFDD446C6AEDD797236 /* AIChatView.swift */,
+				BB6666666666666666666666 /* ChatMarkdownView.swift */,
 				7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */,
 				A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */,
 				CB73589E106C5A91025E8318 /* MarkdownRendererView.swift */,
@@ -590,6 +593,7 @@
 			files = (
 				AA3333333333333333333333 /* ActiveRulesBar.swift in Sources */,
 				46759052DDC6EA0B155D3B2F /* AIChatView.swift in Sources */,
+				BB5555555555555555555555 /* ChatMarkdownView.swift in Sources */,
 				AA1111111111111111111111 /* SlashCommandMenu.swift in Sources */,
 				B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */,
 				75325BC5A52A723438738FD2 /* AIView.swift in Sources */,

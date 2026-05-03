@@ -67,13 +67,6 @@ struct SlashCommandMenu: View {
                 .frame(maxHeight: 240)
             }
             .padding(.bottom, DS.Spacing.sm)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(DS.Colors.border, lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.15), radius: 12, y: -4)
-            .frame(width: 280)
             .onChange(of: filter) {
                 selectedIndex = 0
             }

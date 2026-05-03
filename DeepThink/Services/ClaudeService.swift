@@ -259,6 +259,114 @@ final class ClaudeService {
         }
     }
 
+    // MARK: - Streaming
+
+    func streamQuery(_ prompt: String, systemPrompt: String? = nil, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+        guard isAvailable else { throw ClaudeError.notInstalled }
+
+        await MainActor.run { isProcessing = true; lastError = nil }
+
+        do {
+            let result = try await runCLIStreaming(prompt: prompt, systemPrompt: systemPrompt, onToken: onToken)
+            await MainActor.run { isProcessing = false }
+            return result
+        } catch {
+            await MainActor.run { isProcessing = false; lastError = error.localizedDescription }
+            throw error
+        }
+    }
+
+    private func runCLIStreaming(prompt: String, systemPrompt: String?, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+        let cliPath = claudePath
+        let modelID = fullModelID
+        let storage = StorageService.shared
+
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: cliPath)
+                process.currentDirectoryURL = storage.baseURL
+
+                var args = ["-p", prompt, "--output-format", "stream-json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", modelID]
+                if let systemPrompt {
+                    args.append(contentsOf: ["--append-system-prompt", systemPrompt])
+                }
+                process.arguments = args
+
+                var env = ProcessInfo.processInfo.environment
+                env["HOME"] = NSHomeDirectory()
+                env["PATH"] = "\(NSHomeDirectory())/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:\(env["PATH"] ?? "")"
+                env["DEEPTHINK_HOME"] = storage.baseURL.path
+                process.environment = env
+
+                let outPipe = Pipe()
+                let errPipe = Pipe()
+                process.standardOutput = outPipe
+                process.standardError = errPipe
+
+                var fullText = ""
+
+                do {
+                    try process.run()
+
+                    let handle = outPipe.fileHandleForReading
+                    var buffer = Data()
+
+                    while process.isRunning || handle.availableData.count > 0 {
+                        let chunk = handle.availableData
+                        if chunk.isEmpty { break }
+                        buffer.append(chunk)
+
+                        while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                            let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                            buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                            guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
+
+                            if let jsonData = line.data(using: .utf8),
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                                let type = obj["type"] as? String
+                                if type == "assistant" || type == "content_block_delta" {
+                                    if let text = obj["content"] as? String {
+                                        fullText += text
+                                        onToken(text)
+                                    } else if let delta = obj["delta"] as? [String: Any],
+                                              let text = delta["text"] as? String {
+                                        fullText += text
+                                        onToken(text)
+                                    }
+                                } else if type == "result" {
+                                    if let result = obj["result"] as? String {
+                                        fullText = result
+                                    }
+                                    if let cost = obj["total_cost_usd"] as? Double {
+                                        DispatchQueue.main.async {
+                                            ClaudeService.shared.totalQueries += 1
+                                            ClaudeService.shared.totalCostUSD += cost
+                                            ClaudeService.shared.lastQueryCostUSD = cost
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    process.waitUntilExit()
+
+                    if process.terminationStatus != 0 && fullText.isEmpty {
+                        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                        let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
+                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                    } else {
+                        continuation.resume(returning: fullText)
+                    }
+                } catch {
+                    continuation.resume(throwing: ClaudeError.cliError("Failed to launch: \(error.localizedDescription)"))
+                }
+            }
+        }
+    }
+
     func summarize(_ text: String) async throws -> String {
         try await query(
             "Summarize the following concisely in 2-3 bullet points:\n\n\(text)",

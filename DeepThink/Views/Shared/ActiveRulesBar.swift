@@ -9,7 +9,7 @@ struct ActiveRulesBar: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 9))
+                        .font(.system(size: 8))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     ForEach(rules) { rule in
@@ -23,13 +23,12 @@ struct ActiveRulesBar: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: rule.icon)
-                                    .font(.system(size: 8))
+                                    .font(.system(size: 7))
                                 Text(rule.name)
-                                    .font(DS.Font.small)
-                                    .fontWeight(.medium)
+                                    .font(.system(size: 9, weight: .medium))
                             }
-                            .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
                             .background(
                                 isActive ? DS.Colors.accentFill : DS.Colors.fill,
                                 in: Capsule()
@@ -38,10 +37,11 @@ struct ActiveRulesBar: View {
                             .opacity(isActive ? 1.0 : 0.5)
                         }
                         .buttonStyle(.plain)
-                        .help(isActive ? "Click to disable \(rule.name)" : "Click to enable \(rule.name)")
+                        .help(isActive ? "Disable \(rule.name)" : "Enable \(rule.name)")
                     }
                 }
             }
+            .frame(maxWidth: 300)
         }
     }
 }
