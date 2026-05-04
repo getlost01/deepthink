@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 @Observable
 final class KnowledgeService {
@@ -25,6 +26,12 @@ final class KnowledgeService {
         let snapshot = entries
         ContextEngine.shared.indexQueue.async {
             ContextEngine.shared.rebuildIndex(with: snapshot)
+        }
+
+        // Build semantic embeddings (incremental, background)
+        DispatchQueue.global(qos: .utility).async {
+            EmbeddingService.shared.indexEntries(snapshot)
+            EmbeddingService.shared.pruneStaleEntries(validIDs: Set(snapshot.map(\.id)))
         }
     }
 
@@ -142,7 +149,8 @@ final class KnowledgeService {
         let dir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let hash = String(abs(content.hashValue), radix: 36).prefix(6)
+        let digest = SHA256.hash(data: Data(content.utf8))
+        let hash = digest.prefix(4).map { String(format: "%02x", $0) }.joined()
         let slug = title.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
@@ -247,7 +255,7 @@ final class KnowledgeService {
     }
 
     func ragContext(for query: String, maxTokens: Int = 4000, projectScope: String? = nil, agentScope: [String]? = nil) -> String? {
-        let bundle = ContextEngine.shared.retrieveContext(
+        let bundle = ContextEngine.shared.retrieveContextHybrid(
             for: query,
             maxTokens: maxTokens,
             projectScope: projectScope,

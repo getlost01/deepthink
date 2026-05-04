@@ -41,11 +41,20 @@ struct DeepThinkApp: App {
                     AgentFileService.shared.installDefaultAgents()
                     KnowledgeService.shared.reload()
                     CollectorScheduler.shared.start(container: sharedModelContainer)
+
+                    // Register global hotkey for Quick Capture (Option+Space)
+                    GlobalHotKey.shared.register(container: sharedModelContainer)
                 }
         }
         .modelContainer(sharedModelContainer)
         .commands {
             CommandGroup(replacing: .newItem) {
+                Button("Quick Capture  (\u{2325}Space)") {
+                    QuickCaptureWindowController.shared.toggle(with: sharedModelContainer)
+                }
+
+                Divider()
+
                 Button("New Note") {
                     appState.selectedSection = .workspace
                     appState.workspaceTab = .projects
@@ -72,6 +81,7 @@ struct DeepThinkApp: App {
                     NotificationCenter.default.post(name: .createNewReminder, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
+
             }
 
             CommandGroup(after: .toolbar) {
@@ -170,6 +180,9 @@ struct DeepThinkApp: App {
             Command(title: "New Reminder", icon: "bell.badge.fill", shortcut: "⇧⌘R", section: "Create") {
                 appState.selectedSection = .reminders
                 NotificationCenter.default.post(name: .createNewReminder, object: nil)
+            },
+            Command(title: "Quick Capture", icon: "bolt.fill", shortcut: "⌥Space", section: "Create") {
+                QuickCaptureWindowController.shared.toggle(with: sharedModelContainer)
             },
 
             // Navigate
@@ -309,4 +322,5 @@ extension Notification.Name {
     static let createNewTask = Notification.Name("createNewTask")
     static let createNewProject = Notification.Name("createNewProject")
     static let createNewReminder = Notification.Name("createNewReminder")
+    static let quickCaptureReset = Notification.Name("quickCaptureReset")
 }

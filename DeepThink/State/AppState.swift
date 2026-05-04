@@ -56,7 +56,21 @@ final class AppState {
     var currentProjectName: String?
     var selectedText: String?
     var pendingSkillExecution: SkillFile?
-    var disabledRuleIDs: Set<String> = []
+    var disabledRuleIDs: Set<String>
+
+    init() {
+        let saved = UserDefaults.standard.stringArray(forKey: "disabledRuleIDs") ?? []
+        disabledRuleIDs = Set(saved)
+    }
+
+    func toggleRuleDisabled(_ id: String) {
+        if disabledRuleIDs.contains(id) {
+            disabledRuleIDs.remove(id)
+        } else {
+            disabledRuleIDs.insert(id)
+        }
+        UserDefaults.standard.set(Array(disabledRuleIDs), forKey: "disabledRuleIDs")
+    }
 
     var activeContextDictionary: [String: String] {
         var ctx: [String: String] = [:]

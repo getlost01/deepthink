@@ -12,6 +12,7 @@ struct SkillFile: Identifiable, Hashable {
     var filePath: URL
     var isBuiltIn: Bool
     var isPinned: Bool = false
+    var knowledgeScope: [String] = []
 
     var filename: String { filePath.lastPathComponent }
 
@@ -31,6 +32,8 @@ struct RuleFile: Identifiable, Hashable {
     var instruction: String
     var filePath: URL
     var isBuiltIn: Bool
+    var priority: Int = 0
+    var isDisabled: Bool = false
 
     var filename: String { filePath.lastPathComponent }
 }

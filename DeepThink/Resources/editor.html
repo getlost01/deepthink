@@ -41,6 +41,7 @@
     background: var(--bg);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
   }
 
   #toolbar {
@@ -56,7 +57,10 @@
     user-select: none;
     -webkit-user-select: none;
     overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
+  #toolbar::-webkit-scrollbar { display: none; }
 
   .tb-btn {
     display: flex; align-items: center; justify-content: center;

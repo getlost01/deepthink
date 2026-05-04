@@ -136,7 +136,8 @@ struct AIChatView: View {
 
             ActiveRulesBar(
                 rules: RuleFileService.shared.matchingRules(for: appState.activeContextDictionary),
-                disabledRuleIDs: Bindable(appState).disabledRuleIDs
+                disabledRuleIDs: Bindable(appState).disabledRuleIDs,
+                onToggle: { ruleID in appState.toggleRuleDisabled(ruleID) }
             )
 
             Spacer()
@@ -557,7 +558,16 @@ struct AIChatView: View {
         appState.chatProcessingStartTime = Date()
 
         chatTask = Task {
-            let result = await skillService.execute(skill: skill, context: ["input": resolvedInput])
+            var context: [String: String] = ["input": resolvedInput]
+            if let note = appState.currentNoteContent { context["note_content"] = note }
+            if let sel = appState.selectedText { context["selected_text"] = sel }
+            if let proj = appState.currentProjectName { context["project_name"] = proj }
+            if let noteTitle = appState.currentNoteTitle { context["note_title"] = noteTitle }
+            context["current_date"] = Date().formatted(date: .complete, time: .omitted)
+            context["current_time"] = Date().formatted(date: .omitted, time: .shortened)
+            if !appState.currentNoteTags.isEmpty { context["note_tags"] = appState.currentNoteTags.joined(separator: ", ") }
+
+            let result = await skillService.execute(skill: skill, context: context)
             await MainActor.run {
                 appState.chatMessages.append(AIMessage(role: .assistant, content: result))
                 persistMessage(role: "assistant", content: result)

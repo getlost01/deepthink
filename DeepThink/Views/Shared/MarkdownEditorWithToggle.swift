@@ -41,6 +41,7 @@ struct MarkdownEditorWithToggle: View {
                             .foregroundStyle(mode == m ? DS.Colors.accent : DS.Colors.textTertiary)
                             .padding(.horizontal, DS.Spacing.md)
                             .padding(.vertical, DS.Spacing.xs + 2)
+                            .contentShape(Rectangle())
                             .background(mode == m ? DS.Colors.accentFill : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                         .buttonStyle(.plainPointer)
@@ -51,21 +52,23 @@ struct MarkdownEditorWithToggle: View {
 
                 Spacer()
 
-                HStack(spacing: DS.Spacing.xs) {
-                    if isDirty {
-                        Circle()
-                            .fill(DS.Colors.warning)
-                            .frame(width: 6, height: 6)
-                        Text("Unsaved")
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
-                    } else {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 10))
-                            .foregroundStyle(DS.Colors.success)
-                        Text("Synced")
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                if onSave != nil {
+                    HStack(spacing: DS.Spacing.xs) {
+                        if isDirty {
+                            Circle()
+                                .fill(DS.Colors.warning)
+                                .frame(width: 6, height: 6)
+                            Text("Unsaved")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(DS.Colors.success)
+                            Text("Synced")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
                     }
                 }
             }
@@ -125,15 +128,15 @@ struct RawMarkdownEditor: View {
             TextEditor(text: $text)
                 .font(DS.Font.mono)
                 .scrollContentBackground(.hidden)
+                .scrollIndicators(.hidden, axes: .horizontal)
                 .padding(DS.Spacing.md)
 
             if text.isEmpty {
                 Text(placeholder)
                     .font(DS.Font.mono)
                     .foregroundStyle(DS.Colors.textTertiary)
-                    .padding(DS.Spacing.md)
-                    .padding(.leading, 5)
-                    .padding(.top, 8)
+                    .padding(.top, DS.Spacing.md + 1)
+                    .padding(.leading, DS.Spacing.md + 5)
                     .allowsHitTesting(false)
             }
         }

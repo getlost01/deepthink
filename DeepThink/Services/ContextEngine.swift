@@ -203,6 +203,87 @@ final class ContextEngine {
         return ContextBundle(parts: contextParts, totalTokensEstimate: (maxTokens * 4 - charBudget) / 4)
     }
 
+    // MARK: - Hybrid Retrieval (BM25 + Semantic via RRF)
+
+    func retrieveContextHybrid(
+        for query: String,
+        maxTokens: Int = 4000,
+        projectScope: String? = nil,
+        agentScope: [String]? = nil
+    ) -> ContextBundle {
+        // 1. Get BM25 results (existing keyword search)
+        let bm25Bundle = retrieveContext(for: query, maxTokens: maxTokens * 2, projectScope: projectScope, agentScope: agentScope)
+
+        // 2. Get semantic results
+        let semanticResults = EmbeddingService.shared.search(query: query, topK: 20)
+
+        // 3. If no semantic results, fall back to BM25 only
+        guard !semanticResults.isEmpty else {
+            return retrieveContext(for: query, maxTokens: maxTokens, projectScope: projectScope, agentScope: agentScope)
+        }
+
+        // 4. Reciprocal Rank Fusion
+        let k = 60.0
+        var fusedScores: [String: Double] = [:]     // entryTitle -> fused score
+        var titleToChunk: [String: ContentChunk] = [:]
+
+        // BM25 rankings
+        for (rank, part) in bm25Bundle.parts.enumerated() {
+            let rrf = 1.0 / (k + Double(rank + 1))
+            fusedScores[part.title, default: 0] += rrf
+        }
+
+        // Semantic rankings - map entryID back to chunks
+        for (rank, result) in semanticResults.enumerated() {
+            if let chunk = chunks.first(where: { $0.entryID == result.entryID }) {
+                let rrf = 1.0 / (k + Double(rank + 1))
+                fusedScores[chunk.entryTitle, default: 0] += rrf
+                if titleToChunk[chunk.entryTitle] == nil {
+                    titleToChunk[chunk.entryTitle] = chunk
+                }
+            }
+        }
+
+        // 5. Sort by fused score, build ContextBundle within token budget
+        let sorted = fusedScores.sorted { $0.value > $1.value }
+
+        var charBudget = maxTokens * 4
+        var contextParts: [ContextPart] = []
+
+        for (title, score) in sorted {
+            // Prefer BM25 result (already has compressed content)
+            if let existing = bm25Bundle.parts.first(where: { $0.title == title }) {
+                let partSize = existing.content.count + title.count + 20
+                if charBudget - partSize < 0 { break }
+                contextParts.append(ContextPart(
+                    title: existing.title,
+                    content: existing.content,
+                    tags: existing.tags,
+                    source: existing.source,
+                    relevanceScore: score * 100,
+                    chunkInfo: existing.chunkInfo
+                ))
+                charBudget -= partSize
+            } else if let chunk = titleToChunk[title] {
+                // Semantic-only result (not in BM25 top results)
+                let compressed = compressChunk(chunk, budget: min(800, charBudget))
+                let partSize = compressed.count + title.count + 20
+                if charBudget - partSize < 0 { break }
+                contextParts.append(ContextPart(
+                    title: chunk.entryTitle,
+                    content: compressed,
+                    tags: chunk.tags,
+                    source: chunk.source,
+                    relevanceScore: score * 100,
+                    chunkInfo: chunk.totalChunks > 1 ? "part \(chunk.chunkIndex + 1)/\(chunk.totalChunks)" : nil
+                ))
+                charBudget -= partSize
+            }
+        }
+
+        return ContextBundle(parts: contextParts, totalTokensEstimate: (maxTokens * 4 - charBudget) / 4)
+    }
+
     // MARK: - Format for Prompt
 
     func formatForPrompt(_ bundle: ContextBundle) -> String? {

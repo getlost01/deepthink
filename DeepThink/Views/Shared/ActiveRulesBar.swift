@@ -3,6 +3,7 @@ import SwiftUI
 struct ActiveRulesBar: View {
     let rules: [RuleFile]
     @Binding var disabledRuleIDs: Set<String>
+    var onToggle: ((String) -> Void)?
 
     var body: some View {
         if !rules.isEmpty {
@@ -15,10 +16,14 @@ struct ActiveRulesBar: View {
                     ForEach(rules) { rule in
                         let isActive = !disabledRuleIDs.contains(rule.id)
                         Button {
-                            if isActive {
-                                disabledRuleIDs.insert(rule.id)
+                            if let onToggle {
+                                onToggle(rule.id)
                             } else {
-                                disabledRuleIDs.remove(rule.id)
+                                if isActive {
+                                    disabledRuleIDs.insert(rule.id)
+                                } else {
+                                    disabledRuleIDs.remove(rule.id)
+                                }
                             }
                         } label: {
                             HStack(spacing: 3) {

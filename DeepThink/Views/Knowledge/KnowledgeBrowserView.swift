@@ -14,6 +14,7 @@ struct KnowledgeBrowserView: View {
     @State private var showNewFolder = false
     @State private var newFolderName = ""
     @State private var newFolderIcon = "folder"
+    @State private var showObsidianImport = false
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
@@ -56,6 +57,9 @@ struct KnowledgeBrowserView: View {
                             }
                             Button { importFolder() } label: {
                                 Label("Import Folder", systemImage: "folder.badge.plus")
+                            }
+                            Button { showObsidianImport = true } label: {
+                                Label("Import Obsidian Vault", systemImage: "square.stack.3d.up")
                             }
                         }
                         Section {
@@ -184,6 +188,9 @@ struct KnowledgeBrowserView: View {
             }
         } message: {
             Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
+        }
+        .sheet(isPresented: $showObsidianImport) {
+            ObsidianImportView()
         }
         .sheet(isPresented: $showNewFolder) {
             NewFolderSheet(

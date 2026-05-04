@@ -32,6 +32,8 @@ open DeepThink.xcodeproj
 
 The app auto-installs CLI binaries (`deepthink`, `deepthink-mcp`) to `~/.local/bin/` on launch.
 
+No additional installations required — all features use built-in Apple frameworks (NaturalLanguage, AppKit, SwiftData).
+
 ### CLI Usage
 
 ```bash
@@ -53,13 +55,11 @@ deepthink workspace "create a high-priority task for API migration due Friday"
 # Task management
 deepthink task list --status "In Progress" --project MyProject
 deepthink task add "Review PR" --priority high --due 2026-05-10 --project MyProject
-deepthink task show "Review PR"
 deepthink task done "Review PR"
 
 # Note management
 deepthink note list --project MyProject --pinned
 deepthink note add "Meeting Notes" --content "..." --project MyProject
-deepthink note show "Meeting Notes"
 
 # Project management
 deepthink project list
@@ -70,43 +70,153 @@ deepthink knowledge list
 deepthink knowledge search "auth middleware" --source slack --limit 10
 deepthink knowledge save MyProject "Decided to use JWT tokens" --type decision
 deepthink knowledge load MyProject
-deepthink knowledge capture slack general "Deploy completed successfully"
-deepthink knowledge compress slack general
-deepthink knowledge archive OldProject
 
-# Search
+# Search & Analysis
 deepthink search "React server components"        # web search
-deepthink search local "TODO" --dir ./src          # local file search
-
-# Analysis
 deepthink analyze data.csv --question "What are the trends?"
-deepthink analyze data.csv --report --title "Q2 Analysis"
-deepthink analyze quick data.csv                   # local stats only
-
-# Documentation
-deepthink docs "API Reference" --input ./src/api.ts --output api-docs
 ```
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Workspace** | Projects, notes, tasks with rich markdown editing and kanban board |
+| **Knowledge Base** | Multi-source capture (web, files, clipboard, RSS, scripts, Obsidian vaults) with timeline view |
+| **AI Chat** | Streaming chat with Claude, conversation history, edit branching, auto-compaction |
+| **Hybrid RAG** | BM25 keyword + semantic vector search — AI finds relevant knowledge automatically |
+| **AI Assistants** | Custom personas with knowledge scopes, model selection, and skill assignments |
+| **Skills & Rules** | Slash-command skills with template variables, context-aware rules with structured triggers |
+| **Global Quick Capture** | `Cmd+Shift+D` from anywhere — floating panel to capture notes, knowledge, or tasks instantly |
+| **Obsidian Import** | One-click vault import with wiki-link conversion, tag extraction, and dedup |
+| **Semantic Search** | Apple NLEmbedding vectors for meaning-based retrieval alongside keyword search |
+| **MCP Integration** | 50-tool MCP server for external tool access (Claude CLI, Cursor, VS Code, etc.) |
+| **Terminal** | Built-in terminal with multi-session tracking and AI output analysis |
+| **Command Palette** | `Cmd+K` quick access to all commands, navigation, and skills |
+| **Reminders** | Todo-style reminders with optional timed notifications |
+
+## Feature Documentation
+
+Detailed docs for each major feature:
+
+| Document | Description |
+|----------|-------------|
+| [RAG Pipeline](docs/features/rag-pipeline.md) | How retrieval-augmented generation works end-to-end |
+| [Semantic Search](docs/features/semantic-search.md) | NLEmbedding vectors, cosine similarity, hybrid fusion |
+| [Agents, Skills & Rules](docs/features/agents-skills-rules.md) | Custom AI personas, slash commands, context-aware rules |
+| [Knowledge Base](docs/features/knowledge-base.md) | Multi-source capture, storage, and organization |
+| [Obsidian Import](docs/features/obsidian-import.md) | Vault import with syntax conversion and dedup |
+| [Quick Capture](docs/features/quick-capture.md) | Global hotkey floating panel for instant capture |
+| [Workspace](docs/features/workspace.md) | Projects, notes, tasks, backlinks, versioning |
+| [Terminal](docs/features/terminal.md) | Multi-tab terminal with AI output analysis |
+| [MCP Integration](docs/features/mcp-integration.md) | 50-tool MCP server, external tool access, catalog |
+| [CLI](docs/features/cli.md) | Command-line interface, agent system, all commands |
+| [Deep Search](docs/features/deep-search.md) | Global search with AI-powered analysis |
+| [Command Palette](docs/features/command-palette.md) | Cmd+K quick launcher, fuzzy matching |
+| [Data Collection](docs/features/data-collection.md) | Automated capture from URLs, RSS, folders, scripts |
+| [Reminders](docs/features/reminders.md) | Scheduled reminders with notifications |
+| [Architecture](docs/ARCHITECTURE.md) | Full system design, services, data flow |
+
+## RAG Pipeline
+
+Every AI conversation is automatically augmented with relevant knowledge. No manual context-pasting required.
+
+```
+User question
+    ↓
+┌──────────────┐     ┌──────────────┐
+│ BM25 Search  │     │ Semantic     │
+│ (keywords)   │     │ Search       │
+│              │     │ (meaning)    │
+└──────┬───────┘     └──────┬───────┘
+       │                    │
+       └────────┬───────────┘
+                ↓
+    Reciprocal Rank Fusion
+    (merge best of both)
+                ↓
+    Token-budgeted context (~4K tokens)
+    + Workspace context (~600 tokens)
+    + Conversation history (~400 tokens)
+                ↓
+    Claude responds with grounded answer
+```
+
+**Keyword search** finds entries containing your exact words. **Semantic search** finds entries with similar meaning — "authentication concerns" matches entries about "login security" even without shared keywords.
+
+Results merge via Reciprocal Rank Fusion (RRF) for best-of-both ranking.
+
+See [RAG Pipeline docs](docs/features/rag-pipeline.md) for the full deep-dive.
+
+## AI Chat
+
+### Conversation Memory
+
+Claude CLI runs stateless, so DeepThink manages its own conversation context:
+
+| Length | Strategy |
+|--------|----------|
+| 1-4 messages | Full history |
+| 5-8 messages | Older compacted + last 4 full |
+| 8+ messages | Rolling summary (~300 tokens) + last 4 full |
+
+A 20-message conversation uses ~1,500 tokens instead of ~10,000.
+
+### Slash Commands
+
+Type `/` in chat to see available skills. Skills are markdown files in `.claude/commands/` with template variables:
+
+```
+{{input}}, {{note_content}}, {{selected_text}}, {{project_name}},
+{{note_title}}, {{note_tags}}, {{current_date}}, {{current_time}}
+```
+
+### Rules
+
+Auto-triggered instructions with structured triggers:
+
+| Trigger | Matches When |
+|---------|-------------|
+| `always` | Every query |
+| `tag:meeting` | Note has "meeting" tag |
+| `agent:Researcher` | Agent selected |
+| `event:task.created` | Event fired |
+| `content:code` | Content detected as code |
+
+Rules show as toggleable pills in the chat toolbar. Disabled state persists across restarts.
+
+### Knowledge Loop
+
+Bidirectional integration:
+- **Read**: every query searches knowledge base via hybrid RAG
+- **Write**: insights auto-extract every 6 messages, or manually via "Save to Knowledge"
+
+## Global Quick Capture
+
+Press `Cmd+Shift+D` from any app on your Mac:
+
+- **Note** — with optional project assignment
+- **Knowledge** — with folder selection and tags
+- **Task** — with optional project assignment
+
+Floating panel with `Cmd+Enter` to save, `Escape` to dismiss. Requires Accessibility permission for the global hotkey (works inside the app without it).
+
+## Obsidian Import
+
+**Knowledge → Add → Import Obsidian Vault**
+
+- Converts `[[wiki-links]]`, `![[embeds]]`, `> [!callouts]`, `%%comments%%`
+- Extracts inline `#tags` to frontmatter
+- Preserves folder structure
+- Dedup against existing entries
+- Progress bar for large vaults
 
 ## MCP Server
 
-DeepThink ships an MCP server (`deepthink-mcp`) that lets any MCP-compatible client — Claude CLI, Claude Desktop, Cursor, Windsurf, VS Code, etc. — manage your full workspace through natural language: tasks, notes, projects, knowledge base, memory, agents, rules, and skills.
-
-### Install
-
-```bash
-# Build the MCP binary (requires Bun)
-cd cli && bun install && bun run build:mcp && cd ..
-
-# Symlink globally
-mkdir -p ~/.local/bin
-ln -sf "$(pwd)/cli/out/deepthink-mcp" ~/.local/bin/deepthink-mcp
-```
+DeepThink ships an MCP server (`deepthink-mcp`) with 50 tools for workspace management via any MCP client.
 
 ### Configure
 
-Add to your MCP client's config file:
-
-**Claude CLI** (`~/.claude.json`):
+Add to your MCP client's config:
 
 ```json
 {
@@ -119,122 +229,19 @@ Add to your MCP client's config file:
 }
 ```
 
-**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+### Tool Categories (50 total)
 
-```json
-{
-  "mcpServers": {
-    "deepthink": {
-      "command": "/Users/YOUR_USERNAME/.local/bin/deepthink-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-**Cursor / VS Code** (`.cursor/mcp.json` or `.vscode/mcp.json`):
-
-```json
-{
-  "mcpServers": {
-    "deepthink": {
-      "command": "deepthink-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-### Available Tools (50 total)
-
-**Smart Context** (4 tools) — token-efficient retrieval, use these first
-
-| Tool | Description |
-|------|-------------|
-| `smart_query` | Auto-routes: summary mode vs full retrieval based on intent |
-| `knowledge_context` | BM25-scored knowledge retrieval (~90% token savings vs full load) |
-| `workspace_context` | Query-relevant workspace snapshot (tasks, notes, reminders) |
-| `deepthink_overview` | Compact counts + top items (~200 tokens) |
-
-**Workspace** (21 tools)
-
-| Tool | Description |
-|------|-------------|
-| `workspace_list_tasks` | List tasks (filter by status, priority, project) |
-| `workspace_get_task` | Get task by ID or name |
-| `workspace_create_task` | Create task with title, status, priority, points, due date, project |
-| `workspace_update_task` | Update any task fields |
-| `workspace_delete_task` | Delete a task |
-| `workspace_list_notes` | List notes (filter by project, pinned) |
-| `workspace_get_note` | Get note by ID or title |
-| `workspace_create_note` | Create note with markdown content |
-| `workspace_update_note` | Update note fields |
-| `workspace_delete_note` | Delete a note |
-| `workspace_list_projects` | List all projects with counts |
-| `workspace_get_project` | Get project by ID or name |
-| `workspace_create_project` | Create project with name, summary, color |
-| `workspace_update_project` | Update project fields |
-| `workspace_delete_project` | Delete project (items become unassigned) |
-| `workspace_list_reminders` | List reminders (filter by completion status) |
-| `workspace_get_reminder` | Get reminder by ID or title |
-| `workspace_create_reminder` | Create reminder with optional date/time |
-| `workspace_update_reminder` | Update reminder fields |
-| `workspace_delete_reminder` | Delete a reminder |
-| `workspace_summary` | Full workspace overview: counts, recent items, status breakdown |
-
-**Knowledge Base** (8 tools)
-
-| Tool | Description |
-|------|-------------|
-| `knowledge_stats` | Knowledge base overview: project count, integrations, archives |
-| `knowledge_list_projects` | List all knowledge projects |
-| `knowledge_load_project` | Load project knowledge: context, decisions, artifacts |
-| `knowledge_save_project` | Save knowledge to a project (context, decision, or artifact) |
-| `knowledge_search` | Search across all integration data by keyword |
-| `knowledge_list_integrations` | List all integration sources and channels |
-| `knowledge_load_integration` | Load recent entries from a source/channel |
-| `knowledge_capture` | Capture data from an external source into the knowledge base |
-
-**Memory** (5 tools)
-
-| Tool | Description |
-|------|-------------|
-| `memory_stats` | Short-term and long-term entry counts |
-| `memory_save` | Save a memory entry with tags to short or long-term storage |
-| `memory_recall` | Search memories by keyword across both layers |
-| `memory_promote` | Promote a short-term memory to long-term |
-| `memory_clear_short_term` | Clear all short-term memories |
-
-**Agents** (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `agent_list` | List all AI agents with roles, models, knowledge scopes |
-| `agent_get` | Get full agent details including system prompt |
-| `agent_create` | Create a new agent with name, role, system prompt, knowledge scope |
-| `agent_delete` | Delete an agent |
-
-**Rules** (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `rule_list` | List all rules with triggers and categories |
-| `rule_get` | Get full rule details including instruction text |
-| `rule_create` | Create a rule with trigger condition and instruction |
-| `rule_delete` | Delete a rule |
-
-**Skills** (4 tools)
-
-| Tool | Description |
-|------|-------------|
-| `skill_list` | List all slash-command skills |
-| `skill_get` | Get full skill details including prompt template |
-| `skill_create` | Create a skill with system prompt and `{{input}}` template |
-| `skill_delete` | Delete a skill |
+| Category | Tools | Description |
+|----------|-------|-------------|
+| Smart Context | 4 | Token-efficient retrieval, query routing |
+| Workspace | 21 | Task/note/project/reminder CRUD |
+| Knowledge Base | 8 | Save, load, search project knowledge |
+| Memory | 5 | Short/long-term persistent memory |
+| Agents | 4 | Agent management |
+| Rules | 4 | Rule management |
+| Skills | 4 | Skill management |
 
 ### Resources
-
-MCP resources for read-only access:
 
 | URI | Description |
 |-----|-------------|
@@ -242,134 +249,82 @@ MCP resources for read-only access:
 | `deepthink://notes` | All notes as JSON |
 | `deepthink://projects` | All projects as JSON |
 | `deepthink://reminders` | All reminders as JSON |
-| `deepthink://overview` | Compact system overview (~200 tokens) |
+| `deepthink://overview` | Compact system overview |
 | `deepthink://knowledge/stats` | Knowledge base overview |
-| `deepthink://knowledge/projects` | All knowledge projects |
-| `deepthink://knowledge/integrations` | Integration sources and channels |
 
-### Example Usage
+## Data Storage
 
-Once configured, just talk to Claude naturally:
+All data in `~/Documents/DeepThink/`:
 
 ```
-> "Create a high-priority task called 'Ship v2.0' due 2026-05-10 in the DeepThink project"
-> "What tasks are in progress right now?"
-> "Show me a summary of my workspace"
-> "Search my knowledge base for API migration notes"
-> "Save this decision to the DeepThink project knowledge"
-> "Create an agent called 'DevOps Expert' that knows about infrastructure"
-> "Add a rule that triggers on code reviews to check for security issues"
-> "What memories do I have about deployment?"
-> "Remind me to review the PR tomorrow at 2pm"
-> "What reminders are overdue?"
-> "Mark the 'Ship v2.0' reminder as done"
+DeepThink/
+├── data/
+│   ├── deepthink.store          # SwiftData SQLite (notes, tasks, projects, conversations)
+│   ├── embeddings.json          # Semantic vectors (512-dim per entry)
+│   └── embedding_hashes.json    # Content hashes for incremental indexing
+├── .claude/
+│   ├── commands/                # Skills (markdown)
+│   ├── rules/                   # Rules (markdown)
+│   ├── agents/                  # Agents (markdown)
+│   └── settings.json            # MCP server config
+├── knowledge/                   # Knowledge base (markdown + YAML frontmatter)
+│   ├── general/                 # Default folder
+│   ├── web/                     # Scraped web pages
+│   ├── clipboard/               # Clipboard captures
+│   ├── manual/                  # User-created entries
+│   ├── obsidian/                # Obsidian vault imports
+│   ├── integrations/            # External data
+│   ├── projects/                # Per-project knowledge
+│   └── archive/                 # Compressed entries
+├── memory/                      # Persistent AI memory
+├── sandbox/                     # Generated docs, analysis
+├── logs/                        # App and terminal logs
+└── workspace/                   # Exported notes/projects
 ```
 
-## Features
+### Index Storage
 
-| Feature | Description |
-|---------|-------------|
-| **Recent** | Activity feed across your workspace — recent notes, tasks, and changes |
-| **Workspace** | Projects, notes, and tasks with rich markdown editing and task board view |
-| **Reminders** | Todo-style reminders with optional timed notifications |
-| **Knowledge Base** | Save web pages, files, clipboard, scripts, RSS feeds — all searchable with timeline view |
-| **AI Chat** | Streaming chat with Claude, markdown rendering, code highlighting, conversation history, auto-compaction, edit branching |
-| **AI Assistants** | Custom AI personas with specialized expertise and knowledge scopes |
-| **Automations** | Slash-command skills in chat, context-aware rules that auto-inject into prompts |
-| **Connections** | MCP server integration — give AI access to external tools |
-| **Smart RAG** | TF-IDF + BM25 indexed retrieval with chunking, token budgeting, and smart context routing |
-| **Terminal** | Built-in terminal with active session tracking |
-| **Command Palette** | Quick access to everything via `Cmd+K` |
-
-## AI Chat
-
-The chat is the core interaction surface. It's designed to feel like a native macOS app while being as capable as web-based AI chat tools.
-
-### Conversation Memory
-
-Claude CLI runs stateless (`--no-session-persistence`), so DeepThink manages its own conversation context with a token-optimized compaction strategy:
-
-| Conversation length | What gets sent to Claude |
-|---------------------|--------------------------|
-| 1-4 messages | All prior messages (user full, assistant capped at 400 chars) |
-| 5-8 messages | Older messages compacted (user 200 chars, assistant 120 chars) + last 4 full |
-| 8+ messages | Rolling summary (~300 tokens) + last 4 messages full |
-
-The summary regenerates every 6 messages, incorporating the previous summary so context never degrades. Code blocks are stripped from compacted text. A 20-message conversation uses ~1,500 tokens instead of ~10,000 for full history.
-
-### Streaming
-
-Non-MCP queries stream token-by-token via `--output-format stream-json`. MCP queries (tool-use) return full responses since the CLI handles tool orchestration internally.
-
-### Slash Commands
-
-Type `/` in the chat input to see available skills. Skills are reusable AI prompts stored as markdown files in `~/Documents/DeepThink/.claude/commands/`. They auto-fill `{{input}}` from:
-1. Text after the command (`/summarize some text here`)
-2. Selected text in the active note
-3. Current note content
-
-### Rules
-
-Rules are auto-triggered system prompt instructions. They activate based on context:
-- `always` — injected into every query
-- `note.tagged.meeting` — when the active note has a "meeting" tag
-- `content_type.code` — when the active note contains code
-
-Active rules show as toggleable pills in the chat toolbar.
-
-### Markdown Rendering
-
-Simple messages use native SwiftUI `AttributedString`. Messages containing code blocks, tables, or headers render via a WKWebView with:
-- **marked.js** for markdown parsing
-- **highlight.js** for syntax highlighting (dark/light theme aware)
-- Per-code-block copy buttons
-- Scroll passthrough so the chat scrolls normally
-
-### Chat History
-
-Conversations persist via SwiftData. The history sidebar (right panel) groups by Today/Yesterday/This Week/Older with search. Click to resume any conversation. Conversations auto-title via a background Claude call after the first exchange.
-
-### Knowledge Loop
-
-Chat integrates bidirectionally with the knowledge base:
-- **Read**: every query searches the knowledge base via TF-IDF RAG and injects relevant entries
-- **Write**: insights auto-extract every 6 messages, or manually via "Save to Knowledge"
+| Data | Location | Persistence |
+|------|----------|-------------|
+| BM25/TF-IDF index | RAM | Rebuilt on each `reload()` — fast, no disk |
+| Semantic embeddings | `data/embeddings.json` | Persisted, incremental updates |
+| Content hashes | `data/embedding_hashes.json` | Tracks what's already embedded |
+| Conversation summaries | RAM | Regenerated as needed |
+| Dedup fingerprints | RAM | Rebuilt with index |
 
 ## Architecture
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 
-### High-Level Overview
-
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    DeepThink App (SwiftUI)               │
-│                                                          │
-│  ┌──────────┐  ┌───────────┐  ┌──────────┐  ┌────────┐ │
-│  │Workspace │  │ Knowledge │  │ AI Chat  │  │Terminal│ │
-│  │Notes     │  │ Browser   │  │ Agents   │  │Sessions│ │
-│  │Tasks     │  │ Search    │  │ Skills   │  │        │ │
-│  │Projects  │  │ Timeline  │  │ Rules    │  │        │ │
-│  │Reminders │  │           │  │          │  │        │ │
-│  └────┬─────┘  └─────┬─────┘  └────┬─────┘  └────────┘ │
-│       │              │              │                    │
-│  ┌────┴──────────────┴──────────────┴──────────────────┐ │
-│  │              Context Engine (TF-IDF + RAG)           │ │
-│  │  Chunking · Token Budgets · Dedup · Summaries       │ │
-│  └──────────────────────┬──────────────────────────────┘ │
-│                         │                                │
-│  ┌──────────────────────┴──────────────────────────────┐ │
-│  │              Service Layer                           │ │
-│  │  KnowledgeService · AgentFileService · ClaudeService│ │
-│  │  DataCollectorService · MCPService · BacklinkService│ │
-│  └──────────────────────┬──────────────────────────────┘ │
-│                         │                                │
-│  ┌──────────────────────┴──────────────────────────────┐ │
-│  │              Storage Layer                           │ │
-│  │  SwiftData (notes, tasks) · Markdown (knowledge)    │ │
-│  │  ~/Documents/DeepThink/                             │ │
-│  └─────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                   DeepThink App (SwiftUI)                     │
+│                                                              │
+│  ┌──────────┐  ┌───────────┐  ┌──────────┐  ┌────────────┐ │
+│  │Workspace │  │ Knowledge │  │ AI Chat  │  │  Terminal   │ │
+│  │Notes     │  │ Browser   │  │ Agents   │  │  Quick      │ │
+│  │Tasks     │  │ Obsidian  │  │ Skills   │  │  Capture    │ │
+│  │Projects  │  │ Import    │  │ Rules    │  │             │ │
+│  └────┬─────┘  └─────┬─────┘  └────┬─────┘  └─────────────┘ │
+│       │              │              │                        │
+│  ┌────┴──────────────┴──────────────┴──────────────────────┐ │
+│  │           Hybrid Search Engine                          │ │
+│  │  BM25/TF-IDF (keywords) + NLEmbedding (meaning)       │ │
+│  │  Reciprocal Rank Fusion · Token Budgets · Dedup        │ │
+│  └──────────────────────┬─────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────┴─────────────────────────────────┐ │
+│  │              Service Layer                              │ │
+│  │  KnowledgeService · AgentFileService · ClaudeService   │ │
+│  │  EmbeddingService · ContextEngine · MCPService         │ │
+│  └──────────────────────┬─────────────────────────────────┘ │
+│                         │                                    │
+│  ┌──────────────────────┴─────────────────────────────────┐ │
+│  │              Storage Layer                              │ │
+│  │  SwiftData (notes, tasks) · Markdown (knowledge)       │ │
+│  │  JSON (embeddings) · UserDefaults (preferences)        │ │
+│  └────────────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────────────┘
               │                          │
     ┌─────────┴──────────┐    ┌──────────┴──────────┐
     │   Claude CLI        │    │   MCP Servers       │
@@ -377,39 +332,11 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
     └────────────────────┘    └─────────────────────┘
 ```
 
-## Data Storage
-
-All data lives in `~/Documents/DeepThink/`:
-
-```
-DeepThink/
-├── data/                  # SwiftData database (notes, tasks, projects, conversations)
-├── .claude/               # Shared config (CLI + App)
-│   ├── commands/          # Skills as slash commands (markdown)
-│   ├── rules/             # AI behavior rules (markdown)
-│   ├── agents/            # Custom AI assistants (markdown)
-│   ├── settings.json      # MCP server config
-│   └── cache/             # Temp configs, catalog cache
-├── knowledge/             # Knowledge base (markdown + YAML frontmatter)
-│   ├── web/               # Scraped web pages
-│   ├── clipboard/         # Clipboard captures
-│   ├── manual/            # User-created entries
-│   ├── folders/           # Watched folder imports
-│   ├── imports/           # File imports
-│   ├── scripts/           # Script output captures
-│   ├── integrations/      # MCP-sourced data
-│   ├── projects/          # Per-project knowledge
-│   └── archive/           # Old/compressed entries
-├── memory/                # Persistent memory
-├── sandbox/               # Generated docs, analysis, insights
-├── logs/                  # App and terminal logs
-└── workspace/             # Exported notes and projects
-```
-
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
+| `Cmd+Shift+D` | **Global Quick Capture** (works from any app) |
 | `Cmd+K` | Command Palette |
 | `Cmd+N` | New Note |
 | `Cmd+T` | New Task |

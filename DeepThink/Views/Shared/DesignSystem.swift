@@ -198,8 +198,10 @@ struct DSToolbarBar<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            content()
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: DS.Spacing.sm) {
+                content()
+            }
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.md)

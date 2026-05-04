@@ -36,6 +36,12 @@ final class SkillFileService {
         let systemPrompt = parts.count > 1 ? parts[0].trimmingCharacters(in: .whitespacesAndNewlines) : ""
         let promptTemplate = parts.count > 1 ? parts[1...].joined(separator: "\n---\n").trimmingCharacters(in: .whitespacesAndNewlines) : body
 
+        let scopeList = (fm["knowledge_scope"] ?? "")
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+            .components(separatedBy: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+
         return SkillFile(
             name: name,
             trigger: fm["trigger"] ?? "manual",
@@ -46,7 +52,8 @@ final class SkillFileService {
             promptTemplate: promptTemplate,
             filePath: url,
             isBuiltIn: fm["built_in"] == "true",
-            isPinned: fm["pinned"] == "true"
+            isPinned: fm["pinned"] == "true",
+            knowledgeScope: scopeList
         )
     }
 
@@ -76,7 +83,8 @@ final class SkillFileService {
 
         // Auto-inject relevant knowledge context into skill execution
         let input = context["input"] ?? resolved
-        if let ragContext = KnowledgeService.shared.ragContext(for: input, maxTokens: 1500) {
+        let scopeParam: [String]? = skill.knowledgeScope.isEmpty ? nil : skill.knowledgeScope
+        if let ragContext = KnowledgeService.shared.ragContext(for: input, maxTokens: 1500, agentScope: scopeParam) {
             let base = system ?? "You are a helpful assistant."
             system = base + "\n\n" + ragContext
         }
@@ -118,6 +126,7 @@ final class SkillFileService {
         md += "icon: \(skill.icon)\n"
         if let model = skill.model { md += "model: \(model)\n" }
         md += "category: \(skill.category)\n"
+        if !skill.knowledgeScope.isEmpty { md += "knowledge_scope: [\(skill.knowledgeScope.joined(separator: ", "))]\n" }
         if skill.isBuiltIn { md += "built_in: true\n" }
         if skill.isPinned { md += "pinned: true\n" }
         md += "---\n\n"

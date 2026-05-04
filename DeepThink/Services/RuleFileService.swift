@@ -30,6 +30,9 @@ final class RuleFileService {
         let (fm, body) = KnowledgeService.shared.parseFrontmatter(text)
         guard let name = fm["name"] else { return nil }
 
+        let priority = Int(fm["priority"] ?? "0") ?? 0
+        let isDisabled = fm["disabled"] == "true"
+
         return RuleFile(
             name: name,
             trigger: fm["trigger"] ?? "always",
@@ -37,7 +40,9 @@ final class RuleFileService {
             category: fm["category"] ?? "General",
             instruction: body,
             filePath: url,
-            isBuiltIn: fm["built_in"] == "true"
+            isBuiltIn: fm["built_in"] == "true",
+            priority: priority,
+            isDisabled: isDisabled
         )
     }
 
@@ -47,12 +52,33 @@ final class RuleFileService {
         rules.filter { rule in
             let trigger = rule.trigger
             if trigger == "always" { return true }
-            for (key, value) in context {
-                if key == trigger || key.hasPrefix(trigger + ".") || trigger.hasPrefix(key + ".") { return true }
-                if trigger.contains(key) || trigger.contains(value) { return true }
+
+            // Structured trigger matching
+            if trigger.hasPrefix("event:") {
+                let eventName = String(trigger.dropFirst(6))
+                return context.keys.contains(eventName)
             }
-            return false
+            if trigger.hasPrefix("tag:") {
+                let tagName = String(trigger.dropFirst(4))
+                return context.keys.contains("note.tagged.\(tagName)")
+            }
+            if trigger.hasPrefix("agent:") {
+                let agentName = String(trigger.dropFirst(6))
+                return context["agent"] == agentName
+            }
+            if trigger.hasPrefix("content:") {
+                let contentType = String(trigger.dropFirst(8))
+                return context["content_type"] == contentType
+            }
+            if trigger.hasPrefix("section:") {
+                let sectionName = String(trigger.dropFirst(8))
+                return context["section"] == sectionName
+            }
+
+            // Backward compatibility: exact key match (not substring)
+            return context.keys.contains(trigger)
         }
+        .sorted { $0.priority > $1.priority }
     }
 
     func rulesAsSystemPrompt(for context: [String: String]) -> String? {
@@ -69,6 +95,8 @@ final class RuleFileService {
         md += "trigger: \(rule.trigger)\n"
         md += "icon: \(rule.icon)\n"
         md += "category: \(rule.category)\n"
+        if rule.priority != 0 { md += "priority: \(rule.priority)\n" }
+        if rule.isDisabled { md += "disabled: true\n" }
         if rule.isBuiltIn { md += "built_in: true\n" }
         md += "---\n\n"
         md += rule.instruction
@@ -103,11 +131,11 @@ final class RuleFileService {
         guard existing == 0 else { reload(); return }
 
         let defaults: [(String, String, String, String, String)] = [
-            ("Meeting Notes", "note.tagged.meeting", "person.3", "Productivity",
+            ("Meeting Notes", "tag:meeting", "person.3", "Productivity",
              "When working with meeting notes, always:\n1. Extract action items as a bullet list\n2. Identify owners for each action\n3. Note key decisions made\n4. Flag unresolved questions"),
-            ("Code Review", "note.tagged.code", "chevron.left.forwardslash.chevron.right", "Development",
+            ("Code Review", "tag:code", "chevron.left.forwardslash.chevron.right", "Development",
              "When reviewing code:\n1. Check for security vulnerabilities\n2. Identify performance issues\n3. Suggest simplifications\n4. Note missing error handling"),
-            ("Task Breakdown", "task.created", "list.bullet.indent", "Productivity",
+            ("Task Breakdown", "event:task.created", "list.bullet.indent", "Productivity",
              "When a new complex task is created, suggest breaking it into 3-5 subtasks. Each subtask should be specific, actionable, and estimable."),
             ("Writing Style", "always", "textformat", "Writing",
              "When helping with writing:\n- Be concise and direct\n- Use active voice\n- Avoid jargon unless the context is technical\n- Prefer short sentences"),

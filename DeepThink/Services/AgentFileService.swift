@@ -66,6 +66,20 @@ final class AgentFileService {
             prompt += "\n\n# Active Rules\n\n" + rules
         }
 
+        if !agent.skills.isEmpty {
+            let skillLines = agent.skills.compactMap { skillName -> String? in
+                guard let skill = SkillFileService.shared.skills.first(where: {
+                    $0.name == skillName || $0.commandName == skillName
+                }) else { return nil }
+                let desc = skill.systemPrompt.isEmpty ? skill.promptTemplate.prefix(60) : skill.systemPrompt.prefix(60)
+                return "- /\(skill.commandName): \(desc)"
+            }
+            if !skillLines.isEmpty {
+                prompt += "\n\n# Available Skills\nYou have the following skills available. When a user request matches a skill, suggest using it with /command-name:\n"
+                prompt += skillLines.joined(separator: "\n")
+            }
+        }
+
         if !agent.knowledgeScope.isEmpty {
             if let query = query {
                 // Smart retrieval: use query + agent scope for targeted context
