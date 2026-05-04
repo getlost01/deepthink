@@ -11,3 +11,13 @@ struct AIMessage: Identifiable {
         case user, assistant, error
     }
 }
+
+struct EditBranch: Identifiable {
+    let id = UUID()
+    let messages: [AIMessage]
+}
+
+struct BranchPoint {
+    var branches: [EditBranch]
+    var activeBranchIndex: Int
+}

@@ -69,6 +69,130 @@ final class MCPService {
         }
     }
 
+    func streamQueryWithMCP(prompt: String, servers: [MCPServer], systemPrompt: String? = nil, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+        let enabledServers = servers.filter(\.isEnabled)
+
+        guard !enabledServers.isEmpty else {
+            return try await ClaudeService.shared.streamQuery(prompt, systemPrompt: systemPrompt, onToken: onToken)
+        }
+
+        guard ClaudeService.shared.isAvailable else {
+            throw ClaudeError.notInstalled
+        }
+
+        guard let configURL = writeMCPConfig(servers: enabledServers) else {
+            throw ClaudeError.cliError("Failed to generate MCP config")
+        }
+
+        await MainActor.run { isRunning = true; lastError = nil }
+
+        do {
+            let result = try await runClaudeWithMCPStreaming(
+                prompt: prompt,
+                configPath: configURL.path,
+                systemPrompt: systemPrompt,
+                onToken: onToken
+            )
+            await MainActor.run { isRunning = false }
+            return result
+        } catch {
+            await MainActor.run { isRunning = false; lastError = error.localizedDescription }
+            throw error
+        }
+    }
+
+    private func runClaudeWithMCPStreaming(prompt: String, configPath: String, systemPrompt: String?, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let claudePath = ClaudeService.shared.claudePath
+                guard FileManager.default.isExecutableFile(atPath: claudePath) else {
+                    continuation.resume(throwing: ClaudeError.notInstalled)
+                    return
+                }
+
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: claudePath)
+                process.currentDirectoryURL = StorageService.shared.baseURL
+
+                var args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID, "--mcp-config", configPath]
+                if let systemPrompt {
+                    args.append(contentsOf: ["--append-system-prompt", systemPrompt])
+                }
+                process.arguments = args
+
+                var env = ProcessInfo.processInfo.environment
+                env["HOME"] = NSHomeDirectory()
+                env["PATH"] = "\(NSHomeDirectory())/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:\(env["PATH"] ?? "")"
+                process.environment = env
+
+                let outPipe = Pipe()
+                let errPipe = Pipe()
+                process.standardOutput = outPipe
+                process.standardError = errPipe
+
+                var fullText = ""
+
+                do {
+                    try process.run()
+
+                    let handle = outPipe.fileHandleForReading
+                    var buffer = Data()
+
+                    while process.isRunning || handle.availableData.count > 0 {
+                        let chunk = handle.availableData
+                        if chunk.isEmpty { break }
+                        buffer.append(chunk)
+
+                        while let newlineRange = buffer.range(of: Data("\n".utf8)) {
+                            let lineData = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                            buffer.removeSubrange(buffer.startIndex...newlineRange.lowerBound)
+
+                            guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
+
+                            if let jsonData = line.data(using: .utf8),
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                                let type = obj["type"] as? String
+                                if type == "assistant" || type == "content_block_delta" {
+                                    if let text = obj["content"] as? String {
+                                        fullText += text
+                                        onToken(text)
+                                    } else if let delta = obj["delta"] as? [String: Any],
+                                              let text = delta["text"] as? String {
+                                        fullText += text
+                                        onToken(text)
+                                    }
+                                } else if type == "result" {
+                                    if let result = obj["result"] as? String {
+                                        fullText = result
+                                    }
+                                    if let cost = obj["total_cost_usd"] as? Double {
+                                        DispatchQueue.main.async {
+                                            ClaudeService.shared.totalQueries += 1
+                                            ClaudeService.shared.totalCostUSD += cost
+                                            ClaudeService.shared.lastQueryCostUSD = cost
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    process.waitUntilExit()
+
+                    if process.terminationStatus != 0 && fullText.isEmpty {
+                        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                        let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
+                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                    } else {
+                        continuation.resume(returning: fullText)
+                    }
+                } catch {
+                    continuation.resume(throwing: ClaudeError.cliError("Failed to launch: \(error.localizedDescription)"))
+                }
+            }
+        }
+    }
+
     private func runClaudeWithMCP(prompt: String, configPath: String, systemPrompt: String?) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {

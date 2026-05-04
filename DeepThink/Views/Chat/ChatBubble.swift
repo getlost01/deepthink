@@ -6,6 +6,8 @@ struct ChatBubble: View {
     var onEdit: ((String) -> Void)? = nil
     var onSaveAsNote: ((String) -> Void)? = nil
     var onCreateTask: ((String) -> Void)? = nil
+    var branchInfo: (current: Int, total: Int)? = nil
+    var onSwitchBranch: ((Int) -> Void)? = nil
     @State private var copied = false
     @State private var isEditing = false
     @State private var editText = ""
@@ -95,6 +97,41 @@ struct ChatBubble: View {
         .padding(.vertical, DS.Spacing.sm)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .overlay(alignment: .bottomTrailing) {
+            if let info = branchInfo, info.total > 1 {
+                HStack(spacing: DS.Spacing.xs) {
+                    Button {
+                        onSwitchBranch?(info.current - 1)
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                    }
+                    .buttonStyle(.plainPointer)
+                    .disabled(info.current <= 0)
+
+                    Text("\(info.current + 1)/\(info.total)")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(DS.Colors.textTertiary)
+
+                    Button {
+                        onSwitchBranch?(info.current + 1)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                    }
+                    .buttonStyle(.plainPointer)
+                    .disabled(info.current >= info.total - 1)
+                }
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, 3)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
+                .offset(y: DS.Spacing.md)
+                .padding(.trailing, DS.Spacing.xl)
+            }
+        }
     }
 
     private var assistantBubble: some View {
@@ -118,60 +155,61 @@ struct ChatBubble: View {
                 ChatContentView(content: message.content)
                     .padding(DS.Spacing.md)
 
-                HStack(spacing: DS.Spacing.sm) {
-                    Button {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(message.content, forType: .string)
-                        copied = true
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                .font(.system(size: DS.IconSize.xs, weight: .medium))
-                            Text(copied ? "Copied" : "Copy")
-                                .font(DS.Font.buttonSmall)
-                        }
-                        .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textTertiary)
-                    }
-                    .buttonStyle(.plainPointer)
-
-                    if let onSaveAsNote {
-                        Button {
-                            onSaveAsNote(message.content)
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "doc.text.badge.plus")
-                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
-                                Text("Save as Note")
-                                    .font(DS.Font.buttonSmall)
-                            }
-                            .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-
-                    if let onCreateTask {
-                        Button {
-                            onCreateTask(message.content)
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "checklist.checked")
-                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
-                                Text("Create Task")
-                                    .font(DS.Font.buttonSmall)
-                            }
-                            .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-
+                HStack(spacing: DS.Spacing.md) {
                     Text(message.timestamp.formatted(.dateTime.hour().minute()))
                         .font(DS.Font.buttonSmall)
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     if message.isStreaming {
-                        ProgressView()
-                            .controlSize(.mini)
+                        StreamingAsterisk(showLabel: true)
+                    }
+
+                    if !message.isStreaming {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(message.content, forType: .string)
+                            copied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                Text(copied ? "Copied" : "Copy")
+                                    .font(DS.Font.buttonSmall)
+                            }
+                            .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textTertiary)
+                        }
+                        .buttonStyle(.plainPointer)
+
+                        if let onSaveAsNote {
+                            Button {
+                                onSaveAsNote(message.content)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "doc.text.badge.plus")
+                                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                    Text("Note")
+                                        .font(DS.Font.buttonSmall)
+                                }
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+
+                        if let onCreateTask {
+                            Button {
+                                onCreateTask(message.content)
+                            } label: {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "checklist.checked")
+                                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                    Text("Task")
+                                        .font(DS.Font.buttonSmall)
+                                }
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
                     }
                 }
                 .padding(.horizontal, DS.Spacing.md)
@@ -186,38 +224,103 @@ struct ChatBubble: View {
         .padding(.vertical, DS.Spacing.sm)
     }
 
+    // MARK: - Error classification
+
+    private enum ChatErrorKind {
+        case rateLimited, noCredits, other
+
+        init(_ text: String) {
+            let l = text.lowercased()
+            if l.contains("rate limit") || l.contains("too many requests") || l.contains("overloaded") {
+                self = .rateLimited
+            } else if l.contains("credit") || l.contains("billing") || l.contains("insufficient") || l.contains("payment") {
+                self = .noCredits
+            } else {
+                self = .other
+            }
+        }
+    }
+
     private var errorBubble: some View {
-        HStack(alignment: .top, spacing: DS.Spacing.md) {
+        let kind = ChatErrorKind(message.content)
+
+        return HStack(alignment: .top, spacing: DS.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(DS.Colors.danger.opacity(0.10))
-                    .frame(width: 28, height: 28)
-                Image(systemName: "exclamationmark.triangle")
+                    .fill(errorBubbleIconBg(kind))
+                    .frame(width: 32, height: 32)
+                Image(systemName: errorBubbleIcon(kind))
                     .font(.system(size: DS.IconSize.sm, weight: .semibold))
-                    .foregroundStyle(DS.Colors.danger)
+                    .foregroundStyle(errorBubbleColor(kind))
             }
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                Text(message.content)
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.danger)
+                Text(errorBubbleTitle(kind))
+                    .font(DS.Font.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(errorBubbleColor(kind))
 
-                if let onRetry {
-                    Button(action: onRetry) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "arrow.clockwise")
-                                .font(.system(size: DS.IconSize.sm, weight: .semibold))
-                            Text("Retry")
-                                .font(DS.Font.caption)
-                                .fontWeight(.semibold)
+                Text(errorBubbleBody(kind, raw: message.content))
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: DS.Spacing.sm) {
+                    if let onRetry {
+                        Button(action: onRetry) {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                Text("Retry")
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(DS.Colors.accent)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs + 1)
+                            .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
-                        .foregroundStyle(DS.Colors.accent)
-                        .padding(.horizontal, DS.Spacing.md)
-                        .padding(.vertical, DS.Spacing.xs + 1)
-                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .buttonStyle(.plainPointer)
                     }
-                    .buttonStyle(.plainPointer)
+
+                    if kind == .noCredits {
+                        Button {
+                            NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/billing")!)
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "creditcard")
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                Text("Add Credits")
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(DS.Colors.onAccent)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs + 1)
+                            .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+
+                    if kind == .rateLimited {
+                        Button {
+                            NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/limits")!)
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "gauge.with.needle")
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                Text("View Limits")
+                                    .font(DS.Font.caption)
+                            }
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs + 1)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
                 }
             }
 
@@ -225,5 +328,44 @@ struct ChatBubble: View {
         }
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.sm)
+    }
+
+    private func errorBubbleColor(_ kind: ChatErrorKind) -> Color {
+        switch kind {
+        case .rateLimited: DS.Colors.warning
+        case .noCredits: DS.Colors.danger
+        case .other: DS.Colors.danger
+        }
+    }
+
+    private func errorBubbleIconBg(_ kind: ChatErrorKind) -> Color {
+        errorBubbleColor(kind).opacity(0.12)
+    }
+
+    private func errorBubbleIcon(_ kind: ChatErrorKind) -> String {
+        switch kind {
+        case .rateLimited: "timer"
+        case .noCredits: "creditcard.trianglebadge.exclamationmark"
+        case .other: "exclamationmark.triangle"
+        }
+    }
+
+    private func errorBubbleTitle(_ kind: ChatErrorKind) -> String {
+        switch kind {
+        case .rateLimited: "Rate Limit Reached"
+        case .noCredits: "Insufficient Credits"
+        case .other: "Something went wrong"
+        }
+    }
+
+    private func errorBubbleBody(_ kind: ChatErrorKind, raw: String) -> String {
+        switch kind {
+        case .rateLimited:
+            return "You've hit the Claude API rate limit. Please wait a moment and try again. If this happens often, consider upgrading your plan at console.anthropic.com."
+        case .noCredits:
+            return "Your Claude API account has run out of credits. Add credits to your account at console.anthropic.com to continue using AI features."
+        case .other:
+            return raw
+        }
     }
 }

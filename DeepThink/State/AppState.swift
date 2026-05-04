@@ -36,6 +36,9 @@ final class AppState {
     var terminalSessions: [TerminalSession] = []
     var activeTerminalSessionID: UUID?
 
+    // Edit branching (keyed by message index where edit happened)
+    var editBranchPoints: [Int: BranchPoint] = [:]
+
     // Agent Config sub-navigation
     var agentConfigTab: AgentConfigTab = .agents
 

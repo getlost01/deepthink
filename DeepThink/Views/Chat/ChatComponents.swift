@@ -6,25 +6,25 @@ struct ThinkingIndicator: View {
     let startTime: Date
     var useMCP: Bool = false
     @State private var elapsedSeconds: Int = 0
-    @State private var pulse = false
+    @State private var rotation: Double = 0
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var label: String {
-        useMCP ? "Using tools..." : "Thinking..."
+        useMCP ? "Using tools…" : "Thinking…"
     }
 
     private var elapsedText: String {
-        if elapsedSeconds < 60 { return "\(elapsedSeconds)s" }
-        return "\(elapsedSeconds / 60)m \(elapsedSeconds % 60)s"
+        if elapsedSeconds < 60 { return "(\(elapsedSeconds)s)" }
+        return "(\(elapsedSeconds / 60)m \(elapsedSeconds % 60)s)"
     }
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: useMCP ? "wrench.and.screwdriver" : "sparkles")
-                .font(.system(size: DS.IconSize.sm, weight: .semibold))
+            Text("✽")
+                .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(DS.Colors.accent)
-                .opacity(pulse ? 0.4 : 1.0)
+                .rotationEffect(.degrees(rotation))
 
             Text(label)
                 .font(DS.Font.body)
@@ -39,10 +39,9 @@ struct ThinkingIndicator: View {
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm)
-        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: 10))
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                pulse = true
+            withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                rotation = 360
             }
         }
         .onReceive(timer) { _ in
@@ -166,6 +165,33 @@ struct ChatContentView: View {
                 .foregroundStyle(DS.Colors.textPrimary)
                 .textSelection(.enabled)
                 .lineSpacing(3)
+        }
+    }
+}
+
+// MARK: - Streaming Asterisk
+
+struct StreamingAsterisk: View {
+    var showLabel: Bool = false
+    @State private var rotation: Double = 0
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text("✽")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(DS.Colors.accent)
+                .rotationEffect(.degrees(rotation))
+
+            if showLabel {
+                Text("Generating…")
+                    .font(DS.Font.buttonSmall)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+        }
+        .onAppear {
+            withAnimation(.linear(duration: 3).repeatForever(autoreverses: false)) {
+                rotation = 360
+            }
         }
     }
 }

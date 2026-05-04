@@ -11,6 +11,11 @@ struct ClaudeSettingsView: View {
                 if !claude.isAvailable {
                     setupBanner
                 }
+                if claude.lastErrorKind == .rateLimited {
+                    rateLimitBanner
+                } else if claude.lastErrorKind == .noCredits {
+                    noCreditsBanner
+                }
                 statusHero
                 cliPathRow
                 configurationSection
@@ -78,6 +83,114 @@ struct ClaudeSettingsView: View {
         .padding(DS.Spacing.md)
         .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+    }
+
+    // MARK: - Rate Limit Banner
+
+    @ViewBuilder
+    private var rateLimitBanner: some View {
+        HStack(spacing: DS.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(DS.Colors.warning.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "timer")
+                    .font(.system(size: DS.IconSize.lg))
+                    .foregroundStyle(DS.Colors.warning)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Rate Limit Reached")
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("You've exceeded the Claude API rate limit. Wait a moment, then retry. Consider upgrading your plan for higher limits.")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            Button {
+                NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/limits")!)
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "gauge.with.needle")
+                        .font(.system(size: DS.IconSize.sm))
+                    Text("View Limits")
+                        .font(DS.Font.caption)
+                        .fontWeight(.semibold)
+                }
+                .foregroundStyle(DS.Colors.warning)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.warning.opacity(0.3), lineWidth: 1))
+            }
+            .buttonStyle(.plainPointer)
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+    }
+
+    // MARK: - No Credits Banner
+
+    @ViewBuilder
+    private var noCreditsBanner: some View {
+        HStack(spacing: DS.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(DS.Colors.danger.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "creditcard.trianglebadge.exclamationmark")
+                    .font(.system(size: DS.IconSize.lg))
+                    .foregroundStyle(DS.Colors.danger)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Insufficient Credits")
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("Your Claude API account has run out of credits. Add credits at console.anthropic.com to resume AI features.")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+
+            VStack(spacing: DS.Spacing.xs) {
+                Button {
+                    NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/billing")!)
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Add Credits")
+                            .font(DS.Font.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(DS.Colors.onAccent)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+
+                Button {
+                    NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/plans")!)
+                } label: {
+                    Text("View Plans")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .buttonStyle(.plainPointer)
+            }
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.danger.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.danger.opacity(0.25), lineWidth: 1))
     }
 
     // MARK: - Status Hero

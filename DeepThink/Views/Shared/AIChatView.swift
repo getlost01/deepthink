@@ -25,6 +25,8 @@ struct AIChatView: View {
     @State private var showSlashMenu = false
     @State private var slashFilter = ""
     @State private var slashSelectedIndex = 0
+    @State private var suggestedFollowUps: [String] = []
+    @State private var followUpTask: Task<Void, Never>?
 
     private var skillService: SkillFileService { SkillFileService.shared }
     private var agentService: AgentFileService { AgentFileService.shared }
@@ -58,6 +60,7 @@ struct AIChatView: View {
                     onDelete: { deleteConversation($0) },
                     onNewChat: {
                         appState.chatMessages.removeAll()
+                        appState.editBranchPoints.removeAll()
                         currentConversation = nil
                     },
                     onClose: {
@@ -97,6 +100,7 @@ struct AIChatView: View {
                 Button {
                     appState.selectedAgentPath = nil
                     appState.chatMessages.removeAll()
+                    appState.editBranchPoints.removeAll()
                 } label: {
                     Label("Default Assistant", systemImage: "brain.head.profile")
                 }
@@ -105,6 +109,7 @@ struct AIChatView: View {
                     Button {
                         appState.selectedAgentPath = agent.filePath.path
                         appState.chatMessages.removeAll()
+                        appState.editBranchPoints.removeAll()
                     } label: {
                         Label(agent.name, systemImage: agent.icon)
                     }
@@ -186,6 +191,7 @@ struct AIChatView: View {
 
                 DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
                     appState.chatMessages.removeAll()
+                    appState.editBranchPoints.removeAll()
                     currentConversation = nil
                 }
                 .help("New conversation")
@@ -233,10 +239,25 @@ struct AIChatView: View {
                                     } : nil,
                                     onCreateTask: message.role == .assistant ? { content in
                                         createTaskFromChat(content)
+                                    } : nil,
+                                    branchInfo: branchInfo(for: index),
+                                    onSwitchBranch: appState.editBranchPoints[index] != nil ? { newIndex in
+                                        switchBranch(at: index, to: newIndex)
                                     } : nil
                                 )
                                 .id(message.id)
                                 .padding(.top, index == 0 ? DS.Spacing.xl : 0)
+                            }
+
+                            if !suggestedFollowUps.isEmpty && !appState.isChatProcessing {
+                                FollowUpChipsView(suggestions: suggestedFollowUps) { prompt in
+                                    suggestedFollowUps = []
+                                    inputText = prompt
+                                    sendMessage()
+                                }
+                                .padding(.horizontal, DS.Spacing.xl)
+                                .padding(.vertical, DS.Spacing.sm)
+                                .transition(.opacity.combined(with: .move(edge: .bottom)))
                             }
 
                             if appState.isChatProcessing {
@@ -269,15 +290,22 @@ struct AIChatView: View {
                     isScrolledUp = maxY > 800
                 }
                 .onChange(of: appState.chatMessages.count) {
-                    scrollToEnd(proxy)
+                    scrollChatToEnd(proxy, preferAnimated: true)
                 }
                 .onChange(of: appState.isChatProcessing) {
-                    scrollToEnd(proxy)
+                    scrollChatToEnd(proxy, preferAnimated: true)
+                }
+                .onChange(of: appState.chatMessages.last?.content) {
+                    // Streaming updates fire every token; animating each scroll stacks animations
+                    // and fights LazyVStack layout, which jumps the viewport toward older messages.
+                    if appState.chatMessages.last?.isStreaming == true {
+                        scrollChatToEnd(proxy, preferAnimated: false)
+                    }
                 }
                 .overlay(alignment: .bottomTrailing) {
                     if isScrolledUp && !appState.chatMessages.isEmpty {
                         Button {
-                            withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                            scrollChatToEnd(proxy, preferAnimated: true)
                         } label: {
                             Image(systemName: "arrow.down")
                                 .font(.system(size: DS.IconSize.sm, weight: .semibold))
@@ -452,8 +480,35 @@ struct AIChatView: View {
         try? modelContext.save()
     }
 
-    private func scrollToEnd(_ proxy: ScrollViewProxy) {
-        withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom", anchor: .bottom) }
+    /// Scrolls so the newest content stays in view. Uses the last bubble id (not a 1pt spacer)
+    /// so LazyVStack + streaming layout stays stable; defers to the next run loop for correct heights.
+    private func scrollChatToEnd(_ proxy: ScrollViewProxy, preferAnimated: Bool) {
+        let streaming = appState.chatMessages.last?.isStreaming == true
+        let animate = preferAnimated && !streaming
+
+        DispatchQueue.main.async {
+            if animate {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    scrollChatToEndImpl(proxy)
+                }
+            } else {
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    scrollChatToEndImpl(proxy)
+                }
+            }
+        }
+    }
+
+    private func scrollChatToEndImpl(_ proxy: ScrollViewProxy) {
+        if appState.isChatProcessing {
+            proxy.scrollTo("thinking", anchor: .bottom)
+        } else if let last = appState.chatMessages.last {
+            proxy.scrollTo(last.id, anchor: .bottom)
+        } else {
+            proxy.scrollTo("bottom", anchor: .bottom)
+        }
     }
 
     // MARK: - Slash Commands
@@ -583,6 +638,7 @@ struct AIChatView: View {
         "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
         "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
         "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
+        "knowledge", "tally", "count", "how many", "list all",
     ]
 
     private func isWorkspaceRequest(_ text: String) -> Bool {
@@ -614,6 +670,8 @@ struct AIChatView: View {
             return
         }
 
+        suggestedFollowUps = []
+        followUpTask?.cancel()
         appState.chatMessages.append(AIMessage(role: .user, content: text))
         persistMessage(role: "user", content: text)
         inputText = ""
@@ -698,13 +756,26 @@ struct AIChatView: View {
                         }
                     }
                 } else {
-                    response = try await MCPService.shared.queryWithMCP(
-                        prompt: fullPrompt, servers: servers, systemPrompt: systemPrompt
-                    )
                     await MainActor.run {
-                        appState.chatMessages.append(AIMessage(role: .assistant, content: response))
+                        appState.chatMessages.append(AIMessage(role: .assistant, content: "", isStreaming: true))
                         appState.isChatProcessing = false
                         appState.chatProcessingStartTime = nil
+                    }
+                    let mcpStreamIdx = appState.chatMessages.count - 1
+                    response = try await MCPService.shared.streamQueryWithMCP(
+                        prompt: fullPrompt, servers: servers, systemPrompt: systemPrompt
+                    ) { token in
+                        DispatchQueue.main.async {
+                            if mcpStreamIdx < appState.chatMessages.count {
+                                appState.chatMessages[mcpStreamIdx].content += token
+                            }
+                        }
+                    }
+                    await MainActor.run {
+                        if mcpStreamIdx < appState.chatMessages.count {
+                            appState.chatMessages[mcpStreamIdx].content = response
+                            appState.chatMessages[mcpStreamIdx].isStreaming = false
+                        }
                     }
                 }
 
@@ -713,6 +784,7 @@ struct AIChatView: View {
                 await MainActor.run {
                     persistMessage(role: "assistant", content: response)
                     lastFailedMessage = nil
+                    generateFollowUps(userMessage: text, assistantMessage: response)
                 }
 
                 if appState.chatMessages.count == 2, let conv = currentConversation {
@@ -725,7 +797,9 @@ struct AIChatView: View {
                     let msgs = appState.chatMessages
                     Task.detached(priority: .background) {
                         _ = await KnowledgeExtractionService.shared.extractFromConversation(messages: msgs)
-                        ContextEngine.shared.rebuildIndex()
+                        await MainActor.run {
+                            ContextEngine.shared.rebuildIndex()
+                        }
                     }
                 }
             } catch is CancellationError {
@@ -745,9 +819,52 @@ struct AIChatView: View {
     }
 
     private func editAndResend(at index: Int, newText: String) {
+        let oldBranch = EditBranch(messages: Array(appState.chatMessages[index...]))
+
+        if var branchPoint = appState.editBranchPoints[index] {
+            branchPoint.branches.append(oldBranch)
+            branchPoint.activeBranchIndex = branchPoint.branches.count
+            appState.editBranchPoints[index] = branchPoint
+        } else {
+            appState.editBranchPoints[index] = BranchPoint(
+                branches: [oldBranch],
+                activeBranchIndex: 1
+            )
+        }
+
         appState.chatMessages.removeSubrange(index...)
         inputText = newText
         sendMessage()
+    }
+
+    private func branchInfo(for index: Int) -> (current: Int, total: Int)? {
+        guard let bp = appState.editBranchPoints[index] else { return nil }
+        return (bp.activeBranchIndex, bp.branches.count + 1)
+    }
+
+    private func switchBranch(at index: Int, to branchIndex: Int) {
+        guard var bp = appState.editBranchPoints[index] else { return }
+
+        let currentSuffix = Array(appState.chatMessages[index...])
+        let currentBranch = EditBranch(messages: currentSuffix)
+
+        if bp.activeBranchIndex < bp.branches.count {
+            bp.branches[bp.activeBranchIndex] = currentBranch
+        } else {
+            bp.branches.append(currentBranch)
+        }
+
+        let target = bp.branches[branchIndex]
+        bp.activeBranchIndex = branchIndex
+        appState.editBranchPoints[index] = bp
+
+        appState.chatMessages.removeSubrange(index...)
+        appState.chatMessages.append(contentsOf: target.messages)
+
+        // Clear branch points that existed beyond this edit point
+        for key in appState.editBranchPoints.keys where key > index {
+            appState.editBranchPoints.removeValue(forKey: key)
+        }
     }
 
     private func retryLastMessage() {
@@ -792,6 +909,7 @@ struct AIChatView: View {
     private func deleteConversation(_ conversation: Conversation) {
         if currentConversation?.id == conversation.id {
             appState.chatMessages.removeAll()
+            appState.editBranchPoints.removeAll()
             currentConversation = nil
         }
         modelContext.delete(conversation)
@@ -822,4 +940,70 @@ struct AIChatView: View {
             }
         }
     }
+
+    // MARK: - Follow-Up Suggestions
+
+    private func generateFollowUps(userMessage: String, assistantMessage: String) {
+        followUpTask?.cancel()
+        suggestedFollowUps = []
+
+        followUpTask = Task {
+            let prompt = "Based on this conversation exchange, suggest exactly 3 short follow-up questions the user might ask next. Each must be under 60 characters. Output ONLY the 3 questions, one per line, no numbering, no bullets, no quotes.\n\nUser: \(userMessage.prefix(300))\nAssistant: \(assistantMessage.prefix(500))"
+
+            guard let result = try? await ClaudeService.shared.query(
+                prompt,
+                systemPrompt: "Output exactly 3 short follow-up questions, one per line. Nothing else."
+            ) else { return }
+
+            let suggestions = result
+                .components(separatedBy: "\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty && $0.count < 80 }
+                .prefix(3)
+
+            guard !Task.isCancelled else { return }
+
+            await MainActor.run {
+                withAnimation(DS.Animation.standard) {
+                    suggestedFollowUps = Array(suggestions)
+                }
+            }
+        }
+    }
 }
+
+// MARK: - Follow-Up Chips
+
+struct FollowUpChipsView: View {
+    let suggestions: [String]
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: DS.Spacing.sm) {
+            Image(systemName: "sparkles")
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .foregroundStyle(DS.Colors.accent.opacity(0.6))
+                .padding(.top, DS.Spacing.xs)
+
+            FlowLayout(spacing: DS.Spacing.xs) {
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Button {
+                        onSelect(suggestion)
+                    } label: {
+                        Text(suggestion)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.xs + 1)
+                            .background(DS.Colors.fill, in: Capsule())
+                            .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+            }
+
+            Spacer(minLength: 40)
+        }
+    }
+}
+

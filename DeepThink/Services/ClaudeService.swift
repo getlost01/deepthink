@@ -7,6 +7,7 @@ final class ClaudeService {
 
     var isProcessing = false
     var lastError: String?
+    var lastErrorKind: ClaudeErrorKind?
     var maxTokens: Int = 16384
 
     // Model selection
@@ -140,6 +141,21 @@ final class ClaudeService {
 
     var isAvailable: Bool { !claudePath.isEmpty }
 
+    /// Inspects raw CLI output/stderr text and returns a typed error if a known condition is detected.
+    static func classifyOutput(_ text: String) -> ClaudeError? {
+        let lower = text.lowercased()
+        let isRateLimit = lower.contains("rate limit") || lower.contains("too many requests")
+            || lower.contains("429") || lower.contains("overloaded") || lower.contains("rate_limit")
+        let isCredits = lower.contains("credit balance") || lower.contains("insufficient_balance")
+            || lower.contains("insufficient credits") || lower.contains("credit")
+            && (lower.contains("low") || lower.contains("run out") || lower.contains("insufficient"))
+            || lower.contains("402") || lower.contains("payment required")
+            || lower.contains("billing") || lower.contains("usage limit")
+        if isRateLimit { return .rateLimited }
+        if isCredits   { return .noCredits }
+        return nil
+    }
+
     func rescan() {
         if let saved = customCLIPath, FileManager.default.isExecutableFile(atPath: saved) {
             claudePath = saved
@@ -181,16 +197,23 @@ final class ClaudeService {
     }
 
     func query(_ prompt: String, systemPrompt: String? = nil) async throws -> String {
-        guard isAvailable else { throw ClaudeError.notInstalled }
+        guard isAvailable else {
+            await MainActor.run { lastErrorKind = .notInstalled }
+            throw ClaudeError.notInstalled
+        }
 
-        await MainActor.run { isProcessing = true; lastError = nil }
+        await MainActor.run { isProcessing = true; lastError = nil; lastErrorKind = nil }
 
         do {
             let result = try await runCLI(prompt: prompt, systemPrompt: systemPrompt)
             await MainActor.run { isProcessing = false }
             return result
         } catch {
-            await MainActor.run { isProcessing = false; lastError = error.localizedDescription }
+            await MainActor.run {
+                isProcessing = false
+                lastError = error.localizedDescription
+                lastErrorKind = (error as? ClaudeError)?.kind ?? .other
+            }
             throw error
         }
     }
@@ -232,7 +255,12 @@ final class ClaudeService {
 
                     if process.terminationStatus != 0 {
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        let combined = stderr + (String(data: outData, encoding: .utf8) ?? "")
+                        if let typed = ClaudeService.classifyOutput(combined) {
+                            continuation.resume(throwing: typed)
+                        } else {
+                            continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        }
                         return
                     }
 
@@ -270,16 +298,23 @@ final class ClaudeService {
     // MARK: - Streaming
 
     func streamQuery(_ prompt: String, systemPrompt: String? = nil, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
-        guard isAvailable else { throw ClaudeError.notInstalled }
+        guard isAvailable else {
+            await MainActor.run { lastErrorKind = .notInstalled }
+            throw ClaudeError.notInstalled
+        }
 
-        await MainActor.run { isProcessing = true; lastError = nil }
+        await MainActor.run { isProcessing = true; lastError = nil; lastErrorKind = nil }
 
         do {
             let result = try await runCLIStreaming(prompt: prompt, systemPrompt: systemPrompt, onToken: onToken)
             await MainActor.run { isProcessing = false }
             return result
         } catch {
-            await MainActor.run { isProcessing = false; lastError = error.localizedDescription }
+            await MainActor.run {
+                isProcessing = false
+                lastError = error.localizedDescription
+                lastErrorKind = (error as? ClaudeError)?.kind ?? .other
+            }
             throw error
         }
     }
@@ -295,7 +330,7 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: cliPath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "stream-json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", modelID]
+                var args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--dangerously-skip-permissions", "--model", modelID]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -364,7 +399,11 @@ final class ClaudeService {
                     if process.terminationStatus != 0 && fullText.isEmpty {
                         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        if let typed = ClaudeService.classifyOutput(stderr) {
+                            continuation.resume(throwing: typed)
+                        } else {
+                            continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        }
                     } else {
                         continuation.resume(returning: fullText)
                     }
@@ -440,11 +479,31 @@ final class ClaudeService {
 enum ClaudeError: LocalizedError {
     case cliError(String)
     case notInstalled
+    case rateLimited
+    case noCredits
 
     var errorDescription: String? {
         switch self {
         case .cliError(let msg): msg
         case .notInstalled: "Claude CLI not found at ~/.local/bin/claude. Install from https://claude.ai/code"
+        case .rateLimited: "Rate limit reached — Claude is temporarily unavailable. Please wait a moment and try again, or check your plan limits at console.anthropic.com."
+        case .noCredits: "Your Claude API account has run out of credits. Add credits at console.anthropic.com to continue using AI features."
         }
     }
+
+    var kind: ClaudeErrorKind {
+        switch self {
+        case .rateLimited: .rateLimited
+        case .noCredits: .noCredits
+        case .notInstalled: .notInstalled
+        case .cliError: .other
+        }
+    }
+}
+
+enum ClaudeErrorKind: Equatable {
+    case rateLimited
+    case noCredits
+    case notInstalled
+    case other
 }
