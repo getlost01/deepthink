@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { DEEPTHINK_ROOT, SANDBOX_ROOT, MEMORY_DIR, KNOWLEDGE_DIR } from "./config";
+import { DEEPTHINK_ROOT, SANDBOX_ROOT, KNOWLEDGE_DIR } from "./config";
 import { initSandbox, listFiles } from "./core/sandbox";
 import { query, isClaudeAvailable } from "./core/llm";
 import { Planner } from "./agents/planner";
@@ -8,9 +8,9 @@ import { Writer } from "./agents/writer";
 import { Analyst } from "./agents/analyst";
 import * as fileTools from "./tools/file";
 import * as search from "./tools/search";
-import * as memoryTools from "./tools/memory";
 import * as knowledgeTools from "./tools/knowledge";
 import * as db from "./core/db";
+import { retrieveContext, workspaceContext } from "./core/context-engine";
 
 initSandbox();
 
@@ -35,11 +35,8 @@ function cmdStatus() {
   for (const cat of ["docs", "outputs", "analysis", "insights"] as const)
     p(`  ${cat}: ${listFiles(cat).length}`);
 
-  const ms = memoryTools.memoryStats();
-  p(`\nmemory:     ${ms.shortTerm} short, ${ms.longTerm} long`);
-
   const ks = knowledgeTools.knowledgeStats();
-  p(`knowledge:  ${ks.projects} projects, ${ks.integrations} channels, ${ks.archives} archives`);
+  p(`\nknowledge:  ${ks.projects} projects, ${ks.integrations} channels, ${ks.archives} archives`);
 }
 
 // ── deepthink ask ──
@@ -53,8 +50,10 @@ async function cmdAsk() {
   if (file) context = fileTools.readFile(file);
 
   if (flag("--recall")) {
-    const mem = memoryTools.recall(question);
-    if (mem !== "No memories found.") context += `\n\nMemories:\n${mem}`;
+    const kr = retrieveContext(question, { maxTokens: 3000 });
+    if (kr.parts.length > 0) {
+      context += `\n\nKnowledge:\n${kr.parts.map((p) => `## ${p.title}\n${p.content}`).join("\n\n")}`;
+    }
   }
 
   const proj = flagVal("--project");
@@ -102,48 +101,8 @@ async function cmdRun() {
     ok(`saved to project: ${proj}`);
   }
 
-  memoryTools.saveMemory(`Task: ${task} | ${done.length}/${steps.length} done`, ["task"], "short");
+  knowledgeTools.saveIntegrationData("agent", "task-runs", `Task: ${task} | ${done.length}/${steps.length} done`);
   ok("done");
-}
-
-// ── deepthink memory ──
-
-function cmdMemory() {
-  const json = flag("--json");
-
-  if (!sub || sub === "stats") {
-    const s = memoryTools.memoryStats();
-    if (json) { p(JSON.stringify(s)); return; }
-    p(`short-term: ${s.shortTerm}\nlong-term:  ${s.longTerm}`);
-    return;
-  }
-
-  if (sub === "save") {
-    const content = args[2];
-    if (!content) err("usage: deepthink memory save <text> [--tags t1,t2] [--layer short|long]");
-    const tags = flagVal("--tags")?.split(",").map((t) => t.trim()) ?? [];
-    const layer = (flagVal("--layer") ?? "short") as "short" | "long";
-    const id = memoryTools.saveMemory(content, tags, layer);
-    if (json) { p(JSON.stringify({ id, layer })); return; }
-    ok(`saved (${id}) to ${layer}-term`);
-    return;
-  }
-
-  if (sub === "recall") {
-    const q = args.slice(2).filter((a) => !a.startsWith("--")).join(" ");
-    if (json) { p(JSON.stringify(memoryTools.recallJSON(q))); return; }
-    p(memoryTools.recall(q));
-    return;
-  }
-
-  if (sub === "clear") {
-    memoryTools.clearShortTerm();
-    if (json) { p(JSON.stringify({ cleared: true })); return; }
-    ok("short-term cleared");
-    return;
-  }
-
-  err(`unknown: deepthink memory ${sub}`);
 }
 
 // ── deepthink knowledge ──
@@ -239,6 +198,124 @@ async function cmdKnowledge() {
   }
 
   err(`unknown: deepthink knowledge ${sub}`);
+}
+
+// ── deepthink context ──
+
+function cmdContext() {
+  const json = flag("--json");
+  const q = args.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+
+  if (!sub || sub === "overview") {
+    const ws = {
+      projects: db.listProjects(),
+      tasks: db.listTasks(),
+      notes: db.listNotes(),
+      reminders: db.listReminders(),
+    };
+    const ks = knowledgeTools.knowledgeStats();
+
+    if (json) {
+      p(JSON.stringify({
+        workspace: {
+          projects: ws.projects.length,
+          tasks: { total: ws.tasks.length, byStatus: ws.tasks.reduce((a, t) => { a[t.status] = (a[t.status] ?? 0) + 1; return a; }, {} as Record<string, number>) },
+          notes: ws.notes.length,
+          reminders: ws.reminders.length,
+          recentTasks: ws.tasks.slice(0, 3).map((t) => `[${t.status}] ${t.title}`),
+        },
+        knowledge: ks,
+      }));
+      return;
+    }
+
+    p("deepthink overview\n");
+    p(`  projects:  ${ws.projects.length}`);
+    const byStatus = ws.tasks.reduce((a, t) => { a[t.status] = (a[t.status] ?? 0) + 1; return a; }, {} as Record<string, number>);
+    p(`  tasks:     ${ws.tasks.length} (${Object.entries(byStatus).map(([k, v]) => `${v} ${k}`).join(", ")})`);
+    p(`  notes:     ${ws.notes.length}`);
+    p(`  reminders: ${ws.reminders.length}`);
+    p(`  knowledge: ${ks.projects} projects, ${ks.integrations} channels, ${ks.archives} archives`);
+    if (ws.tasks.length > 0) {
+      p("\n  recent tasks:");
+      ws.tasks.slice(0, 5).forEach((t) => p(`    [${t.status.padEnd(11)}] ${t.title}`));
+    }
+    return;
+  }
+
+  if (sub === "query" || sub === "q") {
+    if (!q) err("usage: deepthink context query <question> [--tokens n] [--project name] [--json]");
+    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!) : 4000;
+    const projectScope = flagVal("--project") ?? undefined;
+
+    const kr = retrieveContext(q, { maxTokens, projectScope });
+    const ws = workspaceContext(q, 5);
+
+    if (json) { p(JSON.stringify({ knowledge: kr, workspace: ws })); return; }
+
+    if (kr.parts.length > 0) {
+      p(`knowledge (${kr.entriesReturned}/${kr.entriesScanned} entries, ~${kr.totalTokensEstimate} tokens):\n`);
+      for (const part of kr.parts) {
+        p(`  [${part.score}] ${part.title}`);
+        if (part.tags.length > 0) p(`    tags: ${part.tags.join(", ")}`);
+        p(`    ${part.content.slice(0, 150)}...`);
+        p("");
+      }
+    } else {
+      p("knowledge: no relevant entries\n");
+    }
+
+    if (ws.tasks.length > 0) {
+      p("relevant tasks:");
+      ws.tasks.forEach((t) => p(`  [${t.score}] ${t.status.padEnd(11)} ${t.title}`));
+    }
+    if (ws.notes.length > 0) {
+      p("relevant notes:");
+      ws.notes.forEach((n) => p(`  [${n.score}] ${n.title}`));
+    }
+    return;
+  }
+
+  if (sub === "workspace" || sub === "ws") {
+    if (!q) err("usage: deepthink context workspace <query> [--limit n] [--json]");
+    const maxItems = flagVal("--limit") ? parseInt(flagVal("--limit")!) : 5;
+    const ws = workspaceContext(q, maxItems);
+    if (json) { p(JSON.stringify(ws)); return; }
+    p(`workspace context (~${ws.totalTokensEstimate} tokens):\n`);
+    if (ws.tasks.length > 0) {
+      p("  tasks:");
+      ws.tasks.forEach((t) => p(`    [${t.score}] ${t.status.padEnd(11)} ${t.priority.padEnd(6)} ${t.title}`));
+    }
+    if (ws.notes.length > 0) {
+      p("  notes:");
+      ws.notes.forEach((n) => p(`    [${n.score}] ${n.title}${n.project ? ` (${n.project})` : ""}`));
+    }
+    if (ws.reminders.length > 0) {
+      p("  reminders:");
+      ws.reminders.forEach((r) => p(`    [${r.score}] ${r.title}`));
+    }
+    return;
+  }
+
+  if (sub === "knowledge" || sub === "kb") {
+    if (!q) err("usage: deepthink context knowledge <query> [--tokens n] [--project name] [--top n] [--json]");
+    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!) : 4000;
+    const projectScope = flagVal("--project") ?? undefined;
+    const topK = flagVal("--top") ? parseInt(flagVal("--top")!) : 10;
+    const kr = retrieveContext(q, { maxTokens, projectScope, topK });
+    if (json) { p(JSON.stringify(kr)); return; }
+    p(`knowledge context (${kr.entriesReturned}/${kr.entriesScanned} entries, ~${kr.totalTokensEstimate} tokens):\n`);
+    for (const part of kr.parts) {
+      p(`  [${part.score}] ${part.title} (${part.source})`);
+      if (part.tags.length > 0) p(`    tags: ${part.tags.join(", ")}`);
+      p(`    ${part.content.slice(0, 200)}...`);
+      p("");
+    }
+    if (kr.parts.length === 0) p("  no relevant entries");
+    return;
+  }
+
+  err(`unknown: deepthink context ${sub}`);
 }
 
 // ── deepthink search ──
@@ -550,30 +627,41 @@ async function cmdWorkspace() {
 function cmdHelp() {
   p(`deepthink — local AI workspace
 
-  deepthink status                                system overview
+  SMART CONTEXT (token-efficient retrieval)
+  ─────────────────────────────────────────
+  deepthink context overview                      compact system overview (~200 tokens)
+  deepthink context query <question>              auto-routed smart retrieval
+    --tokens <n>  --project <name>  --json
+  deepthink context workspace <query>             relevant tasks/notes/reminders only
+    --limit <n>  --json
+  deepthink context knowledge <query>             BM25-scored knowledge chunks
+    --tokens <n>  --project <name>  --top <n>  --json
+
+  GENERAL
+  ──────
+  deepthink status                                system overview (full)
   deepthink ask <question>                        ask anything
     --file <path>  --recall  --project <name>
-
   deepthink run <task>                            multi-step task
     --project <name>  --no-docs
 
-  deepthink memory save <text>                    save memory
-    --tags t1,t2  --layer short|long
-  deepthink memory recall <query>                 search memories
-  deepthink memory stats                          counts
-  deepthink memory clear                          clear short-term
-
+  KNOWLEDGE (full data)
+  ─────────────────────
   deepthink knowledge save <proj> <content>       save to project
     --type context|decision|artifact
   deepthink knowledge load <proj>                 view project
   deepthink knowledge list                        list projects
+  deepthink knowledge search <query>              keyword search
+    --source <s>  --limit <n>
   deepthink knowledge capture <src> <ch> <text>   capture data
   deepthink knowledge integrations                list sources
   deepthink knowledge compress <src> <ch>         compress data
   deepthink knowledge archive <proj>              archive project
   deepthink knowledge stats                       overview
 
-  deepthink task list                              list tasks
+  TASKS
+  ─────
+  deepthink task list                             list tasks
     --status <s>  --priority <p>  --project <name>
   deepthink task add <title>                      create task
     --status <s>  --priority <p>  --points <n>
@@ -585,6 +673,8 @@ function cmdHelp() {
   deepthink task done <id|name>                   mark done
   deepthink task delete <id|name>                 delete task
 
+  NOTES
+  ─────
   deepthink note list                             list notes
     --project <name>  --pinned
   deepthink note add <title>                      create note
@@ -594,6 +684,8 @@ function cmdHelp() {
     --title  --content  --pinned  --unpinned  --project
   deepthink note delete <id|name>                 delete note
 
+  PROJECTS
+  ────────
   deepthink project list                          list projects
   deepthink project add <name>                    create project
     --summary <text>  --color <hex>
@@ -602,20 +694,36 @@ function cmdHelp() {
     --name  --summary  --color  --archive  --unarchive
   deepthink project delete <id|name>              delete project
 
-  deepthink workspace <request>                    AI workspace agent
+  WORKSPACE AGENT
+  ───────────────
+  deepthink workspace <request>                   AI workspace agent
   deepthink ws <request>                          (alias)
     natural language task/note/project management
 
+  SEARCH
+  ──────
   deepthink search <query>                        web search
   deepthink search local <query>                  local files
     --dir <path>
 
+  ANALYSIS
+  ────────
   deepthink analyze <file>                        AI analysis
     --question <q>  --report  --title <t>
   deepthink analyze quick <file>                  local stats
 
+  DOCS
+  ────
   deepthink docs <topic>                          generate docs
     --input <file>  --output <name>
+
+  MCP TOOLS (via deepthink-mcp)
+  ─────────────────────────────
+  smart_query          auto-routes: summary vs full based on intent
+  knowledge_context    BM25-scored knowledge retrieval (~90% token savings)
+  workspace_context    query-relevant workspace snapshot
+  deepthink_overview   compact counts + top items (~200 tokens)
+  + all workspace_*, knowledge_*, agent_*, rule_*, skill_* tools
 `);
 }
 
@@ -623,9 +731,10 @@ function cmdHelp() {
 
 const dispatch: Record<string, () => Promise<void> | void> = {
   status: cmdStatus,
+  context: cmdContext,
+  ctx: cmdContext,
   ask: cmdAsk,
   run: cmdRun,
-  memory: cmdMemory,
   knowledge: cmdKnowledge,
   task: cmdTask,
   note: cmdNote,

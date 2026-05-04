@@ -10,15 +10,15 @@ import {
 import { WORKSPACE_TOOLS, WORKSPACE_TOOL_MAP } from "./tools/workspace";
 import { KNOWLEDGE_TOOLS, KNOWLEDGE_TOOL_MAP } from "./tools/knowledge-mcp";
 import { CONFIG_TOOLS, CONFIG_TOOL_MAP } from "./tools/config-mcp";
+import { SMART_TOOLS, SMART_TOOL_MAP } from "./tools/smart-mcp";
 import * as db from "./core/db";
 import * as knowledge from "./tools/knowledge";
-import * as memoryTools from "./tools/memory";
 
-const ALL_TOOLS = [...WORKSPACE_TOOLS, ...KNOWLEDGE_TOOLS, ...CONFIG_TOOLS];
-const ALL_TOOL_MAP = { ...WORKSPACE_TOOL_MAP, ...KNOWLEDGE_TOOL_MAP, ...CONFIG_TOOL_MAP };
+const ALL_TOOLS = [...SMART_TOOLS, ...WORKSPACE_TOOLS, ...KNOWLEDGE_TOOLS, ...CONFIG_TOOLS];
+const ALL_TOOL_MAP = { ...SMART_TOOL_MAP, ...WORKSPACE_TOOL_MAP, ...KNOWLEDGE_TOOL_MAP, ...CONFIG_TOOL_MAP };
 
 const server = new Server(
-  { name: "deepthink-workspace", version: "2.0.0" },
+  { name: "deepthink-workspace", version: "2.1.0" },
   { capabilities: { tools: {}, resources: {} } }
 );
 
@@ -59,7 +59,14 @@ const RESOURCES = [
   { uri: "deepthink://knowledge/stats", name: "Knowledge Stats", description: "Knowledge base overview", fn: () => knowledge.knowledgeStats() },
   { uri: "deepthink://knowledge/projects", name: "Knowledge Projects", description: "All knowledge projects", fn: () => knowledge.listProjects() },
   { uri: "deepthink://knowledge/integrations", name: "Integrations", description: "All integration sources and channels", fn: () => knowledge.listIntegrations() },
-  { uri: "deepthink://memory/stats", name: "Memory Stats", description: "Memory entry counts", fn: () => memoryTools.memoryStats() },
+  { uri: "deepthink://overview", name: "Overview", description: "Compact system overview (~200 tokens)", fn: () => {
+    const projects = db.listProjects();
+    const tasks = db.listTasks();
+    const ks = knowledge.knowledgeStats();
+    const byStatus: Record<string, number> = {};
+    for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+    return { projects: projects.length, tasks: { total: tasks.length, byStatus }, notes: db.listNotes().length, reminders: db.listReminders().length, knowledge: ks, recentTasks: tasks.slice(0, 3).map(t => `[${t.status}] ${t.title}`) };
+  }},
 ];
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({

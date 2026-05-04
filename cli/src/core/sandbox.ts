@@ -1,12 +1,11 @@
 import { mkdirSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
-import { SANDBOX_ROOT, SANDBOX_DIRS, KNOWLEDGE_DIRS, MEMORY_DIR, LOGS_DIR } from "../config";
+import { SANDBOX_ROOT, SANDBOX_DIRS, KNOWLEDGE_DIRS, LOGS_DIR } from "../config";
 
 export function initSandbox(): void {
   const dirs = [
     ...Object.values(SANDBOX_DIRS),
     ...Object.values(KNOWLEDGE_DIRS),
-    MEMORY_DIR,
     LOGS_DIR,
     join(KNOWLEDGE_DIRS.integrations, "slack"),
     join(KNOWLEDGE_DIRS.integrations, "github"),

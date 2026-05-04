@@ -1,5 +1,4 @@
 import * as knowledge from "./knowledge";
-import * as memoryTools from "./memory";
 
 export interface MCPTool {
   name: string;
@@ -118,72 +117,6 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
     },
   },
 
-  // ── Memory Tools ──
-
-  {
-    name: "memory_stats",
-    description: "Get memory stats: short-term and long-term entry counts.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => memoryTools.memoryStats(),
-  },
-  {
-    name: "memory_save",
-    description: "Save a memory entry to short-term or long-term storage.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        content: { type: "string", description: "Memory content" },
-        tags: {
-          type: "array",
-          items: { type: "string" },
-          description: "Tags for categorization",
-        },
-        layer: { type: "string", enum: ["short", "long"], description: "Memory layer (default: short)" },
-      },
-      required: ["content"],
-    },
-    execute: (p) => {
-      const id = memoryTools.saveMemory(p.content, p.tags ?? [], p.layer ?? "short");
-      return { id, layer: p.layer ?? "short" };
-    },
-  },
-  {
-    name: "memory_recall",
-    description: "Search memories by keyword across both short-term and long-term storage.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        query: { type: "string", description: "Search query" },
-      },
-      required: ["query"],
-    },
-    execute: (p) => memoryTools.recallJSON(p.query),
-  },
-  {
-    name: "memory_promote",
-    description: "Promote a short-term memory to long-term storage.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "Memory entry ID" },
-      },
-      required: ["id"],
-    },
-    execute: (p) => {
-      const ok = memoryTools.promoteMemory(p.id);
-      if (!ok) throw new Error(`memory not found: ${p.id}`);
-      return { promoted: true, id: p.id };
-    },
-  },
-  {
-    name: "memory_clear_short_term",
-    description: "Clear all short-term memories.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => {
-      memoryTools.clearShortTerm();
-      return { cleared: true };
-    },
-  },
 ];
 
 export const KNOWLEDGE_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(

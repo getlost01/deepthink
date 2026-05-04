@@ -67,23 +67,13 @@ final class DeepThinkCLIService {
     }
 
     func recall(query: String, json: Bool = false) async -> CLIResult {
-        var args = ["memory", "recall", query]
+        var args = ["context", "knowledge", query]
         if json { args.append("--json") }
         return await run(args)
     }
 
     func remember(content: String, tags: [String] = [], layer: String = "short", json: Bool = false) async -> CLIResult {
-        var args = ["memory", "save", content, "--layer", layer]
-        if !tags.isEmpty {
-            args.append(contentsOf: ["--tags", tags.joined(separator: ",")])
-        }
-        if json { args.append("--json") }
-        return await run(args)
-    }
-
-    func memoryStats(json: Bool = false) async -> CLIResult {
-        var args = ["memory"]
-        if json { args.append("--json") }
+        let args = ["knowledge", "capture", "app", "memory", content]
         return await run(args)
     }
 

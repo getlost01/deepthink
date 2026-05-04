@@ -2,7 +2,7 @@ import { Agent } from "./base";
 import * as fileTools from "../tools/file";
 import * as search from "../tools/search";
 import * as analytics from "../tools/analytics";
-import * as memory from "../tools/memory";
+import * as knowledge from "../tools/knowledge";
 import { WORKSPACE_TOOL_MAP } from "../tools/workspace";
 
 type ToolFn = (...args: any[]) => any;
@@ -13,9 +13,8 @@ const TOOL_MAP: Record<string, ToolFn> = {
   search_web: search.searchWeb,
   search_local: search.searchLocal,
   analyze_file: analytics.analyzeFile,
-  save_memory: memory.saveMemory,
-  load_memory: memory.loadMemory,
-  recall: memory.recall,
+  save_knowledge: (content: string) => knowledge.saveIntegrationData("agent", "executor", content),
+  search_knowledge: (query: string) => knowledge.searchIntegrationData(query),
 };
 
 for (const [name, tool] of Object.entries(WORKSPACE_TOOL_MAP)) {

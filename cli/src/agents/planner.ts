@@ -8,7 +8,7 @@ interface PlanStep {
   details: string;
 }
 
-const BASE_TOOLS = ["write_file", "read_file", "search_web", "search_local", "analyze_file", "save_memory", "load_memory", "recall"];
+const BASE_TOOLS = ["write_file", "read_file", "search_web", "search_local", "analyze_file", "save_knowledge", "search_knowledge"];
 const ALL_TOOLS = [...BASE_TOOLS, ...WORKSPACE_TOOL_NAMES];
 
 export class Planner extends Agent {

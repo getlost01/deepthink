@@ -1,5 +1,5 @@
 import { query } from "../core/llm";
-import { saveMemory } from "../tools/memory";
+import { saveIntegrationData } from "../tools/knowledge";
 
 interface LogEntry {
   agent: string;
@@ -26,6 +26,6 @@ export abstract class Agent {
       promptPreview: prompt.slice(0, 100),
       responsePreview: response.slice(0, 200),
     });
-    saveMemory(`[${this.name}] ${response.slice(0, 300)}`, [this.name, "agent-output"], "short");
+    saveIntegrationData("agent", this.name, response.slice(0, 300), { type: "agent-output" });
   }
 }
