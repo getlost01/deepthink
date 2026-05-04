@@ -12,6 +12,7 @@ final class AppState {
     var selectedNoteID: UUID?
     var selectedTaskID: UUID?
     var selectedProjectID: UUID?
+    var selectedReminderID: UUID?
     var filterProjectID: UUID?
 
     // Project detail sub-navigation
@@ -101,6 +102,11 @@ final class AppState {
         selectedSection = .workspace
         workspaceTab = .tasks
         selectedTaskID = id
+    }
+
+    func navigateToReminder(_ id: UUID) {
+        selectedSection = .reminders
+        selectedReminderID = id
     }
 
     func navigateToProject(_ id: UUID) {

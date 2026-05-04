@@ -9,7 +9,7 @@ struct DeepThinkApp: App {
     var sharedModelContainer: ModelContainer = {
         StorageService.shared.ensureDirectoryStructure()
 
-        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self])
+        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self, Reminder.self])
         let config = ModelConfiguration(
             schema: schema,
             url: StorageService.shared.storeURL,
@@ -66,6 +66,12 @@ struct DeepThinkApp: App {
                     NotificationCenter.default.post(name: .createNewProject, object: nil)
                 }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
+
+                Button("New Reminder") {
+                    appState.selectedSection = .reminders
+                    NotificationCenter.default.post(name: .createNewReminder, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
             }
 
             CommandGroup(after: .toolbar) {
@@ -101,10 +107,15 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
+                Button("Go to Reminders") {
+                    appState.navigate(to: .reminders)
+                }
+                .keyboardShortcut("5", modifiers: .command)
+
                 Button("Go to Terminal") {
                     appState.navigate(to: .terminal)
                 }
-                .keyboardShortcut("5", modifiers: .command)
+                .keyboardShortcut("6", modifiers: .command)
 
                 Divider()
 
@@ -156,6 +167,10 @@ struct DeepThinkApp: App {
                 appState.workspaceTab = .projects
                 NotificationCenter.default.post(name: .createNewProject, object: nil)
             },
+            Command(title: "New Reminder", icon: "bell.badge.fill", shortcut: "⇧⌘R", section: "Create") {
+                appState.selectedSection = .reminders
+                NotificationCenter.default.post(name: .createNewReminder, object: nil)
+            },
 
             // Navigate
             Command(title: "Recent", icon: "clock.arrow.circlepath", shortcut: "⌘0", section: "Navigate") {
@@ -185,6 +200,9 @@ struct DeepThinkApp: App {
             Command(title: "Integration", icon: "cable.connector", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .integrations)
             },
+            Command(title: "Reminders", icon: "bell", shortcut: "⌘5", section: "Navigate") {
+                appState.navigate(to: .reminders)
+            },
             Command(title: "Assistants", icon: "person.2.circle", shortcut: nil, section: "Navigate") {
                 appState.agentConfigTab = .agents
                 appState.navigate(to: .integrations)
@@ -193,7 +211,7 @@ struct DeepThinkApp: App {
                 appState.agentConfigTab = .skillsAndRules
                 appState.navigate(to: .integrations)
             },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘5", section: "Navigate") {
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘6", section: "Navigate") {
                 appState.navigate(to: .terminal)
             },
             Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {
@@ -290,4 +308,5 @@ extension Notification.Name {
     static let createNewNote = Notification.Name("createNewNote")
     static let createNewTask = Notification.Name("createNewTask")
     static let createNewProject = Notification.Name("createNewProject")
+    static let createNewReminder = Notification.Name("createNewReminder")
 }

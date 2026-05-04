@@ -55,6 +55,7 @@ const RESOURCES = [
   { uri: "deepthink://tasks", name: "Tasks", description: "All tasks", fn: () => db.listTasks() },
   { uri: "deepthink://notes", name: "Notes", description: "All notes", fn: () => db.listNotes() },
   { uri: "deepthink://projects", name: "Projects", description: "All projects", fn: () => db.listProjects() },
+  { uri: "deepthink://reminders", name: "Reminders", description: "All reminders", fn: () => db.listReminders() },
   { uri: "deepthink://knowledge/stats", name: "Knowledge Stats", description: "Knowledge base overview", fn: () => knowledge.knowledgeStats() },
   { uri: "deepthink://knowledge/projects", name: "Knowledge Projects", description: "All knowledge projects", fn: () => knowledge.listProjects() },
   { uri: "deepthink://knowledge/integrations", name: "Integrations", description: "All integration sources and channels", fn: () => knowledge.listIntegrations() },

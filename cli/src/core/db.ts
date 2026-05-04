@@ -348,6 +348,109 @@ export function deleteNote(pk: number): void {
   db.close();
 }
 
+// ── Reminder ──
+
+export interface ReminderRow {
+  pk: number;
+  id: string;
+  title: string;
+  notes: string;
+  reminderDate: Date | null;
+  isCompleted: boolean;
+  completedAt: Date | null;
+  createdAt: Date;
+  modifiedAt: Date;
+}
+
+export function listReminders(opts: { completed?: boolean } = {}): ReminderRow[] {
+  const db = openDB();
+  let where = "1=1";
+  const params: any[] = [];
+
+  if (opts.completed !== undefined) {
+    where += " AND r.ZISCOMPLETED = ?";
+    params.push(opts.completed ? 1 : 0);
+  }
+
+  const rows = db.query(`
+    SELECT r.Z_PK, hex(r.ZID) as id, r.ZTITLE, r.ZNOTES, r.ZREMINDERDATE,
+           r.ZISCOMPLETED, r.ZCOMPLETEDAT, r.ZCREATEDAT, r.ZMODIFIEDAT
+    FROM ZREMINDER r
+    WHERE ${where}
+    ORDER BY r.ZMODIFIEDAT DESC
+  `).all(...params) as any[];
+  db.close();
+  return rows.map(r => ({
+    pk: r.Z_PK, id: r.id, title: r.ZTITLE, notes: r.ZNOTES ?? "",
+    reminderDate: r.ZREMINDERDATE ? fromCD(r.ZREMINDERDATE) : null,
+    isCompleted: !!r.ZISCOMPLETED,
+    completedAt: r.ZCOMPLETEDAT ? fromCD(r.ZCOMPLETEDAT) : null,
+    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+  }));
+}
+
+export function getReminder(pkStr: string): ReminderRow | null {
+  const reminders = listReminders();
+  const byPk = reminders.find(r => r.pk.toString() === pkStr);
+  if (byPk) return byPk;
+  const lower = pkStr.toLowerCase();
+  return reminders.find(r => r.title.toLowerCase() === lower) ??
+         reminders.find(r => r.title.toLowerCase().includes(lower)) ?? null;
+}
+
+export function createReminder(title: string, opts: {
+  notes?: string; reminderDate?: string;
+} = {}): number {
+  const db = openDB();
+  const { pk, ent } = nextPK(db, "Reminder");
+  const now = toCD(new Date());
+
+  let reminderDateCD: number | null = null;
+  if (opts.reminderDate) {
+    reminderDateCD = toCD(new Date(opts.reminderDate));
+  }
+
+  db.query(`
+    INSERT INTO ZREMINDER (Z_PK, Z_ENT, Z_OPT, ZISCOMPLETED, ZNOTIFICATIONSCHEDULED, ZCOMPLETEDAT, ZCREATEDAT, ZMODIFIEDAT, ZREMINDERDATE, ZNOTES, ZTITLE, ZID)
+    VALUES (?, ?, 1, 0, 0, NULL, ?, ?, ?, ?, ?, x'${uuidHex()}')
+  `).run(pk, ent, now, now, reminderDateCD, opts.notes ?? "", title);
+  db.close();
+  return pk;
+}
+
+export function updateReminder(pk: number, fields: Record<string, any>): void {
+  const db = openDB();
+  const sets: string[] = [];
+  const vals: any[] = [];
+
+  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
+  if (fields.notes !== undefined) { sets.push("ZNOTES = ?"); vals.push(fields.notes); }
+  if (fields.completed !== undefined) {
+    sets.push("ZISCOMPLETED = ?"); vals.push(fields.completed ? 1 : 0);
+    if (fields.completed) { sets.push("ZCOMPLETEDAT = ?"); vals.push(toCD(new Date())); }
+    else { sets.push("ZCOMPLETEDAT = ?"); vals.push(null); }
+  }
+  if (fields.reminderDate !== undefined) {
+    sets.push("ZREMINDERDATE = ?");
+    vals.push(fields.reminderDate ? toCD(new Date(fields.reminderDate)) : null);
+  }
+
+  if (sets.length === 0) { db.close(); return; }
+
+  sets.push("ZMODIFIEDAT = ?");
+  vals.push(toCD(new Date()));
+  vals.push(pk);
+
+  db.query(`UPDATE ZREMINDER SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  db.close();
+}
+
+export function deleteReminder(pk: number): void {
+  const db = openDB();
+  db.query("DELETE FROM ZREMINDER WHERE Z_PK = ?").run(pk);
+  db.close();
+}
+
 // ── Helpers ──
 
 export { formatDate };

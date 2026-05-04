@@ -108,9 +108,9 @@ Add to your MCP client's config file:
 }
 ```
 
-### Available Tools (41 total)
+### Available Tools (46 total)
 
-**Workspace** (16 tools)
+**Workspace** (21 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -129,6 +129,11 @@ Add to your MCP client's config file:
 | `workspace_create_project` | Create project with name, summary, color |
 | `workspace_update_project` | Update project fields |
 | `workspace_delete_project` | Delete project (items become unassigned) |
+| `workspace_list_reminders` | List reminders (filter by completion status) |
+| `workspace_get_reminder` | Get reminder by ID or title |
+| `workspace_create_reminder` | Create reminder with optional date/time |
+| `workspace_update_reminder` | Update reminder fields |
+| `workspace_delete_reminder` | Delete a reminder |
 | `workspace_summary` | Full workspace overview: counts, recent items, status breakdown |
 
 **Knowledge Base** (8 tools)
@@ -190,6 +195,7 @@ MCP resources for read-only access:
 | `deepthink://tasks` | All tasks as JSON |
 | `deepthink://notes` | All notes as JSON |
 | `deepthink://projects` | All projects as JSON |
+| `deepthink://reminders` | All reminders as JSON |
 | `deepthink://knowledge/stats` | Knowledge base overview |
 | `deepthink://knowledge/projects` | All knowledge projects |
 | `deepthink://knowledge/integrations` | Integration sources and channels |
@@ -208,6 +214,9 @@ Once configured, just talk to Claude naturally:
 > "Create an agent called 'DevOps Expert' that knows about infrastructure"
 > "Add a rule that triggers on code reviews to check for security issues"
 > "What memories do I have about deployment?"
+> "Remind me to review the PR tomorrow at 2pm"
+> "What reminders are overdue?"
+> "Mark the 'Ship v2.0' reminder as done"
 ```
 
 ## Features
@@ -215,6 +224,7 @@ Once configured, just talk to Claude naturally:
 | Feature | Description |
 |---------|-------------|
 | **Workspace** | Projects, notes, and tasks with rich markdown editing |
+| **Reminders** | Todo-style reminders with optional timed notifications |
 | **Knowledge Base** | Save web pages, files, clipboard, scripts, RSS feeds — all searchable |
 | **AI Chat** | Streaming chat with Claude, markdown rendering, code highlighting, conversation history, auto-compaction |
 | **AI Assistants** | Custom AI personas with specialized expertise and knowledge scopes |
@@ -293,6 +303,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 │  │Notes     │  │ Browser   │  │ Agents   │  │Sessions│ │
 │  │Tasks     │  │ Search    │  │ Skills   │  │        │ │
 │  │Projects  │  │ Timeline  │  │ Rules    │  │        │ │
+│  │Reminders │  │           │  │          │  │        │ │
 │  └────┬─────┘  └─────┬─────┘  └────┬─────┘  └────────┘ │
 │       │              │              │                    │
 │  ┌────┴──────────────┴──────────────┴──────────────────┐ │
@@ -356,11 +367,12 @@ DeepThink/
 | `Cmd+N` | New Note |
 | `Cmd+T` | New Task |
 | `Shift+Cmd+N` | New Project |
+| `Shift+Cmd+R` | New Reminder |
 | `Cmd+1` | Workspace |
-| `Cmd+2` | AI Chat |
-| `Cmd+3` | Knowledge |
+| `Cmd+2` | Knowledge |
+| `Cmd+3` | AI Chat |
 | `Cmd+4` | Connections |
-| `Cmd+5` | AI Assistants |
+| `Cmd+5` | Reminders |
 | `Cmd+6` | Terminal |
 
 ## License

@@ -8,6 +8,7 @@ enum SidebarSection: String, Identifiable {
     case workspace = "Workspace"
     case knowledge = "Knowledge"
     case aiAssistant = "AI Assistant"
+    case reminders = "Reminders"
     case integrations = "Integration"
     case terminal = "Terminal"
     case settings = "Settings"
@@ -19,7 +20,7 @@ enum SidebarSection: String, Identifiable {
     }
 
     static var mainSections: [SidebarSection] {
-        [.workspace, .knowledge, .aiAssistant]
+        [.workspace, .knowledge, .aiAssistant, .reminders]
     }
 
     static var toolSections: [SidebarSection] {
@@ -32,6 +33,7 @@ enum SidebarSection: String, Identifiable {
         case .workspace: "square.grid.2x2"
         case .knowledge: "brain"
         case .aiAssistant: "message.and.waveform"
+        case .reminders: "bell"
         case .integrations: "puzzlepiece.extension"
         case .terminal: "terminal"
         case .settings: "gear"
@@ -44,6 +46,7 @@ enum SidebarSection: String, Identifiable {
         case .workspace: "Projects, notes, and tasks"
         case .knowledge: "Save and search anything you learn"
         case .aiAssistant: "Chat, assistants, and automations"
+        case .reminders: "Set reminders with optional times"
         case .integrations: "Add tools and services for AI to use"
         case .terminal: "Built-in terminal sessions"
         case .settings: "Choose AI model and preferences"
@@ -56,6 +59,7 @@ enum SidebarSection: String, Identifiable {
         case .workspace: "Your projects, notes, and tasks in one place"
         case .knowledge: "Save articles, ideas, and research in one place"
         case .aiAssistant: "Chat with AI, manage assistants and automations"
+        case .reminders: "Things to remember, with optional time alerts"
         case .integrations: "Connect tools and services to make AI more powerful"
         case .terminal: "Run commands and scripts"
         case .settings: "Model selection and usage"
@@ -68,6 +72,7 @@ enum SidebarSection: String, Identifiable {
         case .workspace: "This is your home base. Create projects to organize your work, write notes to capture ideas, and add tasks to track what needs doing."
         case .knowledge: "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. Everything here can be used by AI to give you better answers."
         case .aiAssistant: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
+        case .reminders: "Keep track of things you need to remember. Optionally set a date and time to get notified."
         case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
         case .terminal: "A built-in command line for running scripts and system commands."
         case .settings: "Choose which AI model to use and track your usage."

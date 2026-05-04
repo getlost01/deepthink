@@ -265,6 +265,88 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
   },
 
+  // ── Reminders ──
+  {
+    name: "workspace_list_reminders",
+    description: "List all reminders. Optionally filter by completion status.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        completed: { type: "boolean", description: "Filter by completion status" },
+      },
+    },
+    execute: (p) => db.listReminders({ completed: p.completed }),
+  },
+  {
+    name: "workspace_get_reminder",
+    description: "Get a single reminder by ID (number) or title (fuzzy match).",
+    inputSchema: {
+      type: "object",
+      properties: { ref: { type: "string", description: "Reminder ID or title" } },
+      required: ["ref"],
+    },
+    execute: (p) => {
+      const r = db.getReminder(p.ref);
+      if (!r) throw new Error(`reminder not found: ${p.ref}`);
+      return r;
+    },
+  },
+  {
+    name: "workspace_create_reminder",
+    description: "Create a new reminder with an optional date/time to be reminded.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Reminder title" },
+        notes: { type: "string", description: "Additional notes" },
+        reminderDate: { type: "string", description: "When to remind, in ISO 8601 format (e.g. 2026-05-05T14:00:00). Optional." },
+      },
+      required: ["title"],
+    },
+    execute: (p) => {
+      const pk = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
+      return { pk, title: p.title, reminderDate: p.reminderDate ?? null };
+    },
+  },
+  {
+    name: "workspace_update_reminder",
+    description: "Update an existing reminder. Only provided fields are changed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ref: { type: "string", description: "Reminder ID or title" },
+        title: { type: "string" },
+        notes: { type: "string" },
+        completed: { type: "boolean" },
+        reminderDate: { type: "string", description: "ISO 8601 date or 'none' to clear" },
+      },
+      required: ["ref"],
+    },
+    execute: (p) => {
+      const r = db.getReminder(p.ref);
+      if (!r) throw new Error(`reminder not found: ${p.ref}`);
+      const { ref, ...fields } = p;
+      if (fields.reminderDate === "none") fields.reminderDate = null;
+      db.updateReminder(r.pk, fields);
+      return { pk: r.pk, updated: Object.keys(fields) };
+    },
+  },
+  {
+    name: "workspace_delete_reminder",
+    description: "Delete a reminder permanently.",
+    inputSchema: {
+      type: "object",
+      properties: { ref: { type: "string", description: "Reminder ID or title" } },
+      required: ["ref"],
+    },
+    execute: (p) => {
+      const r = db.getReminder(p.ref);
+      if (!r) throw new Error(`reminder not found: ${p.ref}`);
+      db.deleteReminder(r.pk);
+      return { pk: r.pk, deleted: true };
+    },
+  },
+
   // ── Summary ──
   {
     name: "workspace_summary",
@@ -274,14 +356,19 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const projects = db.listProjects();
       const tasks = db.listTasks();
       const notes = db.listNotes();
+      const reminders = db.listReminders();
 
       const tasksByStatus: Record<string, number> = {};
       for (const t of tasks) tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
+
+      const activeReminders = reminders.filter(r => !r.isCompleted);
+      const overdueReminders = activeReminders.filter(r => r.reminderDate && r.reminderDate < new Date());
 
       return {
         projects: { total: projects.length, items: projects.slice(0, 5).map(p => ({ pk: p.pk, name: p.name, tasks: p.taskCount, notes: p.noteCount })) },
         tasks: { total: tasks.length, byStatus: tasksByStatus, recent: tasks.slice(0, 5).map(t => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })) },
         notes: { total: notes.length, recent: notes.slice(0, 5).map(n => ({ pk: n.pk, title: n.title, project: n.projectName })) },
+        reminders: { total: reminders.length, active: activeReminders.length, overdue: overdueReminders.length, recent: activeReminders.slice(0, 5).map(r => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate })) },
       };
     },
   },

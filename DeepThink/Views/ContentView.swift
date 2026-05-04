@@ -46,6 +46,8 @@ struct ContentRouter: View {
                 KnowledgeView()
             case .aiAssistant:
                 AIView()
+            case .reminders:
+                ReminderListView()
             case .integrations:
                 IntegrationsView()
             case .terminal:

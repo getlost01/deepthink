@@ -97,9 +97,17 @@
 		FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C66CC1E57209BBE097F8539 /* SettingsView.swift */; };
 		FD6D20B9B09705F3C0CCC6BA /* IntegrationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F257EA6BF7E39381490714F /* IntegrationsView.swift */; };
 3DF3E22A3F2DA588BBD79666 /* RecentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 101DAE59A12AAAD6506C98C5 /* RecentView.swift */; };
+		AA1B2C3D4E5F6A7B8C9D0E1F /* Reminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB2C3D4E5F6A7B8C9D0E1F2A /* Reminder.swift */; };
+		CC3D4E5F6A7B8C9D0E1F2A3B /* ReminderListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4E5F6A7B8C9D0E1F2A3B4C /* ReminderListView.swift */; };
+		EE5F6A7B8C9D0E1F2A3B4C5D /* ReminderRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF6A7B8C9D0E1F2A3B4C5D6E /* ReminderRowView.swift */; };
+		117B8C9D0E1F2A3B4C5D6E7F /* ReminderDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 228C9D0E1F2A3B4C5D6E7F8A /* ReminderDetailView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BB2C3D4E5F6A7B8C9D0E1F2A /* Reminder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Reminder.swift; sourceTree = "<group>"; };
+		DD4E5F6A7B8C9D0E1F2A3B4C /* ReminderListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderListView.swift; sourceTree = "<group>"; };
+		FF6A7B8C9D0E1F2A3B4C5D6E /* ReminderRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderRowView.swift; sourceTree = "<group>"; };
+		228C9D0E1F2A3B4C5D6E7F8A /* ReminderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderDetailView.swift; sourceTree = "<group>"; };
 		00321B3E3D5116C5303B7C3C /* TaskRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskRowView.swift; sourceTree = "<group>"; };
 		02EDE2230502601202B39705 /* RuleFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleFileService.swift; sourceTree = "<group>"; };
 		0504053EE219B17048F459A7 /* WorkspaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceView.swift; sourceTree = "<group>"; };
@@ -348,6 +356,7 @@
 				0DA13E31242007EA05FF001C /* KnowledgeGraph */,
 				BB62AE060EB91288CD0D701B /* Notes */,
 				FDB9C1E02F37E60DFFB43F0E /* Projects */,
+				339D0E1F2A3B4C5D6E7F8A9B /* Reminders */,
 				37D6F61E431B23DFB9DAB870 /* Settings */,
 				AE3C4AB48A9AE3413110EAA7 /* Shared */,
 				2F91C831D6D3D39A6C0642DD /* Sidebar */,
@@ -434,6 +443,7 @@
 				537CE926D065F008EC744C10 /* NoteLink.swift */,
 				9BBEB102368C76D7041EBA1B /* NoteVersion.swift */,
 				0784749C45091B5719161924 /* Project.swift */,
+				BB2C3D4E5F6A7B8C9D0E1F2A /* Reminder.swift */,
 				15F1316DBB5604DCB63BED10 /* SkillFile.swift */,
 				37D86BA082EAA0134C406EC5 /* Tag.swift */,
 				EE774C4B2C861B287E9C4233 /* TaskItem.swift */,
@@ -477,6 +487,16 @@
 				1981FD26EE6BC702EE2B1280 /* ToolsHubView.swift */,
 			);
 			path = Tools;
+			sourceTree = "<group>";
+		};
+		339D0E1F2A3B4C5D6E7F8A9B /* Reminders */ = {
+			isa = PBXGroup;
+			children = (
+				228C9D0E1F2A3B4C5D6E7F8A /* ReminderDetailView.swift */,
+				DD4E5F6A7B8C9D0E1F2A3B4C /* ReminderListView.swift */,
+				FF6A7B8C9D0E1F2A3B4C5D6E /* ReminderRowView.swift */,
+			);
+			path = Reminders;
 			sourceTree = "<group>";
 		};
 		CABD7B97A12FD64ED1348A1F /* Tasks */ = {
@@ -680,6 +700,10 @@
 				EC533D14ECC430F10582A1C1 /* NoteVersion.swift in Sources */,
 				6D349FF311BC466F3D3C8ED6 /* NoteVersionsView.swift in Sources */,
 				B40C93BBE9604F4B5427F9F2 /* Project.swift in Sources */,
+				AA1B2C3D4E5F6A7B8C9D0E1F /* Reminder.swift in Sources */,
+				CC3D4E5F6A7B8C9D0E1F2A3B /* ReminderListView.swift in Sources */,
+				EE5F6A7B8C9D0E1F2A3B4C5D /* ReminderRowView.swift in Sources */,
+				117B8C9D0E1F2A3B4C5D6E7F /* ReminderDetailView.swift in Sources */,
 				CCDFAE51E527844637F13A09 /* ProjectDetailView.swift in Sources */,
 				B47B0C5B2114EB20F19D2969 /* ProjectInspectorView.swift in Sources */,
 				484EAB4E6352F976F8488CD4 /* ProjectListView.swift in Sources */,
