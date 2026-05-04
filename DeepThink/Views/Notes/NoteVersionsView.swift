@@ -71,7 +71,7 @@ struct NoteVersionsView: View {
                             VersioningService.shared.restore(note: note, from: version, context: modelContext)
                             dismiss()
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.dsPrimary)
                         .controlSize(.small)
                     }
                     .padding(DS.Spacing.md)

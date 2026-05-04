@@ -12,7 +12,7 @@ struct CommandPaletteView: View {
         @Bindable var state = state
 
         ZStack {
-            Color.black.opacity(DS.Opacity.overlayBg)
+            DS.Colors.overlayBg
                 .ignoresSafeArea()
                 .onTapGesture { dismiss() }
 

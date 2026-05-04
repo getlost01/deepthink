@@ -48,7 +48,7 @@ struct FileTreeView: View {
                     }
                     Button("Open Folder") { pickFolder() }
                         .font(DS.Font.caption)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.dsSecondary)
                         .controlSize(.small)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -200,11 +200,11 @@ private struct FileNodeRow: View {
         if node.isDirectory { return DS.Colors.accent }
         let ext = (node.name as NSString).pathExtension.lowercased()
         switch ext {
-        case "md", "markdown": return .blue
-        case "swift": return .orange
-        case "ts", "tsx", "js", "jsx": return .yellow
+        case "md", "markdown": return DS.Colors.info
+        case "swift": return DS.Colors.amber
+        case "ts", "tsx", "js", "jsx": return DS.Colors.gold
         case "py": return DS.Colors.success
-        case "json", "yaml", "yml", "toml": return .gray
+        case "json", "yaml", "yml", "toml": return DS.Colors.slate
         case "pdf": return DS.Colors.danger
         default: return DS.Colors.textTertiary
         }

@@ -168,7 +168,7 @@ struct AllNotesView: View {
             if note.isPinned {
                 Image(systemName: "pin.fill")
                     .font(.system(size: 8))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(DS.Colors.amber)
             }
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {

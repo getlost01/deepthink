@@ -338,12 +338,12 @@ struct ClaudeSettingsView: View {
                 HStack(spacing: DS.Spacing.sm) {
                     Button("Browse...") { selectCLIPath() }
                         .font(DS.Font.caption)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.dsSecondary)
                         .controlSize(.small)
 
                     Button("Re-scan") { claude.rescan() }
                         .font(DS.Font.caption)
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.dsSecondary)
                         .controlSize(.small)
 
                     Spacer()

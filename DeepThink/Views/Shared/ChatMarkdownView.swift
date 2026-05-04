@@ -53,10 +53,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
         <meta charset="utf-8">
         <style>
             @media (prefers-color-scheme: dark) {
-                :root { --text: #e0e0e0; --text2: #888; --bg-code: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --accent: #7eb0f7; --bg-hover: rgba(255,255,255,0.04); --bg-inline: rgba(255,255,255,0.07); }
+                :root { --text: #e0e0e0; --text2: #888; --bg-code: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --accent: #4dacf7; --bg-hover: rgba(255,255,255,0.04); --bg-inline: rgba(255,255,255,0.07); }
             }
             @media (prefers-color-scheme: light) {
-                :root { --text: #1d1d1f; --text2: #888; --bg-code: rgba(0,0,0,0.03); --border: rgba(0,0,0,0.08); --accent: #0066cc; --bg-hover: rgba(0,0,0,0.03); --bg-inline: rgba(0,0,0,0.05); }
+                :root { --text: #1d1d1f; --text2: #888; --bg-code: rgba(0,0,0,0.03); --border: rgba(0,0,0,0.08); --accent: #1a8ad4; --bg-hover: rgba(0,0,0,0.03); --bg-inline: rgba(0,0,0,0.05); }
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             html, body { overflow: hidden; pointer-events: none; }

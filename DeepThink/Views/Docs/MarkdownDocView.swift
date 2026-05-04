@@ -48,7 +48,7 @@ struct MarkdownDocView: NSViewRepresentable {
             h3 { font-size: 16px; font-weight: 600; margin: 16px 0 8px; color: #e8e8e8; }
             h4, h5, h6 { font-size: 14px; font-weight: 600; margin: 12px 0 6px; color: #e0e0e0; }
             p { margin: 8px 0; }
-            a { color: #58a6ff; text-decoration: none; }
+            a { color: #4dacf7; text-decoration: none; }
             a:hover { text-decoration: underline; }
             code {
                 font-family: 'SF Mono', Menlo, monospace;

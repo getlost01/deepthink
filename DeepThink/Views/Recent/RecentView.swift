@@ -36,7 +36,7 @@ struct RecentView: View {
             items.append(RecentItem(
                 id: "note-\(note.id)",
                 icon: "doc.text",
-                iconColor: Color(hue: 0.75, saturation: 0.5, brightness: 0.85),
+                iconColor: DS.Colors.purple,
                 title: note.title.isEmpty ? "Untitled Note" : note.title,
                 subtitle: note.project?.name,
                 detail: "\(note.wordCount) words",
@@ -67,7 +67,7 @@ struct RecentView: View {
             items.append(RecentItem(
                 id: "knowledge-\(entry.id)",
                 icon: entry.sourceIcon,
-                iconColor: Color(hue: 0.55, saturation: 0.5, brightness: 0.8),
+                iconColor: DS.Colors.teal,
                 title: entry.title,
                 subtitle: entry.folder,
                 detail: entry.formattedSize,
@@ -115,7 +115,7 @@ struct RecentView: View {
                         value: "\(tasks.filter { $0.status == .inProgress }.count)",
                         label: "In Progress",
                         icon: "circle.lefthalf.filled",
-                        color: Color(hue: 0.09, saturation: 0.7, brightness: 0.9)
+                        color: DS.Colors.amber
                     )
                     quickStat(
                         value: "\(tasks.filter { $0.isOverdue }.count)",
@@ -345,9 +345,9 @@ extension RecentItemKind {
 
     var badgeColor: Color {
         switch self {
-        case .note: Color(hue: 0.75, saturation: 0.5, brightness: 0.85)
-        case .task: Color(hue: 0.09, saturation: 0.7, brightness: 0.9)
-        case .knowledge: Color(hue: 0.55, saturation: 0.5, brightness: 0.8)
+        case .note: DS.Colors.purple
+        case .task: DS.Colors.amber
+        case .knowledge: DS.Colors.teal
         }
     }
 }

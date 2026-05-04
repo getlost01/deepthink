@@ -254,10 +254,10 @@ struct SearchResult: Identifiable {
 
         var color: Color {
             switch self {
-            case .note: .blue
-            case .task: .green
-            case .project: .teal
-            case .context: .orange
+            case .note: DS.Colors.info
+            case .task: DS.Colors.success
+            case .project: DS.Colors.teal
+            case .context: DS.Colors.amber
             }
         }
     }

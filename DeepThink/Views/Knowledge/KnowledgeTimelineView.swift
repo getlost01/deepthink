@@ -90,10 +90,10 @@ struct KnowledgeTimelineView: View {
                 }
 
                 HStack(spacing: DS.Spacing.md) {
-                    StatBox(value: "\(knowledge.entries.count)", label: "Total Entries", icon: "book", color: .blue)
-                    StatBox(value: "\(todayEntries.count)", label: "Today", icon: "sun.max", color: .orange)
-                    StatBox(value: "\(thisWeekEntries.count)", label: "This Week", icon: "calendar", color: .green)
-                    StatBox(value: "\(recentNotes.count)", label: "Active Notes", icon: "doc.text", color: .purple)
+                    StatBox(value: "\(knowledge.entries.count)", label: "Total Entries", icon: "book", color: DS.Colors.info)
+                    StatBox(value: "\(todayEntries.count)", label: "Today", icon: "sun.max", color: DS.Colors.amber)
+                    StatBox(value: "\(thisWeekEntries.count)", label: "This Week", icon: "calendar", color: DS.Colors.success)
+                    StatBox(value: "\(recentNotes.count)", label: "Active Notes", icon: "doc.text", color: DS.Colors.purple)
                 }
 
                 if !todayEntries.isEmpty {

@@ -45,38 +45,47 @@ enum DS {
     }
 
     enum Colors {
-        static let accent = Color(hue: 0.61, saturation: 0.72, brightness: 0.98)
-        static let accentFill = accent.opacity(0.12)
+        static let accent = Color(hue: 0.58, saturation: 0.72, brightness: 0.98)
+        static let accentFill = accent.opacity(0.14)
         static let accentGradient = LinearGradient(
-            colors: [Color(hue: 0.61, saturation: 0.65, brightness: 1.0), Color(hue: 0.65, saturation: 0.75, brightness: 0.92)],
+            colors: [Color(hue: 0.56, saturation: 0.60, brightness: 1.0), Color(hue: 0.61, saturation: 0.78, brightness: 0.92)],
             startPoint: .topLeading, endPoint: .bottomTrailing
         )
         static let onAccent = Color.white
 
         static let surface = Color(nsColor: .controlBackgroundColor)
         static let surfaceElevated = Color(nsColor: .textBackgroundColor)
-        static let fill = Color(hue: 0.63, saturation: 0.04, brightness: 0.50).opacity(0.07)
-        static let fillSecondary = Color(hue: 0.63, saturation: 0.05, brightness: 0.50).opacity(0.10)
+        static let fill = Color(hue: 0.58, saturation: 0.06, brightness: 0.50).opacity(0.07)
+        static let fillSecondary = Color(hue: 0.58, saturation: 0.08, brightness: 0.50).opacity(0.10)
 
         static let border = Color.primary.opacity(0.10)
         static let borderHover = Color.primary.opacity(0.18)
-        static let borderFocused = accent.opacity(0.45)
+        static let borderFocused = accent.opacity(0.50)
 
         static let textPrimary = Color.primary
         static let textSecondary = Color.secondary
         static let textTertiary = Color.primary.opacity(0.45)
 
-        static let success = Color(hue: 0.38, saturation: 0.70, brightness: 0.82)
-        static let warning = Color(hue: 0.09, saturation: 0.75, brightness: 0.95)
+        static let success = Color(hue: 0.38, saturation: 0.72, brightness: 0.82)
+        static let warning = Color(hue: 0.09, saturation: 0.78, brightness: 0.95)
         static let danger = Color(hue: 0.0, saturation: 0.72, brightness: 0.90)
-        static let knowledge = Color(hue: 0.75, saturation: 0.5, brightness: 0.85)
+        static let knowledge = Color(hue: 0.75, saturation: 0.55, brightness: 0.88)
 
-        static let terminal = Color(NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0))
-        static let terminalNS = NSColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0)
+        static let info = Color(hue: 0.58, saturation: 0.65, brightness: 0.95)
+        static let teal = Color(hue: 0.48, saturation: 0.60, brightness: 0.85)
+        static let purple = Color(hue: 0.75, saturation: 0.55, brightness: 0.90)
+        static let amber = Color(hue: 0.09, saturation: 0.72, brightness: 0.95)
+        static let lime = Color(hue: 0.35, saturation: 0.62, brightness: 0.82)
+        static let slate = Color(hue: 0.58, saturation: 0.15, brightness: 0.58)
+        static let gold = Color(hue: 0.12, saturation: 0.75, brightness: 0.92)
+
+        static let terminal = Color(NSColor(red: 0.1, green: 0.1, blue: 0.13, alpha: 1.0))
+        static let terminalNS = NSColor(red: 0.1, green: 0.1, blue: 0.13, alpha: 1.0)
 
         static let cardShadow = Color.black.opacity(0.06)
         static let modalShadow = Color.black.opacity(0.25)
         static let subtleShadow = Color.black.opacity(0.10)
+        static let overlayBg = Color.black.opacity(Opacity.overlayBg)
     }
 
     enum Opacity {
@@ -732,6 +741,62 @@ struct PlainPointerButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == PlainPointerButtonStyle {
     static var plainPointer: PlainPointerButtonStyle { PlainPointerButtonStyle() }
+}
+
+struct DSPrimaryButtonStyle: ButtonStyle {
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(DS.Font.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(DS.Colors.onAccent)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm - 1)
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .fill(configuration.isPressed ? DS.Colors.accent.opacity(0.85) : (isHovered ? DS.Colors.accent.opacity(0.9) : DS.Colors.accent))
+            )
+            .onHover { hovering in
+                isHovered = hovering
+                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+            .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+struct DSSecondaryButtonStyle: ButtonStyle {
+    @State private var isHovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(DS.Font.caption)
+            .fontWeight(.medium)
+            .foregroundStyle(DS.Colors.textPrimary)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm - 1)
+            .background(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .fill(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 1)
+            )
+            .onHover { hovering in
+                isHovered = hovering
+                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+            }
+            .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+extension ButtonStyle where Self == DSPrimaryButtonStyle {
+    static var dsPrimary: DSPrimaryButtonStyle { DSPrimaryButtonStyle() }
+}
+
+extension ButtonStyle where Self == DSSecondaryButtonStyle {
+    static var dsSecondary: DSSecondaryButtonStyle { DSSecondaryButtonStyle() }
 }
 
 // MARK: - Calendar Picker

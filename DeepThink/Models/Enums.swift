@@ -134,11 +134,11 @@ enum TaskStatus: String, Codable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .backlog: Color(hue: 0.0, saturation: 0.0, brightness: 0.55)
-        case .todo: Color(hue: 0.61, saturation: 0.65, brightness: 0.95)
+        case .backlog: Color(hue: 0.58, saturation: 0.12, brightness: 0.55)
+        case .todo: Color(hue: 0.58, saturation: 0.72, brightness: 0.98)
         case .inProgress: Color(hue: 0.09, saturation: 0.78, brightness: 0.95)
-        case .done: Color(hue: 0.38, saturation: 0.72, brightness: 0.80)
-        case .cancelled: Color(hue: 0.0, saturation: 0.60, brightness: 0.75)
+        case .done: Color(hue: 0.38, saturation: 0.72, brightness: 0.82)
+        case .cancelled: Color(hue: 0.0, saturation: 0.55, brightness: 0.72)
         }
     }
 
@@ -174,11 +174,11 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .none: Color(hue: 0.0, saturation: 0.0, brightness: 0.55)
-        case .low: Color(hue: 0.58, saturation: 0.55, brightness: 0.85)
-        case .medium: Color(hue: 0.12, saturation: 0.70, brightness: 0.92)
+        case .none: Color(hue: 0.58, saturation: 0.12, brightness: 0.55)
+        case .low: Color(hue: 0.58, saturation: 0.60, brightness: 0.90)
+        case .medium: Color(hue: 0.09, saturation: 0.72, brightness: 0.95)
         case .high: Color(hue: 0.06, saturation: 0.80, brightness: 0.95)
-        case .urgent: Color(hue: 0.0, saturation: 0.78, brightness: 0.92)
+        case .urgent: Color(hue: 0.0, saturation: 0.75, brightness: 0.92)
         }
     }
 

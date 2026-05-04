@@ -36,7 +36,7 @@ struct ToolsHubView: View {
                     Text("Presets")
                         .font(DS.Font.caption)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.dsSecondary)
                 .controlSize(.small)
 
                 Button {
@@ -48,7 +48,7 @@ struct ToolsHubView: View {
                     }
                     .font(DS.Font.caption)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.dsPrimary)
                 .controlSize(.small)
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -215,7 +215,7 @@ private struct ToolCard: View {
 
                 Button("Test", action: onTest)
                     .font(DS.Font.small)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.dsSecondary)
                     .controlSize(.mini)
 
                 Spacer()
@@ -554,7 +554,7 @@ private struct PresetServersSheet: View {
                             .font(DS.Font.small)
                     }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.dsSecondary)
                 .controlSize(.small)
 
                 Button("Done") { dismiss() }
@@ -674,7 +674,7 @@ private struct CatalogRow: View {
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
 
-                    DSPill(text: package.category, color: .blue)
+                    DSPill(text: package.category, color: DS.Colors.info)
                 }
 
                 if !package.description.isEmpty {
@@ -703,7 +703,7 @@ private struct CatalogRow: View {
                     .foregroundStyle(DS.Colors.success)
             } else {
                 Button("Add", action: onAdd)
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.dsSecondary)
                     .controlSize(.small)
             }
         }

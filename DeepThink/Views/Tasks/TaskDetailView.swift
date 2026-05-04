@@ -257,7 +257,7 @@ private struct CustomPointsSheet: View {
                 Button("Cancel") { isPresented = false }
                     .buttonStyle(.plainPointer)
                 Button("Apply") { apply() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.dsPrimary)
                     .disabled(Int(text) == nil)
             }
         }

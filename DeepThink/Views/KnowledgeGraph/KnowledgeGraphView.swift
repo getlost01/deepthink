@@ -235,7 +235,7 @@ struct KnowledgeGraphView: View {
             Circle()
                 .fill(fillColor)
                 .frame(width: radius, height: radius)
-                .shadow(color: isSelected ? .accentColor.opacity(0.4) : .clear, radius: 8)
+                .shadow(color: isSelected ? DS.Colors.accent.opacity(0.4) : .clear, radius: 8)
                 .overlay(
                     Circle()
                         .strokeBorder(isHovered ? DS.Colors.accent : Color.clear, lineWidth: 2)

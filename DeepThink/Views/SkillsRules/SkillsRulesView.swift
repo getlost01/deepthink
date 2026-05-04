@@ -318,7 +318,7 @@ private struct RuleRow: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                         .lineLimit(1)
                     HStack(spacing: DS.Spacing.xs) {
-                        DSPill(text: rule.trigger, color: .blue)
+                        DSPill(text: rule.trigger, color: DS.Colors.info)
                         Text(rule.category)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
