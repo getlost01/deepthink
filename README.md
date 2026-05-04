@@ -35,19 +35,56 @@ The app auto-installs CLI binaries (`deepthink`, `deepthink-mcp`) to `~/.local/b
 ### CLI Usage
 
 ```bash
+# Smart context retrieval (token-efficient)
+deepthink context overview                        # compact system overview (~200 tokens)
+deepthink context query "What's blocking v2?"     # auto-routed smart retrieval
+deepthink context workspace "auth migration"      # relevant tasks/notes/reminders only
+deepthink context knowledge "API design"           # BM25-scored knowledge chunks
+
 # Ask AI with workspace context
-deepthink ask "What tasks need attention?"
+deepthink ask "What tasks need attention?" --recall --project MyProject
 
-# Run with MCP tools
-deepthink run "Create a task called Review PR"
+# Run multi-step tasks with AI agents
+deepthink run "Analyze the codebase and create a migration plan" --project MyProject
 
-# Manage knowledge
+# Natural language workspace management
+deepthink workspace "create a high-priority task for API migration due Friday"
+
+# Task management
+deepthink task list --status "In Progress" --project MyProject
+deepthink task add "Review PR" --priority high --due 2026-05-10 --project MyProject
+deepthink task show "Review PR"
+deepthink task done "Review PR"
+
+# Note management
+deepthink note list --project MyProject --pinned
+deepthink note add "Meeting Notes" --content "..." --project MyProject
+deepthink note show "Meeting Notes"
+
+# Project management
+deepthink project list
+deepthink project add "MyProject" --summary "API migration" --color "#FF6B6B"
+
+# Knowledge base
 deepthink knowledge list
-deepthink knowledge add --url "https://example.com/article"
+deepthink knowledge search "auth middleware" --source slack --limit 10
+deepthink knowledge save MyProject "Decided to use JWT tokens" --type decision
+deepthink knowledge load MyProject
+deepthink knowledge capture slack general "Deploy completed successfully"
+deepthink knowledge compress slack general
+deepthink knowledge archive OldProject
 
-# Manage agents
-deepthink agents list
-deepthink agents chat researcher "What do we know about X?"
+# Search
+deepthink search "React server components"        # web search
+deepthink search local "TODO" --dir ./src          # local file search
+
+# Analysis
+deepthink analyze data.csv --question "What are the trends?"
+deepthink analyze data.csv --report --title "Q2 Analysis"
+deepthink analyze quick data.csv                   # local stats only
+
+# Documentation
+deepthink docs "API Reference" --input ./src/api.ts --output api-docs
 ```
 
 ## MCP Server
@@ -108,7 +145,16 @@ Add to your MCP client's config file:
 }
 ```
 
-### Available Tools (46 total)
+### Available Tools (50 total)
+
+**Smart Context** (4 tools) — token-efficient retrieval, use these first
+
+| Tool | Description |
+|------|-------------|
+| `smart_query` | Auto-routes: summary mode vs full retrieval based on intent |
+| `knowledge_context` | BM25-scored knowledge retrieval (~90% token savings vs full load) |
+| `workspace_context` | Query-relevant workspace snapshot (tasks, notes, reminders) |
+| `deepthink_overview` | Compact counts + top items (~200 tokens) |
 
 **Workspace** (21 tools)
 
@@ -196,10 +242,10 @@ MCP resources for read-only access:
 | `deepthink://notes` | All notes as JSON |
 | `deepthink://projects` | All projects as JSON |
 | `deepthink://reminders` | All reminders as JSON |
+| `deepthink://overview` | Compact system overview (~200 tokens) |
 | `deepthink://knowledge/stats` | Knowledge base overview |
 | `deepthink://knowledge/projects` | All knowledge projects |
 | `deepthink://knowledge/integrations` | Integration sources and channels |
-| `deepthink://memory/stats` | Memory entry counts |
 
 ### Example Usage
 
@@ -223,15 +269,16 @@ Once configured, just talk to Claude naturally:
 
 | Feature | Description |
 |---------|-------------|
-| **Workspace** | Projects, notes, and tasks with rich markdown editing |
+| **Recent** | Activity feed across your workspace — recent notes, tasks, and changes |
+| **Workspace** | Projects, notes, and tasks with rich markdown editing and task board view |
 | **Reminders** | Todo-style reminders with optional timed notifications |
-| **Knowledge Base** | Save web pages, files, clipboard, scripts, RSS feeds — all searchable |
-| **AI Chat** | Streaming chat with Claude, markdown rendering, code highlighting, conversation history, auto-compaction |
+| **Knowledge Base** | Save web pages, files, clipboard, scripts, RSS feeds — all searchable with timeline view |
+| **AI Chat** | Streaming chat with Claude, markdown rendering, code highlighting, conversation history, auto-compaction, edit branching |
 | **AI Assistants** | Custom AI personas with specialized expertise and knowledge scopes |
 | **Automations** | Slash-command skills in chat, context-aware rules that auto-inject into prompts |
 | **Connections** | MCP server integration — give AI access to external tools |
-| **Smart RAG** | TF-IDF indexed retrieval with chunking and token budgeting |
-| **Terminal** | Built-in terminal with AI-powered output analysis |
+| **Smart RAG** | TF-IDF + BM25 indexed retrieval with chunking, token budgeting, and smart context routing |
+| **Terminal** | Built-in terminal with active session tracking |
 | **Command Palette** | Quick access to everything via `Cmd+K` |
 
 ## AI Chat
@@ -256,7 +303,7 @@ Non-MCP queries stream token-by-token via `--output-format stream-json`. MCP que
 
 ### Slash Commands
 
-Type `/` in the chat input to see available skills. Skills are reusable AI prompts stored as markdown files in `~/.claude/commands/`. They auto-fill `{{input}}` from:
+Type `/` in the chat input to see available skills. Skills are reusable AI prompts stored as markdown files in `~/Documents/DeepThink/.claude/commands/`. They auto-fill `{{input}}` from:
 1. Text after the command (`/summarize some text here`)
 2. Selected text in the active note
 3. Current note content
@@ -368,12 +415,16 @@ DeepThink/
 | `Cmd+T` | New Task |
 | `Shift+Cmd+N` | New Project |
 | `Shift+Cmd+R` | New Reminder |
+| `Cmd+0` | Recent |
 | `Cmd+1` | Workspace |
 | `Cmd+2` | Knowledge |
-| `Cmd+3` | AI Chat |
+| `Cmd+3` | AI Assistant |
 | `Cmd+4` | Connections |
 | `Cmd+5` | Reminders |
 | `Cmd+6` | Terminal |
+| `Shift+Cmd+1` | Workspace → Projects |
+| `Shift+Cmd+2` | Workspace → Notes |
+| `Shift+Cmd+3` | Workspace → Tasks |
 
 ## License
 
