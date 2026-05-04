@@ -32,6 +32,10 @@ final class AppState {
     var isChatProcessing = false
     var chatProcessingStartTime: Date?
 
+    // Terminal state (persists across tab switches)
+    var terminalSessions: [TerminalSession] = []
+    var activeTerminalSessionID: UUID?
+
     // Agent Config sub-navigation
     var agentConfigTab: AgentConfigTab = .agents
 

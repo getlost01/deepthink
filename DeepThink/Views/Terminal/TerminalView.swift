@@ -2,11 +2,13 @@ import SwiftUI
 import SwiftTerm
 
 struct DeepThinkTerminalView: View {
-    @State private var sessions: [TerminalSession] = []
-    @State private var activeSessionID: UUID?
+    @Environment(AppState.self) private var appState
     @State private var isAnalyzing = false
     @State private var analysisResult: String?
     @State private var showAnalysisSheet = false
+
+    private var sessions: [TerminalSession] { appState.terminalSessions }
+    private var activeSessionID: UUID? { appState.activeTerminalSessionID }
 
     private var activeSession: TerminalSession? {
         sessions.first { $0.id == activeSessionID }
@@ -22,7 +24,7 @@ struct DeepThinkTerminalView: View {
                                 session: session,
                                 isActive: session.id == activeSessionID,
                                 canClose: sessions.count > 1,
-                                onSelect: { activeSessionID = session.id },
+                                onSelect: { appState.activeTerminalSessionID = session.id },
                                 onClose: { closeSession(session.id) }
                             )
                         }
@@ -59,7 +61,7 @@ struct DeepThinkTerminalView: View {
             }
         }
         .onAppear {
-            if sessions.isEmpty {
+            if appState.terminalSessions.isEmpty {
                 addSession()
             }
         }
@@ -73,22 +75,22 @@ struct DeepThinkTerminalView: View {
     // MARK: - Session Management
 
     private func addSession() {
-        let session = TerminalSession(title: "Terminal \(sessions.count + 1)")
-        sessions.append(session)
-        activeSessionID = session.id
+        let session = TerminalSession(title: "Terminal \(appState.terminalSessions.count + 1)")
+        appState.terminalSessions.append(session)
+        appState.activeTerminalSessionID = session.id
     }
 
     private func closeSession(_ id: UUID) {
-        guard sessions.count > 1 else { return }
-        guard let index = sessions.firstIndex(where: { $0.id == id }) else { return }
+        guard appState.terminalSessions.count > 1 else { return }
+        guard let index = appState.terminalSessions.firstIndex(where: { $0.id == id }) else { return }
 
-        sessions[index].terminate()
-        let wasActive = id == activeSessionID
-        sessions.remove(at: index)
+        appState.terminalSessions[index].terminate()
+        let wasActive = id == appState.activeTerminalSessionID
+        appState.terminalSessions.remove(at: index)
 
         if wasActive {
-            let newIndex = min(index, sessions.count - 1)
-            activeSessionID = sessions[newIndex].id
+            let newIndex = min(index, appState.terminalSessions.count - 1)
+            appState.activeTerminalSessionID = appState.terminalSessions[newIndex].id
         }
     }
 
