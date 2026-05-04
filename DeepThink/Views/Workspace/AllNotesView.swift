@@ -74,18 +74,9 @@ struct AllNotesView: View {
                         hint: searchText.isEmpty ? "Try creating a note for your next meeting or idea" : nil
                     )
                 } else {
-                    List(selection: Binding(
-                        get: { appState.selectedNoteID },
-                        set: { appState.selectedNoteID = $0 }
-                    )) {
-                        if !pinnedNotes.isEmpty {
-                            Section {
-                                ForEach(pinnedNotes) { note in
-                                    noteRow(note)
-                                        .tag(note.id)
-                                        .contextMenu { noteContextMenu(note) }
-                                }
-                            } header: {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            if !pinnedNotes.isEmpty {
                                 HStack(spacing: DS.Spacing.xs) {
                                     Image(systemName: "pin.fill")
                                         .font(.system(size: 8))
@@ -93,18 +84,41 @@ struct AllNotesView: View {
                                         .font(DS.Font.small)
                                 }
                                 .foregroundStyle(DS.Colors.textTertiary)
-                            }
-                        }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, DS.Spacing.md)
+                                .padding(.top, DS.Spacing.sm)
+                                .padding(.bottom, DS.Spacing.xs)
 
-                        Section {
-                            ForEach(unpinnedNotes) { note in
-                                noteRow(note)
-                                    .tag(note.id)
+                                ForEach(pinnedNotes) { note in
+                                    let isSelected = appState.selectedNoteID == note.id
+                                    Button { appState.selectedNoteID = note.id } label: {
+                                        noteRow(note)
+                                            .padding(.horizontal, DS.Spacing.sm)
+                                            .padding(.vertical, 2)
+                                            .background(isSelected ? DS.Colors.accentFill : .clear)
+                                            .contentShape(Rectangle())
+                                    }
+                                    .buttonStyle(.plainPointer)
                                     .contextMenu { noteContextMenu(note) }
+                                    Divider().padding(.horizontal, DS.Spacing.sm)
+                                }
+                            }
+
+                            ForEach(unpinnedNotes) { note in
+                                let isSelected = appState.selectedNoteID == note.id
+                                Button { appState.selectedNoteID = note.id } label: {
+                                    noteRow(note)
+                                        .padding(.horizontal, DS.Spacing.sm)
+                                        .padding(.vertical, 2)
+                                        .background(isSelected ? DS.Colors.accentFill : .clear)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plainPointer)
+                                .contextMenu { noteContextMenu(note) }
+                                Divider().padding(.horizontal, DS.Spacing.sm)
                             }
                         }
                     }
-                    .listStyle(.plain)
                 }
             }
             .background(DS.Colors.surface)

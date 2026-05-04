@@ -56,6 +56,7 @@ private struct ProjectInspectorContent: View {
                                         .foregroundStyle(DS.Colors.onAccent)
                                 }
                             }
+                            .pointerOnHover()
                             .onTapGesture {
                                 project.color = hex
                             }

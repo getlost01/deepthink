@@ -230,6 +230,7 @@ private struct ToolCard: View {
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .padding(DS.Spacing.md)
         .dsClickable()
     }

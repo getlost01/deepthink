@@ -64,6 +64,7 @@ struct CommandPaletteView: View {
                                     let itemIndex = flatItems.firstIndex(where: { $0.id == item.id }) ?? 0
                                     PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
                                         .id(item.id)
+                                        .pointerOnHover()
                                         .onTapGesture {
                                             switch item {
                                             case .command(let cmd): cmd.action()

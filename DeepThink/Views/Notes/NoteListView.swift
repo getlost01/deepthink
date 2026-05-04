@@ -100,8 +100,9 @@ struct NoteListView: View {
                                         .foregroundStyle(DS.Colors.textTertiary)
                                 }
                             }
-                            .padding(.horizontal, DS.Spacing.lg)
                             .padding(.vertical, DS.Spacing.sm)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, 2)
                             .background(isSelected ? DS.Colors.accentFill : .clear)
                             .contentShape(Rectangle())
                         }

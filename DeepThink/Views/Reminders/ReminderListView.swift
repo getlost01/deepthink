@@ -95,7 +95,7 @@ struct ReminderListView: View {
 
             DSSearchField(text: $searchText, placeholder: "Search reminders...")
                 .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.xs)
+                .padding(.bottom, DS.Spacing.md)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
@@ -143,6 +143,7 @@ struct ReminderListView: View {
                         } label: {
                             ReminderRowView(reminder: reminder)
                                 .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, 2)
                                 .background(isSelected ? DS.Colors.accentFill : .clear)
                                 .contentShape(Rectangle())
                         }
@@ -154,6 +155,7 @@ struct ReminderListView: View {
                             Divider()
                             Button("Delete", role: .destructive) { deleteReminder(reminder) }
                         }
+                        Divider().padding(.horizontal, DS.Spacing.sm)
                     }
                 }
             }

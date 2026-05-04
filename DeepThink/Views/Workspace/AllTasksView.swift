@@ -208,30 +208,38 @@ struct AllTasksView: View {
                         hint: searchText.isEmpty ? "Start by adding something you need to get done this week" : nil
                     )
                 } else {
-                    List(filteredTasks, selection: Binding(
-                        get: { appState.selectedTaskID },
-                        set: { appState.selectedTaskID = $0 }
-                    )) { task in
-                        taskRow(task)
-                            .tag(task.id)
-                            .contextMenu {
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filteredTasks) { task in
+                                let isSelected = appState.selectedTaskID == task.id
                                 Button { appState.selectedTaskID = task.id } label: {
-                                    Label("Open", systemImage: "doc.text")
+                                    taskRow(task)
+                                        .padding(.horizontal, DS.Spacing.sm)
+                                        .padding(.vertical, 2)
+                                        .background(isSelected ? DS.Colors.accentFill : .clear)
+                                        .contentShape(Rectangle())
                                 }
-                                Button {
-                                    task.status = .done
-                                    task.completedAt = Date()
-                                    task.modifiedAt = Date()
-                                } label: {
-                                    Label("Mark Done", systemImage: "checkmark.circle")
+                                .buttonStyle(.plainPointer)
+                                .contextMenu {
+                                    Button { appState.selectedTaskID = task.id } label: {
+                                        Label("Open", systemImage: "doc.text")
+                                    }
+                                    Button {
+                                        task.status = .done
+                                        task.completedAt = Date()
+                                        task.modifiedAt = Date()
+                                    } label: {
+                                        Label("Mark Done", systemImage: "checkmark.circle")
+                                    }
+                                    Divider()
+                                    Button(role: .destructive) { taskToDelete = task; showDeleteConfirm = true } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
-                                Divider()
-                                Button(role: .destructive) { taskToDelete = task; showDeleteConfirm = true } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+                                Divider().padding(.horizontal, DS.Spacing.sm)
                             }
+                        }
                     }
-                    .listStyle(.plain)
                 }
             }
             .background(DS.Colors.surface)

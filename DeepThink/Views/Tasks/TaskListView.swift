@@ -170,6 +170,7 @@ struct TaskListView: View {
                                 } label: {
                                     TaskRowView(task: task)
                                         .padding(.horizontal, DS.Spacing.sm)
+                                        .padding(.vertical, 2)
                                         .background(isSelected ? DS.Colors.accentFill : .clear)
                                         .contentShape(Rectangle())
                                 }
