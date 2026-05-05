@@ -290,6 +290,28 @@ struct DeepThinkApp: App {
         guard let data = try? JSONSerialization.data(withJSONObject: config, options: .prettyPrinted) else { return }
         try? data.write(to: mcpConfigPath)
         StorageService.shared.writeLog("MCP config installed: \(mcpConfigPath.path)", to: "app")
+
+        registerGlobalMCP(mcpBinaryPath: mcpBinaryPath)
+    }
+
+    private static func registerGlobalMCP(mcpBinaryPath: String) {
+        guard let claudePath = [
+            DeepThinkPaths.localBin + "/claude",
+            "/usr/local/bin/claude",
+            "/opt/homebrew/bin/claude"
+        ].first(where: { FileManager.default.isExecutableFile(atPath: $0) }) else { return }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: claudePath)
+        process.arguments = ["mcp", "add", "--transport", "stdio", "--scope", "user", "deepthink", "--", mcpBinaryPath]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+        process.waitUntilExit()
+
+        if process.terminationStatus == 0 {
+            StorageService.shared.writeLog("MCP registered globally via claude CLI", to: "app")
+        }
     }
 
     private static func installBinary(named bundleName: String, as installName: String, fm: FileManager, installDir: String) {

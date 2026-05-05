@@ -63,11 +63,9 @@ Settings → Connections → MCP Servers:
 
 ### For External Clients
 
-Add to your MCP client's config:
-
-**Claude CLI** (`~/.claude.json`):
-```json
-{ "mcpServers": { "deepthink": { "command": "deepthink-mcp", "args": [] } } }
+**Claude Code CLI** (recommended — registers globally):
+```bash
+claude mcp add --transport stdio --scope user deepthink -- ~/.local/bin/deepthink-mcp
 ```
 
 **Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
