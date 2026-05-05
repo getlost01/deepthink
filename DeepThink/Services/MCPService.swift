@@ -8,6 +8,7 @@ final class MCPService {
     var isRunning = false
     var lastError: String?
     var isGlobalMCPRegistered = false
+    var isCheckingGlobalMCP = false
     var isCLIInstalled = false
     var isMCPInstalled = false
 
@@ -22,9 +23,11 @@ final class MCPService {
         let claudePath = ClaudeService.shared.claudePath
         guard !claudePath.isEmpty else {
             isGlobalMCPRegistered = false
+            isCheckingGlobalMCP = false
             return
         }
 
+        isCheckingGlobalMCP = true
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: claudePath)
@@ -41,6 +44,7 @@ final class MCPService {
 
             DispatchQueue.main.async {
                 self?.isGlobalMCPRegistered = found
+                self?.isCheckingGlobalMCP = false
             }
         }
     }
