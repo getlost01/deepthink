@@ -5,24 +5,38 @@ struct TerminalHostView: NSViewRepresentable {
     let session: TerminalSession
     var fontSize: CGFloat = 13
 
-    func makeNSView(context: Context) -> LocalProcessTerminalView {
-        let termView = LocalProcessTerminalView(frame: .zero)
-        termView.processDelegate = context.coordinator
+    func makeNSView(context: Context) -> NSView {
+        let wrapper = NSView(frame: .zero)
 
-        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        termView.font = font
-        termView.nativeForegroundColor = .white
-        termView.nativeBackgroundColor = DS.Colors.terminalNS
-        termView.optionAsMetaKey = true
+        let termView: LocalProcessTerminalView
+        if let existing = session.terminalView {
+            termView = existing
+        } else {
+            termView = LocalProcessTerminalView(frame: .zero)
+            termView.processDelegate = context.coordinator
+            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            termView.font = font
+            termView.nativeForegroundColor = .white
+            termView.nativeBackgroundColor = DS.Colors.terminalNS
+            termView.optionAsMetaKey = true
+            session.terminalView = termView
+            session.start()
+        }
 
-        session.terminalView = termView
-        session.start()
+        termView.removeFromSuperview()
+        termView.translatesAutoresizingMaskIntoConstraints = false
+        wrapper.addSubview(termView)
+        NSLayoutConstraint.activate([
+            termView.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            termView.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+            termView.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
+            termView.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+        ])
 
-        return termView
+        return wrapper
     }
 
-    func updateNSView(_ nsView: LocalProcessTerminalView, context: Context) {
-        // Font or appearance updates can go here
+    func updateNSView(_ nsView: NSView, context: Context) {
     }
 
     func makeCoordinator() -> Coordinator {
