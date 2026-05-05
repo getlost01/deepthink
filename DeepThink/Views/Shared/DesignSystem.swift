@@ -622,6 +622,63 @@ struct DSSectionDivider: View {
     }
 }
 
+// MARK: - Section Banner
+
+struct DSSectionBanner: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    var color: Color = DS.Colors.accent
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Image(systemName: icon)
+                .font(.system(size: DS.IconSize.md, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 28, height: 28)
+                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: DS.Spacing.xs) {
+                    Text(title)
+                        .font(DS.Font.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Text("(\(subtitle))")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.Colors.fill)
+    }
+}
+
+// MARK: - Field Label
+
+struct DSFieldLabel: View {
+    let label: String
+    var hint: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(label)
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .textCase(.uppercase)
+            if let hint {
+                Text(hint)
+                    .font(DS.Font.micro)
+                    .foregroundStyle(DS.Colors.textTertiary.opacity(0.7))
+            }
+        }
+    }
+}
+
 // MARK: - View Extensions
 
 extension View {

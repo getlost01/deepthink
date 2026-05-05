@@ -133,6 +133,7 @@ struct AIChatView: View {
             }
             .menuStyle(.borderlessButton)
             .fixedSize()
+            .pointerOnHover()
 
             ActiveRulesBar(
                 rules: RuleFileService.shared.matchingRules(for: appState.activeContextDictionary),
@@ -175,9 +176,14 @@ struct AIChatView: View {
                             Label("Assistants", systemImage: "person.2.circle")
                         }
                         Button {
-                            onShowConfig(.skillsAndRules)
+                            onShowConfig(.skills)
                         } label: {
-                            Label("Automations", systemImage: "gearshape.2")
+                            Label("Skills", systemImage: "sparkles")
+                        }
+                        Button {
+                            onShowConfig(.rules)
+                        } label: {
+                            Label("Rules", systemImage: "bolt")
                         }
                     } label: {
                         Image(systemName: "gearshape")
@@ -187,6 +193,7 @@ struct AIChatView: View {
                     }
                     .menuStyle(.borderlessButton)
                     .frame(width: 28)
+                    .pointerOnHover()
                     .help("Assistants & Automations")
                 }
 

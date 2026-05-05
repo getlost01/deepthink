@@ -5,21 +5,29 @@ struct AgentListView: View {
     @State private var selectedAgent: AgentFile?
     @State private var showDeleteConfirm = false
     @State private var showTemplates = false
+    @State private var searchText = ""
 
     private var agentService: AgentFileService { AgentFileService.shared }
+
+    private var filteredAgents: [AgentFile] {
+        if searchText.isEmpty { return agentService.agents }
+        let q = searchText.lowercased()
+        return agentService.agents.filter {
+            $0.name.lowercased().contains(q) || $0.role.lowercased().contains(q)
+        }
+    }
 
     var body: some View {
         ResizableSplitView(minLeftWidth: 280, minRightWidth: 400) {
             VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.md) {
-                    DSStatChip(label: "Assistants", value: "\(agentService.agents.count)", icon: "person.2.circle")
-                    Spacer()
+                HStack(spacing: DS.Spacing.sm) {
+                    DSSearchField(text: $searchText, placeholder: "Search assistants...")
                     DSActionButton(title: "New", icon: "plus") {
                         createNewAgent()
                     }
                 }
                 .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
 
                 Divider()
 
@@ -27,22 +35,28 @@ struct AgentListView: View {
                     DSEmptyState(
                         icon: "person.2.circle",
                         title: "Create Your First Assistant",
-                        subtitle: "Assistants are AI helpers tailored for specific tasks — like a writing coach, research buddy, or task planner. Pick a template to get started quickly.",
+                        subtitle: "Assistants are AI helpers tailored for specific tasks — like a writing coach, research buddy, or task planner.",
                         hint: "Try starting with a template, then customize it to fit your needs",
                         action: { showTemplates = true },
                         actionTitle: "Browse Templates"
                     )
+                } else if filteredAgents.isEmpty {
+                    DSEmptyState(
+                        icon: "magnifyingglass",
+                        title: "No Results",
+                        subtitle: "No assistants match \"\(searchText)\""
+                    )
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(agentService.agents) { agent in
+                            ForEach(filteredAgents) { agent in
                                 AgentRow(
                                     agent: agent,
                                     isSelected: selectedAgent?.id == agent.id
                                 ) {
                                     selectedAgent = agent
                                 }
-                                if agent.id != agentService.agents.last?.id {
+                                if agent.id != filteredAgents.last?.id {
                                     Divider().padding(.leading, 52)
                                 }
                             }
@@ -62,7 +76,7 @@ struct AgentListView: View {
                 DSEmptyState(
                     icon: "person.2.circle",
                     title: "Select an Assistant",
-                    subtitle: "Choose an assistant from the list to customize its personality, expertise, and what it knows about. Changes save automatically."
+                    subtitle: "Choose an assistant from the list to customize its personality, expertise, and what it knows about."
                 )
             }
         }
@@ -127,46 +141,39 @@ struct AgentTemplate: Identifiable {
 
     static let templates: [AgentTemplate] = [
         AgentTemplate(
-            name: "Research Assistant",
-            role: "Finds and summarizes information",
+            name: "Research Deep-Dive",
+            role: "Thorough research with knowledge base context",
             icon: "magnifyingglass.circle",
-            description: "Helps you dig into topics, summarize articles, and gather insights from your knowledge base.",
-            systemPrompt: "You are a research assistant. Help the user explore topics thoroughly. When answering questions, cite relevant sources from the knowledge base. Break down complex topics into digestible summaries. Ask clarifying questions when the research direction is unclear."
+            description: "Searches your knowledge base, cross-references sources, and delivers structured findings with citations.",
+            systemPrompt: "You are a research assistant with access to the user's knowledge base. When researching:\n1. Check existing knowledge entries first\n2. Cross-reference multiple sources\n3. Cite which entries informed your answer\n4. Flag gaps and suggest what to capture next\n5. Provide structured findings with clear sections"
         ),
         AgentTemplate(
-            name: "Writing Coach",
-            role: "Helps improve your writing",
-            icon: "pencil.circle",
-            description: "Reviews drafts, suggests improvements, helps with tone and clarity, and assists with any kind of writing.",
-            systemPrompt: "You are a writing coach. Help the user improve their writing by suggesting clearer phrasing, better structure, and more engaging tone. When reviewing drafts, be constructive and specific. Offer alternatives rather than just pointing out issues. Adapt your suggestions to the intended audience and purpose."
-        ),
-        AgentTemplate(
-            name: "Task Planner",
-            role: "Breaks work into actionable steps",
-            icon: "list.bullet.rectangle",
-            description: "Takes big goals and breaks them into manageable tasks with priorities and deadlines.",
-            systemPrompt: "You are a task planner. Help the user break down large goals into concrete, actionable tasks. Suggest priorities, estimate effort, and identify dependencies. When creating plans, be specific and realistic. Ask about deadlines and constraints to make better suggestions."
-        ),
-        AgentTemplate(
-            name: "Meeting Notes",
-            role: "Summarizes discussions and action items",
+            name: "Meeting Processor",
+            role: "Turns raw meeting notes into structured output",
             icon: "person.2",
-            description: "Turns messy meeting notes into clean summaries with key decisions and next steps.",
-            systemPrompt: "You are a meeting notes assistant. Help the user organize meeting notes into clear summaries. Extract key decisions, action items (with owners if mentioned), and follow-up topics. Use bullet points for clarity. If notes are rough or incomplete, ask clarifying questions."
+            description: "Takes messy meeting notes and extracts decisions, action items with owners, and follow-ups.",
+            systemPrompt: "You are a meeting notes processor. When given meeting notes:\n1. Add a one-line summary at the top\n2. Extract key decisions in bold\n3. List action items as a checklist with owners\n4. Note unresolved questions separately\n5. Suggest follow-up items with suggested dates"
         ),
         AgentTemplate(
-            name: "Idea Brainstormer",
-            role: "Generates and explores creative ideas",
-            icon: "lightbulb",
-            description: "Helps brainstorm solutions, explore possibilities, and think through ideas from different angles.",
-            systemPrompt: "You are a creative brainstorming partner. Help the user generate ideas by exploring different angles, asking provocative questions, and building on their thoughts. Use techniques like analogies, reversals, and 'what if' scenarios. Be enthusiastic but also help evaluate which ideas have the most potential."
+            name: "Learning Companion",
+            role: "Helps you learn and retain new topics",
+            icon: "brain",
+            description: "Explains concepts at your level, creates flashcard-style summaries, and quizzes you on knowledge.",
+            systemPrompt: "You are a learning companion. Help the user learn effectively:\n- Explain concepts starting from what they already know\n- Use analogies and concrete examples\n- Create concise summaries suitable for knowledge capture\n- Ask follow-up questions to test understanding\n- Suggest related topics to explore next"
         ),
         AgentTemplate(
-            name: "Code Explainer",
-            role: "Makes technical concepts easy to understand",
-            icon: "chevron.left.forwardslash.chevron.right",
-            description: "Explains code, technical docs, and programming concepts in plain language.",
-            systemPrompt: "You are a code explainer. Help the user understand technical concepts by explaining them in simple, accessible language. Use analogies to everyday concepts when helpful. When explaining code, walk through it step by step. Avoid jargon unless the user is comfortable with it — ask about their experience level."
+            name: "Content Curator",
+            role: "Captures and organizes information from any source",
+            icon: "tray.and.arrow.down",
+            description: "Takes raw content — articles, pastes, URLs — and turns them into clean, tagged knowledge entries.",
+            systemPrompt: "You are a content curator for a personal knowledge base. When given raw content:\n1. Extract the key information worth keeping\n2. Rewrite into clean, scannable format with headings\n3. Suggest 3-5 specific tags\n4. Identify connections to topics the user might already have\n5. Note the source and capture date"
+        ),
+        AgentTemplate(
+            name: "Weekly Reviewer",
+            role: "Generates weekly reviews and planning",
+            icon: "calendar",
+            description: "Reviews your week's activity and helps plan the next one with priorities and goals.",
+            systemPrompt: "You are a weekly review assistant. Help the user reflect and plan:\n1. Summarize what was accomplished this week\n2. Identify what's still in progress or blocked\n3. Review upcoming deadlines and commitments\n4. Suggest 3 priorities for next week\n5. Note any knowledge gaps or research needed"
         ),
     ]
 }
@@ -275,28 +282,22 @@ private struct AgentRow: View {
                         .frame(width: 32, height: 32)
                     Image(systemName: agent.icon)
                         .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
+                        .foregroundStyle(DS.Colors.textTertiary)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Text(agent.name)
-                            .font(DS.Font.body)
-                            .fontWeight(isSelected ? .semibold : .regular)
-                            .foregroundStyle(DS.Colors.textPrimary)
-                        if agent.isBuiltIn {
-                            Text("Built-in")
-                                .font(.system(size: 8, weight: .medium))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(DS.Colors.fill, in: Capsule())
-                        }
+                HStack(spacing: DS.Spacing.xs) {
+                    Text(agent.name)
+                        .font(DS.Font.body)
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    if agent.isBuiltIn {
+                        Text("Built-in")
+                            .font(.system(size: 8, weight: .medium))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(DS.Colors.fill, in: Capsule())
                     }
-                    Text(agent.role)
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                        .lineLimit(1)
                 }
 
                 Spacer()
@@ -336,113 +337,22 @@ private struct AgentDetailEditor: View {
     @State private var editablePrompt: String = ""
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
+    @State private var showIconPicker = false
 
     private let icons = [
         "person.circle", "magnifyingglass.circle", "chevron.left.forwardslash.chevron.right",
         "list.bullet.rectangle", "pencil.circle", "chart.bar.xaxis",
-        "brain", "lightbulb", "wrench.and.screwdriver", "globe"
+        "brain", "lightbulb", "wrench.and.screwdriver", "globe",
+        "person.2", "star", "heart", "bolt", "leaf"
     ]
 
     var body: some View {
         VStack(spacing: 0) {
-            // Toolbar: icon picker, chat, delete
-            HStack(spacing: DS.Spacing.sm) {
-                ForEach(icons, id: \.self) { ic in
-                    Button {
-                        icon = ic
-                        scheduleSave()
-                    } label: {
-                        Image(systemName: ic)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textTertiary)
-                            .frame(width: 22, height: 22)
-                            .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: Circle())
-                    }
-                    .buttonStyle(.plainPointer)
-                }
-
-                Spacer()
-
-                Picker("", selection: Binding(
-                    get: { model ?? "default" },
-                    set: { model = $0 == "default" ? nil : $0; scheduleSave() }
-                )) {
-                    Text("Default").tag("default")
-                    Text("Haiku").tag("claude-haiku-4-5-20251001")
-                    Text("Sonnet").tag("claude-sonnet-4-6")
-                    Text("Opus").tag("claude-opus-4-6")
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 200)
-
-                Button(action: onChat) {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "bubble.left.fill")
-                            .font(.system(size: 9))
-                        Text("Chat")
-                            .font(DS.Font.small)
-                            .fontWeight(.medium)
-                    }
-                    .foregroundStyle(DS.Colors.onAccent)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.xs + 2)
-                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                }
-                .buttonStyle(.plainPointer)
-
-                if !agent.isBuiltIn {
-                    DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
-                        onDelete()
-                    }
-                }
-            }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
-
+            editorToolbar
+            Divider()
+            editorFields
             Divider()
 
-            // Inline fields
-            VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.md) {
-                    Image(systemName: icon)
-                        .font(.system(size: DS.IconSize.lg, weight: .medium))
-                        .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 24)
-                    TextField("Assistant name", text: $name)
-                        .textFieldStyle(.plain)
-                        .font(DS.Font.title)
-                        .onChange(of: name) { scheduleSave() }
-                }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.top, DS.Spacing.md)
-
-                TextField("Describe what this assistant helps with...", text: $role)
-                    .textFieldStyle(.plain)
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.leading, 24 + DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.xs)
-                    .onChange(of: role) { scheduleSave() }
-
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "book")
-                        .font(.system(size: 10))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    TextField("Topics this assistant knows about (comma-separated)", text: $knowledgeScope)
-                        .textFieldStyle(.plain)
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .onChange(of: knowledgeScope) { scheduleSave() }
-                }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.bottom, DS.Spacing.md)
-            }
-
-            Divider()
-
-            // System prompt editor
             MarkdownEditorWithToggle(
                 text: $editablePrompt,
                 placeholder: "Write instructions for how this assistant should behave...",
@@ -453,6 +363,135 @@ private struct AgentDetailEditor: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadAgent() }
         .onChange(of: agent.id) { loadAgent() }
+    }
+
+    @ViewBuilder
+    private var editorToolbar: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Button(action: onChat) {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "bubble.left.fill")
+                        .font(.system(size: 9))
+                    Text("Chat")
+                        .font(DS.Font.small)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(DS.Colors.onAccent)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs + 2)
+                .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            }
+            .buttonStyle(.plainPointer)
+
+            Spacer()
+
+            Picker("", selection: Binding(
+                get: { model ?? "default" },
+                set: { model = $0 == "default" ? nil : $0; scheduleSave() }
+            )) {
+                Text("Default").tag("default")
+                Text("Haiku").tag("claude-haiku-4-5-20251001")
+                Text("Sonnet").tag("claude-sonnet-4-6")
+                Text("Opus").tag("claude-opus-4-6")
+            }
+            .pickerStyle(.menu)
+            .font(DS.Font.caption)
+            .foregroundStyle(DS.Colors.textSecondary)
+            .frame(width: 120)
+            .pointerOnHover()
+
+            if !agent.isBuiltIn {
+                DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
+                    onDelete()
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
+        .background(DS.Colors.surfaceElevated)
+    }
+
+    @ViewBuilder
+    private var editorFields: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.md) {
+                Button {
+                    showIconPicker.toggle()
+                } label: {
+                    Image(systemName: icon)
+                        .font(.system(size: DS.IconSize.lg, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                        .frame(width: 32, height: 32)
+                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plainPointer)
+                .help("Change icon")
+                .popover(isPresented: $showIconPicker, arrowEdge: .bottom) {
+                    iconPickerPopover
+                }
+
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    TextField("Assistant name", text: $name)
+                        .textFieldStyle(.plain)
+                        .font(DS.Font.title)
+                        .onChange(of: name) { scheduleSave() }
+                    TextField("What does this assistant help with?", text: $role)
+                        .textFieldStyle(.plain)
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .onChange(of: role) { scheduleSave() }
+                }
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+
+            Divider().padding(.horizontal, DS.Spacing.lg)
+
+            HStack(spacing: DS.Spacing.sm) {
+                DSFieldLabel(label: "Knowledge")
+                Spacer()
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.top, DS.Spacing.sm)
+
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "book")
+                    .font(.system(size: 10))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                TextField("e.g. Swift, macOS, UI design", text: $knowledgeScope)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .onChange(of: knowledgeScope) { scheduleSave() }
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.bottom, DS.Spacing.md)
+        }
+    }
+
+    @ViewBuilder
+    private var iconPickerPopover: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: DS.Spacing.xs), count: 5), spacing: DS.Spacing.xs) {
+            ForEach(icons, id: \.self) { ic in
+                Button {
+                    icon = ic
+                    showIconPicker = false
+                    scheduleSave()
+                } label: {
+                    Image(systemName: ic)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                        .frame(width: 32, height: 32)
+                        .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+            }
+        }
+        .padding(DS.Spacing.md)
     }
 
     private func loadAgent() {

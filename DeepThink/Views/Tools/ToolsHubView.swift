@@ -21,14 +21,21 @@ struct ToolsHubView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            DSSectionBanner(
+                icon: "puzzlepiece.extension",
+                title: "MCP Servers",
+                subtitle: "Connect external tools and services for AI to use",
+                color: DS.Colors.teal
+            )
+
+            Divider()
+
             HStack(spacing: DS.Spacing.sm) {
-                DSHelpButton(text: SidebarSection.integrations.helpText)
-
-                Spacer()
-
                 Text("\(servers.filter(\.isEnabled).count) active")
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textSecondary)
+
+                Spacer()
 
                 Button {
                     showPresets = true
@@ -51,8 +58,8 @@ struct ToolsHubView: View {
                 .buttonStyle(.dsPrimary)
                 .controlSize(.small)
             }
-            .padding(.horizontal, DS.Spacing.xl)
-            .padding(.vertical, DS.Spacing.md)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm)
             .background(DS.Colors.surfaceElevated)
 
             Divider()
@@ -74,7 +81,7 @@ struct ToolsHubView: View {
                         .buttonStyle(.plainPointer)
                     }
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
             }
 
@@ -94,7 +101,7 @@ struct ToolsHubView: View {
                             ToolCard(server: server, onTest: { testServer(server) }, onDelete: { deleteServer(server) })
                         }
                     }
-                    .padding(DS.Spacing.xl)
+                    .padding(DS.Spacing.lg)
                 }
             }
 
@@ -110,7 +117,7 @@ struct ToolsHubView: View {
                         .font(DS.Font.caption)
                         .buttonStyle(.plainPointer)
                 }
-                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
                 .background(DS.Colors.surfaceElevated)
             }
@@ -185,6 +192,7 @@ private struct ToolCard: View {
                 Toggle("", isOn: $server.isEnabled)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
+                    .pointerOnHover()
             }
 
             if !server.serverDescription.isEmpty {

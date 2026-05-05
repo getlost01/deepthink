@@ -30,8 +30,10 @@ struct AgentConfigView: View {
                 switch appState.agentConfigTab {
                 case .agents:
                     AgentListView()
-                case .skillsAndRules:
-                    SkillsRulesView()
+                case .skills:
+                    SkillsListView()
+                case .rules:
+                    RulesListView()
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)

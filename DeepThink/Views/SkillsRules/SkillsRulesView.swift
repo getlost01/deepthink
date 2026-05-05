@@ -1,98 +1,37 @@
 import SwiftUI
 
-struct SkillsRulesView: View {
-    @State private var mode: SRMode = .skills
+// MARK: - Skills List View
+
+struct SkillsListView: View {
     @State private var selectedSkill: SkillFile?
-    @State private var selectedRule: RuleFile?
     @State private var showRunSheet = false
     @State private var skillToRun: SkillFile?
     @State private var showDeleteConfirm = false
-    @State private var deleteTarget: String = ""
+    @State private var searchText = ""
 
     private var skillService: SkillFileService { SkillFileService.shared }
-    private var ruleService: RuleFileService { RuleFileService.shared }
 
-    enum SRMode: String, CaseIterable {
-        case skills = "Skills"
-        case rules = "Rules"
+    private var filteredSkills: [SkillFile] {
+        if searchText.isEmpty { return skillService.skills }
+        let q = searchText.lowercased()
+        return skillService.skills.filter {
+            $0.name.lowercased().contains(q) || $0.category.lowercased().contains(q)
+        }
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.md) {
-                HStack(spacing: 0) {
-                    ForEach(SRMode.allCases, id: \.self) { m in
-                        Button {
-                            withAnimation(DS.Animation.quick) { mode = m }
-                        } label: {
-                            Text(m.rawValue)
-                                .font(DS.Font.small)
-                                .fontWeight(mode == m ? .semibold : .regular)
-                                .foregroundStyle(mode == m ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                                .padding(.horizontal, DS.Spacing.lg)
-                                .padding(.vertical, DS.Spacing.sm)
-                                .background(mode == m ? DS.Colors.accent : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-                }
-                .padding(2)
-                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-
-                Spacer()
-            }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
-
-            Divider()
-
-            if mode == .skills {
-                skillsSplit
-            } else {
-                rulesSplit
-            }
-        }
-        .onAppear {
-            skillService.reload()
-            ruleService.reload()
-        }
-        .sheet(isPresented: $showRunSheet) {
-            if let skill = skillToRun {
-                SkillRunSheet(skill: skill)
-            }
-        }
-        .confirmationDialog("Delete \"\(deleteTarget)\"?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
-                if mode == .skills, let skill = selectedSkill {
-                    skillService.delete(skill: skill)
-                    selectedSkill = nil
-                } else if mode == .rules, let rule = selectedRule {
-                    ruleService.delete(rule: rule)
-                    selectedRule = nil
-                }
-            }
-        } message: {
-            Text("This will permanently delete this \(mode == .skills ? "skill" : "rule").")
-        }
-    }
-
-    // MARK: - Skills Split
-
-    @ViewBuilder
-    private var skillsSplit: some View {
         ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
             VStack(spacing: 0) {
-                HStack {
-                    Text("\(skillService.skills.count) skills")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Spacer()
+                HStack(spacing: DS.Spacing.sm) {
+                    DSSearchField(text: $searchText, placeholder: "Search skills...")
                     Button {
                         createNewSkill()
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: DS.IconSize.sm, weight: .medium))
                             .foregroundStyle(DS.Colors.accent)
+                            .frame(width: 28, height: 28)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
                 }
@@ -110,14 +49,20 @@ struct SkillsRulesView: View {
                         action: { createNewSkill() },
                         actionTitle: "Create Skill"
                     )
+                } else if filteredSkills.isEmpty {
+                    DSEmptyState(
+                        icon: "magnifyingglass",
+                        title: "No Results",
+                        subtitle: "No skills match \"\(searchText)\""
+                    )
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(skillService.skills) { skill in
+                            ForEach(filteredSkills) { skill in
                                 SkillRow(skill: skill, isSelected: selectedSkill?.id == skill.id) {
                                     selectedSkill = skill
                                 }
-                                if skill.id != skillService.skills.last?.id {
+                                if skill.id != filteredSkills.last?.id {
                                     Divider().padding(.leading, 48)
                                 }
                             }
@@ -131,7 +76,6 @@ struct SkillsRulesView: View {
                     skillToRun = skill
                     showRunSheet = true
                 } onDelete: {
-                    deleteTarget = skill.name
                     showDeleteConfirm = true
                 }
             } else {
@@ -142,25 +86,69 @@ struct SkillsRulesView: View {
                 )
             }
         }
+        .onAppear { skillService.reload() }
+        .sheet(isPresented: $showRunSheet) {
+            if let skill = skillToRun {
+                SkillRunSheet(skill: skill)
+            }
+        }
+        .confirmationDialog("Delete Skill?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let skill = selectedSkill {
+                    skillService.delete(skill: skill)
+                    selectedSkill = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(selectedSkill?.name ?? "")\".")
+        }
     }
 
-    // MARK: - Rules Split
+    private func createNewSkill() {
+        let countBefore = skillService.skills.count
+        SkillFileService.shared.create(
+            name: "New Skill",
+            category: "General",
+            icon: "sparkles",
+            systemPrompt: "",
+            promptTemplate: "{{input}}"
+        )
+        if skillService.skills.count > countBefore {
+            selectedSkill = skillService.skills.last
+        }
+    }
+}
 
-    @ViewBuilder
-    private var rulesSplit: some View {
+// MARK: - Rules List View
+
+struct RulesListView: View {
+    @State private var selectedRule: RuleFile?
+    @State private var showDeleteConfirm = false
+    @State private var searchText = ""
+
+    private var ruleService: RuleFileService { RuleFileService.shared }
+
+    private var filteredRules: [RuleFile] {
+        if searchText.isEmpty { return ruleService.rules }
+        let q = searchText.lowercased()
+        return ruleService.rules.filter {
+            $0.name.lowercased().contains(q) || $0.trigger.lowercased().contains(q) || $0.category.lowercased().contains(q)
+        }
+    }
+
+    var body: some View {
         ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
             VStack(spacing: 0) {
-                HStack {
-                    Text("\(ruleService.rules.count) rules")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Spacer()
+                HStack(spacing: DS.Spacing.sm) {
+                    DSSearchField(text: $searchText, placeholder: "Search rules...")
                     Button {
                         createNewRule()
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: DS.IconSize.sm, weight: .medium))
                             .foregroundStyle(DS.Colors.accent)
+                            .frame(width: 28, height: 28)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
                 }
@@ -178,14 +166,20 @@ struct SkillsRulesView: View {
                         action: { createNewRule() },
                         actionTitle: "Create Rule"
                     )
+                } else if filteredRules.isEmpty {
+                    DSEmptyState(
+                        icon: "magnifyingglass",
+                        title: "No Results",
+                        subtitle: "No rules match \"\(searchText)\""
+                    )
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(ruleService.rules) { rule in
+                            ForEach(filteredRules) { rule in
                                 RuleRow(rule: rule, isSelected: selectedRule?.id == rule.id) {
                                     selectedRule = rule
                                 }
-                                if rule.id != ruleService.rules.last?.id {
+                                if rule.id != filteredRules.last?.id {
                                     Divider().padding(.leading, 48)
                                 }
                             }
@@ -196,7 +190,6 @@ struct SkillsRulesView: View {
         } right: {
             if let rule = selectedRule {
                 RuleInlineEditor(rule: rule) {
-                    deleteTarget = rule.name
                     showDeleteConfirm = true
                 }
             } else {
@@ -207,19 +200,16 @@ struct SkillsRulesView: View {
                 )
             }
         }
-    }
-
-    private func createNewSkill() {
-        let countBefore = skillService.skills.count
-        SkillFileService.shared.create(
-            name: "New Skill",
-            category: "General",
-            icon: "sparkles",
-            systemPrompt: "",
-            promptTemplate: "{{input}}"
-        )
-        if skillService.skills.count > countBefore {
-            selectedSkill = skillService.skills.last
+        .onAppear { ruleService.reload() }
+        .confirmationDialog("Delete Rule?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let rule = selectedRule {
+                    ruleService.delete(rule: rule)
+                    selectedRule = nil
+                }
+            }
+        } message: {
+            Text("This will permanently delete \"\(selectedRule?.name ?? "")\".")
         }
     }
 
@@ -315,10 +305,10 @@ private struct RuleRow: View {
                     Text(rule.name)
                         .font(DS.Font.body)
                         .fontWeight(isSelected ? .semibold : .regular)
-                        .foregroundStyle(DS.Colors.textPrimary)
+                        .foregroundStyle(rule.isDisabled ? DS.Colors.textTertiary : DS.Colors.textPrimary)
                         .lineLimit(1)
                     HStack(spacing: DS.Spacing.xs) {
-                        DSPill(text: rule.trigger, color: DS.Colors.info)
+                        DSPill(text: rule.trigger, color: rule.isDisabled ? DS.Colors.textTertiary : DS.Colors.info)
                         Text(rule.category)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
@@ -326,9 +316,26 @@ private struct RuleRow: View {
                 }
 
                 Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { !rule.isDisabled },
+                    set: { newValue in
+                        let updated = RuleFile(
+                            name: rule.name, trigger: rule.trigger, icon: rule.icon,
+                            category: rule.category, instruction: rule.instruction,
+                            filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
+                            isDisabled: !newValue
+                        )
+                        RuleFileService.shared.save(rule: updated)
+                    }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .pointerOnHover()
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
+            .opacity(rule.isDisabled ? 0.6 : 1.0)
             .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
             .contentShape(Rectangle())
         }
@@ -346,20 +353,55 @@ private struct SkillInlineEditor: View {
     let onDelete: () -> Void
 
     @State private var name: String = ""
+    @State private var icon: String = ""
     @State private var category: String = ""
     @State private var systemPrompt: String = ""
     @State private var promptTemplate: String = ""
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
+    @State private var showIconPicker = false
 
     private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis"]
+
+    private let icons = [
+        "sparkles", "wand.and.stars", "text.bubble", "doc.text",
+        "pencil.circle", "magnifyingglass.circle", "list.bullet.rectangle",
+        "chart.bar.xaxis", "brain", "lightbulb", "globe",
+        "envelope", "paperplane", "bookmark", "tag"
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
-                Image(systemName: skill.icon)
-                    .font(.system(size: DS.IconSize.md))
-                    .foregroundStyle(DS.Colors.accent)
+                Button {
+                    showIconPicker.toggle()
+                } label: {
+                    Image(systemName: icon)
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                        .frame(width: 28, height: 28)
+                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+                .popover(isPresented: $showIconPicker, arrowEdge: .bottom) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: DS.Spacing.xs), count: 5), spacing: DS.Spacing.xs) {
+                        ForEach(icons, id: \.self) { ic in
+                            Button {
+                                icon = ic
+                                showIconPicker = false
+                                scheduleSave()
+                            } label: {
+                                Image(systemName: ic)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                                    .frame(width: 32, height: 32)
+                                    .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                    .padding(DS.Spacing.md)
+                }
 
                 TextField("Skill name", text: $name)
                     .textFieldStyle(.plain)
@@ -373,9 +415,11 @@ private struct SkillInlineEditor: View {
                 }
                 .pickerStyle(.menu)
                 .frame(width: 130)
+                .pointerOnHover()
                 .onChange(of: category) { scheduleSave() }
 
                 Text("/\(skill.commandName)")
+                    .font(DS.Font.monoSmall)
                     .font(DS.Font.mono)
                     .foregroundStyle(DS.Colors.textTertiary)
 
@@ -403,6 +447,11 @@ private struct SkillInlineEditor: View {
                 }
                 .buttonStyle(.plainPointer)
 
+                DSToolbarButton(icon: "doc.on.doc", color: DS.Colors.textSecondary, size: DS.IconSize.sm) {
+                    onDuplicate()
+                }
+                .help("Duplicate skill")
+
                 if !skill.isBuiltIn {
                     DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
                         onDelete()
@@ -415,32 +464,31 @@ private struct SkillInlineEditor: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 0) {
-                Text("BACKGROUND INSTRUCTIONS")
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                DSFieldLabel(label: "Background Instructions", hint: "Hidden context the AI reads before responding")
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.top, DS.Spacing.md)
                     .padding(.bottom, DS.Spacing.xs)
+
+                Divider().padding(.horizontal, DS.Spacing.lg)
 
                 TextEditor(text: $systemPrompt)
                     .font(DS.Font.monoSmall)
                     .scrollContentBackground(.hidden)
                     .frame(height: 80)
                     .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
                     .onChange(of: systemPrompt) { scheduleSave() }
 
                 Divider().padding(.horizontal, DS.Spacing.lg)
 
-                Text("WHAT TO DO")
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary)
+                DSFieldLabel(label: "Prompt Template", hint: "Use {{input}} as placeholder for user input")
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.top, DS.Spacing.md)
                     .padding(.bottom, DS.Spacing.xs)
 
                 MarkdownEditorWithToggle(
                     text: $promptTemplate,
-                    placeholder: "Use {{input}} for template variables...",
+                    placeholder: "Write what the skill should do with {{input}}...",
                     onSave: { saveSkill() },
                     autoSaveInterval: 10
                 )
@@ -453,6 +501,7 @@ private struct SkillInlineEditor: View {
 
     private func loadSkill() {
         name = skill.name
+        icon = skill.icon
         category = skill.category
         systemPrompt = skill.systemPrompt
         promptTemplate = skill.promptTemplate
@@ -472,11 +521,21 @@ private struct SkillInlineEditor: View {
     private func saveSkill() {
         guard hasLoaded else { return }
         let updated = SkillFile(
-            name: name, trigger: skill.trigger, icon: skill.icon, model: skill.model,
+            name: name, trigger: skill.trigger, icon: icon, model: skill.model,
             category: category, systemPrompt: systemPrompt, promptTemplate: promptTemplate,
             filePath: skill.filePath, isBuiltIn: skill.isBuiltIn, isPinned: skill.isPinned
         )
         SkillFileService.shared.save(skill: updated)
+    }
+
+    private func onDuplicate() {
+        SkillFileService.shared.create(
+            name: "\(name) Copy",
+            category: category,
+            icon: icon,
+            systemPrompt: systemPrompt,
+            promptTemplate: promptTemplate
+        )
     }
 }
 
@@ -487,20 +546,56 @@ private struct RuleInlineEditor: View {
     let onDelete: () -> Void
 
     @State private var name: String = ""
+    @State private var icon: String = ""
     @State private var trigger: String = ""
     @State private var category: String = ""
     @State private var instruction: String = ""
+    @State private var isDisabled: Bool = false
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
+    @State private var showIconPicker = false
 
     private let categories = ["General", "Productivity", "Development", "Writing", "Communication"]
+
+    private let icons = [
+        "bolt", "bolt.circle", "exclamationmark.triangle", "checkmark.shield",
+        "text.alignleft", "list.bullet", "doc.plaintext",
+        "person.circle", "globe", "lock", "bell",
+        "flag", "star", "heart", "tag"
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
-                Image(systemName: rule.icon)
-                    .font(.system(size: DS.IconSize.md))
-                    .foregroundStyle(DS.Colors.accent)
+                Button {
+                    showIconPicker.toggle()
+                } label: {
+                    Image(systemName: icon)
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                        .frame(width: 28, height: 28)
+                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+                .popover(isPresented: $showIconPicker, arrowEdge: .bottom) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: DS.Spacing.xs), count: 5), spacing: DS.Spacing.xs) {
+                        ForEach(icons, id: \.self) { ic in
+                            Button {
+                                icon = ic
+                                showIconPicker = false
+                                scheduleSave()
+                            } label: {
+                                Image(systemName: ic)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                                    .frame(width: 32, height: 32)
+                                    .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                    .padding(DS.Spacing.md)
+                }
 
                 TextField("Rule name", text: $name)
                     .textFieldStyle(.plain)
@@ -509,11 +604,21 @@ private struct RuleInlineEditor: View {
 
                 Spacer()
 
+                Toggle("", isOn: Binding(
+                    get: { !isDisabled },
+                    set: { isDisabled = !$0; scheduleSave() }
+                ))
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .pointerOnHover()
+                .help(isDisabled ? "Enable rule" : "Disable rule")
+
                 Picker("", selection: $category) {
                     ForEach(categories, id: \.self) { Text($0).tag($0) }
                 }
                 .pickerStyle(.menu)
                 .frame(width: 130)
+                .pointerOnHover()
                 .onChange(of: category) { scheduleSave() }
 
                 if !rule.isBuiltIn {
@@ -527,17 +632,19 @@ private struct RuleInlineEditor: View {
 
             Divider()
 
-            HStack(spacing: DS.Spacing.md) {
-                Text("WHEN TO ACTIVATE")
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary)
-                TextField("always, note.tagged.meeting, task.created", text: $trigger)
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                DSFieldLabel(label: "Trigger", hint: "When should this rule activate?")
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.top, DS.Spacing.sm)
+
+                TextField("e.g. always, note.tagged.meeting, task.created", text: $trigger)
                     .textFieldStyle(.plain)
                     .font(DS.Font.mono)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.xs)
                     .onChange(of: trigger) { scheduleSave() }
             }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
+            .padding(.bottom, DS.Spacing.sm)
 
             Divider()
 
@@ -555,9 +662,11 @@ private struct RuleInlineEditor: View {
 
     private func loadRule() {
         name = rule.name
+        icon = rule.icon
         trigger = rule.trigger
         category = rule.category
         instruction = rule.instruction
+        isDisabled = rule.isDisabled
         hasLoaded = true
     }
 
@@ -574,8 +683,9 @@ private struct RuleInlineEditor: View {
     private func saveRule() {
         guard hasLoaded else { return }
         let updated = RuleFile(
-            name: name, trigger: trigger, icon: rule.icon, category: category,
-            instruction: instruction, filePath: rule.filePath, isBuiltIn: rule.isBuiltIn
+            name: name, trigger: trigger, icon: icon, category: category,
+            instruction: instruction, filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
+            isDisabled: isDisabled
         )
         RuleFileService.shared.save(rule: updated)
     }

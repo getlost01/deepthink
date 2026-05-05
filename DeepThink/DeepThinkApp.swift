@@ -220,8 +220,12 @@ struct DeepThinkApp: App {
                 appState.agentConfigTab = .agents
                 appState.navigate(to: .integrations)
             },
-            Command(title: "Automations", icon: "sparkles", shortcut: nil, section: "Navigate") {
-                appState.agentConfigTab = .skillsAndRules
+            Command(title: "Skills", icon: "sparkles", shortcut: nil, section: "Navigate") {
+                appState.agentConfigTab = .skills
+                appState.navigate(to: .integrations)
+            },
+            Command(title: "Rules", icon: "bolt", shortcut: nil, section: "Navigate") {
+                appState.agentConfigTab = .rules
                 appState.navigate(to: .integrations)
             },
             Command(title: "Terminal", icon: "terminal", shortcut: "⌘6", section: "Navigate") {
@@ -241,7 +245,7 @@ struct DeepThinkApp: App {
 
             let hasWorkspace = existing.contains { $0.name == "DeepThink Workspace" }
             if !hasWorkspace {
-                let server = MCPServer(
+                let core = MCPServer(
                     name: "DeepThink Workspace",
                     command: DeepThinkPaths.mcpBinaryPath,
                     args: "",
@@ -249,7 +253,24 @@ struct DeepThinkApp: App {
                     description: "Core integration — manages tasks, notes, and projects in your DeepThink workspace",
                     isCore: true
                 )
-                context.insert(server)
+                context.insert(core)
+
+                let defaults: [(String, String, String, String, String)] = [
+                    ("Web Search", "npx", "-y @anthropic-ai/mcp-server-fetch", "Search",
+                     "Fetch and read web pages — capture articles, docs, and research into your knowledge base"),
+                    ("Filesystem", "npx", "-y @modelcontextprotocol/server-filesystem ~/Documents ~/Desktop", "Files",
+                     "Read and search local files — import documents, notes, and data from your filesystem"),
+                    ("Memory", "npx", "-y @modelcontextprotocol/server-memory", "Knowledge",
+                     "Persistent memory for AI — remembers context across conversations"),
+                ]
+
+                for (name, command, args, category, desc) in defaults {
+                    if !existing.contains(where: { $0.name == name }) {
+                        let server = MCPServer(name: name, command: command, args: args, category: category, description: desc)
+                        context.insert(server)
+                    }
+                }
+
                 try? context.save()
             } else {
                 for server in existing where server.name == "DeepThink Workspace" && !server.isCore {

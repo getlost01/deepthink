@@ -131,14 +131,12 @@ final class RuleFileService {
         guard existing == 0 else { reload(); return }
 
         let defaults: [(String, String, String, String, String)] = [
-            ("Meeting Notes", "tag:meeting", "person.3", "Productivity",
-             "When working with meeting notes, always:\n1. Extract action items as a bullet list\n2. Identify owners for each action\n3. Note key decisions made\n4. Flag unresolved questions"),
-            ("Code Review", "tag:code", "chevron.left.forwardslash.chevron.right", "Development",
-             "When reviewing code:\n1. Check for security vulnerabilities\n2. Identify performance issues\n3. Suggest simplifications\n4. Note missing error handling"),
-            ("Task Breakdown", "event:task.created", "list.bullet.indent", "Productivity",
-             "When a new complex task is created, suggest breaking it into 3-5 subtasks. Each subtask should be specific, actionable, and estimable."),
-            ("Writing Style", "always", "textformat", "Writing",
-             "When helping with writing:\n- Be concise and direct\n- Use active voice\n- Avoid jargon unless the context is technical\n- Prefer short sentences"),
+            ("Knowledge Quality", "always", "checkmark.shield", "Knowledge",
+             "When saving or editing knowledge entries:\n- Ensure the title is descriptive and searchable\n- Suggest tags if none exist\n- Flag if content is too vague to be useful later\n- Prefer structured formats (headings, bullets) over walls of text"),
+            ("Meeting Notes", "tag:meeting", "person.2", "Productivity",
+             "When working with meeting notes:\n1. Extract action items as a checklist with owners\n2. Highlight key decisions in bold\n3. Note unresolved questions separately\n4. Add a one-line summary at the top"),
+            ("Source Attribution", "content:web", "globe", "Knowledge",
+             "When capturing content from external sources:\n- Always include the source URL\n- Note the date of capture\n- Distinguish between direct quotes and paraphrased content\n- Flag if the source may become outdated quickly"),
         ]
 
         for (name, trigger, icon, category, instruction) in defaults {

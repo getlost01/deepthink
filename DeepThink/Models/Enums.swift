@@ -82,14 +82,16 @@ enum SidebarSection: String, Identifiable {
 
 enum AgentConfigTab: String, CaseIterable, Identifiable {
     case agents = "Assistants"
-    case skillsAndRules = "Automations"
+    case skills = "Skills"
+    case rules = "Rules"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .agents: "person.2.circle"
-        case .skillsAndRules: "sparkles"
+        case .skills: "sparkles"
+        case .rules: "bolt"
         }
     }
 }
