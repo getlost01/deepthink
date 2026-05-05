@@ -8,6 +8,8 @@ struct RecentView: View {
     @Query(sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
 
+    @State private var thisWeekVisibleCount = 20
+
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
     private var todayItems: [RecentItem] {
@@ -147,7 +149,12 @@ struct RecentView: View {
                 }
 
                 if !thisWeekItems.isEmpty {
-                    timelineSection(title: "This Week", items: thisWeekItems)
+                    timelineSection(
+                        title: "This Week",
+                        items: thisWeekItems,
+                        visibleLimit: thisWeekVisibleCount,
+                        onViewMore: { thisWeekVisibleCount += 20 }
+                    )
                 }
 
                 if todayItems.isEmpty && yesterdayItems.isEmpty && thisWeekItems.isEmpty {
@@ -203,7 +210,15 @@ struct RecentView: View {
     }
 
     @ViewBuilder
-    private func timelineSection(title: String, items: [RecentItem]) -> some View {
+    private func timelineSection(
+        title: String,
+        items: [RecentItem],
+        visibleLimit: Int? = nil,
+        onViewMore: (() -> Void)? = nil
+    ) -> some View {
+        let visibleItems = visibleLimit.map { Array(items.prefix($0)) } ?? items
+        let hasMore = visibleLimit.map { $0 < items.count } ?? false
+
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             HStack(spacing: DS.Spacing.sm) {
                 Text(title)
@@ -214,15 +229,35 @@ struct RecentView: View {
             }
 
             VStack(spacing: 0) {
-                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                ForEach(Array(visibleItems.enumerated()), id: \.element.id) { index, item in
                     RecentItemRow(item: item) {
                         navigateTo(item)
                     }
 
-                    if index < items.count - 1 {
+                    if index < visibleItems.count - 1 || hasMore {
                         Divider()
                             .padding(.leading, 44)
                     }
+                }
+
+                if hasMore, let onViewMore {
+                    Button(action: onViewMore) {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("View More")
+                                .font(DS.Font.body)
+                                .fontWeight(.medium)
+                            Text("(\(items.count - visibleItems.count) remaining)")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        .foregroundStyle(DS.Colors.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, DS.Spacing.sm + 2)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plainPointer)
                 }
             }
             .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.md))

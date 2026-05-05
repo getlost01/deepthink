@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ClaudeSettingsView: View {
     private var claude: ClaudeService { ClaudeService.shared }
+    private var mcp: MCPService { MCPService.shared }
     @State private var showCLIDetails = false
     @State private var animateStatus = false
 
@@ -18,6 +19,7 @@ struct ClaudeSettingsView: View {
                 }
                 statusHero
                 cliPathRow
+                mcpStatusSection
                 configurationSection
                 usageDashboard
             }
@@ -28,6 +30,7 @@ struct ClaudeSettingsView: View {
             withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                 animateStatus = true
             }
+            mcp.checkGlobalMCPStatus()
         }
     }
 
@@ -358,6 +361,111 @@ struct ClaudeSettingsView: View {
         }
     }
 
+    // MARK: - MCP Status
+
+    @ViewBuilder
+    private var mcpStatusSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "Installation Paths")
+
+            VStack(spacing: DS.Spacing.sm) {
+                installPathRow(
+                    icon: "terminal",
+                    iconColor: DS.Colors.accent,
+                    label: "CLI",
+                    path: MCPService.cliInstallPath,
+                    isInstalled: mcp.isCLIInstalled
+                )
+
+                Divider()
+
+                installPathRow(
+                    icon: "puzzlepiece.extension",
+                    iconColor: DS.Colors.knowledge,
+                    label: "MCP",
+                    path: MCPService.mcpInstallPath,
+                    isInstalled: mcp.isMCPInstalled
+                )
+            }
+            .padding(DS.Spacing.md)
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+
+            // Global MCP registration status
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text("Global MCP Registration")
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Spacer()
+                    if mcp.isGlobalMCPRegistered {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: DS.IconSize.sm))
+                            Text("Connected")
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundStyle(DS.Colors.success)
+                    } else {
+                        HStack(spacing: 4) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.system(size: DS.IconSize.sm))
+                            Text("Not Connected")
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundStyle(DS.Colors.warning)
+                    }
+                }
+
+                if !mcp.isGlobalMCPRegistered {
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        Text("DeepThink MCP server is not registered with Claude CLI. Register it globally so Claude can access your workspace from any directory.")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                            Text("Manual setup:")
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            Text("claude mcp add --transport stdio --scope user deepthink -- \(MCPService.mcpInstallPath)")
+                                .font(DS.Font.monoSmall)
+                                .foregroundStyle(DS.Colors.accent)
+                                .textSelection(.enabled)
+                                .padding(DS.Spacing.sm)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+
+                        Button {
+                            mcp.registerGlobalMCP()
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "link.badge.plus")
+                                    .font(.system(size: DS.IconSize.sm))
+                                Text("Register Now")
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(DS.Colors.onAccent)
+                            .padding(.horizontal, DS.Spacing.md)
+                            .padding(.vertical, DS.Spacing.sm)
+                            .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                    .padding(DS.Spacing.md)
+                    .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+                }
+            }
+        }
+    }
+
     // MARK: - Configuration (Model + Version + Tokens)
 
     @ViewBuilder
@@ -482,6 +590,43 @@ struct ClaudeSettingsView: View {
     }
 
     // MARK: - Helpers
+
+    @ViewBuilder
+    private func installPathRow(icon: String, iconColor: Color, label: String, path: String, isInstalled: Bool) -> some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .foregroundStyle(iconColor)
+                .frame(width: 20)
+            Text(label)
+                .font(DS.Font.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(DS.Colors.textPrimary)
+                .frame(width: 36, alignment: .leading)
+            Text(path)
+                .font(DS.Font.monoSmall)
+                .foregroundStyle(isInstalled ? DS.Colors.textSecondary : DS.Colors.danger)
+                .lineLimit(1)
+            Spacer()
+            if isInstalled {
+                HStack(spacing: 3) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: DS.IconSize.sm))
+                    Text("Installed")
+                        .font(DS.Font.small)
+                }
+                .foregroundStyle(DS.Colors.success)
+            } else {
+                HStack(spacing: 3) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: DS.IconSize.sm))
+                    Text("Not Found")
+                        .font(DS.Font.small)
+                }
+                .foregroundStyle(DS.Colors.danger)
+            }
+        }
+    }
 
     private func selectCLIPath() {
         let panel = NSOpenPanel()

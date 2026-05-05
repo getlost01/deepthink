@@ -7,6 +7,63 @@ final class MCPService {
 
     var isRunning = false
     var lastError: String?
+    var isGlobalMCPRegistered = false
+    var isCLIInstalled = false
+    var isMCPInstalled = false
+
+    static let cliInstallPath = DeepThinkPaths.localBin + "/deepthink"
+    static let mcpInstallPath = DeepThinkPaths.localBin + "/deepthink-mcp"
+
+    func checkGlobalMCPStatus() {
+        let fm = FileManager.default
+        isCLIInstalled = fm.isExecutableFile(atPath: Self.cliInstallPath)
+        isMCPInstalled = fm.isExecutableFile(atPath: Self.mcpInstallPath)
+
+        let claudePath = ClaudeService.shared.claudePath
+        guard !claudePath.isEmpty else {
+            isGlobalMCPRegistered = false
+            return
+        }
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: claudePath)
+            process.arguments = ["mcp", "list"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            try? process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            let found = output.lowercased().contains("deepthink")
+
+            DispatchQueue.main.async {
+                self?.isGlobalMCPRegistered = found
+            }
+        }
+    }
+
+    func registerGlobalMCP() {
+        let mcpPath = Self.mcpInstallPath
+        let claudePath = ClaudeService.shared.claudePath
+        guard !claudePath.isEmpty else { return }
+
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: claudePath)
+            process.arguments = ["mcp", "add", "--transport", "stdio", "--scope", "user", "deepthink", "--", mcpPath]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+
+            DispatchQueue.main.async {
+                self?.checkGlobalMCPStatus()
+            }
+        }
+    }
 
     func generateMCPConfig(servers: [MCPServer]) -> String {
         var config: [String: Any] = [:]
