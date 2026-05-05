@@ -12,6 +12,7 @@ struct ChatBubble: View {
     @State private var isEditing = false
     @State private var editText = ""
     @State private var isHovered = false
+    @State private var showTokenDetail = false
 
     var body: some View {
         if message.role == .user {
@@ -159,6 +160,24 @@ struct ChatBubble: View {
                     Text(message.timestamp.formatted(.dateTime.hour().minute()))
                         .font(DS.Font.buttonSmall)
                         .foregroundStyle(DS.Colors.textTertiary)
+
+                    if let usage = message.tokenUsage {
+                        Button {
+                            showTokenDetail.toggle()
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "number")
+                                    .font(.system(size: 8, weight: .semibold))
+                                Text(usage.formattedTokens)
+                                    .font(DS.Font.buttonSmall)
+                            }
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        .buttonStyle(.plainPointer)
+                        .popover(isPresented: $showTokenDetail, arrowEdge: .top) {
+                            TokenDetailPopover(usage: usage)
+                        }
+                    }
 
                     if message.isStreaming {
                         StreamingAsterisk(showLabel: true)
@@ -367,5 +386,88 @@ struct ChatBubble: View {
         case .other:
             return raw
         }
+    }
+}
+
+// MARK: - Token Detail Popover
+
+struct TokenDetailPopover: View {
+    let usage: TokenUsage
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(DS.Colors.accent)
+                Text("Token Usage")
+                    .font(DS.Font.caption)
+                    .fontWeight(.semibold)
+            }
+
+            Divider()
+
+            VStack(spacing: DS.Spacing.xs) {
+                tokenRow("Input", value: usage.inputTokens, icon: "arrow.up.right", color: DS.Colors.accent)
+                tokenRow("Output", value: usage.outputTokens, icon: "arrow.down.left", color: DS.Colors.success)
+                if usage.cacheReadTokens > 0 {
+                    tokenRow("Cache Read", value: usage.cacheReadTokens, icon: "arrow.triangle.2.circlepath", color: DS.Colors.info)
+                }
+                if usage.cacheCreationTokens > 0 {
+                    tokenRow("Cache Write", value: usage.cacheCreationTokens, icon: "square.and.arrow.down", color: DS.Colors.warning)
+                }
+            }
+
+            Divider()
+
+            HStack {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "dollarsign.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text(usage.formattedCost)
+                        .font(DS.Font.small)
+                        .fontWeight(.medium)
+                }
+
+                Spacer()
+
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "clock")
+                        .font(.system(size: 10))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text(usage.formattedDuration)
+                        .font(DS.Font.small)
+                        .fontWeight(.medium)
+                }
+            }
+            .foregroundStyle(DS.Colors.textSecondary)
+        }
+        .padding(DS.Spacing.md)
+        .frame(width: 200)
+    }
+
+    private func tokenRow(_ label: String, value: Int, icon: String, color: Color) -> some View {
+        HStack {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(color)
+                Text(label)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+            Spacer()
+            Text(formatTokenCount(value))
+                .font(DS.Font.small)
+                .fontWeight(.medium)
+                .foregroundStyle(DS.Colors.textPrimary)
+        }
+    }
+
+    private func formatTokenCount(_ count: Int) -> String {
+        if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
+        if count >= 1_000 { return String(format: "%.1fK", Double(count) / 1_000) }
+        return "\(count)"
     }
 }

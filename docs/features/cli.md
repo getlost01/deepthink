@@ -21,7 +21,9 @@ Token-efficient workspace context for AI integrations:
 
 ```bash
 deepthink context overview                       # compact counts + top items (~200 tokens)
-deepthink context query "What's blocking v2?"    # auto-routed smart retrieval
+deepthink context query "What's blocking v2?"    # hybrid retrieval (BM25 + semantic)
+deepthink context query "auth flow" --bm25       # keyword-only (skip semantic)
+deepthink context semantic "authentication"       # pure semantic vector search
 deepthink context workspace "auth migration"     # relevant tasks/notes/reminders only
 deepthink context knowledge "API design"          # BM25-scored knowledge chunks
 ```
@@ -152,13 +154,27 @@ Output saved to sandbox/outputs/
 
 ## Context Engine (CLI)
 
-The CLI has its own TF-IDF context engine (`cli/src/core/context-engine.ts`):
+The CLI has its own hybrid retrieval engine matching the Swift app's capabilities:
 
-- 600-token chunks with 100-token overlap
-- Stopword filtering
-- BM25-style scoring
+### BM25 Keyword Search (`cli/src/core/context-engine.ts`)
+- 600-char chunks with 100-char overlap
+- Stopword filtering (150+ words)
+- BM25 scoring with k1=1.5, b=0.75 length normalization
+- Title (1.5x), tag (1.3x), recency, and project scope boosting
 - Frontmatter parsing for metadata
 - Token estimation for budget management
+
+### Semantic Search (`cli/src/core/embedding-service.ts`)
+- Reads embeddings from shared `~/Documents/DeepThink/data/embeddings.json` (indexed by the Swift app)
+- Query embedding via compiled Swift helper using Apple NLEmbedding (512-dim vectors)
+- Cosine similarity search with 0.3 minimum threshold
+- Helper binary auto-compiled and cached at `~/.cache/embed-helper`
+
+### Hybrid Retrieval (`retrieveContextHybrid`)
+- Runs BM25 + semantic in parallel
+- Merges via Reciprocal Rank Fusion (RRF, k=60)
+- Falls back to BM25-only if no embeddings available
+- Default for `context query` and MCP `smart_query`/`knowledge_context` tools
 
 ## Shared Data
 
@@ -175,7 +191,8 @@ cli/src/
 ├── mcp-server.ts      # MCP server (50 tools for Claude)
 ├── config.ts          # Paths, settings
 ├── core/
-│   └── context-engine.ts  # TF-IDF search for CLI
+│   ├── context-engine.ts  # BM25 + hybrid retrieval for CLI
+│   └── embedding-service.ts # Semantic search via NLEmbedding
 ├── agents/
 │   ├── planner.ts     # Task decomposition
 │   ├── executor.ts    # Step execution

@@ -10,7 +10,8 @@ import * as fileTools from "./tools/file";
 import * as search from "./tools/search";
 import * as knowledgeTools from "./tools/knowledge";
 import * as db from "./core/db";
-import { retrieveContext, workspaceContext } from "./core/context-engine";
+import { retrieveContext, retrieveContextHybrid, workspaceContext } from "./core/context-engine";
+import { semanticSearch, embeddingStats } from "./core/embedding-service";
 
 initSandbox();
 
@@ -243,12 +244,28 @@ function cmdContext() {
     return;
   }
 
+  if (sub === "semantic" || sub === "sem") {
+    if (!q) err("usage: deepthink context semantic <query> [--top n] [--json]");
+    const topK = flagVal("--top") ? parseInt(flagVal("--top")!) : 10;
+    const results = semanticSearch(q, topK);
+    if (json) { p(JSON.stringify(results)); return; }
+    if (results.length === 0) { p("semantic: no results (embeddings may not be indexed yet)"); return; }
+    p(`semantic search (${results.length} results):\n`);
+    for (const r of results) {
+      p(`  [${r.score.toFixed(4)}] ${r.entryID}`);
+    }
+    return;
+  }
+
   if (sub === "query" || sub === "q") {
-    if (!q) err("usage: deepthink context query <question> [--tokens n] [--project name] [--json]");
+    if (!q) err("usage: deepthink context query <question> [--tokens n] [--project name] [--bm25] [--json]");
     const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!) : 4000;
     const projectScope = flagVal("--project") ?? undefined;
+    const bm25Only = flag("--bm25");
 
-    const kr = retrieveContext(q, { maxTokens, projectScope });
+    const kr = bm25Only
+      ? retrieveContext(q, { maxTokens, projectScope })
+      : retrieveContextHybrid(q, { maxTokens, projectScope });
     const ws = workspaceContext(q, 5);
 
     if (json) { p(JSON.stringify({ knowledge: kr, workspace: ws })); return; }
@@ -630,8 +647,10 @@ function cmdHelp() {
   SMART CONTEXT (token-efficient retrieval)
   ─────────────────────────────────────────
   deepthink context overview                      compact system overview (~200 tokens)
-  deepthink context query <question>              auto-routed smart retrieval
-    --tokens <n>  --project <name>  --json
+  deepthink context query <question>              hybrid retrieval (BM25 + semantic)
+    --tokens <n>  --project <name>  --bm25  --json
+  deepthink context semantic <query>              pure semantic vector search
+    --top <n>  --json
   deepthink context workspace <query>             relevant tasks/notes/reminders only
     --limit <n>  --json
   deepthink context knowledge <query>             BM25-scored knowledge chunks
@@ -719,8 +738,8 @@ function cmdHelp() {
 
   MCP TOOLS (via deepthink-mcp)
   ─────────────────────────────
-  smart_query          auto-routes: summary vs full based on intent
-  knowledge_context    BM25-scored knowledge retrieval (~90% token savings)
+  smart_query          auto-routes: hybrid retrieval (BM25 + semantic)
+  knowledge_context    hybrid knowledge retrieval (~90% token savings)
   workspace_context    query-relevant workspace snapshot
   deepthink_overview   compact counts + top items (~200 tokens)
   + all workspace_*, knowledge_*, agent_*, rule_*, skill_* tools

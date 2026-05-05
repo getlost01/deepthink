@@ -763,6 +763,7 @@ struct AIChatView: View {
                         if streamIdx < appState.chatMessages.count {
                             appState.chatMessages[streamIdx].content = response
                             appState.chatMessages[streamIdx].isStreaming = false
+                            appState.chatMessages[streamIdx].tokenUsage = ClaudeService.shared.lastTokenUsage
                         }
                     }
                 } else {
@@ -785,6 +786,7 @@ struct AIChatView: View {
                         if mcpStreamIdx < appState.chatMessages.count {
                             appState.chatMessages[mcpStreamIdx].content = response
                             appState.chatMessages[mcpStreamIdx].isStreaming = false
+                            appState.chatMessages[mcpStreamIdx].tokenUsage = ClaudeService.shared.lastTokenUsage
                         }
                     }
                 }

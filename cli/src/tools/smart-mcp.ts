@@ -1,4 +1,4 @@
-import { retrieveContext, workspaceContext } from "../core/context-engine";
+import { retrieveContext, retrieveContextHybrid, workspaceContext } from "../core/context-engine";
 import * as db from "../core/db";
 import * as knowledge from "./knowledge";
 
@@ -82,8 +82,8 @@ export const SMART_TOOLS: MCPTool[] = [
         };
       }
 
-      // Summary mode — smart retrieval
-      const knowledgeContext = retrieveContext(p.query, {
+      // Summary mode — hybrid retrieval (BM25 + semantic)
+      const knowledgeContext = retrieveContextHybrid(p.query, {
         maxTokens: p.maxTokens ?? 4000,
       });
       const workspace = workspaceContext(p.query, 5);
@@ -113,7 +113,7 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "knowledge_context",
     description:
-      "BM25-scored knowledge retrieval with token budgeting. Returns only the most relevant chunks instead of dumping all data. Use for context/understanding queries. ~90% fewer tokens than knowledge_search.",
+      "Hybrid knowledge retrieval (BM25 + semantic search with RRF fusion). Returns only the most relevant chunks instead of dumping all data. Use for context/understanding queries. ~90% fewer tokens than knowledge_search.",
     inputSchema: {
       type: "object",
       properties: {
@@ -130,7 +130,7 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
-      return retrieveContext(p.query, {
+      return retrieveContextHybrid(p.query, {
         maxTokens: p.maxTokens ?? 4000,
         projectScope: p.projectScope,
         agentScope: p.agentScope,

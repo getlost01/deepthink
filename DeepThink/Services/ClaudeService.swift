@@ -20,6 +20,9 @@ final class ClaudeService {
     var lastQueryCostUSD: Double?
     var lastQueryDurationMs: Double?
     var sessionStartDate: Date = Date()
+    var lastTokenUsage: TokenUsage?
+    var sessionInputTokens: Int = 0
+    var sessionOutputTokens: Int = 0
 
     // CLI info
     var cliVersion: String?
@@ -194,6 +197,14 @@ final class ClaudeService {
         let is_error: Bool?
         let duration_ms: Double?
         let total_cost_usd: Double?
+        let usage: CLIUsage?
+    }
+
+    struct CLIUsage: Codable {
+        let input_tokens: Int?
+        let output_tokens: Int?
+        let cache_read_input_tokens: Int?
+        let cache_creation_input_tokens: Int?
     }
 
     func query(_ prompt: String, systemPrompt: String? = nil) async throws -> String {
@@ -271,6 +282,7 @@ final class ClaudeService {
                        let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
+                        let usage = response.usage
                         DispatchQueue.main.async {
                             ClaudeService.shared.totalQueries += 1
                             if let cost {
@@ -278,6 +290,16 @@ final class ClaudeService {
                                 ClaudeService.shared.lastQueryCostUSD = cost
                             }
                             ClaudeService.shared.lastQueryDurationMs = duration
+                            var tu = TokenUsage()
+                            tu.inputTokens = usage?.input_tokens ?? 0
+                            tu.outputTokens = usage?.output_tokens ?? 0
+                            tu.cacheReadTokens = usage?.cache_read_input_tokens ?? 0
+                            tu.cacheCreationTokens = usage?.cache_creation_input_tokens ?? 0
+                            tu.costUSD = cost ?? 0
+                            tu.durationMs = duration ?? 0
+                            ClaudeService.shared.lastTokenUsage = tu
+                            ClaudeService.shared.sessionInputTokens += tu.inputTokens
+                            ClaudeService.shared.sessionOutputTokens += tu.outputTokens
                         }
                         continuation.resume(returning: result)
                     } else {
@@ -382,12 +404,26 @@ final class ClaudeService {
                                     if let result = obj["result"] as? String {
                                         fullText = result
                                     }
-                                    if let cost = obj["total_cost_usd"] as? Double {
-                                        DispatchQueue.main.async {
-                                            ClaudeService.shared.totalQueries += 1
+                                    let cost = obj["total_cost_usd"] as? Double
+                                    let duration = obj["duration_ms"] as? Double
+                                    let usageDict = obj["usage"] as? [String: Any]
+                                    DispatchQueue.main.sync {
+                                        ClaudeService.shared.totalQueries += 1
+                                        if let cost {
                                             ClaudeService.shared.totalCostUSD += cost
                                             ClaudeService.shared.lastQueryCostUSD = cost
                                         }
+                                        ClaudeService.shared.lastQueryDurationMs = duration
+                                        var tu = TokenUsage()
+                                        tu.inputTokens = usageDict?["input_tokens"] as? Int ?? 0
+                                        tu.outputTokens = usageDict?["output_tokens"] as? Int ?? 0
+                                        tu.cacheReadTokens = usageDict?["cache_read_input_tokens"] as? Int ?? 0
+                                        tu.cacheCreationTokens = usageDict?["cache_creation_input_tokens"] as? Int ?? 0
+                                        tu.costUSD = cost ?? 0
+                                        tu.durationMs = duration ?? 0
+                                        ClaudeService.shared.lastTokenUsage = tu
+                                        ClaudeService.shared.sessionInputTokens += tu.inputTokens
+                                        ClaudeService.shared.sessionOutputTokens += tu.outputTokens
                                     }
                                 }
                             }

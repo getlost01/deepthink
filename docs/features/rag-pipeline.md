@@ -150,9 +150,17 @@ Manual extraction also available via "Save to Knowledge" button in chat toolbar.
 
 ## Key Files
 
+### Swift App
 | File | Role |
 |------|------|
 | `Services/ContextEngine.swift` | BM25 index, hybrid retrieval, chunking, dedup, token budgeting |
 | `Services/EmbeddingService.swift` | NLEmbedding vectors, cosine similarity, disk persistence |
 | `Services/KnowledgeService.swift` | Knowledge CRUD, RAG context formatting, reload triggers |
 | `Views/Shared/AIChatView.swift` | Context assembly, prompt building, sends to Claude |
+
+### CLI
+| File | Role |
+|------|------|
+| `cli/src/core/context-engine.ts` | BM25 index, hybrid retrieval (RRF), chunking, token budgeting |
+| `cli/src/core/embedding-service.ts` | Reads shared embeddings, query embedding via Swift helper, cosine similarity |
+| `cli/src/tools/smart-mcp.ts` | MCP tools (`smart_query`, `knowledge_context`) using hybrid retrieval |

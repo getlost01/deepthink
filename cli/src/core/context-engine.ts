@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
+import { semanticSearch } from "./embedding-service";
 
 // ── Types ──
 
@@ -131,13 +132,17 @@ function loadAllEntries(): IndexedEntry[] {
             .map((t) => t.trim())
             .filter(Boolean);
 
+          const dateStr = meta.importedAt ?? meta.imported_at ?? meta.importedat;
+          const parsed = dateStr ? new Date(dateStr) : new Date();
+          const importedAt = isNaN(parsed.getTime()) ? new Date() : parsed;
+
           entries.push({
             id: `${source}/${item.name}`,
             title: meta.title ?? item.name.replace(".md", ""),
             content: body,
             tags,
             source,
-            importedAt: new Date(meta.importedAt ?? (item.name.slice(0, 15).replace(/T/, " ") || Date.now())),
+            importedAt,
           });
         } catch {}
       }
@@ -307,6 +312,92 @@ export function retrieveContext(
     parts,
     totalTokensEstimate: Math.round(parts.reduce((s, p) => s + p.content.length + p.title.length, 0) / 4),
     entriesScanned: entries.length,
+    entriesReturned: parts.length,
+  };
+}
+
+// ── Hybrid Retrieval (BM25 + Semantic via RRF) ──
+
+export function retrieveContextHybrid(
+  query: string,
+  opts: { maxTokens?: number; projectScope?: string; agentScope?: string[]; topK?: number } = {}
+): ContextResult {
+  const maxTokens = opts.maxTokens ?? 4000;
+  const topK = opts.topK ?? 10;
+
+  const bm25 = retrieveContext(query, { ...opts, maxTokens: maxTokens * 2 });
+  const semantic = semanticSearch(query, 20, opts.agentScope);
+
+  if (semantic.length === 0) {
+    return retrieveContext(query, opts);
+  }
+
+  const entries = loadAllEntries();
+  const entryMap = new Map(entries.map((e) => [e.id, e]));
+
+  function resolveEntry(embeddingID: string): IndexedEntry | undefined {
+    const direct = entryMap.get(embeddingID);
+    if (direct) return direct;
+    for (const [id, entry] of entryMap) {
+      if (embeddingID.endsWith("/" + id) || embeddingID.endsWith("/" + id.split("/").pop())) {
+        return entry;
+      }
+    }
+    return undefined;
+  }
+
+  const K = 60;
+  const fusedScores = new Map<string, number>();
+  const titleToEntry = new Map<string, IndexedEntry>();
+
+  for (let rank = 0; rank < bm25.parts.length; rank++) {
+    const title = bm25.parts[rank].title;
+    fusedScores.set(title, (fusedScores.get(title) ?? 0) + 1 / (K + rank + 1));
+  }
+
+  for (let rank = 0; rank < semantic.length; rank++) {
+    const entry = resolveEntry(semantic[rank].entryID);
+    if (!entry) continue;
+    const title = entry.title;
+    fusedScores.set(title, (fusedScores.get(title) ?? 0) + 1 / (K + rank + 1));
+    if (!titleToEntry.has(title)) titleToEntry.set(title, entry);
+  }
+
+  const sorted = [...fusedScores.entries()].sort((a, b) => b[1] - a[1]);
+
+  let charBudget = maxTokens * 4;
+  const parts: ContextResult["parts"] = [];
+
+  for (const [title, score] of sorted) {
+    if (parts.length >= topK) break;
+
+    const existing = bm25.parts.find((p) => p.title === title);
+    if (existing) {
+      const partSize = existing.content.length + title.length + 20;
+      if (charBudget - partSize < 0) break;
+      parts.push({ ...existing, score: Math.round(score * 10000) / 10000 });
+      charBudget -= partSize;
+    } else {
+      const entry = titleToEntry.get(title);
+      if (!entry) continue;
+      const content = entry.content.slice(0, Math.min(800, charBudget));
+      const partSize = content.length + title.length + 20;
+      if (charBudget - partSize < 0) break;
+      parts.push({
+        title,
+        content,
+        tags: entry.tags,
+        source: entry.source,
+        score: Math.round(score * 10000) / 10000,
+      });
+      charBudget -= partSize;
+    }
+  }
+
+  return {
+    parts,
+    totalTokensEstimate: Math.round(parts.reduce((s, p) => s + p.content.length + p.title.length, 0) / 4),
+    entriesScanned: bm25.entriesScanned,
     entriesReturned: parts.length,
   };
 }

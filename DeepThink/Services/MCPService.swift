@@ -165,12 +165,26 @@ final class MCPService {
                                     if let result = obj["result"] as? String {
                                         fullText = result
                                     }
-                                    if let cost = obj["total_cost_usd"] as? Double {
-                                        DispatchQueue.main.async {
-                                            ClaudeService.shared.totalQueries += 1
+                                    let cost = obj["total_cost_usd"] as? Double
+                                    let duration = obj["duration_ms"] as? Double
+                                    let usageDict = obj["usage"] as? [String: Any]
+                                    DispatchQueue.main.sync {
+                                        ClaudeService.shared.totalQueries += 1
+                                        if let cost {
                                             ClaudeService.shared.totalCostUSD += cost
                                             ClaudeService.shared.lastQueryCostUSD = cost
                                         }
+                                        ClaudeService.shared.lastQueryDurationMs = duration
+                                        var tu = TokenUsage()
+                                        tu.inputTokens = usageDict?["input_tokens"] as? Int ?? 0
+                                        tu.outputTokens = usageDict?["output_tokens"] as? Int ?? 0
+                                        tu.cacheReadTokens = usageDict?["cache_read_input_tokens"] as? Int ?? 0
+                                        tu.cacheCreationTokens = usageDict?["cache_creation_input_tokens"] as? Int ?? 0
+                                        tu.costUSD = cost ?? 0
+                                        tu.durationMs = duration ?? 0
+                                        ClaudeService.shared.lastTokenUsage = tu
+                                        ClaudeService.shared.sessionInputTokens += tu.inputTokens
+                                        ClaudeService.shared.sessionOutputTokens += tu.outputTokens
                                     }
                                 }
                             }

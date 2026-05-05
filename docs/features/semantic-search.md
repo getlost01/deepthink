@@ -65,12 +65,29 @@ Embeddings are expensive to compute. The service tracks content hashes to skip u
 
 On app launch, embeddings load from disk. Only new/changed entries get re-embedded.
 
+## CLI Support
+
+Semantic search is available in the CLI via `cli/src/core/embedding-service.ts`:
+
+- **Reads shared embeddings** from `~/Documents/DeepThink/data/embeddings.json` (indexed by Swift app)
+- **Query embedding** via a compiled Swift helper binary (`~/.cache/embed-helper`) using the same NLEmbedding model
+- **Hybrid retrieval** in `context-engine.ts` merges BM25 + semantic via RRF, same as Swift app
+- **CLI commands**:
+  - `deepthink context query <q>` — hybrid retrieval (default)
+  - `deepthink context query <q> --bm25` — keyword-only fallback
+  - `deepthink context semantic <q>` — pure semantic search
+- **MCP tools**: `smart_query` and `knowledge_context` use hybrid retrieval
+
+The Swift helper is auto-compiled on first use and cached. Requires macOS with Xcode Command Line Tools.
+
 ## Limitations
 
 - **English only**: `NLEmbedding.sentenceEmbedding(for: .english)` — other languages may return nil
 - **Quality**: Apple's built-in model is general-purpose, not tuned for domain-specific content
 - **Input truncation**: Only first 500 chars of content embedded (sentence embedding quality degrades with length)
-- **Future upgrade path**: swap `NLEmbedding` for a local MLX model (e.g., all-MiniLM-L6-v2) for better quality
+- **macOS only**: CLI semantic search requires Apple's NaturalLanguage framework via Swift
+- **Indexing**: CLI reads embeddings but does not index — the Swift app must run first to generate embeddings
+- **Future upgrade path**: swap `NLEmbedding` for a local MLX model (e.g., all-MiniLM-L6-v2) for better quality and cross-platform support
 
 ## Key Files
 
@@ -79,3 +96,5 @@ On app launch, embeddings load from disk. Only new/changed entries get re-embedd
 | `Services/EmbeddingService.swift` | Embedding generation, cosine similarity, persistence |
 | `Services/ContextEngine.swift` | `retrieveContextHybrid()` — merges BM25 + semantic via RRF |
 | `Services/KnowledgeService.swift` | Triggers embedding indexing on `reload()` |
+| `cli/src/core/embedding-service.ts` | CLI: reads shared embeddings, query embedding via Swift helper |
+| `cli/src/core/context-engine.ts` | CLI: `retrieveContextHybrid()` — BM25 + semantic RRF fusion |

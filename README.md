@@ -39,7 +39,9 @@ No additional installations required — all features use built-in Apple framewo
 ```bash
 # Smart context retrieval (token-efficient)
 deepthink context overview                        # compact system overview (~200 tokens)
-deepthink context query "What's blocking v2?"     # auto-routed smart retrieval
+deepthink context query "What's blocking v2?"     # hybrid retrieval (BM25 + semantic)
+deepthink context query "auth flow" --bm25        # keyword-only (skip semantic)
+deepthink context semantic "authentication"        # pure semantic vector search
 deepthink context workspace "auth migration"      # relevant tasks/notes/reminders only
 deepthink context knowledge "API design"           # BM25-scored knowledge chunks
 
