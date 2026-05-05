@@ -107,8 +107,23 @@ final class KnowledgeExtractionService {
 
         do {
             let result = try await ClaudeService.shared.query(
-                "Extract the most useful knowledge from this conversation. Include:\n- Key decisions or conclusions\n- Factual answers given\n- Solutions to problems discussed\n- Action items mentioned\n\nConversation:\n\(String(conversationText.prefix(6000)))",
-                systemPrompt: "You extract reusable knowledge from conversations. Output structured markdown. Be concise. Only include information worth saving for future reference."
+                """
+                Extract knowledge from this conversation. Be concise but preserve all specifics — exact names, numbers, code, paths, commands, and error messages. No fluff, no paraphrasing technical terms.
+
+                Capture:
+                - Technical details (code, configs, commands, file paths)
+                - Root causes and how things work
+                - Decisions and their reasoning
+                - Problems with solutions (the steps, not just the outcome)
+                - Action items, data points, metrics
+
+                Use short markdown headers by topic. Use code blocks for code/commands. Bullet points, not paragraphs.
+                At the end, add a "## Related" section listing topic names or keywords from the conversation that connect to other areas (e.g. "Related: Proto project, knowledge stats bug, kanban board"). This helps link entries without extra lookups.
+
+                Conversation:
+                \(String(conversationText.prefix(8000)))
+                """,
+                systemPrompt: "Extract knowledge from conversations as concise structured markdown. Keep every specific detail (names, numbers, code, paths) but cut filler words and redundancy. Dense and scannable, not verbose."
             )
 
             let entryTitle = title ?? "Chat: \(messages.first { $0.role == .user }?.content.prefix(50) ?? "Conversation") — \(Date().formatted(date: .abbreviated, time: .shortened))"

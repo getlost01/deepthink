@@ -103,13 +103,41 @@ struct AllTasksView: View {
 
             Divider()
 
-            TaskBoardView(tasks: filteredTasks)
+            if let task = selectedTask {
+                ResizableSplitView(minLeftWidth: 600, minRightWidth: 320) {
+                    TaskBoardView(tasks: filteredTasks)
+                } right: {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Spacer()
+                            Button {
+                                appState.selectedTaskID = nil
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                    .frame(width: 22, height: 22)
+                                    .background(DS.Colors.fill, in: Circle())
+                                    .contentShape(Circle())
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                        .padding(.horizontal, DS.Spacing.md)
+                        .padding(.top, DS.Spacing.sm)
+
+                        TaskDetailView(task: task)
+                            .id(task.id)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+            } else {
+                TaskBoardView(tasks: filteredTasks)
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewTask)) { _ in
             let task = TaskItem(title: "")
             modelContext.insert(task)
             appState.selectedTaskID = task.id
-            viewMode = .list
         }
     }
 

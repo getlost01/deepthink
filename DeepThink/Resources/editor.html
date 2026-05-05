@@ -160,6 +160,166 @@
     color: var(--text-dim); pointer-events: none; float: left; height: 0; opacity: 0.5;
   }
 
+  /* Tables */
+  .ProseMirror table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    overflow: hidden;
+    table-layout: fixed;
+  }
+  .ProseMirror table td,
+  .ProseMirror table th {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    vertical-align: top;
+    position: relative;
+    min-width: 60px;
+  }
+  .ProseMirror table th {
+    background: var(--block-bg);
+    font-weight: 600;
+  }
+  .ProseMirror table td > *,
+  .ProseMirror table th > * {
+    margin: 0;
+  }
+  .ProseMirror table .selectedCell {
+    background: rgba(0, 122, 255, 0.12);
+  }
+  .ProseMirror table .column-resize-handle {
+    position: absolute;
+    right: -2px;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--accent);
+    pointer-events: none;
+  }
+  .ProseMirror.resize-cursor { cursor: col-resize; }
+
+  /* Slash Command Menu */
+  #slash-menu {
+    position: fixed;
+    z-index: 200;
+    background: var(--toolbar-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .slash-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.08s;
+  }
+  .slash-item:hover, .slash-item.selected {
+    background: var(--border);
+  }
+  .slash-icon {
+    width: 28px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--code-bg);
+    border-radius: 5px;
+    flex-shrink: 0;
+    font-family: 'Menlo', 'SF Mono', monospace;
+  }
+  .slash-label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .slash-empty {
+    padding: 8px 12px;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  /* Search & Replace Bar */
+  #search-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--toolbar-bg);
+    border-bottom: 1px solid var(--toolbar-border);
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #search-bar input {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--block-bg);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+    font-family: inherit;
+    outline: none;
+    min-width: 0;
+  }
+  #search-bar input:focus {
+    border-color: var(--accent);
+  }
+  #search-count {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    min-width: 60px;
+    text-align: center;
+  }
+  .search-btn {
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.1s;
+  }
+  .search-btn:hover {
+    background: var(--border);
+    color: var(--text);
+  }
+  #replace-one, #replace-all {
+    background: var(--code-bg);
+    padding: 3px 8px;
+  }
+
+  /* Search highlights */
+  .search-highlight {
+    background: rgba(255, 200, 0, 0.25);
+    border-radius: 2px;
+  }
+  .search-highlight-current {
+    background: rgba(255, 140, 0, 0.55);
+    border-radius: 2px;
+  }
+
   .ProseMirror ::selection { background: rgba(0, 122, 255, 0.25); }
 </style>
 </head>
@@ -221,6 +381,28 @@
   </button>
   <button class="tb-btn" data-action="hr" title="Divider">
     <svg viewBox="0 0 24 24"><line x1="2" y1="12" x2="22" y2="12" stroke-width="2"/></svg>
+  </button>
+
+  <div class="tb-sep"></div>
+
+  <!-- Table -->
+  <button class="tb-btn" data-action="insertTable" title="Insert Table">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+  </button>
+  <button class="tb-btn" data-action="addColAfter" title="Add Column">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="12" height="18" rx="2"/><line x1="3" y1="9" x2="15" y2="9"/><line x1="3" y1="15" x2="15" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="21" y1="9" x2="21" y2="15"/><line x1="18" y1="12" x2="24" y2="12"/></svg>
+  </button>
+  <button class="tb-btn" data-action="addRowAfter" title="Add Row">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="12" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="15"/><line x1="15" y1="3" x2="15" y2="15"/><line x1="9" y1="21" x2="15" y2="21"/><line x1="12" y1="18" x2="12" y2="24"/></svg>
+  </button>
+  <button class="tb-btn" data-action="deleteCol" title="Delete Column">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="11" y1="9" x2="13" y2="13" stroke="currentColor" stroke-width="2"/><line x1="13" y1="9" x2="11" y2="13" stroke="currentColor" stroke-width="2"/></svg>
+  </button>
+  <button class="tb-btn" data-action="deleteRow" title="Delete Row">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="11" x2="15" y2="13" stroke="currentColor" stroke-width="2"/><line x1="15" y1="11" x2="9" y2="13" stroke="currentColor" stroke-width="2"/></svg>
+  </button>
+  <button class="tb-btn" data-action="deleteTable" title="Delete Table">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="8" y1="8" x2="16" y2="16" stroke="currentColor" stroke-width="2"/><line x1="16" y1="8" x2="8" y2="16" stroke="currentColor" stroke-width="2"/></svg>
   </button>
 
   <div class="tb-sep"></div>
