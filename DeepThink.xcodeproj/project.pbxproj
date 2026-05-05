@@ -652,14 +652,14 @@
 			);
 			inputPaths = (
 			);
-			name = "Bundle DeepThink CLI";
+			name = "Build and Bundle DeepThink CLI + MCP";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ -f \"${SRCROOT}/cli/deepthink\" ]; then\n  mkdir -p \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\n  cp \"${SRCROOT}/cli/deepthink\" \"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/deepthink-cli\"\nfi\n";
+			shellScript = "cd \"${SRCROOT}/cli\"\n\nif command -v bun &>/dev/null; then\n  echo \"Building DeepThink CLI and MCP...\"\n  bash build.sh\nelse\n  echo \"warning: bun not found, skipping CLI/MCP build. Install via: curl -fsSL https://bun.sh/install | bash\"\nfi\n\nDEST=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"$DEST\"\n\nif [ -f out/deepthink ]; then\n  cp out/deepthink \"$DEST/deepthink-cli\"\n  echo \"Bundled deepthink-cli\"\nfi\n\nif [ -f out/deepthink-mcp ]; then\n  cp out/deepthink-mcp \"$DEST/deepthink-mcp\"\n  echo \"Bundled deepthink-mcp\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
