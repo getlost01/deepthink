@@ -3,7 +3,6 @@ import SwiftTerm
 
 struct TerminalHostView: NSViewRepresentable {
     let session: TerminalSession
-    var fontSize: CGFloat = 13
 
     func makeNSView(context: Context) -> NSView {
         let wrapper = NSView(frame: .zero)
@@ -14,7 +13,7 @@ struct TerminalHostView: NSViewRepresentable {
         } else {
             termView = LocalProcessTerminalView(frame: .zero)
             termView.processDelegate = context.coordinator
-            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            let font = NSFont.monospacedSystemFont(ofSize: session.fontSize, weight: .regular)
             termView.font = font
             termView.nativeForegroundColor = .white
             termView.nativeBackgroundColor = DS.Colors.terminalNS
@@ -69,6 +68,7 @@ struct TerminalHostView: NSViewRepresentable {
         func processTerminated(source: SwiftTerm.TerminalView, exitCode: Int32?) {
             Task { @MainActor in
                 self.session.isRunning = false
+                self.session.onProcessExit?()
             }
         }
     }

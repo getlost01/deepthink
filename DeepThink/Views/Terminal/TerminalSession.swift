@@ -9,10 +9,12 @@ final class TerminalSession: Identifiable {
     var currentDirectory: String
     var isRunning: Bool = false
     var terminalView: LocalProcessTerminalView?
+    var fontSize: CGFloat = 13
+    var onProcessExit: (() -> Void)?
 
     init(title: String, directory: String? = nil) {
         self.title = title
-        self.currentDirectory = directory ?? NSHomeDirectory() + "/DeepThink"
+        self.currentDirectory = directory ?? NSHomeDirectory() + "/deepthink"
     }
 
     func start() {
@@ -38,12 +40,32 @@ final class TerminalSession: Identifiable {
         isRunning = false
     }
 
+    func updateFontSize(_ newSize: CGFloat) {
+        fontSize = max(9, min(24, newSize))
+        if let tv = terminalView {
+            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
+            tv.font = font
+        }
+    }
+
     func getTextBuffer(lastLines: Int = 50) -> String {
         guard let terminal = terminalView?.getTerminal() else { return "" }
         var lines: [String] = []
         let totalRows = terminal.rows
         let start = max(0, totalRows - lastLines)
         for row in start..<totalRows {
+            if let line = terminal.getLine(row: row) {
+                lines.append(line.translateToString(trimRight: true))
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    func getAllText() -> String {
+        guard let terminal = terminalView?.getTerminal() else { return "" }
+        var lines: [String] = []
+        let totalRows = terminal.rows
+        for row in 0..<totalRows {
             if let line = terminal.getLine(row: row) {
                 lines.append(line.translateToString(trimRight: true))
             }

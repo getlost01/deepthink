@@ -33,8 +33,8 @@ final class AppState {
     var chatProcessingStartTime: Date?
 
     // Terminal state (persists across tab switches)
-    var terminalSessions: [TerminalSession] = []
-    var activeTerminalSessionID: UUID?
+    var terminalTabs: [TerminalTab] = []
+    var activeTerminalTabID: UUID?
 
     // Edit branching (keyed by message index where edit happened)
     var editBranchPoints: [Int: BranchPoint] = [:]
