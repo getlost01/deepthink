@@ -18,17 +18,16 @@ Claude uses tools → returns response
 
 ## Built-in MCP Server
 
-DeepThink ships its own MCP server (`deepthink-mcp`) providing 50 tools for workspace management:
+DeepThink ships its own MCP server (`deepthink-mcp`) providing 45 tools for workspace management:
 
 | Category | Count | Examples |
 |----------|-------|---------|
 | Smart Context | 4 | `smart_query`, `knowledge_context`, `workspace_context`, `deepthink_overview` |
-| Workspace | 21 | Task/note/project/reminder CRUD |
-| Knowledge Base | 8 | Save, load, search project knowledge |
-| Memory | 5 | Short/long-term persistent memory |
-| Agents | 4 | Agent management |
-| Rules | 4 | Rule management |
-| Skills | 4 | Skill management |
+| Workspace | 21 | Task/note/project/reminder CRUD + `workspace_summary` |
+| Knowledge Base | 8 | `knowledge_stats`, search, save/load projects, integrations, capture |
+| Agents | 4 | `agent_list/get/create/delete` |
+| Rules | 4 | `rule_list/get/create/delete` |
+| Skills | 4 | `skill_list/get/create/delete` |
 
 ### Resources
 
@@ -42,6 +41,8 @@ Read-only JSON access:
 | `deepthink://reminders` | All reminders |
 | `deepthink://overview` | Compact overview (~200 tokens) |
 | `deepthink://knowledge/stats` | Knowledge base stats |
+| `deepthink://knowledge/projects` | All knowledge projects |
+| `deepthink://knowledge/integrations` | All integration sources and channels |
 
 ## Server Discovery
 
@@ -63,7 +64,7 @@ Settings → Connections → MCP Servers:
 
 ### For External Clients
 
-**Claude Code CLI** (recommended — registers globally):
+**Claude Code CLI** (recommended — or use Settings → Claude → Register Global MCP in the app):
 ```bash
 claude mcp add --transport stdio --scope user deepthink -- ~/.local/bin/deepthink-mcp
 ```
@@ -103,4 +104,4 @@ When the user's message contains workspace keywords (`create`, `task`, `note`, `
 | `Services/MCPCatalogService.swift` | npm registry search, caching, categorization |
 | `Models/MCPServer.swift` | SwiftData model for server config |
 | `Views/Settings/IntegrationsView.swift` | Server browser, enable/disable UI |
-| `cli/src/mcp-server.ts` | DeepThink MCP server implementation (50 tools) |
+| `cli/src/mcp-server.ts` | DeepThink MCP server implementation (45 tools) |

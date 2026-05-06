@@ -83,7 +83,7 @@ deepthink analyze data.csv --question "What are the trends?"
 | Feature | Description |
 |---------|-------------|
 | **Workspace** | Projects, notes, tasks with rich markdown editing and kanban board |
-| **Knowledge Base** | Multi-source capture (web, files, clipboard, RSS, scripts, Obsidian vaults) with timeline view |
+| **Knowledge Base** | Multi-source capture (web, files, clipboard, RSS, scripts, Obsidian vaults) organized into buckets |
 | **AI Chat** | Streaming chat with Claude, conversation history, edit branching, auto-compaction |
 | **Hybrid RAG** | BM25 keyword + semantic vector search — AI finds relevant knowledge automatically |
 | **AI Assistants** | Custom personas with knowledge scopes, model selection, and skill assignments |
@@ -91,7 +91,7 @@ deepthink analyze data.csv --question "What are the trends?"
 | **Global Quick Capture** | `Cmd+Shift+D` from anywhere — floating panel to capture notes, knowledge, or tasks instantly |
 | **Obsidian Import** | One-click vault import with wiki-link conversion, tag extraction, and dedup |
 | **Semantic Search** | Apple NLEmbedding vectors for meaning-based retrieval alongside keyword search |
-| **MCP Integration** | 50-tool MCP server for external tool access (Claude CLI, Cursor, VS Code, etc.) |
+| **MCP Integration** | 45-tool MCP server for external tool access (Claude CLI, Cursor, VS Code, etc.) with global registration |
 | **Terminal** | Built-in terminal with multi-session tracking and AI output analysis |
 | **Command Palette** | `Cmd+K` quick access to all commands, navigation, and skills |
 | **Reminders** | Todo-style reminders with optional timed notifications |
@@ -110,7 +110,7 @@ Detailed docs for each major feature:
 | [Quick Capture](docs/features/quick-capture.md) | Global hotkey floating panel for instant capture |
 | [Workspace](docs/features/workspace.md) | Projects, notes, tasks, backlinks, versioning |
 | [Terminal](docs/features/terminal.md) | Multi-tab terminal with AI output analysis |
-| [MCP Integration](docs/features/mcp-integration.md) | 50-tool MCP server, external tool access, catalog |
+| [MCP Integration](docs/features/mcp-integration.md) | 45-tool MCP server, external tool access, global registration |
 | [CLI](docs/features/cli.md) | Command-line interface, agent system, all commands |
 | [Deep Search](docs/features/deep-search.md) | Global search with AI-powered analysis |
 | [Command Palette](docs/features/command-palette.md) | Cmd+K quick launcher, fuzzy matching |
@@ -197,7 +197,7 @@ Bidirectional integration:
 Press `Cmd+Shift+D` from any app on your Mac:
 
 - **Note** — with optional project assignment
-- **Knowledge** — with folder selection and tags
+- **Knowledge** — with bucket selection and tags
 - **Task** — with optional project assignment
 
 Floating panel with `Cmd+Enter` to save, `Escape` to dismiss. Requires Accessibility permission for the global hotkey (works inside the app without it).
@@ -214,11 +214,13 @@ Floating panel with `Cmd+Enter` to save, `Escape` to dismiss. Requires Accessibi
 
 ## MCP Server
 
-DeepThink ships an MCP server (`deepthink-mcp`) with 50 tools for workspace management via any MCP client.
+DeepThink ships an MCP server (`deepthink-mcp`) with 45 tools for workspace management via any MCP client.
 
 ### Configure
 
-Add to your MCP client's config:
+**Option A — Global (via app):** Settings → Claude → Register Global MCP. Runs `claude mcp add --scope user deepthink -- deepthink-mcp` automatically.
+
+**Option B — Manual config:** Add to your MCP client's config:
 
 ```json
 {
@@ -231,19 +233,20 @@ Add to your MCP client's config:
 }
 ```
 
-### Tool Categories (50 total)
+Works with Claude CLI, Cursor, VS Code, and any MCP-compatible client.
+
+### Tool Categories (45 total)
 
 | Category | Tools | Description |
 |----------|-------|-------------|
-| Smart Context | 4 | Token-efficient retrieval, query routing |
-| Workspace | 21 | Task/note/project/reminder CRUD |
-| Knowledge Base | 8 | Save, load, search project knowledge |
-| Memory | 5 | Short/long-term persistent memory |
-| Agents | 4 | Agent management |
-| Rules | 4 | Rule management |
-| Skills | 4 | Skill management |
+| Smart Context | 4 | `smart_query`, `knowledge_context`, `workspace_context`, `deepthink_overview` |
+| Workspace | 21 | Task/note/project/reminder CRUD + `workspace_summary` |
+| Knowledge Base | 8 | `knowledge_stats`, search, save/load projects, integrations, capture |
+| Agents | 4 | `agent_list/get/create/delete` |
+| Rules | 4 | `rule_list/get/create/delete` |
+| Skills | 4 | `skill_list/get/create/delete` |
 
-### Resources
+### Resources (8 total)
 
 | URI | Description |
 |-----|-------------|
@@ -251,8 +254,10 @@ Add to your MCP client's config:
 | `deepthink://notes` | All notes as JSON |
 | `deepthink://projects` | All projects as JSON |
 | `deepthink://reminders` | All reminders as JSON |
-| `deepthink://overview` | Compact system overview |
+| `deepthink://overview` | Compact system overview (~200 tokens) |
 | `deepthink://knowledge/stats` | Knowledge base overview |
+| `deepthink://knowledge/projects` | All knowledge projects |
+| `deepthink://knowledge/integrations` | All integration sources and channels |
 
 ## Data Storage
 
@@ -262,35 +267,43 @@ All data in `~/DeepThink/`:
 DeepThink/
 ├── data/
 │   ├── deepthink.store          # SwiftData SQLite (notes, tasks, projects, conversations)
-│   ├── embeddings.json          # Semantic vectors (512-dim per entry)
-│   └── embedding_hashes.json    # Content hashes for incremental indexing
-├── .claude/
-│   ├── commands/                # Skills (markdown)
-│   ├── rules/                   # Rules (markdown)
-│   ├── agents/                  # Agents (markdown)
-│   └── settings.json            # MCP server config
+│   └── vectors.db               # Chunks + embeddings (Float32 BLOB), shared by app and CLI
 ├── knowledge/                   # Knowledge base (markdown + YAML frontmatter)
-│   ├── general/                 # Default folder
+│   ├── general/                 # Default bucket
+│   ├── folders/                 # User-created buckets
 │   ├── web/                     # Scraped web pages
 │   ├── clipboard/               # Clipboard captures
 │   ├── manual/                  # User-created entries
-│   ├── obsidian/                # Obsidian vault imports
-│   ├── integrations/            # External data
+│   ├── imports/                 # Imported content (Obsidian, files)
+│   ├── integrations/            # External data sources
 │   ├── projects/                # Per-project knowledge
-│   └── archive/                 # Compressed entries
+│   ├── research/                # Research captures
+│   ├── scripts/                 # Script-collected data
+│   ├── archive/                 # Compressed entries
+│   └── index.json               # Knowledge index
 ├── memory/                      # Persistent AI memory
 ├── sandbox/                     # Generated docs, analysis
+├── tools/                       # Tool outputs
 ├── logs/                        # App and terminal logs
 └── workspace/                   # Exported notes/projects
+```
+
+Skills, rules, and agents live in `~/DeepThink/.claude/` (auto-created by the app):
+
+```
+~/DeepThink/.claude/
+├── commands/    # Skills (markdown)
+├── rules/       # Rules (markdown)
+└── agents/      # Agents (markdown)
 ```
 
 ### Index Storage
 
 | Data | Location | Persistence |
 |------|----------|-------------|
-| BM25/TF-IDF index | RAM | Rebuilt on each `reload()` — fast, no disk |
-| Semantic embeddings | `data/embeddings.json` | Persisted, incremental updates |
-| Content hashes | `data/embedding_hashes.json` | Tracks what's already embedded |
+| BM25/TF-IDF index | RAM | Rebuilt on each `retrieveContext()` call — fast, no disk |
+| Chunks + embeddings | `data/vectors.db` | SQLite WAL, Float32 BLOB, shared by app and CLI |
+| Content hashes | `data/vectors.db` (`content_hash` column) | Per-chunk, skips unchanged entries |
 | Conversation summaries | RAM | Regenerated as needed |
 | Dedup fingerprints | RAM | Rebuilt with index |
 
@@ -348,7 +361,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full system design.
 | `Cmd+1` | Workspace |
 | `Cmd+2` | Knowledge |
 | `Cmd+3` | AI Assistant |
-| `Cmd+4` | Connections |
+| `Cmd+4` | Integration |
 | `Cmd+5` | Reminders |
 | `Cmd+6` | Terminal |
 | `Shift+Cmd+1` | Workspace → Projects |

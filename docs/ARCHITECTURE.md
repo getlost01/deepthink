@@ -130,15 +130,24 @@ User Query
 
 ### TF-IDF Indexing (ContextEngine)
 
-Replaces naive keyword matching with proper information retrieval:
+Built in RAM on each retrieval call, scoring chunks from `VectorStore`:
 
 1. **Tokenization** — lowercase, strip stop words (150+), filter tokens >2 chars
 2. **Term Frequency (TF)** — normalized frequency per document
 3. **Inverse Document Frequency (IDF)** — `log((N - df + 0.5) / (df + 0.5) + 1)`
 4. **BM25 Scoring** — `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization
-5. **Boosting** — title match (1.5x), tag match (1.3x), recency (exponential decay over 90 days), project scope (1.5x)
-6. **Chunking** — entries >600 chars split at sentence boundaries with 100-char overlap
+5. **Boosting** — title match (1.5x), tag match (1.3x), recency (exp decay over 90 days), project scope (1.5x)
+6. **Chunking** — `SemanticChunker`: max 500 chars, sentence-boundary split, last-sentence overlap
 7. **Dedup** — hash fingerprinting + Jaccard similarity (threshold 0.75)
+
+### Vector Storage (VectorStore)
+
+SQLite database at `~/DeepThink/data/vectors.db` (WAL mode):
+- Single `chunks` table: id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding (Float32 BLOB)
+- Indexes: entry_id, entry_type, source, content_hash
+- Shared between Swift app and CLI — both read/write the same file
+- Entry types: `knowledge`, `note`, `task`, `reminder`
+- Replaces old `embeddings.json` + `embedding_hashes.json`
 
 ### Token Budget Management
 
@@ -280,16 +289,18 @@ User query → Detect tool need → Write MCP config JSON
     → Claude CLI --mcp-config → Tool calls → Response
 ```
 
-The app includes its own MCP server (`deepthink-mcp`) exposing:
-- `tasks_list`, `tasks_create`, `tasks_update`, `tasks_delete`
-- `notes_list`, `notes_create`, `notes_update`, `notes_delete`
-- `projects_list`, `projects_create`, `projects_update`, `projects_delete`
+The app includes its own MCP server (`deepthink-mcp`) with 45 tools:
+- `workspace_list/get/create/update/delete_task` + `workspace_list/get/create/update/delete_note`
+- `workspace_list/get/create/update/delete_project` + `workspace_list/get/create/update/delete_reminder`
+- `workspace_summary`, `smart_query`, `knowledge_context`, `workspace_context`, `deepthink_overview`
+- `knowledge_stats/list_projects/load_project/save_project/search/list_integrations/load_integration/capture`
+- `agent/rule/skill list/get/create/delete`
 
 ## CLI Architecture
 
 ```
 cli/src/
-├── index.ts           # CLI entry point (commands: ask, run, knowledge, agents, memory)
+├── index.ts           # CLI entry point (commands: ask, run, context, knowledge, task, note, project, workspace, search, analyze, docs)
 ├── mcp-server.ts      # MCP server (workspace tools for Claude)
 ├── config.ts          # Paths, settings
 ├── core/              # Shared utilities

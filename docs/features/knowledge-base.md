@@ -26,7 +26,7 @@ All entries stored as markdown with YAML frontmatter:
 ---
 title: OAuth Token Design
 source: manual
-folder: General
+bucket: General
 tags: [security, auth, api]
 imported_at: 2026-05-04T10:30:00Z
 ---
@@ -38,17 +38,18 @@ We use rotating refresh tokens with 15-minute access token TTL...
 
 ```
 ~/DeepThink/knowledge/
-├── general/           # Default folder
+├── general/           # Default bucket
+├── folders/           # User-created buckets
 ├── web/               # Scraped web pages
 ├── clipboard/         # Clipboard captures
 ├── manual/            # User-created entries
 ├── scripts/           # Script output
-├── folders/           # Watched folder syncs
-├── imports/           # File imports
-├── obsidian/          # Obsidian vault imports
+├── imports/           # File imports (Obsidian, etc.)
 ├── integrations/      # MCP/external data
 ├── projects/          # Per-project knowledge
-└── archive/           # Old/compressed entries
+├── research/          # Research captures
+├── archive/           # Old/compressed entries
+└── index.json         # Knowledge index
 ```
 
 ## Deduplication
@@ -67,12 +68,12 @@ Basic substring matching across title, content, and tags. Used for the search ba
 ### Smart Retrieval (RAG)
 BM25 + semantic hybrid search via `ContextEngine.retrieveContextHybrid()`. Used for AI chat context injection. See [RAG Pipeline](rag-pipeline.md).
 
-## Folder Management
+## Bucket Management
 
-- Create custom folders in Knowledge UI
-- Move entries between folders
-- Filter by folder in browser view
-- Scope agents/skills to specific folders via `knowledge_scope`
+- Create custom buckets in Knowledge UI
+- Move entries between buckets
+- Filter by bucket in browser view
+- Scope agents/skills to specific buckets via `knowledge_scope`
 
 ## Auto-Extraction
 
@@ -86,8 +87,8 @@ Notes with >30 words auto-analyzed for extractable knowledge facts. Tags auto-ge
 
 | File | Role |
 |------|------|
-| `Models/KnowledgeEntry.swift` | Entry data structure (title, content, tags, source, folder) |
-| `Services/KnowledgeService.swift` | CRUD, search, RAG context, folder management |
+| `Models/KnowledgeEntry.swift` | Entry data structure (title, content, tags, source, bucket) |
+| `Services/KnowledgeService.swift` | CRUD, search, RAG context, bucket management |
 | `Services/DataCollectorService.swift` | URL scraping, RSS, clipboard, folders, scripts |
 | `Services/ObsidianImportService.swift` | Obsidian vault import |
 | `Services/KnowledgeExtractionService.swift` | Auto-extraction from conversations/notes |

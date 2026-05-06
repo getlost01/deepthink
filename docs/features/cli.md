@@ -107,15 +107,6 @@ deepthink analyze quick data.csv                   # local stats only
 deepthink docs "API Reference" --input ./src/api.ts --output api-docs
 ```
 
-### Memory
-
-```bash
-deepthink memory save "Deploy uses blue-green strategy" --tags deploy,infra
-deepthink memory recall "deployment"
-deepthink memory promote <id>                      # short-term → long-term
-deepthink memory clear                             # clear short-term
-```
-
 ## Agent System
 
 The CLI includes a multi-agent system for complex tasks:
@@ -157,7 +148,7 @@ Output saved to sandbox/outputs/
 The CLI has its own hybrid retrieval engine matching the Swift app's capabilities:
 
 ### BM25 Keyword Search (`cli/src/core/context-engine.ts`)
-- 600-char chunks with 100-char overlap
+- Sentence-boundary chunks, max 500 chars, min 100 chars, last-sentence overlap
 - Stopword filtering (150+ words)
 - BM25 scoring with k1=1.5, b=0.75 length normalization
 - Title (1.5x), tag (1.3x), recency, and project scope boosting
@@ -165,10 +156,10 @@ The CLI has its own hybrid retrieval engine matching the Swift app's capabilitie
 - Token estimation for budget management
 
 ### Semantic Search (`cli/src/core/embedding-service.ts`)
-- Reads embeddings from shared `~/DeepThink/data/embeddings.json` (indexed by the Swift app)
-- Query embedding via compiled Swift helper using Apple NLEmbedding (512-dim vectors)
+- Reads and writes to shared `~/DeepThink/data/vectors.db` (same DB as Swift app)
+- Query embedding via compiled Swift helper (`~/DeepThink/.cache/embed-helper`) using Apple NLEmbedding
+- Can index entries independently — does not require the Swift app to run first
 - Cosine similarity search with 0.3 minimum threshold
-- Helper binary auto-compiled and cached at `~/.cache/embed-helper`
 
 ### Hybrid Retrieval (`retrieveContextHybrid`)
 - Runs BM25 + semantic in parallel
@@ -188,7 +179,7 @@ CLI and app share the same data directory (`~/DeepThink/`):
 ```
 cli/src/
 ├── index.ts           # CLI entry point, command routing
-├── mcp-server.ts      # MCP server (50 tools for Claude)
+├── mcp-server.ts      # MCP server (45 tools for Claude)
 ├── config.ts          # Paths, settings
 ├── core/
 │   ├── context-engine.ts  # BM25 + hybrid retrieval for CLI

@@ -53,9 +53,9 @@ Inline `#tags` in note body are extracted and added to the entry's frontmatter t
 | Convert wiki-links | On | Transform `[[links]]` and callouts to standard markdown |
 | Extract inline tags | On | Pull `#tags` from body into frontmatter |
 | Skip duplicates | On | Skip files >75% similar to existing knowledge entries |
-| Destination folder | "obsidian" | Name of the knowledge folder to import into |
+| Destination bucket | "obsidian" | Name of the knowledge bucket to import into |
 
-## Folder Structure
+## Bucket Structure
 
 A vault like:
 
@@ -81,7 +81,7 @@ Each file gets DeepThink frontmatter:
 ---
 title: API Redesign
 source: obsidian
-folder: obsidian/projects
+bucket: obsidian/projects
 tags: [architecture, backend]
 imported_at: 2026-05-04T10:30:00Z
 ---
@@ -91,10 +91,10 @@ imported_at: 2026-05-04T10:30:00Z
 
 ## After Import
 
-- All entries appear in Knowledge browser under the destination folder
+- All entries appear in Knowledge browser under the destination bucket
 - BM25 + semantic indexes rebuilt automatically
 - AI chat can reference imported knowledge immediately
-- Agent `knowledge_scope` can target `obsidian` or subfolders like `obsidian/research`
+- Agent `knowledge_scope` can target `obsidian` or sub-buckets like `obsidian/research`
 
 ## Handling Large Vaults
 

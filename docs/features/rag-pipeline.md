@@ -40,66 +40,111 @@ User types question
 
 Indexing happens automatically on app launch and whenever knowledge changes.
 
+### Storage Layer (`VectorStore`)
+
+All chunks and embeddings are stored in a shared SQLite database:
+
+```
+~/DeepThink/data/vectors.db
+```
+
+Schema (`chunks` table):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT | `{entry_id}:{chunk_index}` |
+| `entry_id` | TEXT | Source entry identifier |
+| `entry_type` | TEXT | `knowledge`, `task`, `note`, `reminder` |
+| `title` | TEXT | Entry title |
+| `content` | TEXT | Chunk text content |
+| `tags` | TEXT | JSON array of tags |
+| `source` | TEXT | Source bucket/type |
+| `imported_at` | REAL | Unix timestamp |
+| `chunk_index` | INTEGER | Chunk position in entry |
+| `total_chunks` | INTEGER | Total chunks for entry |
+| `content_hash` | INTEGER | djb2 hash for change detection |
+| `embedding` | BLOB | Float32 array (NLEmbedding, ~512 dims) |
+
+Both the Swift app and CLI share the same `vectors.db` file. Indexed entry types:
+- Knowledge base entries
+- Notes (from SwiftData)
+- Tasks (from SwiftData)
+- Reminders (from SwiftData)
+
+### Chunking (`SemanticChunker`)
+
+Long entries split into sentence-boundary chunks:
+
+- **Max chunk size**: 500 chars
+- **Min chunk size**: 100 chars
+- **Overlap**: last sentence of previous chunk kept as first sentence of next
+- **Split method**: Apple `enumerateSubstrings(.bySentences, .localized)` in Swift; sentence regex in CLI
+
 ### BM25/TF-IDF Index (`ContextEngine`)
+
+Built in RAM on each retrieval call — fast, no disk overhead:
 
 - **Tokenization**: lowercase, remove 150+ stop words, filter tokens >2 chars
 - **Term Frequency (TF)**: normalized frequency per document
 - **Inverse Document Frequency (IDF)**: `log((N - df + 0.5) / (df + 0.5) + 1)`
 - **BM25 Scoring**: `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization
-- **Chunking**: entries >600 chars split at sentence boundaries with 100-char overlap
-- **Dedup**: hash fingerprints + Jaccard similarity (>75% threshold)
-- **Storage**: RAM only — rebuilds in milliseconds from knowledge files
+- Scores are computed against chunks from VectorStore, not raw files
 
 ### Semantic Embeddings (`EmbeddingService`)
 
-- **Model**: Apple NaturalLanguage `NLEmbedding.sentenceEmbedding(for: .english)` — 512 dimensions
-- **Input**: Combined `title + first 500 chars of content` per entry
-- **Incremental**: content hash tracks changes — only re-embeds modified entries
-- **Storage**: `~/DeepThink/data/embeddings.json` (persisted across launches)
-- **Change detection**: `~/DeepThink/data/embedding_hashes.json`
+- **Model**: Apple NaturalLanguage `NLEmbedding.sentenceEmbedding(for: .english)` — ~512 dimensions
+- **Input per chunk**: `"{title}. {first 500 chars of chunk content}"`
+- **Change detection**: `content_hash` stored per chunk in `vectors.db` — skips unchanged entries
+- **Storage**: Float32 BLOB in `vectors.db` (replaces old `embeddings.json`)
+- **Stale pruning**: removed entries deleted from `vectors.db` on index rebuild
 
 ## Retrieval
 
 ### Hybrid Search (`retrieveContextHybrid`)
 
-For each query, both search methods run in parallel:
+For each query, both search methods run:
 
 | Method | What It Finds | Example |
 |--------|---------------|---------|
 | BM25 | Entries with matching keywords | "authentication" finds entries containing "authentication" |
 | Semantic | Entries with similar meaning | "authentication" finds entries about "login security", "OAuth tokens" |
 
-Results are merged via **Reciprocal Rank Fusion (RRF)**:
+Results merged via **Reciprocal Rank Fusion (RRF)**:
 
 ```
-score(entry) = 1/(k + bm25_rank) + 1/(k + semantic_rank)
+fused_score(entry) = 1/(k + bm25_rank) + 1/(k + semantic_rank)
 where k = 60
 ```
 
-This ensures both keyword-exact and meaning-similar entries surface. An entry ranked #1 by BM25 and #5 by semantic search gets a higher fused score than one ranked #3 by both.
+Falls back to BM25-only if no embeddings are available.
 
 ### Scope Filtering
 
-Context can be narrowed at retrieval time:
+Context narrowed at retrieval time:
 
 | Scope | Set By | Effect |
 |-------|--------|--------|
-| `agentScope` | Agent's `knowledge_scope` field | Only entries matching specified folders/tags |
+| `agentScope` | Agent's `knowledge_scope` field | Only chunks matching specified buckets/tags |
 | `projectScope` | Current project context | Entries tagged with project name boosted 1.5x |
 | `skillScope` | Skill's `knowledge_scope` field | Skill-specific RAG filtering |
 
-### Boosting
+### Boosting (applied to BM25 scores)
 
-On top of BM25 scores:
+- **Title match**: query terms in title → 1.5x per overlapping term
+- **Tag match**: query terms in tags → 1.3x per overlapping term
+- **Recency**: `exp(-days/90) * 0.3 + 0.7` (90-day exponential decay, min 0.7x)
+- **Project scope**: matching project → 1.5x
 
-- **Title match**: query terms in title → 1.5x boost
-- **Tag match**: query terms in tags → 1.3x boost
-- **Recency**: exponential decay over 90 days (`exp(-days/90) * 0.3 + 0.7`)
-- **Project scope**: matching project → 1.5x boost
+### Chunk Dedup
+
+Per-query dedup prevents the same entry from flooding results:
+
+- First chunk from each entry always included if score > threshold
+- Additional chunks from same entry only included if score > 70% of top score
 
 ## Context Assembly
 
-The full prompt sent to Claude combines:
+The full prompt sent to Claude:
 
 | Component | Token Budget | Content |
 |-----------|-------------|---------|
@@ -139,11 +184,11 @@ Manual extraction also available via "Save to Knowledge" button in chat toolbar.
 
 ## Data Storage
 
-| Data | Location | Format |
-|------|----------|--------|
-| BM25 index | RAM | Rebuilt on each `reload()` |
-| Semantic embeddings | `data/embeddings.json` | JSON array of `{id, vector}` |
-| Content hashes | `data/embedding_hashes.json` | JSON `{entryID: hash}` |
+| Data | Location | Persistence |
+|------|----------|-------------|
+| BM25 index (TF-IDF terms) | RAM | Rebuilt on each `retrieveContext()` call — fast, no disk |
+| Chunks + embeddings | `data/vectors.db` | SQLite WAL, persisted, incremental updates |
+| Content hashes | `data/vectors.db` (`content_hash` column) | Persisted, tracks what's already embedded |
 | Knowledge entries | `knowledge/**/*.md` | Markdown + YAML frontmatter |
 | Conversation summaries | RAM | Cache, regenerated as needed |
 | Dedup fingerprints | RAM | `Set<UInt64>`, rebuilt with index |
@@ -153,14 +198,16 @@ Manual extraction also available via "Save to Knowledge" button in chat toolbar.
 ### Swift App
 | File | Role |
 |------|------|
-| `Services/ContextEngine.swift` | BM25 index, hybrid retrieval, chunking, dedup, token budgeting |
-| `Services/EmbeddingService.swift` | NLEmbedding vectors, cosine similarity, disk persistence |
+| `Services/VectorStore.swift` | SQLite storage for chunks + embeddings (WAL, Float32 BLOB) |
+| `Services/ContextEngine.swift` | BM25 retrieval, hybrid RRF fusion, chunk dedup, token budgeting |
+| `Services/EmbeddingService.swift` | NLEmbedding vectors, `SemanticChunker`, incremental indexing |
 | `Services/KnowledgeService.swift` | Knowledge CRUD, RAG context formatting, reload triggers |
 | `Views/Shared/AIChatView.swift` | Context assembly, prompt building, sends to Claude |
 
 ### CLI
 | File | Role |
 |------|------|
-| `cli/src/core/context-engine.ts` | BM25 index, hybrid retrieval (RRF), chunking, token budgeting |
-| `cli/src/core/embedding-service.ts` | Reads shared embeddings, query embedding via Swift helper, cosine similarity |
-| `cli/src/tools/smart-mcp.ts` | MCP tools (`smart_query`, `knowledge_context`) using hybrid retrieval |
+| `cli/src/core/vector-store.ts` | SQLite storage, `semanticChunk`, shared DB with Swift app |
+| `cli/src/core/context-engine.ts` | BM25 index, hybrid retrieval (RRF), workspace context |
+| `cli/src/core/embedding-service.ts` | Query embedding via Swift helper, cosine similarity, indexing |
+| `cli/src/tools/smart-mcp.ts` | MCP tools (`smart_query`, `knowledge_context`) |

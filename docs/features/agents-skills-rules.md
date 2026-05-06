@@ -33,7 +33,7 @@ You are a research agent. Your job is to...
 | `icon` | String | SF Symbol name |
 | `model` | String? | Override Claude model (haiku/sonnet/opus) |
 | `skills` | [String] | Skills this agent can suggest using |
-| `knowledge_scope` | [String] | Folders/tags to filter RAG retrieval |
+| `knowledge_scope` | [String] | Buckets/tags to filter RAG retrieval |
 | `built_in` | Bool | Whether it's a default template |
 
 ### How Agents Work
@@ -96,7 +96,7 @@ The first `---` separator splits system prompt from prompt template.
 | `icon` | String | SF Symbol name |
 | `category` | String | Grouping for UI |
 | `model` | String? | Override Claude model |
-| `knowledge_scope` | [String] | Folders/tags for scoped RAG during execution |
+| `knowledge_scope` | [String] | Buckets/tags for scoped RAG during execution |
 | `pinned` | Bool | Show in quick-access area |
 
 ### Template Variables

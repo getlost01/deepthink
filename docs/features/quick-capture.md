@@ -9,7 +9,7 @@ Press **Cmd+Shift+D** from anywhere on your Mac. A floating panel appears:
 1. Pick type: **Note**, **Knowledge**, or **Task**
 2. Enter title and content
 3. For Notes/Tasks: optionally select a project
-4. For Knowledge: select a folder and add tags
+4. For Knowledge: select a bucket and add tags
 5. Press **Cmd+Enter** to save (or **Escape** to dismiss)
 
 The panel shows a brief "Saved!" animation and auto-dismisses.
@@ -23,7 +23,7 @@ The panel shows a brief "Saved!" animation and auto-dismisses.
 
 ### Knowledge
 - Creates a markdown entry in the knowledge base
-- Select destination folder (defaults to "General")
+- Select destination bucket (defaults to "General")
 - Add comma-separated tags
 - Immediately indexed for BM25 + semantic search
 - AI can reference it in the next conversation
@@ -83,5 +83,5 @@ Two monitors registered in `DeepThinkApp.swift`:
 | File | Role |
 |------|------|
 | `Views/QuickCapture/QuickCapturePanel.swift` | NSPanel wrapper, singleton, toggle logic |
-| `Views/QuickCapture/QuickCaptureView.swift` | SwiftUI content, save logic, project/folder pickers |
+| `Views/QuickCapture/QuickCaptureView.swift` | SwiftUI content, save logic, project/bucket pickers |
 | `DeepThinkApp.swift` | Global hotkey registration, menu item |
