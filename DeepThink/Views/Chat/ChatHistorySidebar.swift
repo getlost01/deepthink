@@ -107,6 +107,7 @@ struct ChatHistorySidebar: View {
                                     onDelete: { onDelete(conv) }
                                 )
                                 .onHover { hoveredID = $0 ? conv.id : nil }
+                                .pointerOnHover()
                             }
                         }
                     }

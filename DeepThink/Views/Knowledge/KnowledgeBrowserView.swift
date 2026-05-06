@@ -5,28 +5,27 @@ import UniformTypeIdentifiers
 struct KnowledgeBrowserView: View {
     @Environment(AppState.self) private var appState
     @State private var searchText = ""
-    @State private var folderFilter: String?
+    @State private var bucketFilter: String?
     @State private var selectedEntry: KnowledgeEntry?
     @State private var showURLSheet = false
     @State private var showNewEntry = false
     @State private var showScriptSheet = false
     @State private var showDeleteConfirm = false
-    @State private var showNewFolder = false
-    @State private var newFolderName = ""
-    @State private var newFolderIcon = "folder"
+    @State private var showNewBucket = false
+    @State private var newBucketName = ""
     @State private var showObsidianImport = false
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
     private var filteredEntries: [KnowledgeEntry] {
         var results = knowledge.entries
-        if let filter = folderFilter {
-            results = results.filter { $0.folder == filter }
+        if let filter = bucketFilter {
+            results = results.filter { $0.bucket == filter }
         }
         if !searchText.isEmpty {
             results = knowledge.search(searchText)
-            if let filter = folderFilter {
-                results = results.filter { $0.folder == filter }
+            if let filter = bucketFilter {
+                results = results.filter { $0.bucket == filter }
             }
         }
         return results
@@ -66,8 +65,8 @@ struct KnowledgeBrowserView: View {
                             Button { showNewEntry = true } label: {
                                 Label("Write New", systemImage: "pencil")
                             }
-                            Button { showNewFolder = true } label: {
-                                Label("New Folder", systemImage: "folder.badge.plus")
+                            Button { showNewBucket = true } label: {
+                                Label("New Bucket", systemImage: "cylinder.split.1x2")
                             }
                         }
                     } label: {
@@ -80,32 +79,46 @@ struct KnowledgeBrowserView: View {
                                 RoundedRectangle(cornerRadius: DS.Radius.sm)
                                     .strokeBorder(DS.Colors.border, lineWidth: 1)
                             )
+                            .contentShape(Rectangle())
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
-                    .pointerOnHover()
+                    .onHover { hovering in
+                        if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
 
-                Divider()
-
-                HStack(spacing: DS.Spacing.sm) {
-                    Picker(selection: $folderFilter) {
-                        Text("All Folders").tag(nil as String?)
-                        ForEach(knowledge.folders, id: \.self) { folder in
-                            Label(folder, systemImage: "folder").tag(folder as String?)
+                HStack(spacing: DS.Spacing.xs) {
+                    Picker(selection: $bucketFilter) {
+                        Text("All Buckets").tag(nil as String?)
+                        ForEach(knowledge.buckets, id: \.self) { bucket in
+                            Label(bucket, systemImage: "cylinder.split.1x2").tag(bucket as String?)
                         }
                     } label: { EmptyView() }
                     .pickerStyle(.menu)
                     .font(DS.Font.caption)
                     .fixedSize()
 
+                    if bucketFilter != nil {
+                        Button {
+                            bucketFilter = nil
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                .foregroundStyle(DS.Colors.textSecondary)
+                                .frame(width: DS.IconSize.xl, height: DS.IconSize.xl)
+                                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+
+                    Spacer()
                     Text("\(filteredEntries.count) entries")
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
-
-                    Spacer()
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.sm)
@@ -125,16 +138,16 @@ struct KnowledgeBrowserView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(filteredEntries) { entry in
-                                EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id) {
+                                EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
                                     selectedEntry = entry
                                 }
                                 .contextMenu {
-                                    Menu("Move to Folder") {
-                                        ForEach(knowledge.folders, id: \.self) { folder in
-                                            Button(folder) {
-                                                KnowledgeService.shared.moveEntry(entry, to: folder)
+                                    Menu("Move to Bucket") {
+                                        ForEach(knowledge.buckets, id: \.self) { bucket in
+                                            Button(bucket) {
+                                                KnowledgeService.shared.moveEntry(entry, to: bucket)
                                             }
-                                            .disabled(entry.folder == folder)
+                                            .disabled(entry.bucket == bucket)
                                         }
                                     }
                                     Divider()
@@ -193,16 +206,11 @@ struct KnowledgeBrowserView: View {
         .sheet(isPresented: $showObsidianImport) {
             ObsidianImportView()
         }
-        .sheet(isPresented: $showNewFolder) {
-            NewFolderSheet(
-                folderName: $newFolderName,
-                folderIcon: $newFolderIcon,
-                isPresented: $showNewFolder
-            ) { name, icon in
-                KnowledgeService.shared.createFolder(named: name)
-                folderFilter = name
-                newFolderName = ""
-                newFolderIcon = "folder"
+        .sheet(isPresented: $showNewBucket) {
+            NewBucketSheet(bucketName: $newBucketName, isPresented: $showNewBucket) { name in
+                KnowledgeService.shared.createBucket(named: name)
+                bucketFilter = name
+                newBucketName = ""
             }
         }
     }
@@ -249,46 +257,67 @@ struct KnowledgeBrowserView: View {
 private struct EntryRow: View {
     let entry: KnowledgeEntry
     let isSelected: Bool
+    let bucketFiltered: Bool
     let action: () -> Void
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: DS.Spacing.md) {
+            HStack(alignment: .top, spacing: DS.Spacing.md) {
+                Image(systemName: entry.sourceIcon)
+                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
+                    .frame(width: 28, height: 28)
+                    .background(isSelected ? DS.Colors.accentFill : DS.Colors.fillSecondary, in: Circle())
+                    .overlay(Circle().strokeBorder(isSelected ? DS.Colors.accent.opacity(0.2) : DS.Colors.border, lineWidth: 1))
+                    .padding(.top, 1)
+
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text(entry.title)
-                        .font(DS.Font.body)
-                        .fontWeight(.medium)
-                        .foregroundStyle(DS.Colors.textPrimary)
-                        .lineLimit(1)
-
-                    HStack(spacing: DS.Spacing.sm) {
-                        Text(entry.folder)
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textSecondary)
-
-                        Text("·")
-                            .foregroundStyle(DS.Colors.textTertiary)
-
-                        Text(entry.source)
+                    HStack {
+                        Text(entry.title)
+                            .font(DS.Font.body)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                            .lineLimit(1)
+                        Spacer()
+                        Text(entry.importedAt.relativeFormatted)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
+
+                    if !entry.preview.isEmpty {
+                        Text(entry.preview)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    HStack(spacing: DS.Spacing.xs) {
+                        if !bucketFiltered {
+                            Text(entry.bucket)
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            Text("·")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        Text(entry.source)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        if !entry.tags.isEmpty {
+                            Text("·")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            Text(entry.tags.prefix(2).joined(separator: ", "))
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                                .lineLimit(1)
+                        }
+                    }
                 }
-
-                Spacer()
-
-                Text(entry.importedAt.relativeFormatted)
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary)
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                    .foregroundStyle(DS.Colors.textTertiary)
-                    .opacity(isHovered ? 1 : 0)
             }
             .padding(.horizontal, DS.Spacing.lg)
-            .padding(.vertical, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.md + 2)
             .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
             .contentShape(Rectangle())
         }
@@ -301,16 +330,67 @@ private struct EntryRow: View {
     }
 }
 
+private struct BucketPill: View {
+    let label: String
+    let count: Int
+    let isSelected: Bool
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: DS.Spacing.xs) {
+                Text(label)
+                    .font(DS.Font.small)
+                    .fontWeight(isSelected ? .semibold : .regular)
+                    .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
+                Text("\(count)")
+                    .font(DS.Font.micro)
+                    .fontWeight(.medium)
+                    .foregroundStyle(isSelected ? DS.Colors.accent.opacity(0.7) : DS.Colors.textTertiary)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 2)
+                    .background(isSelected ? DS.Colors.accent.opacity(0.12) : DS.Colors.fillSecondary, in: Capsule())
+            }
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.xs)
+            .background(
+                isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fill : .clear),
+                in: Capsule()
+            )
+            .overlay(Capsule().strokeBorder(isSelected ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
 // MARK: - Detail View
 
 struct KnowledgeDetailView: View {
     let entry: KnowledgeEntry
     let onDelete: () -> Void
+    @Environment(AppState.self) private var appState
     @Query private var allNotes: [Note]
     @State private var isAutoTagging = false
-    @State private var editableContent: String = ""
+    @State private var editableContent: String
+    @State private var editableTitle: String
+    @State private var isEditingTitle = false
     @State private var hasLoaded = false
+
+    private var liveTags: [String] {
+        KnowledgeService.shared.entries.first(where: { $0.id == entry.id })?.tags ?? entry.tags
+    }
+
+    init(entry: KnowledgeEntry, onDelete: @escaping () -> Void) {
+        self.entry = entry
+        self.onDelete = onDelete
+        self._editableContent = State(initialValue: entry.content)
+        self._editableTitle = State(initialValue: entry.title)
+    }
     @State private var showCopied = false
+    @State private var showLinkedPopover = false
 
     private var linkedNotes: [Note] {
         BacklinkService.shared.notesLinkedTo(entry: entry, notes: allNotes)
@@ -319,9 +399,12 @@ struct KnowledgeDetailView: View {
     var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
-                Text(entry.title)
+                TextField("Entry title", text: $editableTitle)
+                    .textFieldStyle(.plain)
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
+                    .onSubmit { commitTitleEdit() }
+                    .onChange(of: editableTitle) { _, _ in isEditingTitle = true }
 
                 HStack(spacing: DS.Spacing.sm) {
                     Text(entry.source)
@@ -334,23 +417,29 @@ struct KnowledgeDetailView: View {
                 .foregroundStyle(DS.Colors.textTertiary)
 
                 HStack(spacing: DS.Spacing.md) {
+                    BucketPickerButton(currentBucket: entry.bucket) { newBucket in
+                        KnowledgeService.shared.moveEntry(entry, to: newBucket)
+                    }
+
                     Button {
                         autoTagEntry()
                     } label: {
                         HStack(spacing: DS.Spacing.xs) {
                             if isAutoTagging {
                                 ProgressView().controlSize(.mini)
+                                    .foregroundStyle(DS.Colors.textSecondary)
                             } else {
                                 Image(systemName: "sparkles")
                                     .font(.system(size: DS.IconSize.sm))
+                                    .foregroundStyle(DS.Colors.accent)
                             }
                             Text(isAutoTagging ? "Generating..." : "Generate Tags")
                                 .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textSecondary)
                         }
-                        .foregroundStyle(DS.Colors.accent)
                         .padding(.horizontal, DS.Spacing.sm + 2)
                         .padding(.vertical, DS.Spacing.xs + 2)
-                        .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
                     .disabled(isAutoTagging)
@@ -395,16 +484,50 @@ struct KnowledgeDetailView: View {
                     }
 
                     if !linkedNotes.isEmpty {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "link")
-                                .font(.system(size: DS.IconSize.xs))
-                            Text("\(linkedNotes.count) linked")
-                                .font(DS.Font.small)
+                        Button {
+                            if linkedNotes.count == 1 {
+                                appState.navigateToNote(linkedNotes[0].id)
+                            } else {
+                                showLinkedPopover = true
+                            }
+                        } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "link")
+                                    .font(.system(size: DS.IconSize.xs))
+                                Text("\(linkedNotes.count) linked")
+                                    .font(DS.Font.small)
+                            }
+                            .foregroundStyle(DS.Colors.accent)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, DS.Spacing.xs + 2)
+                            .background(DS.Colors.accentFill, in: Capsule())
                         }
-                        .foregroundStyle(DS.Colors.accent)
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs + 2)
-                        .background(DS.Colors.accentFill, in: Capsule())
+                        .buttonStyle(.plainPointer)
+                        .popover(isPresented: $showLinkedPopover, arrowEdge: .bottom) {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("Linked Notes")
+                                    .font(DS.Font.caption)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                                    .padding(.horizontal, DS.Spacing.md)
+                                    .padding(.vertical, DS.Spacing.sm)
+                                Divider()
+                                ForEach(linkedNotes) { note in
+                                    Button {
+                                        showLinkedPopover = false
+                                        appState.navigateToNote(note.id)
+                                    } label: {
+                                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                                            .font(DS.Font.body)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.horizontal, DS.Spacing.md)
+                                            .padding(.vertical, DS.Spacing.sm)
+                                    }
+                                    .buttonStyle(.plainPointer)
+                                }
+                            }
+                            .frame(minWidth: 220)
+                        }
                     }
 
                     Spacer()
@@ -432,9 +555,12 @@ struct KnowledgeDetailView: View {
 
             Divider()
 
-            if !entry.tags.isEmpty {
+            if !liveTags.isEmpty {
                 HStack(spacing: DS.Spacing.xs) {
-                    ForEach(entry.tags, id: \.self) { tag in
+                    Text("Tags:")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    ForEach(liveTags, id: \.self) { tag in
                         DSPill(text: tag)
                     }
                     Spacer()
@@ -453,8 +579,8 @@ struct KnowledgeDetailView: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { editableContent = entry.content; hasLoaded = true }
-        .onChange(of: entry.id) { editableContent = entry.content; showCopied = false }
+        .onAppear { editableContent = entry.content; editableTitle = entry.title; hasLoaded = true }
+        .onChange(of: entry.id) { editableContent = entry.content; editableTitle = entry.title; showCopied = false; isEditingTitle = false }
     }
 
     private func saveEntry() {
@@ -468,12 +594,51 @@ struct KnowledgeDetailView: View {
         try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
     }
 
+    private func commitTitleEdit() {
+        guard isEditingTitle else { return }
+        isEditingTitle = false
+        let trimmed = editableTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != entry.title else {
+            editableTitle = entry.title
+            return
+        }
+        KnowledgeService.shared.renameEntry(entry, title: trimmed)
+    }
+
     private func autoTagEntry() {
         isAutoTagging = true
         Task {
             await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: entry)
             await MainActor.run { isAutoTagging = false }
         }
+    }
+}
+
+// MARK: - Bucket Picker Button
+
+private struct BucketPickerButton: View {
+    let currentBucket: String
+    let onMove: (String) -> Void
+
+    var body: some View {
+        Menu {
+            ForEach(KnowledgeService.shared.buckets, id: \.self) { bucket in
+                Button(bucket) { onMove(bucket) }
+                    .disabled(bucket == currentBucket)
+            }
+        } label: {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: "cylinder.split.1x2")
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(DS.Colors.textSecondary)
+                Text(currentBucket)
+            }
+            .font(DS.Font.caption)
+            .padding(.horizontal, DS.Spacing.sm + 2)
+            .padding(.vertical, DS.Spacing.xs + 2)
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        }
+        .buttonStyle(.plainPointer)
     }
 }
 
@@ -560,6 +725,9 @@ struct NewKnowledgeSheet: View {
     @State private var title = ""
     @State private var content = ""
     @State private var tags = ""
+    @State private var selectedBucket = "General"
+
+    private var knowledge: KnowledgeService { KnowledgeService.shared }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -590,6 +758,21 @@ struct NewKnowledgeSheet: View {
 
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
                 DSLabeledTextField(label: "Title", text: $title, placeholder: "Entry title")
+
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    Text("Bucket")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Picker("Bucket", selection: $selectedBucket) {
+                        ForEach(knowledge.buckets, id: \.self) { bucket in
+                            Text(bucket).tag(bucket)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .font(DS.Font.body)
+                    .fixedSize()
+                }
+
                 DSLabeledTextField(label: "Tags (comma-separated)", text: $tags, placeholder: "api, docs, reference")
                 DSLabeledTextEditor(label: "Content", text: $content, minHeight: 200)
             }
@@ -601,7 +784,7 @@ struct NewKnowledgeSheet: View {
 
     private func save() {
         let tagList = tags.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        KnowledgeService.shared.createEntry(title: title, content: content, source: "manual", tags: tagList)
+        KnowledgeService.shared.createEntry(title: title, content: content, source: "manual", tags: tagList, bucket: selectedBucket)
         dismiss()
     }
 }
@@ -685,29 +868,20 @@ struct ScriptRunSheet: View {
     }
 }
 
-// MARK: - New Folder Sheet
+// MARK: - New Bucket Sheet
 
-private struct NewFolderSheet: View {
-    @Binding var folderName: String
-    @Binding var folderIcon: String
+private struct NewBucketSheet: View {
+    @Binding var bucketName: String
     @Binding var isPresented: Bool
-    let onCreate: (String, String) -> Void
-
-    private let iconOptions = [
-        "folder", "folder.fill", "book.closed", "doc.text",
-        "star", "heart", "bookmark", "lightbulb",
-        "globe", "link", "tag", "archivebox",
-        "cpu", "hammer", "wrench", "paintbrush",
-        "graduationcap", "briefcase", "building.2", "person.2"
-    ]
+    let onCreate: (String) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("New Folder")
+                Text("New Bucket")
                     .font(DS.Font.heading)
                 Spacer()
-                Button("Cancel") { isPresented = false; folderName = "" }
+                Button("Cancel") { isPresented = false; bucketName = "" }
                     .font(DS.Font.body)
                     .buttonStyle(.plainPointer)
                     .foregroundStyle(DS.Colors.textSecondary)
@@ -718,57 +892,33 @@ private struct NewFolderSheet: View {
             Divider()
 
             VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                DSLabeledTextField(label: "Folder Name", text: $folderName, placeholder: "e.g. Research, APIs, Notes")
-
-                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                    Text("Icon")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(40), spacing: DS.Spacing.sm), count: 8), spacing: DS.Spacing.sm) {
-                        ForEach(iconOptions, id: \.self) { icon in
-                            Button {
-                                folderIcon = icon
-                            } label: {
-                                Image(systemName: icon)
-                                    .font(.system(size: 14))
-                                    .foregroundStyle(folderIcon == icon ? DS.Colors.accent : DS.Colors.textSecondary)
-                                    .frame(width: 36, height: 36)
-                                    .background(
-                                        folderIcon == icon ? DS.Colors.accentFill : DS.Colors.fill,
-                                        in: RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                    )
-                            }
-                            .buttonStyle(.plainPointer)
-                        }
-                    }
-                }
+                DSLabeledTextField(label: "Bucket Name", text: $bucketName, placeholder: "e.g. Research, APIs, Notes")
 
                 Button {
-                    let name = folderName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let name = bucketName.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard !name.isEmpty else { return }
-                    onCreate(name, folderIcon)
+                    onCreate(name)
                     isPresented = false
                 } label: {
-                    Text("Create Folder")
+                    Text("Create Bucket")
                         .font(DS.Font.body)
                         .fontWeight(.semibold)
                         .foregroundStyle(DS.Colors.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DS.Spacing.md)
                         .background(
-                            folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            bucketName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                                 ? DS.Colors.accent.opacity(DS.Opacity.disabled)
                                 : DS.Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(folderName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(bucketName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
             .padding(DS.Spacing.lg)
         }
-        .frame(width: 420)
+        .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
     }
 }

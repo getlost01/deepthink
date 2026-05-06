@@ -10,12 +10,12 @@ struct KnowledgeEntry: Identifiable, Hashable {
     var content: String
     var filePath: URL
     var fileSize: Int
-    var folder: String
+    var bucket: String
 
     var sourceIcon: String {
         switch source {
         case "url", "web": return "globe"
-        case "folder", "import": return "folder"
+        case "folder", "import": return "archivebox"
         case "clipboard": return "doc.on.clipboard"
         case "script": return "terminal"
         case "mcp": return "puzzlepiece.extension"

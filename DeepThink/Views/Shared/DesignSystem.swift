@@ -829,6 +829,7 @@ extension ButtonStyle where Self == PlainPointerButtonStyle {
 
 struct DSPrimaryButtonStyle: ButtonStyle {
     @State private var isHovered = false
+    @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -841,9 +842,12 @@ struct DSPrimaryButtonStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
                     .fill(configuration.isPressed ? DS.Colors.accent.opacity(0.85) : (isHovered ? DS.Colors.accent.opacity(0.9) : DS.Colors.accent))
             )
+            .opacity(isEnabled ? 1 : DS.Opacity.disabled)
             .onHover { hovering in
                 isHovered = hovering
-                if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                if hovering {
+                    if isEnabled { NSCursor.pointingHand.push() } else { NSCursor.operationNotAllowed.push() }
+                } else { NSCursor.pop() }
             }
             .animation(DS.Animation.quick, value: isHovered)
     }

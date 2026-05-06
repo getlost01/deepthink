@@ -81,7 +81,7 @@ struct RecentView: View {
                 icon: entry.sourceIcon,
                 iconColor: DS.Colors.teal,
                 title: entry.title,
-                subtitle: entry.folder,
+                subtitle: entry.bucket,
                 detail: entry.formattedSize,
                 date: entry.importedAt,
                 kind: .knowledge,

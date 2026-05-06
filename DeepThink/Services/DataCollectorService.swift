@@ -42,20 +42,46 @@ final class DataCollectorService {
 
     private func extractTextFromHTML(_ html: String) -> String {
         var text = html
-        text = text.replacingOccurrences(of: "<script[^>]*>[\\s\\S]*?</script>", with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<style[^>]*>[\\s\\S]*?</style>", with: "", options: .regularExpression)
+        // Drop entire head block
+        text = text.replacingOccurrences(of: "<head[^>]*>[\\s\\S]*?</head>", with: "", options: .regularExpression)
+        // Drop boilerplate structural blocks
+        for tag in ["script", "style", "nav", "header", "footer", "aside", "noscript", "svg", "iframe", "form", "figure", "button"] {
+            text = text.replacingOccurrences(of: "<\(tag)[^>]*>[\\s\\S]*?</\(tag)>", with: "", options: .regularExpression)
+        }
+        // Block-level spacing
         text = text.replacingOccurrences(of: "<br[^>]*>", with: "\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<p[^>]*>", with: "\n\n", options: .regularExpression)
-        text = text.replacingOccurrences(of: "<h[1-6][^>]*>", with: "\n\n# ", options: .regularExpression)
+        text = text.replacingOccurrences(of: "</?p[^>]*>", with: "\n\n", options: .regularExpression)
+        text = text.replacingOccurrences(of: "<h[1-6][^>]*>", with: "\n\n## ", options: .regularExpression)
+        text = text.replacingOccurrences(of: "</h[1-6]>", with: "\n", options: .regularExpression)
         text = text.replacingOccurrences(of: "<li[^>]*>", with: "\n- ", options: .regularExpression)
+        text = text.replacingOccurrences(of: "</?(?:ul|ol|div|section|article|main|td|th)[^>]*>", with: "\n", options: .regularExpression)
+        // Strip remaining tags
         text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
-        text = text.replacingOccurrences(of: "&nbsp;", with: " ")
-        text = text.replacingOccurrences(of: "&amp;", with: "&")
-        text = text.replacingOccurrences(of: "&lt;", with: "<")
-        text = text.replacingOccurrences(of: "&gt;", with: ">")
-        text = text.replacingOccurrences(of: "&quot;", with: "\"")
+        // HTML entities
+        let entities: [(String, String)] = [
+            ("&nbsp;", " "), ("&amp;", "&"), ("&lt;", "<"), ("&gt;", ">"),
+            ("&quot;", "\""), ("&apos;", "'"), ("&mdash;", "—"), ("&ndash;", "–"),
+            ("&hellip;", "…"), ("&laquo;", "«"), ("&raquo;", "»"), ("&#39;", "'"),
+            ("&copy;", "©"), ("&reg;", "®"), ("&trade;", "™")
+        ]
+        for (entity, replacement) in entities {
+            text = text.replacingOccurrences(of: entity, with: replacement)
+        }
+        // Decode numeric entities &#NNN; and &#xHH;
+        text = text.replacingOccurrences(of: "&#x([0-9a-fA-F]+);", with: "", options: .regularExpression)
+        text = text.replacingOccurrences(of: "&#([0-9]+);", with: "", options: .regularExpression)
+        // Normalize whitespace
+        text = text.replacingOccurrences(of: "[ \\t]+", with: " ", options: .regularExpression)
         text = text.replacingOccurrences(of: "\n{3,}", with: "\n\n", options: .regularExpression)
-        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Drop lines that are pure noise (only whitespace/punctuation, short junk)
+        let lines = text.components(separatedBy: "\n")
+        let filtered = lines.filter { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.count > 2 else { return false }
+            let alphanumCount = trimmed.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+            return alphanumCount > 0
+        }
+        return filtered.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func extractTitle(from html: String) -> String? {
@@ -140,7 +166,7 @@ final class DataCollectorService {
                     DispatchQueue.main.async {
                         KnowledgeService.shared.createEntry(
                             title: "Script Output \(Date().formatted(date: .abbreviated, time: .shortened))",
-                            content: output,
+                            content: "```\n\(output.trimmingCharacters(in: .whitespacesAndNewlines))\n```",
                             source: "script",
                             tags: ["script"]
                         )

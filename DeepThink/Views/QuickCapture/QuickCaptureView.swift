@@ -10,7 +10,7 @@ struct QuickCaptureView: View {
     @State private var content = ""
     @State private var tags = ""
     @State private var selectedProjectName: String?
-    @State private var selectedFolder: String = "General"
+    @State private var selectedBucket: String = "General"
     @State private var saved = false
     @State private var projects: [Project] = []
     @FocusState private var titleFocused: Bool
@@ -32,20 +32,17 @@ struct QuickCaptureView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            Rectangle().fill(DS.Colors.border.opacity(0.5)).frame(height: 0.5)
+            Rectangle().fill(DS.Colors.borderHover).frame(height: 0.5)
             contentArea
-            Rectangle().fill(DS.Colors.border.opacity(0.5)).frame(height: 0.5)
+            Rectangle().fill(DS.Colors.borderHover).frame(height: 0.5)
             footer
         }
         .frame(width: 720, height: 620)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .background(
-            .ultraThickMaterial,
-            in: RoundedRectangle(cornerRadius: DS.Radius.xl)
-        )
+        .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.xl)
-                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                .strokeBorder(DS.Colors.borderHover, lineWidth: 1)
         )
         .shadow(color: .black.opacity(0.35), radius: 30, y: 10)
         .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
@@ -103,13 +100,13 @@ struct QuickCaptureView: View {
                             .font(DS.Font.small)
                             .fontWeight(captureType == type ? .semibold : .medium)
                     }
-                    .foregroundStyle(captureType == type ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                    .foregroundStyle(captureType == type ? DS.Colors.accent : DS.Colors.textSecondary)
                     .padding(.horizontal, DS.Spacing.sm + 2)
                     .padding(.vertical, 5)
                     .contentShape(Rectangle())
                     .background(
                         captureType == type
-                            ? AnyShapeStyle(DS.Colors.accent)
+                            ? AnyShapeStyle(DS.Colors.accentFill)
                             : AnyShapeStyle(.clear),
                         in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                     )
@@ -164,7 +161,7 @@ struct QuickCaptureView: View {
                 case .note, .task:
                     projectChip
                 case .knowledge:
-                    folderChip
+                    bucketChip
                     tagsChip
                 }
                 Spacer()
@@ -201,21 +198,21 @@ struct QuickCaptureView: View {
         .buttonStyle(.plainPointer)
     }
 
-    private var folderChip: some View {
+    private var bucketChip: some View {
         Menu {
-            ForEach(KnowledgeService.shared.folders, id: \.self) { folder in
+            ForEach(KnowledgeService.shared.buckets, id: \.self) { bucket in
                 Button {
-                    selectedFolder = folder
+                    selectedBucket = bucket
                 } label: {
-                    Label(folder, systemImage: "tray")
+                    Label(bucket, systemImage: "archivebox")
                 }
             }
         } label: {
             HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: "tray")
+                Image(systemName: "archivebox")
                     .font(.system(size: DS.IconSize.sm))
-                    .foregroundStyle(DS.Colors.accent)
-                Text(selectedFolder)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                Text(selectedBucket)
             }
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
@@ -287,7 +284,7 @@ struct QuickCaptureView: View {
     // MARK: - Logic
 
     private var canSave: Bool {
-        !title.trimmingCharacters(in: .whitespaces).isEmpty || !content.trimmingCharacters(in: .whitespaces).isEmpty
+        !title.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     private func loadProjects() {
@@ -301,7 +298,7 @@ struct QuickCaptureView: View {
         content = ""
         tags = ""
         selectedProjectName = nil
-        selectedFolder = "General"
+        selectedBucket = "General"
         saved = false
     }
 
@@ -328,7 +325,7 @@ struct QuickCaptureView: View {
                 content: content,
                 source: "manual",
                 tags: tagList,
-                folder: selectedFolder
+                bucket: selectedBucket
             )
 
         case .task:

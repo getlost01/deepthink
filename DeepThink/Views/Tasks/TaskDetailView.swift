@@ -162,6 +162,7 @@ struct TaskDetailView: View {
                             }
                             .padding(.horizontal, DS.Spacing.xl)
                             .padding(.vertical, DS.Spacing.xs + 1)
+                            .pointerOnHover()
                         }
 
                         HStack(spacing: DS.Spacing.sm) {

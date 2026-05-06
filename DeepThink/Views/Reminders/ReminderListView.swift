@@ -105,15 +105,16 @@ struct ReminderListView: View {
                             Text(filter.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(filterMode == filter ? .semibold : .regular)
-                                .foregroundStyle(filterMode == filter ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                                .padding(.horizontal, DS.Spacing.sm + 2)
-                                .padding(.vertical, DS.Spacing.xs + 1)
-                                .background(filterMode == filter ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
+                                .foregroundStyle(filterMode == filter ? DS.Colors.accent : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(filterMode == filter ? DS.Colors.accentFill : DS.Colors.fill, in: Capsule())
+                                .overlay(Capsule().strokeBorder(filterMode == filter ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
                         }
                         .buttonStyle(.plainPointer)
                     }
                 }
-                .padding(.horizontal, DS.Spacing.md)
+                .padding(.horizontal, DS.Spacing.lg)
             }
             .padding(.bottom, DS.Spacing.sm)
 
@@ -127,7 +128,7 @@ struct ReminderListView: View {
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
-                .padding(.horizontal, DS.Spacing.md)
+                .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.xs)
             }
 

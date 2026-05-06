@@ -139,7 +139,7 @@ struct ObsidianImportView: View {
 
             // Folder name
             DSLabeledTextField(
-                label: "Destination Folder",
+                label: "Destination Bucket",
                 text: $options.folderName,
                 placeholder: "obsidian"
             )

@@ -75,7 +75,7 @@ final class KnowledgeService {
             importedAt = createdAt
         }
 
-        let folder = frontmatter["folder"] ?? inferFolder(from: url)
+        let bucket = frontmatter["bucket"] ?? frontmatter["folder"] ?? inferBucket(from: url)
 
         return KnowledgeEntry(
             title: title,
@@ -86,11 +86,11 @@ final class KnowledgeService {
             content: body,
             filePath: url,
             fileSize: fileSize,
-            folder: folder
+            bucket: bucket
         )
     }
 
-    private func inferFolder(from url: URL) -> String {
+    private func inferBucket(from url: URL) -> String {
         let knowledgePath = StorageService.shared.knowledgeURL.path
         let relativePath = url.deletingLastPathComponent().path.replacingOccurrences(of: knowledgePath, with: "")
         let components = relativePath.split(separator: "/").map(String.init)
@@ -142,8 +142,8 @@ final class KnowledgeService {
 
     // MARK: - CRUD
 
-    func createEntry(title: String, content: String, source: String, tags: [String] = [], sourceURL: String? = nil, folder: String = "General") {
-        let dir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
+    func createEntry(title: String, content: String, source: String, tags: [String] = [], sourceURL: String? = nil, bucket: String = "General") {
+        let dir = StorageService.shared.knowledgeURL.appendingPathComponent(bucket.slugified)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let digest = SHA256.hash(data: Data(content.utf8))
@@ -158,7 +158,7 @@ final class KnowledgeService {
         var md = "---\n"
         md += "title: \(title)\n"
         md += "source: \(source)\n"
-        md += "folder: \(folder)\n"
+        md += "bucket: \(bucket)\n"
         if let url = sourceURL { md += "url: \(url)\n" }
         if !tags.isEmpty { md += "tags: [\(tags.joined(separator: ", "))]\n" }
         md += "imported_at: \(ISO8601DateFormatter().string(from: Date()))\n"
@@ -177,41 +177,73 @@ final class KnowledgeService {
         }
     }
 
-    // MARK: - Folder Management
+    // MARK: - Bucket Management
 
-    var folders: [String] {
-        let allFolders = Set(entries.map(\.folder))
-        var result = allFolders.sorted()
+    var buckets: [String] {
+        var all = Set(entries.map(\.bucket))
+        // Include empty bucket directories so newly created buckets appear immediately
+        let base = StorageService.shared.knowledgeURL
+        if let dirs = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
+            for dir in dirs {
+                let isDir = (try? dir.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true
+                if isDir { all.insert(dir.lastPathComponent.capitalized) }
+            }
+        }
+        var result = all.sorted()
         if !result.contains("General") { result.insert("General", at: 0) }
         return result
     }
 
-    func createFolder(named name: String) {
+    func createBucket(named name: String) {
         let dir = StorageService.shared.knowledgeURL.appendingPathComponent(name.slugified)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        reload()
     }
 
-    func moveEntry(_ entry: KnowledgeEntry, to folder: String) {
-        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
+    func moveEntry(_ entry: KnowledgeEntry, to bucket: String) {
+        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(bucket.slugified)
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
         let destURL = destDir.appendingPathComponent(entry.filePath.lastPathComponent)
         guard destURL != entry.filePath else { return }
 
-        // Update folder in frontmatter
         guard let data = fm.contents(atPath: entry.filePath.path),
               let text = String(data: data, encoding: .utf8) else { return }
 
         let (frontmatter, body) = parseFrontmatter(text)
+
+        let orderedKeys = ["title", "source", "bucket", "url", "tags", "imported_at"]
         var updated = frontmatter
-        updated["folder"] = folder
+        updated.removeValue(forKey: "folder")
+        updated["bucket"] = bucket
 
         var md = "---\n"
-        for (key, value) in updated { md += "\(key): \(value)\n" }
+        for key in orderedKeys {
+            if let value = updated[key] { md += "\(key): \(value)\n" }
+        }
+        for (key, value) in updated where !orderedKeys.contains(key) { md += "\(key): \(value)\n" }
         md += "---\n\n\(body)"
 
         try? md.write(to: destURL, atomically: true, encoding: .utf8)
         try? fm.removeItem(at: entry.filePath)
+        reload()
+    }
+
+    func renameEntry(_ entry: KnowledgeEntry, title: String) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let text = try? String(contentsOf: entry.filePath, encoding: .utf8) else { return }
+        let (frontmatter, body) = parseFrontmatter(text)
+        let orderedKeys = ["title", "source", "bucket", "url", "tags", "imported_at"]
+        var updated = frontmatter
+        updated["title"] = trimmed
+        var md = "---\n"
+        for key in orderedKeys {
+            if let value = updated[key] { md += "\(key): \(value)\n" }
+        }
+        for (key, value) in updated where !orderedKeys.contains(key) { md += "\(key): \(value)\n" }
+        md += "---\n\n\(body)"
+        try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
         reload()
     }
 

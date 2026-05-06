@@ -118,10 +118,11 @@ struct TaskListView: View {
                             Text(filter.rawValue)
                                 .font(DS.Font.small)
                                 .fontWeight(smartFilter == filter ? .semibold : .regular)
-                                .foregroundStyle(smartFilter == filter ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                                .padding(.horizontal, DS.Spacing.sm + 2)
-                                .padding(.vertical, DS.Spacing.xs + 1)
-                                .background(smartFilter == filter ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
+                                .foregroundStyle(smartFilter == filter ? DS.Colors.accent : DS.Colors.textSecondary)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(smartFilter == filter ? DS.Colors.accentFill : DS.Colors.fill, in: Capsule())
+                                .overlay(Capsule().strokeBorder(smartFilter == filter ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
                         }
                         .buttonStyle(.plainPointer)
                     }
