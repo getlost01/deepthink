@@ -104,6 +104,7 @@ struct DeepThinkApp: App {
                     RuleFileService.shared.installDefaultRules()
                     AgentFileService.shared.installDefaultAgents()
                     KnowledgeService.shared.reload()
+                    indexWorkspaceItems(container: sharedModelContainer)
                     CollectorScheduler.shared.start(container: sharedModelContainer)
 
                     // Register global hotkey for Quick Capture (Option+Space)
@@ -300,6 +301,50 @@ struct DeepThinkApp: App {
                 appState.navigate(to: .settings)
             },
         ])
+    }
+
+    private func indexWorkspaceItems(container: ModelContainer) {
+        DispatchQueue.global(qos: .utility).async {
+            let context = ModelContext(container)
+
+            let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
+            let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
+            let reminders = (try? context.fetch(FetchDescriptor<Reminder>())) ?? []
+
+            var items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)] = []
+
+            for task in tasks {
+                items.append((
+                    id: "task:\(task.id.uuidString)", type: "task",
+                    title: task.title, content: task.detail,
+                    tags: task.tags.map(\.name), modifiedAt: task.modifiedAt
+                ))
+            }
+            for note in notes {
+                items.append((
+                    id: "note:\(note.id.uuidString)", type: "note",
+                    title: note.title, content: note.content,
+                    tags: note.tags.map(\.name), modifiedAt: note.modifiedAt
+                ))
+            }
+            for reminder in reminders {
+                items.append((
+                    id: "reminder:\(reminder.id.uuidString)", type: "reminder",
+                    title: reminder.title, content: reminder.notes,
+                    tags: [], modifiedAt: reminder.modifiedAt
+                ))
+            }
+
+            EmbeddingService.shared.indexWorkspaceItems(items)
+
+            let validTaskIDs = Set(tasks.map { "task:\($0.id.uuidString)" })
+            let validNoteIDs = Set(notes.map { "note:\($0.id.uuidString)" })
+            let validReminderIDs = Set(reminders.map { "reminder:\($0.id.uuidString)" })
+
+            VectorStore.shared.pruneStaleEntries(validIDs: validTaskIDs, entryType: "task")
+            VectorStore.shared.pruneStaleEntries(validIDs: validNoteIDs, entryType: "note")
+            VectorStore.shared.pruneStaleEntries(validIDs: validReminderIDs, entryType: "reminder")
+        }
     }
 
     private func installDefaultMCPServers(container: ModelContainer) {

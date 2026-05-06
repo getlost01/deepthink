@@ -1,7 +1,17 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join } from "path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
-import { semanticSearch } from "./embedding-service";
+import { semanticSearch, indexEntry, type IndexableEntry } from "./embedding-service";
+import {
+  type VectorChunk,
+  allChunks,
+  simpleHash,
+  semanticChunk,
+  upsertChunks,
+  deleteChunksForEntry,
+  contentHash as getContentHash,
+  pruneStaleEntries,
+} from "./vector-store";
 
 // ── Types ──
 
@@ -12,17 +22,6 @@ export interface IndexedEntry {
   tags: string[];
   source: string;
   importedAt: Date;
-}
-
-export interface ScoredChunk {
-  entryId: string;
-  title: string;
-  content: string;
-  tags: string[];
-  source: string;
-  score: number;
-  chunkIndex: number;
-  totalChunks: number;
 }
 
 export interface ContextResult {
@@ -69,31 +68,6 @@ function computeTF(tokens: string[]): Record<string, number> {
   const max = Math.max(...Object.values(tf), 1);
   for (const t in tf) tf[t] /= max;
   return tf;
-}
-
-// ── Chunk Builder ──
-
-const CHUNK_SIZE = 600;
-const CHUNK_OVERLAP = 100;
-
-function chunkContent(entry: IndexedEntry): ScoredChunk[] {
-  const chunks: ScoredChunk[] = [];
-  const text = entry.content;
-  const totalChunks = Math.ceil(Math.max(1, (text.length - CHUNK_OVERLAP) / (CHUNK_SIZE - CHUNK_OVERLAP)));
-
-  for (let i = 0; i < text.length; i += CHUNK_SIZE - CHUNK_OVERLAP) {
-    chunks.push({
-      entryId: entry.id,
-      title: entry.title,
-      content: text.slice(i, i + CHUNK_SIZE),
-      tags: entry.tags,
-      source: entry.source,
-      score: 0,
-      chunkIndex: chunks.length,
-      totalChunks,
-    });
-  }
-  return chunks;
 }
 
 // ── Frontmatter Parser ──
@@ -163,6 +137,24 @@ function loadAllEntries(): IndexedEntry[] {
   return entries;
 }
 
+// ── Ensure VectorStore is populated ──
+
+function ensureIndexed(entries: IndexedEntry[]): void {
+  for (const entry of entries) {
+    const hash = simpleHash(entry.content);
+    const existing = getContentHash(entry.id);
+    if (existing !== null && existing === hash) continue;
+
+    const chunks = semanticChunk(
+      entry.content, entry.id, "knowledge", entry.title,
+      entry.tags, entry.source, entry.importedAt, hash
+    );
+    upsertChunks(chunks);
+  }
+  const validIds = new Set(entries.map(e => e.id));
+  pruneStaleEntries(validIds, "knowledge");
+}
+
 // ── BM25 Retrieval ──
 
 export function retrieveContext(
@@ -175,58 +167,38 @@ export function retrieveContext(
   const entries = loadAllEntries();
   if (entries.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: 0, entriesReturned: 0 };
 
+  ensureIndexed(entries);
+
   const queryTerms = tokenize(query);
   if (queryTerms.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
 
-  // Build index
+  // Build TF-IDF index
   const docFreq: Record<string, number> = {};
   const docTerms: Map<string, Record<string, number>> = new Map();
-
-  const allChunks: ScoredChunk[] = [];
 
   for (const entry of entries) {
     const allText = `${entry.title} ${entry.tags.join(" ")} ${entry.content}`;
     const terms = tokenize(allText);
     const tf = computeTF(terms);
     docTerms.set(entry.id, tf);
-
     for (const term of Object.keys(tf)) {
       docFreq[term] = (docFreq[term] ?? 0) + 1;
     }
-
-    if (entry.content.length > CHUNK_SIZE) {
-      allChunks.push(...chunkContent(entry));
-    } else {
-      allChunks.push({
-        entryId: entry.id,
-        title: entry.title,
-        content: entry.content,
-        tags: entry.tags,
-        source: entry.source,
-        score: 0,
-        chunkIndex: 0,
-        totalChunks: 1,
-      });
-    }
   }
 
+  // Get chunks from VectorStore
+  const chunks = allChunks({ scope: opts.agentScope });
+
   const docCount = entries.length;
-  const avgDocLen = allChunks.reduce((s, c) => s + c.content.length, 0) / Math.max(allChunks.length, 1);
+  const avgDocLen = chunks.reduce((s, c) => s + c.content.length, 0) / Math.max(chunks.length, 1);
   const k1 = 1.5;
   const b = 0.75;
   const queryTF = computeTF(queryTerms);
   const querySet = new Set(queryTerms);
 
-  // Score chunks
-  for (const chunk of allChunks) {
-    // Scope filtering
-    if (opts.agentScope?.length) {
-      const matches = opts.agentScope.some(
-        (s) => chunk.source.includes(s) || chunk.tags.includes(s) || chunk.title.toLowerCase().includes(s.toLowerCase())
-      );
-      if (!matches) continue;
-    }
+  const scored: { chunk: VectorChunk; score: number }[] = [];
 
+  for (const chunk of chunks) {
     const tf = docTerms.get(chunk.entryId);
     if (!tf) continue;
 
@@ -241,24 +213,17 @@ export function retrieveContext(
       score += idf * tfNorm * qFreq;
     }
 
-    // Title boost
     const titleTerms = new Set(tokenize(chunk.title));
     const titleOverlap = [...titleTerms].filter((t) => querySet.has(t)).length;
     if (titleOverlap > 0) score *= 1 + titleOverlap * 0.5;
 
-    // Tag boost
     const tagTerms = new Set(chunk.tags.flatMap((t) => tokenize(t)));
     const tagOverlap = [...tagTerms].filter((t) => querySet.has(t)).length;
     if (tagOverlap > 0) score *= 1 + tagOverlap * 0.3;
 
-    // Recency boost
-    const entry = entries.find((e) => e.id === chunk.entryId);
-    if (entry) {
-      const daysSince = (Date.now() - entry.importedAt.getTime()) / 86400000;
-      score *= Math.exp(-daysSince / 90) * 0.3 + 0.7;
-    }
+    const daysSince = (Date.now() - chunk.importedAt.getTime()) / 86400000;
+    score *= Math.exp(-daysSince / 90) * 0.3 + 0.7;
 
-    // Project scope boost
     if (opts.projectScope) {
       const p = opts.projectScope.toLowerCase();
       if (chunk.title.toLowerCase().includes(p) || chunk.tags.some((t) => t.toLowerCase() === p)) {
@@ -266,43 +231,41 @@ export function retrieveContext(
       }
     }
 
-    if (score > 0.01) chunk.score = score;
+    if (score > 0.01) scored.push({ chunk, score });
   }
 
-  // Sort, dedup, budget
-  const scored = allChunks.filter((c) => c.score > 0).sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.score - a.score);
 
   const usedEntries = new Set<string>();
-  const selected: ScoredChunk[] = [];
+  const selected: typeof scored = [];
 
-  for (const chunk of scored) {
+  for (const item of scored) {
     if (selected.length >= topK) break;
-    if (usedEntries.has(chunk.entryId)) {
-      if (scored[0] && chunk.score > scored[0].score * 0.7) {
-        selected.push(chunk);
+    if (usedEntries.has(item.chunk.entryId)) {
+      if (scored[0] && item.score > scored[0].score * 0.7) {
+        selected.push(item);
       }
       continue;
     }
-    selected.push(chunk);
-    usedEntries.add(chunk.entryId);
+    selected.push(item);
+    usedEntries.add(item.chunk.entryId);
   }
 
-  // Token budget
   let charBudget = maxTokens * 4;
   const parts: ContextResult["parts"] = [];
 
-  for (const chunk of selected) {
-    const compressed = chunk.content.slice(0, Math.min(800, charBudget));
-    const partSize = compressed.length + chunk.title.length + 20;
+  for (const item of selected) {
+    const compressed = item.chunk.content.slice(0, Math.min(800, charBudget));
+    const partSize = compressed.length + item.chunk.title.length + 20;
     if (charBudget - partSize < 0) break;
 
     parts.push({
-      title: chunk.title,
+      title: item.chunk.title,
       content: compressed,
-      tags: chunk.tags,
-      source: chunk.source,
-      score: Math.round(chunk.score * 1000) / 1000,
-      chunk: chunk.totalChunks > 1 ? `${chunk.chunkIndex + 1}/${chunk.totalChunks}` : undefined,
+      tags: item.chunk.tags,
+      source: item.chunk.source,
+      score: Math.round(item.score * 1000) / 1000,
+      chunk: item.chunk.totalChunks > 1 ? `${item.chunk.chunkIndex + 1}/${item.chunk.totalChunks}` : undefined,
     });
 
     charBudget -= partSize;
@@ -334,6 +297,7 @@ export function retrieveContextHybrid(
 
   const entries = loadAllEntries();
   const entryMap = new Map(entries.map((e) => [e.id, e]));
+  const chunks = allChunks({ scope: opts.agentScope });
 
   function resolveEntry(embeddingID: string): IndexedEntry | undefined {
     const direct = entryMap.get(embeddingID);
@@ -348,7 +312,7 @@ export function retrieveContextHybrid(
 
   const K = 60;
   const fusedScores = new Map<string, number>();
-  const titleToEntry = new Map<string, IndexedEntry>();
+  const titleToChunk = new Map<string, VectorChunk>();
 
   for (let rank = 0; rank < bm25.parts.length; rank++) {
     const title = bm25.parts[rank].title;
@@ -360,7 +324,10 @@ export function retrieveContextHybrid(
     if (!entry) continue;
     const title = entry.title;
     fusedScores.set(title, (fusedScores.get(title) ?? 0) + 1 / (K + rank + 1));
-    if (!titleToEntry.has(title)) titleToEntry.set(title, entry);
+    if (!titleToChunk.has(title)) {
+      const chunk = chunks.find(c => c.entryId === entry.id);
+      if (chunk) titleToChunk.set(title, chunk);
+    }
   }
 
   const sorted = [...fusedScores.entries()].sort((a, b) => b[1] - a[1]);
@@ -378,16 +345,16 @@ export function retrieveContextHybrid(
       parts.push({ ...existing, score: Math.round(score * 10000) / 10000 });
       charBudget -= partSize;
     } else {
-      const entry = titleToEntry.get(title);
-      if (!entry) continue;
-      const content = entry.content.slice(0, Math.min(800, charBudget));
+      const chunk = titleToChunk.get(title);
+      if (!chunk) continue;
+      const content = chunk.content.slice(0, Math.min(800, charBudget));
       const partSize = content.length + title.length + 20;
       if (charBudget - partSize < 0) break;
       parts.push({
         title,
         content,
-        tags: entry.tags,
-        source: entry.source,
+        tags: chunk.tags,
+        source: chunk.source,
         score: Math.round(score * 10000) / 10000,
       });
       charBudget -= partSize;
@@ -455,4 +422,3 @@ export function workspaceContext(query: string, maxItems = 5): {
 
   return { tasks, notes, reminders, totalTokensEstimate: Math.round(totalChars / 4) };
 }
-

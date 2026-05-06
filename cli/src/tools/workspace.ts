@@ -1,4 +1,6 @@
 import * as db from "../core/db";
+import { indexEntry, removeEntry } from "../core/embedding-service";
+import { deleteChunksForEntry } from "../core/vector-store";
 
 export interface WorkspaceTool {
   name: string;
@@ -60,6 +62,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         detail: p.detail, status: p.status, priority: p.priority,
         storyPoints: p.storyPoints, dueDate: p.dueDate, project: p.project,
       });
+      indexEntry({ id: `task:${pk}`, type: "task", title: p.title, content: p.detail ?? "", tags: [], source: "task", importedAt: new Date() });
       return { pk, title: p.title, status: p.status ?? "To Do" };
     },
   },
@@ -85,6 +88,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       if (!t) throw new Error(`task not found: ${p.ref}`);
       const { ref, ...fields } = p;
       db.updateTask(t.pk, fields);
+      const updated = db.getTask(t.pk.toString());
+      if (updated) indexEntry({ id: `task:${t.pk}`, type: "task", title: updated.title, content: updated.detail, tags: [], source: "task", importedAt: updated.modifiedAt });
       return { pk: t.pk, updated: Object.keys(fields) };
     },
   },
@@ -100,6 +105,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const t = db.getTask(p.ref);
       if (!t) throw new Error(`task not found: ${p.ref}`);
       db.deleteTask(t.pk);
+      deleteChunksForEntry(`task:${t.pk}`);
       return { pk: t.pk, deleted: true };
     },
   },
@@ -148,6 +154,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const pk = db.createNote(p.title, {
         content: p.content, pinned: p.pinned, project: p.project,
       });
+      indexEntry({ id: `note:${pk}`, type: "note", title: p.title, content: p.content ?? "", tags: [], source: "note", importedAt: new Date() });
       return { pk, title: p.title };
     },
   },
@@ -170,6 +177,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       if (!n) throw new Error(`note not found: ${p.ref}`);
       const { ref, ...fields } = p;
       db.updateNote(n.pk, fields);
+      const updated = db.getNote(n.pk.toString());
+      if (updated) indexEntry({ id: `note:${n.pk}`, type: "note", title: updated.title, content: updated.content, tags: [], source: "note", importedAt: updated.modifiedAt });
       return { pk: n.pk, updated: Object.keys(fields) };
     },
   },
@@ -185,6 +194,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const n = db.getNote(p.ref);
       if (!n) throw new Error(`note not found: ${p.ref}`);
       db.deleteNote(n.pk);
+      deleteChunksForEntry(`note:${n.pk}`);
       return { pk: n.pk, deleted: true };
     },
   },
@@ -305,6 +315,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
     execute: (p) => {
       const pk = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
+      indexEntry({ id: `reminder:${pk}`, type: "reminder", title: p.title, content: p.notes ?? "", tags: [], source: "reminder", importedAt: new Date() });
       return { pk, title: p.title, reminderDate: p.reminderDate ?? null };
     },
   },
@@ -328,6 +339,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const { ref, ...fields } = p;
       if (fields.reminderDate === "none") fields.reminderDate = null;
       db.updateReminder(r.pk, fields);
+      const updated = db.getReminder(r.pk.toString());
+      if (updated) indexEntry({ id: `reminder:${r.pk}`, type: "reminder", title: updated.title, content: updated.notes, tags: [], source: "reminder", importedAt: updated.modifiedAt });
       return { pk: r.pk, updated: Object.keys(fields) };
     },
   },
@@ -343,6 +356,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const r = db.getReminder(p.ref);
       if (!r) throw new Error(`reminder not found: ${p.ref}`);
       db.deleteReminder(r.pk);
+      deleteChunksForEntry(`reminder:${r.pk}`);
       return { pk: r.pk, deleted: true };
     },
   },

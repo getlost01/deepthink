@@ -103,6 +103,7 @@
 		F698D7CDD7BE6577F5F3C53F /* TaskRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00321B3E3D5116C5303B7C3C /* TaskRowView.swift */; };
 		F74406A60949A191269B86CD /* KnowledgeExtractionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */; };
 		F86BB6DF71BFDC2FEACF6C00 /* EmbeddingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39AF85031C16E190ABD50E4B /* EmbeddingService.swift */; };
+		VECST0RE0001000000000001 /* VectorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = VECST0RE0002000000000001 /* VectorStore.swift */; };
 		AA1122334455667788990011 /* GlobalHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA1122334455667788990022 /* GlobalHotKey.swift */; };
 		FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */; };
 		FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C66CC1E57209BBE097F8539 /* SettingsView.swift */; };
@@ -181,6 +182,7 @@
 		A3275C61AF584F63DAF20352 /* VersioningService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersioningService.swift; sourceTree = "<group>"; };
 		A358CE99734BB73FD76E3219 /* SkillsRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillsRulesView.swift; sourceTree = "<group>"; };
 		A3FCAE699A5E746FA2001B06 /* StorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageService.swift; sourceTree = "<group>"; };
+		VECST0RE0002000000000001 /* VectorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorStore.swift; sourceTree = "<group>"; };
 		A892F8CF9A4456973A67EBB1 /* NoteInspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteInspectorView.swift; sourceTree = "<group>"; };
 		AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOverviewView.swift; sourceTree = "<group>"; };
 		AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPCatalogService.swift; sourceTree = "<group>"; };
@@ -360,6 +362,7 @@
 				02EDE2230502601202B39705 /* RuleFileService.swift */,
 				7AB8CED762D0BEEEBFA7395D /* SkillFileService.swift */,
 				A3FCAE699A5E746FA2001B06 /* StorageService.swift */,
+				VECST0RE0002000000000001 /* VectorStore.swift */,
 				A3275C61AF584F63DAF20352 /* VersioningService.swift */,
 			);
 			path = Services;
@@ -748,6 +751,7 @@
 				4822038EF9FCAD2EAACF7444 /* SkillsRulesView.swift in Sources */,
 				7B113D2602093A64646571CB /* SlashCommandMenu.swift in Sources */,
 				193F0023B3928322C69E8830 /* StorageService.swift in Sources */,
+				VECST0RE0001000000000001 /* VectorStore.swift in Sources */,
 				8AF9EBDF670E306EA30DA428 /* Tag.swift in Sources */,
 				2E5ACB414BF1820C9849A05A /* TaskBoardView.swift in Sources */,
 				512AFAF30803AD6957E45BA4 /* TaskDetailView.swift in Sources */,

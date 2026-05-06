@@ -22,16 +22,13 @@ final class KnowledgeService {
         entries = scanDirectory(baseURL)
             .sorted { $0.importedAt > $1.importedAt }
 
-        // Rebuild TF-IDF index with snapshot of entries
         let snapshot = entries
         ContextEngine.shared.indexQueue.async {
             ContextEngine.shared.rebuildIndex(with: snapshot)
         }
 
-        // Build semantic embeddings (incremental, background)
         DispatchQueue.global(qos: .utility).async {
             EmbeddingService.shared.indexEntries(snapshot)
-            EmbeddingService.shared.pruneStaleEntries(validIDs: Set(snapshot.map(\.id)))
         }
     }
 
@@ -221,6 +218,7 @@ final class KnowledgeService {
     func deleteEntry(_ entry: KnowledgeEntry) {
         try? fm.removeItem(at: entry.filePath)
         entries.removeAll { $0.id == entry.id }
+        EmbeddingService.shared.removeEntry(entry.id)
     }
 
     // MARK: - Search

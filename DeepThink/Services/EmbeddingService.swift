@@ -1,8 +1,6 @@
 import Foundation
 import NaturalLanguage
 
-/// Semantic search via Apple NaturalLanguage sentence embeddings.
-/// Provides vector similarity search to complement ContextEngine's BM25 keyword search.
 @Observable
 final class EmbeddingService {
     static let shared = EmbeddingService()
@@ -11,89 +9,156 @@ final class EmbeddingService {
     private(set) var indexedCount = 0
     private(set) var progress: Double = 0
 
-    private var embeddings: [String: [Double]] = [:]   // entryID -> embedding vector
-    private var contentHashes: [String: UInt64] = [:]   // entryID -> content hash for change detection
-    private let embedding: NLEmbedding?
-    private let persistURL: URL
-    private let embeddingsURL: URL
+    private let nlEmbedding: NLEmbedding?
+    private let store = VectorStore.shared
+    private let embedQueue = DispatchQueue(label: "com.deepthink.embedding.nlp")
 
     private init() {
-        self.embedding = NLEmbedding.sentenceEmbedding(for: .english)
-        self.persistURL = StorageService.shared.dataURL.appendingPathComponent("embedding_hashes.json")
-        self.embeddingsURL = StorageService.shared.dataURL.appendingPathComponent("embeddings.json")
-        loadFromDisk()
+        self.nlEmbedding = NLEmbedding.sentenceEmbedding(for: .english)
+        indexedCount = store.embeddedCount()
     }
 
     // MARK: - Embedding
 
-    /// Generate embedding vector for text. Returns nil if NLEmbedding model is unavailable.
     func embed(_ text: String) -> [Double]? {
-        guard let embedding else { return nil }
-        return embedding.vector(for: text)
+        guard let nlEmbedding else { return nil }
+        return embedQueue.sync {
+            nlEmbedding.vector(for: text)
+        }
     }
 
-    // MARK: - Indexing
+    // MARK: - Knowledge Indexing
 
-    /// Index all knowledge entries incrementally (skip unchanged content).
     func indexEntries(_ entries: [KnowledgeEntry]) {
         isIndexing = true
-        defer { isIndexing = false }
+        defer {
+            isIndexing = false
+            indexedCount = store.embeddedCount()
+        }
 
-        var newCount = 0
         let total = entries.count
-
         for (i, entry) in entries.enumerated() {
-            let hash = simpleHash(entry.content)
-
-            // Skip if already indexed and content unchanged
-            if let existingHash = contentHashes[entry.id], existingHash == hash {
-                progress = Double(i + 1) / Double(total)
-                continue
-            }
-
-            // Embed combined title + content (truncate for sentence embedding quality)
-            let text = "\(entry.title). \(String(entry.content.prefix(500)))"
-            if let vector = embed(text) {
-                embeddings[entry.id] = vector
-                contentHashes[entry.id] = hash
-                newCount += 1
-            }
-
+            indexSingleEntry(entry)
             progress = Double(i + 1) / Double(total)
         }
 
-        indexedCount = embeddings.count
-        if newCount > 0 { saveToDisk() }
+        store.pruneStaleEntries(
+            validIDs: Set(entries.map(\.id)),
+            entryType: "knowledge"
+        )
     }
 
-    /// Remove entries no longer present in the knowledge base.
-    func pruneStaleEntries(validIDs: Set<String>) {
-        let stale = Set(embeddings.keys).subtracting(validIDs)
-        for id in stale {
-            embeddings.removeValue(forKey: id)
-            contentHashes.removeValue(forKey: id)
+    func indexSingleEntry(_ entry: KnowledgeEntry) {
+        let hash = simpleHash(entry.content)
+        if let existing = store.contentHash(forEntry: entry.id), existing == hash {
+            return
         }
-        if !stale.isEmpty { saveToDisk() }
+
+        let chunks = SemanticChunker.chunk(
+            text: entry.content,
+            entryID: entry.id,
+            entryType: "knowledge",
+            title: entry.title,
+            tags: entry.tags,
+            source: entry.source,
+            importedAt: entry.importedAt,
+            contentHash: hash
+        )
+
+        let vectorChunks = chunks.map { chunk -> VectorChunk in
+            let text = "\(entry.title). \(String(chunk.content.prefix(500)))"
+            let embedding = embed(text)
+            return VectorChunk(
+                id: chunk.id, entryID: chunk.entryID, entryType: chunk.entryType,
+                title: chunk.title, content: chunk.content, tags: chunk.tags,
+                source: chunk.source, importedAt: chunk.importedAt,
+                chunkIndex: chunk.chunkIndex, totalChunks: chunk.totalChunks,
+                contentHash: chunk.contentHash, embedding: embedding
+            )
+        }
+
+        store.deleteChunksForEntry(entry.id)
+        store.upsertChunks(vectorChunks)
+    }
+
+    func removeEntry(_ entryID: String) {
+        store.deleteChunksForEntry(entryID)
+        indexedCount = store.embeddedCount()
+    }
+
+    // MARK: - Workspace Indexing (Tasks, Notes, Reminders)
+
+    func indexWorkspaceItem(
+        id: String,
+        type: String,
+        title: String,
+        content: String,
+        tags: [String] = [],
+        modifiedAt: Date = Date()
+    ) {
+        let hash = simpleHash(content)
+        if let existing = store.contentHash(forEntry: id), existing == hash {
+            return
+        }
+
+        let fullText = "\(title). \(content)"
+        let chunks = SemanticChunker.chunk(
+            text: fullText.count > 200 ? content : fullText,
+            entryID: id,
+            entryType: type,
+            title: title,
+            tags: tags,
+            source: type,
+            importedAt: modifiedAt,
+            contentHash: hash
+        )
+
+        let vectorChunks = chunks.map { chunk -> VectorChunk in
+            let embedding = embed("\(title). \(String(chunk.content.prefix(400)))")
+            return VectorChunk(
+                id: chunk.id, entryID: chunk.entryID, entryType: chunk.entryType,
+                title: chunk.title, content: chunk.content, tags: chunk.tags,
+                source: chunk.source, importedAt: chunk.importedAt,
+                chunkIndex: chunk.chunkIndex, totalChunks: chunk.totalChunks,
+                contentHash: chunk.contentHash, embedding: embedding
+            )
+        }
+
+        store.deleteChunksForEntry(id)
+        store.upsertChunks(vectorChunks)
+    }
+
+    func indexWorkspaceItems(_ items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)]) {
+        isIndexing = true
+        defer {
+            isIndexing = false
+            indexedCount = store.embeddedCount()
+        }
+
+        let total = items.count
+        for (i, item) in items.enumerated() {
+            indexWorkspaceItem(
+                id: item.id, type: item.type, title: item.title,
+                content: item.content, tags: item.tags, modifiedAt: item.modifiedAt
+            )
+            progress = Double(i + 1) / Double(total)
+        }
     }
 
     // MARK: - Search
 
-    /// Find entries most similar to query by cosine similarity.
-    func search(query: String, topK: Int = 10, scope: [String]? = nil) -> [(entryID: String, score: Double)] {
+    func search(query: String, topK: Int = 10, scope: [String]? = nil, entryType: String? = nil) -> [(entryID: String, score: Double)] {
         guard let queryVector = embed(query) else { return [] }
 
+        let entries = store.chunksWithEmbeddings(entryType: entryType, scope: scope)
         var results: [(entryID: String, score: Double)] = []
+        var seen: Set<String> = []
 
-        for (entryID, vector) in embeddings {
-            // Optional scope filtering: if scope provided, entryID must contain one of the scope terms
-            if let scope, !scope.isEmpty {
-                let matchesScope = scope.contains { entryID.lowercased().contains($0.lowercased()) }
-                if !matchesScope { continue }
-            }
-
-            let similarity = cosineSimilarity(queryVector, vector)
-            if similarity > 0.3 {  // minimum relevance threshold
-                results.append((entryID, similarity))
+        for (chunk, embedding) in entries {
+            let similarity = cosineSimilarity(queryVector, embedding)
+            if similarity > 0.3 && !seen.contains(chunk.entryID) {
+                results.append((chunk.entryID, similarity))
+                seen.insert(chunk.entryID)
             }
         }
 
@@ -103,7 +168,20 @@ final class EmbeddingService {
             .map { $0 }
     }
 
-    // MARK: - Math
+    // MARK: - Stats
+
+    var stats: (total: Int, embedded: Int, knowledge: Int, tasks: Int, notes: Int, reminders: Int) {
+        (
+            total: store.chunkCount(),
+            embedded: store.embeddedCount(),
+            knowledge: store.entryCount(entryType: "knowledge"),
+            tasks: store.entryCount(entryType: "task"),
+            notes: store.entryCount(entryType: "note"),
+            reminders: store.entryCount(entryType: "reminder")
+        )
+    }
+
+    // MARK: - Private
 
     private func cosineSimilarity(_ a: [Double], _ b: [Double]) -> Double {
         guard a.count == b.count, !a.isEmpty else { return 0 }
@@ -119,49 +197,88 @@ final class EmbeddingService {
 
     private func simpleHash(_ text: String) -> UInt64 {
         var hash: UInt64 = 5381
-        for char in text.prefix(1000).utf8 {
+        for char in text.prefix(2000).utf8 {
             hash = hash &* 33 &+ UInt64(char)
         }
         return hash
     }
+}
 
-    // MARK: - Persistence
+// MARK: - Semantic Chunker
 
-    private func saveToDisk() {
-        // Save content hashes
-        let hashStrings = contentHashes.mapValues { String($0) }
-        if let hashData = try? JSONEncoder().encode(hashStrings) {
-            try? hashData.write(to: persistURL)
+enum SemanticChunker {
+    static let maxChunkSize = 500
+    static let minChunkSize = 100
+
+    static func chunk(
+        text: String,
+        entryID: String,
+        entryType: String,
+        title: String,
+        tags: [String],
+        source: String,
+        importedAt: Date,
+        contentHash: UInt64
+    ) -> [VectorChunk] {
+        let sentences = splitSentences(text)
+        guard !sentences.isEmpty else {
+            return [VectorChunk(
+                id: "\(entryID):0", entryID: entryID, entryType: entryType,
+                title: title, content: text, tags: tags, source: source,
+                importedAt: importedAt, chunkIndex: 0, totalChunks: 1,
+                contentHash: contentHash, embedding: nil
+            )]
         }
 
-        // Save embeddings as JSON array of {id, v} pairs
-        let pairs = embeddings.map { ["id": $0.key, "v": $0.value.map { String($0) }.joined(separator: ",")] }
-        if let data = try? JSONSerialization.data(withJSONObject: pairs) {
-            try? data.write(to: embeddingsURL)
+        var groups: [[String]] = []
+        var current: [String] = []
+        var currentLen = 0
+
+        for sentence in sentences {
+            if currentLen + sentence.count > maxChunkSize && !current.isEmpty {
+                groups.append(current)
+                // Overlap: keep last sentence
+                let last = current.last ?? ""
+                current = last.count < maxChunkSize / 2 ? [last] : []
+                currentLen = current.reduce(0) { $0 + $1.count }
+            }
+            current.append(sentence)
+            currentLen += sentence.count
+        }
+
+        if !current.isEmpty {
+            if currentLen < minChunkSize, let last = groups.last {
+                groups[groups.count - 1] = last + current
+            } else {
+                groups.append(current)
+            }
+        }
+
+        let totalChunks = groups.count
+        return groups.enumerated().map { index, group in
+            VectorChunk(
+                id: "\(entryID):\(index)",
+                entryID: entryID, entryType: entryType,
+                title: title, content: group.joined(separator: " "),
+                tags: tags, source: source, importedAt: importedAt,
+                chunkIndex: index, totalChunks: totalChunks,
+                contentHash: contentHash, embedding: nil
+            )
         }
     }
 
-    private func loadFromDisk() {
-        // Load hashes
-        if let data = try? Data(contentsOf: persistURL),
-           let hashes = try? JSONDecoder().decode([String: String].self, from: data) {
-            contentHashes = hashes.compactMapValues { UInt64($0) }
-        }
-
-        // Load embeddings
-        guard let data = try? Data(contentsOf: embeddingsURL),
-              let pairs = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] else {
-            indexedCount = 0
-            return
-        }
-
-        for pair in pairs {
-            guard let id = pair["id"], let vStr = pair["v"] else { continue }
-            let values = vStr.split(separator: ",").compactMap { Double($0) }
-            if !values.isEmpty {
-                embeddings[id] = values
+    private static func splitSentences(_ text: String) -> [String] {
+        var sentences: [String] = []
+        text.enumerateSubstrings(in: text.startIndex..., options: [.bySentences, .localized]) { substring, _, _, _ in
+            if let s = substring?.trimmingCharacters(in: .whitespacesAndNewlines), !s.isEmpty {
+                sentences.append(s)
             }
         }
-        indexedCount = embeddings.count
+        if sentences.isEmpty && !text.isEmpty {
+            return text.components(separatedBy: "\n")
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+        }
+        return sentences
     }
 }

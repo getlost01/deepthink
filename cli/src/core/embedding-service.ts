@@ -1,10 +1,19 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { join } from "path";
 import { execSync, execFileSync } from "child_process";
 import { DEEPTHINK_ROOT } from "../config";
+import {
+  type VectorChunk,
+  chunksWithEmbeddings,
+  upsertChunks,
+  deleteChunksForEntry,
+  contentHash as getContentHash,
+  pruneStaleEntries,
+  embeddedCount,
+  simpleHash,
+  semanticChunk,
+} from "./vector-store";
 
-const DATA_DIR = join(DEEPTHINK_ROOT, "data");
-const EMBEDDINGS_PATH = join(DATA_DIR, "embeddings.json");
 const CACHE_DIR = join(DEEPTHINK_ROOT, ".cache");
 const HELPER_BIN = join(CACHE_DIR, "embed-helper");
 const HELPER_SRC = join(CACHE_DIR, "embed-helper.swift");
@@ -25,17 +34,8 @@ guard let embedding = NLEmbedding.sentenceEmbedding(for: .english),
 print(vector.map { String($0) }.joined(separator: ","))
 `;
 
-interface EmbeddingEntry {
-  id: string;
-  v: string;
-}
-
-let cachedEmbeddings: Map<string, number[]> | null = null;
-let cachedMtime: number = 0;
-
 function ensureHelper(): boolean {
   if (existsSync(HELPER_BIN)) return true;
-
   try {
     if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
     writeFileSync(HELPER_SRC, SWIFT_SOURCE);
@@ -49,38 +49,8 @@ function ensureHelper(): boolean {
   }
 }
 
-function loadEmbeddings(): Map<string, number[]> {
-  if (!existsSync(EMBEDDINGS_PATH)) return new Map();
-
-  try {
-    const stat = Bun.file(EMBEDDINGS_PATH);
-    const mtime = stat.lastModified;
-
-    if (cachedEmbeddings && mtime === cachedMtime) return cachedEmbeddings;
-
-    const raw = readFileSync(EMBEDDINGS_PATH, "utf-8");
-    const pairs: EmbeddingEntry[] = JSON.parse(raw);
-    const map = new Map<string, number[]>();
-
-    for (const pair of pairs) {
-      if (!pair.id || !pair.v) continue;
-      const values = pair.v.split(",").map(Number);
-      if (values.length > 0 && !values.some(isNaN)) {
-        map.set(pair.id, values);
-      }
-    }
-
-    cachedEmbeddings = map;
-    cachedMtime = mtime;
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-function embedQuery(text: string): number[] | null {
+function embedQuery(text: string): Float32Array | null {
   if (!ensureHelper()) return null;
-
   try {
     const result = execFileSync(HELPER_BIN, [text], {
       timeout: 5000,
@@ -88,14 +58,14 @@ function embedQuery(text: string): number[] | null {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const values = result.trim().split(",").map(Number);
-    if (values.length > 0 && !values.some(isNaN)) return values;
+    if (values.length > 0 && !values.some(isNaN)) return new Float32Array(values);
     return null;
   } catch {
     return null;
   }
 }
 
-function cosineSimilarity(a: number[], b: number[]): number {
+function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array): number {
   if (a.length !== b.length || a.length === 0) return 0;
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
@@ -107,6 +77,52 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return denom > 0 ? dot / denom : 0;
 }
 
+// MARK: - Indexing
+
+export interface IndexableEntry {
+  id: string;
+  type: string;
+  title: string;
+  content: string;
+  tags: string[];
+  source: string;
+  importedAt: Date;
+}
+
+export function indexEntry(entry: IndexableEntry): void {
+  const hash = simpleHash(entry.content);
+  const existing = getContentHash(entry.id);
+  if (existing !== null && existing === hash) return;
+
+  const chunks = semanticChunk(
+    entry.content, entry.id, entry.type, entry.title,
+    entry.tags, entry.source, entry.importedAt, hash
+  );
+
+  const withEmbeddings = chunks.map(chunk => {
+    const text = `${entry.title}. ${chunk.content.slice(0, 500)}`;
+    const embedding = embedQuery(text);
+    return { ...chunk, embedding };
+  });
+
+  deleteChunksForEntry(entry.id);
+  upsertChunks(withEmbeddings);
+}
+
+export function indexEntries(entries: IndexableEntry[]): void {
+  for (const entry of entries) {
+    indexEntry(entry);
+  }
+  const validIds = new Set(entries.map(e => e.id));
+  pruneStaleEntries(validIds, entries[0]?.type ?? "knowledge");
+}
+
+export function removeEntry(entryId: string): void {
+  deleteChunksForEntry(entryId);
+}
+
+// MARK: - Search
+
 export interface SemanticResult {
   entryID: string;
   score: number;
@@ -117,23 +133,18 @@ export function semanticSearch(
   topK: number = 10,
   scope?: string[]
 ): SemanticResult[] {
-  const embeddings = loadEmbeddings();
-  if (embeddings.size === 0) return [];
-
   const queryVector = embedQuery(query);
   if (!queryVector) return [];
 
+  const entries = chunksWithEmbeddings({ scope });
+  const seen = new Set<string>();
   const results: SemanticResult[] = [];
 
-  for (const [entryID, vector] of embeddings) {
-    if (scope?.length) {
-      const matches = scope.some((s) => entryID.toLowerCase().includes(s.toLowerCase()));
-      if (!matches) continue;
-    }
-
-    const similarity = cosineSimilarity(queryVector, vector);
-    if (similarity > 0.3) {
-      results.push({ entryID, score: similarity });
+  for (const { chunk, embedding } of entries) {
+    const similarity = cosineSimilarity(queryVector, embedding);
+    if (similarity > 0.3 && !seen.has(chunk.entryId)) {
+      results.push({ entryID: chunk.entryId, score: similarity });
+      seen.add(chunk.entryId);
     }
   }
 
@@ -143,7 +154,6 @@ export function semanticSearch(
 }
 
 export function embeddingStats(): { indexed: number; available: boolean } {
-  const embeddings = loadEmbeddings();
   const available = ensureHelper();
-  return { indexed: embeddings.size, available };
+  return { indexed: embeddedCount(), available };
 }
