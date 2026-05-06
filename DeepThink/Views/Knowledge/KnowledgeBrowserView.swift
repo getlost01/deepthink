@@ -71,23 +71,24 @@ struct KnowledgeBrowserView: View {
                             }
                         }
                     } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 10, weight: .semibold))
-                            Text("Add")
-                                .font(DS.Font.small)
-                                .fontWeight(.medium)
-                        }
-                        .foregroundStyle(DS.Colors.onAccent)
-                        .padding(.horizontal, DS.Spacing.md)
-                        .padding(.vertical, DS.Spacing.sm)
-                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        Image(systemName: "plus")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .frame(width: 28, height: 28)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+                            )
                     }
                     .menuStyle(.borderlessButton)
                     .fixedSize()
+                    .pointerOnHover()
                 }
                 .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+
+                Divider()
 
                 HStack(spacing: DS.Spacing.sm) {
                     Picker(selection: $folderFilter) {
@@ -282,7 +283,7 @@ private struct EntryRow: View {
                     .foregroundStyle(DS.Colors.textTertiary)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .foregroundStyle(DS.Colors.textTertiary)
                     .opacity(isHovered ? 1 : 0)
             }
@@ -396,7 +397,7 @@ struct KnowledgeDetailView: View {
                     if !linkedNotes.isEmpty {
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "link")
-                                .font(.system(size: 9))
+                                .font(.system(size: DS.IconSize.xs))
                             Text("\(linkedNotes.count) linked")
                                 .font(DS.Font.small)
                         }
@@ -633,7 +634,7 @@ struct ScriptRunSheet: View {
                 DSLabeledTextField(label: "Shell Command", text: $command, placeholder: "curl -s https://api.example.com | jq .")
 
                 HStack(spacing: DS.Spacing.xs) {
-                    Image(systemName: "info.circle").font(.system(size: 10))
+                    Image(systemName: "info.circle").font(.system(size: DS.IconSize.xs))
                     Text("Output is saved as a knowledge entry. Use any command that prints text.")
                         .font(DS.Font.caption)
                 }

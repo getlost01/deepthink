@@ -50,7 +50,7 @@ struct ClaudeSettingsView: View {
                     .foregroundStyle(DS.Colors.warning)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text("Claude CLI Required")
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
@@ -104,7 +104,7 @@ struct ClaudeSettingsView: View {
                     .foregroundStyle(DS.Colors.warning)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text("Rate Limit Reached")
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
@@ -153,7 +153,7 @@ struct ClaudeSettingsView: View {
                     .foregroundStyle(DS.Colors.danger)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text("Insufficient Credits")
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
@@ -220,7 +220,7 @@ struct ClaudeSettingsView: View {
                     .foregroundStyle(claude.isAvailable ? DS.Colors.success : DS.Colors.danger)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 HStack(spacing: DS.Spacing.sm) {
                     Text(claude.isAvailable ? "Claude Connected" : "Claude Not Found")
                         .font(DS.Font.heading)
@@ -234,7 +234,7 @@ struct ClaudeSettingsView: View {
                         }
                         .foregroundStyle(DS.Colors.warning)
                         .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, DS.Spacing.xxs)
                         .background(DS.Colors.warning.opacity(0.1), in: Capsule())
                     }
                 }
@@ -343,7 +343,7 @@ struct ClaudeSettingsView: View {
                     Spacer()
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
                         .foregroundStyle(DS.Colors.textTertiary)
                         .rotationEffect(.degrees(showCLIDetails ? 90 : 0))
                 }
@@ -817,7 +817,7 @@ private struct SpecChip: View {
     var color: Color = DS.Colors.textSecondary
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: DS.Spacing.xxs) {
             Text(value)
                 .font(DS.Font.heading)
                 .foregroundStyle(color)

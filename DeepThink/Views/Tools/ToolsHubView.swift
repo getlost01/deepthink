@@ -176,9 +176,9 @@ private struct ToolCard: View {
                     .font(.system(size: DS.IconSize.md, weight: .medium))
                     .foregroundStyle(DS.Colors.accent)
                     .frame(width: 28, height: 28)
-                    .background(DS.Colors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(server.name)
                         .font(DS.Font.body)
                         .fontWeight(.medium)
@@ -211,13 +211,13 @@ private struct ToolCard: View {
                 if server.isCore {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "lock.fill")
-                            .font(.system(size: 8))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("Core")
-                            .font(DS.Font.small)
+                            .font(DS.Font.micro)
                     }
                     .foregroundStyle(DS.Colors.accent)
                     .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.accentFill, in: Capsule())
                 }
 
@@ -379,7 +379,7 @@ private struct AddServerSheet: View {
                         extraFields.append(ExtraField())
                     } label: {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
                             .foregroundStyle(DS.Colors.accent)
                     }
                     .buttonStyle(.plainPointer)
@@ -400,7 +400,7 @@ private struct AddServerSheet: View {
                             extraFields.removeAll { $0.id == field.id }
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
+                                .font(.system(size: DS.IconSize.xs, weight: .bold))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                         .buttonStyle(.plainPointer)
@@ -433,7 +433,7 @@ private struct AddServerSheet: View {
             if let jsonError {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 10))
+                        .font(.system(size: DS.IconSize.xs))
                         .foregroundStyle(DS.Colors.danger)
                     Text(jsonError)
                         .font(DS.Font.small)
@@ -538,7 +538,7 @@ private struct PresetServersSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text("MCP Server Catalog")
                         .font(DS.Font.heading)
                     if let fetched = catalog.lastFetchedAt {
@@ -558,7 +558,7 @@ private struct PresetServersSheet: View {
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         Text("Refresh")
                             .font(DS.Font.small)
                     }
@@ -638,7 +638,7 @@ private struct PresetServersSheet: View {
                             }
 
                             if pkg.id != filteredPackages.last?.id {
-                                Divider().padding(.leading, 52)
+                                Divider()
                             }
                         }
                     }
@@ -669,11 +669,11 @@ private struct CatalogRow: View {
                     .fill(DS.Colors.accentFill)
                     .frame(width: 32, height: 32)
                 Image(systemName: package.iconName)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(DS.Colors.accent)
             }
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 HStack(spacing: DS.Spacing.sm) {
                     Text(package.displayName)
                         .font(DS.Font.body)

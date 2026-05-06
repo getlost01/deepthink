@@ -85,14 +85,14 @@ struct QuickCaptureView: View {
     }
 
     private var typePicker: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: DS.Spacing.xxs) {
             ForEach(CaptureType.allCases, id: \.self) { type in
                 Button {
                     withAnimation(DS.Animation.quick) { captureType = type }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: type.icon)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         Text(type.rawValue)
                             .font(DS.Font.small)
                             .fontWeight(captureType == type ? .semibold : .medium)

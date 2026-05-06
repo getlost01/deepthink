@@ -114,7 +114,7 @@ struct AllTasksView: View {
                                 appState.selectedTaskID = nil
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 10, weight: .semibold))
+                                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                                     .foregroundStyle(DS.Colors.textTertiary)
                                     .frame(width: 22, height: 22)
                                     .background(DS.Colors.fill, in: Circle())
@@ -169,7 +169,7 @@ struct AllTasksView: View {
                 viewMode = .list
             } label: {
                 Image(systemName: "list.bullet")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(viewMode == .list ? DS.Colors.accent : DS.Colors.textTertiary)
                     .frame(width: 28, height: 24)
             }
@@ -179,13 +179,13 @@ struct AllTasksView: View {
                 viewMode = .board
             } label: {
                 Image(systemName: "rectangle.split.3x1")
-                    .font(.system(size: 11, weight: .medium))
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(viewMode == .board ? DS.Colors.accent : DS.Colors.textTertiary)
                     .frame(width: 28, height: 24)
             }
             .buttonStyle(.plainPointer)
         }
-        .padding(.horizontal, 2)
+        .padding(.horizontal, DS.Spacing.xxs)
         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 
@@ -243,7 +243,7 @@ struct AllTasksView: View {
                                 Button { appState.selectedTaskID = task.id } label: {
                                     taskRow(task)
                                         .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, 2)
+                                        .padding(.vertical, DS.Spacing.xxs)
                                         .background(isSelected ? DS.Colors.accentFill : .clear)
                                         .contentShape(Rectangle())
                                 }
@@ -338,9 +338,9 @@ struct AllTasksView: View {
 
                     if !task.subtasks.isEmpty {
                         let done = task.subtasks.filter { $0.status == .done }.count
-                        HStack(spacing: 2) {
+                        HStack(spacing: DS.Spacing.xxs) {
                             Image(systemName: "checklist")
-                                .font(.system(size: 8))
+                                .font(.system(size: DS.IconSize.xs))
                             Text("\(done)/\(task.subtasks.count)")
                                 .font(DS.Font.small)
                         }

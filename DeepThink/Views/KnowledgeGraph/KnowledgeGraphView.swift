@@ -257,7 +257,7 @@ struct KnowledgeGraphView: View {
                     .frame(width: isHovered ? 140 : 80)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(
                         isHovered
                             ? RoundedRectangle(cornerRadius: DS.Radius.sm)

@@ -103,7 +103,7 @@ struct TaskDetailView: View {
                 } label: {
                     HStack(spacing: DS.Spacing.sm) {
                         Image(systemName: showSubtasks ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
                             .frame(width: 12)
                         Text("Subtasks")
@@ -152,7 +152,7 @@ struct TaskDetailView: View {
                                     modelContext.delete(sub)
                                 } label: {
                                     Image(systemName: "xmark")
-                                        .font(.system(size: 8, weight: .bold))
+                                        .font(.system(size: DS.IconSize.xs, weight: .bold))
                                         .foregroundStyle(DS.Colors.textTertiary)
                                 }
                                 .buttonStyle(.plainPointer)

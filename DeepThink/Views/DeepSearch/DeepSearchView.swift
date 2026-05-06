@@ -276,7 +276,7 @@ private struct SearchResultRow: View {
                     .frame(width: 28, height: 28)
                     .background(result.type.color.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(result.title)
                         .font(DS.Font.body)
                         .fontWeight(.medium)

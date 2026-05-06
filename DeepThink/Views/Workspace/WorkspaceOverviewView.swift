@@ -189,7 +189,7 @@ struct WorkspaceOverviewView: View {
                                                 .foregroundStyle(DS.Colors.textTertiary)
                                                 .frame(width: 20)
 
-                                            VStack(alignment: .leading, spacing: 2) {
+                                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                                 Text(note.title.isEmpty ? "Untitled" : note.title)
                                                     .font(DS.Font.body)
                                                     .foregroundStyle(DS.Colors.textPrimary)
@@ -377,7 +377,7 @@ struct WorkspaceOverviewView: View {
             HStack(spacing: DS.Spacing.md) {
                 HStack(spacing: 3) {
                     Image(systemName: "doc.text")
-                        .font(.system(size: 9))
+                        .font(.system(size: DS.IconSize.xs))
                     Text("\(project.notes.count)")
                         .font(DS.Font.small)
                 }
@@ -385,7 +385,7 @@ struct WorkspaceOverviewView: View {
 
                 HStack(spacing: 3) {
                     Image(systemName: "checklist")
-                        .font(.system(size: 9))
+                        .font(.system(size: DS.IconSize.xs))
                     Text("\(project.openTaskCount) open")
                         .font(DS.Font.small)
                 }
@@ -394,7 +394,7 @@ struct WorkspaceOverviewView: View {
                 if project.totalStoryPoints > 0 {
                     HStack(spacing: 3) {
                         Image(systemName: "number")
-                            .font(.system(size: 9))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("\(project.completedStoryPoints)/\(project.totalStoryPoints) pts")
                             .font(DS.Font.small)
                     }

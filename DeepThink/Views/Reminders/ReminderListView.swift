@@ -86,16 +86,17 @@ struct ReminderListView: View {
     @ViewBuilder
     private var listPane: some View {
         VStack(spacing: 0) {
-            DSPageHeader(title: "Reminders") {
-                DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
+            HStack(spacing: DS.Spacing.sm) {
+                DSSearchField(text: $searchText, placeholder: "Search reminders...")
+                DSAddButton() {
                     createReminder()
                 }
                 .help("New Reminder")
             }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm)
 
-            DSSearchField(text: $searchText, placeholder: "Search reminders...")
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.md)
+            Divider()
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
@@ -143,7 +144,7 @@ struct ReminderListView: View {
                         } label: {
                             ReminderRowView(reminder: reminder)
                                 .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, DS.Spacing.xxs)
                                 .background(isSelected ? DS.Colors.accentFill : .clear)
                                 .contentShape(Rectangle())
                         }
@@ -155,7 +156,9 @@ struct ReminderListView: View {
                             Divider()
                             Button("Delete", role: .destructive) { deleteReminder(reminder) }
                         }
-                        Divider().padding(.horizontal, DS.Spacing.sm)
+                        if reminder.id != filteredReminders.last?.id {
+                            Divider()
+                        }
                     }
                 }
             }

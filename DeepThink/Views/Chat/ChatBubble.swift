@@ -105,21 +105,21 @@ struct ChatBubble: View {
                         onSwitchBranch?(info.current - 1)
                     } label: {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
                     }
                     .buttonStyle(.plainPointer)
                     .disabled(info.current <= 0)
 
                     Text("\(info.current + 1)/\(info.total)")
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     Button {
                         onSwitchBranch?(info.current + 1)
                     } label: {
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
                     }
                     .buttonStyle(.plainPointer)
@@ -167,7 +167,7 @@ struct ChatBubble: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: "number")
-                                    .font(.system(size: 8, weight: .semibold))
+                                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                                 Text(usage.formattedTokens)
                                     .font(DS.Font.buttonSmall)
                             }
@@ -398,7 +398,7 @@ struct TokenDetailPopover: View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: "chart.bar.fill")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .foregroundStyle(DS.Colors.accent)
                 Text("Token Usage")
                     .font(DS.Font.caption)
@@ -423,7 +423,7 @@ struct TokenDetailPopover: View {
             HStack {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "dollarsign.circle")
-                        .font(.system(size: 10))
+                        .font(.system(size: DS.IconSize.xs))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text(usage.formattedCost)
                         .font(DS.Font.small)
@@ -434,7 +434,7 @@ struct TokenDetailPopover: View {
 
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "clock")
-                        .font(.system(size: 10))
+                        .font(.system(size: DS.IconSize.xs))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text(usage.formattedDuration)
                         .font(DS.Font.small)
@@ -451,7 +451,7 @@ struct TokenDetailPopover: View {
         HStack {
             HStack(spacing: DS.Spacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: DS.IconSize.xs, weight: .medium))
                     .foregroundStyle(color)
                 Text(label)
                     .font(DS.Font.small)

@@ -79,7 +79,7 @@ struct AllNotesView: View {
                             if !pinnedNotes.isEmpty {
                                 HStack(spacing: DS.Spacing.xs) {
                                     Image(systemName: "pin.fill")
-                                        .font(.system(size: 8))
+                                        .font(.system(size: DS.IconSize.xs))
                                     Text("Pinned")
                                         .font(DS.Font.small)
                                 }
@@ -94,7 +94,7 @@ struct AllNotesView: View {
                                     Button { appState.selectedNoteID = note.id } label: {
                                         noteRow(note)
                                             .padding(.horizontal, DS.Spacing.sm)
-                                            .padding(.vertical, 2)
+                                            .padding(.vertical, DS.Spacing.xxs)
                                             .background(isSelected ? DS.Colors.accentFill : .clear)
                                             .contentShape(Rectangle())
                                     }
@@ -109,7 +109,7 @@ struct AllNotesView: View {
                                 Button { appState.selectedNoteID = note.id } label: {
                                     noteRow(note)
                                         .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, 2)
+                                        .padding(.vertical, DS.Spacing.xxs)
                                         .background(isSelected ? DS.Colors.accentFill : .clear)
                                         .contentShape(Rectangle())
                                 }
@@ -181,7 +181,7 @@ struct AllNotesView: View {
         HStack(spacing: DS.Spacing.sm) {
             if note.isPinned {
                 Image(systemName: "pin.fill")
-                    .font(.system(size: 8))
+                    .font(.system(size: DS.IconSize.xs))
                     .foregroundStyle(DS.Colors.amber)
             }
 

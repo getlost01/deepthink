@@ -24,16 +24,9 @@ struct SkillsListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search skills...")
-                    Button {
+                    DSAddButton() {
                         createNewSkill()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
-                            .foregroundStyle(DS.Colors.accent)
-                            .frame(width: 28, height: 28)
-                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
-                    .buttonStyle(.plainPointer)
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
@@ -63,7 +56,7 @@ struct SkillsListView: View {
                                     selectedSkill = skill
                                 }
                                 if skill.id != filteredSkills.last?.id {
-                                    Divider().padding(.leading, 48)
+                                    Divider()
                                 }
                             }
                         }
@@ -141,16 +134,9 @@ struct RulesListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search rules...")
-                    Button {
+                    DSAddButton() {
                         createNewRule()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.sm, weight: .medium))
-                            .foregroundStyle(DS.Colors.accent)
-                            .frame(width: 28, height: 28)
-                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
-                    .buttonStyle(.plainPointer)
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
@@ -180,7 +166,7 @@ struct RulesListView: View {
                                     selectedRule = rule
                                 }
                                 if rule.id != filteredRules.last?.id {
-                                    Divider().padding(.leading, 48)
+                                    Divider()
                                 }
                             }
                         }
@@ -241,14 +227,14 @@ private struct SkillRow: View {
             HStack(spacing: DS.Spacing.md) {
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(isSelected ? DS.Colors.accent.opacity(0.15) : DS.Colors.accentFill)
+                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
                         .frame(width: 28, height: 28)
                     Image(systemName: skill.icon)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(skill.name)
                         .font(DS.Font.body)
                         .fontWeight(isSelected ? .semibold : .regular)
@@ -263,10 +249,10 @@ private struct SkillRow: View {
 
                 if skill.isBuiltIn {
                     Text("Built-in")
-                        .font(.system(size: 8, weight: .medium))
+                        .font(DS.Font.micro)
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
+                        .padding(.horizontal, DS.Spacing.xs)
+                        .padding(.vertical, DS.Spacing.xxs)
                         .background(DS.Colors.fill, in: Capsule())
                 }
             }
@@ -293,15 +279,15 @@ private struct RuleRow: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
                 ZStack {
-                    Circle()
-                        .fill(isSelected ? DS.Colors.accent.opacity(0.15) : DS.Colors.accentFill)
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
                         .frame(width: 28, height: 28)
                     Image(systemName: rule.icon)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(rule.name)
                         .font(DS.Font.body)
                         .fontWeight(isSelected ? .semibold : .regular)
@@ -309,10 +295,13 @@ private struct RuleRow: View {
                         .lineLimit(1)
                     HStack(spacing: DS.Spacing.xs) {
                         DSPill(text: rule.trigger, color: rule.isDisabled ? DS.Colors.textTertiary : DS.Colors.info)
+                            .lineLimit(1)
                         Text(rule.category)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
+                            .lineLimit(1)
                     }
+                    .lineLimit(1)
                 }
 
                 Spacer()
@@ -435,7 +424,7 @@ private struct SkillInlineEditor: View {
                 Button(action: onRun) {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 8))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("Run")
                             .font(DS.Font.small)
                             .fontWeight(.medium)
@@ -603,15 +592,6 @@ private struct RuleInlineEditor: View {
                     .onChange(of: name) { scheduleSave() }
 
                 Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { !isDisabled },
-                    set: { isDisabled = !$0; scheduleSave() }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .pointerOnHover()
-                .help(isDisabled ? "Enable rule" : "Disable rule")
 
                 Picker("", selection: $category) {
                     ForEach(categories, id: \.self) { Text($0).tag($0) }

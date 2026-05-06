@@ -4,6 +4,7 @@ import SwiftUI
 
 enum DS {
     enum Spacing {
+        static let xxs: CGFloat = 2
         static let xs: CGFloat = 4
         static let sm: CGFloat = 8
         static let md: CGFloat = 12
@@ -46,7 +47,7 @@ enum DS {
 
     enum Colors {
         static let accent = Color(hue: 0.58, saturation: 0.72, brightness: 0.98)
-        static let accentFill = accent.opacity(0.14)
+        static let accentFill = accent.opacity(0.22)
         static let accentGradient = LinearGradient(
             colors: [Color(hue: 0.56, saturation: 0.60, brightness: 1.0), Color(hue: 0.61, saturation: 0.78, brightness: 0.92)],
             startPoint: .topLeading, endPoint: .bottomTrailing
@@ -175,8 +176,8 @@ struct DSSectionHeader: View {
                 Text("\(count)")
                     .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, DS.Spacing.xs + 2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.fill, in: Capsule())
             }
 
@@ -272,6 +273,7 @@ struct DSPill: View {
         Text(text)
             .font(DS.Font.small)
             .foregroundStyle(color)
+            .lineLimit(1)
             .padding(.horizontal, 7)
             .padding(.vertical, 3)
             .background(color.opacity(0.10), in: Capsule())
@@ -389,7 +391,7 @@ struct DSEmptyState: View {
             if let hint {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "lightbulb")
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
                     Text(hint)
                         .font(DS.Font.caption)
                 }
@@ -442,7 +444,7 @@ struct DSRow<Leading: View, Trailing: View>: View {
         HStack(spacing: DS.Spacing.md) {
             leading()
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(title)
                     .font(DS.Font.body)
                     .lineLimit(1)
@@ -485,6 +487,30 @@ struct DSToolbarButton: View {
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
         .accessibilityLabel(label ?? icon)
+    }
+}
+
+// MARK: - Add Button
+
+struct DSAddButton: View {
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
+                .frame(width: 28, height: 28)
+                .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 
@@ -638,7 +664,7 @@ struct DSSectionBanner: View {
                 .frame(width: 28, height: 28)
                 .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 HStack(spacing: DS.Spacing.xs) {
                     Text(title)
                         .font(DS.Font.caption)
@@ -665,7 +691,7 @@ struct DSFieldLabel: View {
     var hint: String? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
+        VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
             Text(label)
                 .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
@@ -901,7 +927,7 @@ struct DSCalendarPicker: View {
                     }
                 } label: {
                     Image(systemName: "chevron.left")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .foregroundStyle(DS.Colors.textSecondary)
                         .frame(width: 24, height: 24)
                 }
@@ -921,7 +947,7 @@ struct DSCalendarPicker: View {
                     }
                 } label: {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .foregroundStyle(DS.Colors.textSecondary)
                         .frame(width: 24, height: 24)
                 }
@@ -937,7 +963,7 @@ struct DSCalendarPicker: View {
                 }
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: 2) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 7), spacing: DS.Spacing.xxs) {
                 ForEach(Array(daysInMonth.enumerated()), id: \.offset) { _, date in
                     if let date {
                         let isSelected = selectedDate.map { calendar.isDate($0, inSameDayAs: date) } ?? false

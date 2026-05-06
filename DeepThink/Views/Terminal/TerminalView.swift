@@ -18,7 +18,7 @@ struct DeepThinkTerminalView: View {
         VStack(spacing: 0) {
             DSToolbarBar {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xxs) {
                         ForEach(sessions) { session in
                             TerminalTabButton(
                                 session: session,
@@ -141,7 +141,7 @@ struct TerminalAnalysisSheet: View {
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "doc.on.doc")
-                            .font(.system(size: 9))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("Copy")
                             .font(DS.Font.small)
                     }
@@ -202,7 +202,7 @@ private struct TerminalTabButton: View {
 
                 if canClose && (isActive || isHovered) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
                         .foregroundStyle(DS.Colors.textTertiary)
                         .frame(width: 16, height: 16)
                         .contentShape(Rectangle())

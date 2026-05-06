@@ -18,7 +18,7 @@ struct ReminderRowView: View {
             }
             .buttonStyle(.plainPointer)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
                     .font(DS.Font.body)
                     .lineLimit(1)
@@ -28,7 +28,7 @@ struct ReminderRowView: View {
                 if let date = reminder.reminderDate {
                     HStack(spacing: 4) {
                         Image(systemName: reminder.isOverdue ? "exclamationmark.circle.fill" : "bell.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: DS.IconSize.xs))
                         Text(date.formatted(date: .abbreviated, time: .shortened))
                             .font(DS.Font.small)
                     }

@@ -25,25 +25,32 @@ struct ProjectListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            DSPageHeader(title: "Projects") {
-                DSToolbarButton(
-                    icon: showArchived ? "archivebox.fill" : "archivebox",
-                    color: showArchived ? DS.Colors.accent : DS.Colors.textTertiary,
-                    size: DS.IconSize.md
-                ) {
+            HStack(spacing: DS.Spacing.sm) {
+                DSSearchField(text: $searchText, placeholder: "Search projects...")
+
+                Button {
                     showArchived.toggle()
+                } label: {
+                    Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                        )
                 }
+                .buttonStyle(.plainPointer)
                 .help(showArchived ? "Hide Archived" : "Show Archived")
 
-                DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
+                DSAddButton() {
                     createProject()
                 }
                 .help("New Project (⇧⌘N)")
             }
-
-            DSSearchField(text: $searchText, placeholder: "Search projects...")
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm)
 
             Divider()
 
@@ -56,7 +63,7 @@ struct ProjectListView: View {
                         } label: {
                             ProjectCard(project: project)
                                 .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, DS.Spacing.xxs)
                                 .background(isSelected ? DS.Colors.accentFill : .clear)
                                 .contentShape(Rectangle())
                         }
@@ -71,6 +78,9 @@ struct ProjectListView: View {
                                 projectToDelete = project
                                 showDeleteConfirm = true
                             }
+                        }
+                        if project.id != projects.last?.id {
+                            Divider()
                         }
                     }
                 }
@@ -148,7 +158,7 @@ private struct ProjectCard: View {
                 .fill(Color(hex: project.color))
                 .frame(width: 10, height: 10)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 HStack(spacing: DS.Spacing.sm) {
                     Text(project.name)
                         .font(DS.Font.body)
@@ -170,18 +180,18 @@ private struct ProjectCard: View {
 
             HStack(spacing: DS.Spacing.sm) {
                 if project.notes.count > 0 {
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "doc.text")
-                            .font(.system(size: 8))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("\(project.notes.count)")
                             .font(DS.Font.small)
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
                 }
                 if project.openTaskCount > 0 {
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "checklist")
-                            .font(.system(size: 8))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("\(project.openTaskCount)")
                             .font(DS.Font.small)
                     }

@@ -96,7 +96,7 @@ struct SidebarView: View {
                             Image(systemName: "command")
                                 .font(.system(size: DS.IconSize.sm))
                             Text("K")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
                         }
                         .foregroundStyle(DS.Colors.textTertiary)
                         .padding(.horizontal, DS.Spacing.sm)

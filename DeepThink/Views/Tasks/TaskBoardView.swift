@@ -64,7 +64,7 @@ struct TaskBoardView: View {
                     appState.selectedTaskID = task.id
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .foregroundStyle(DS.Colors.textTertiary)
                         .frame(width: 20, height: 20)
                 }
@@ -163,7 +163,7 @@ struct TaskBoardView: View {
                         }
                     } label: {
                         Image(systemName: "trash")
-                            .font(.system(size: 8, weight: .medium))
+                            .font(.system(size: DS.IconSize.xs, weight: .medium))
                             .foregroundStyle(DS.Colors.textTertiary)
                             .frame(width: 16, height: 16)
                             .background(DS.Colors.fill, in: Circle())
@@ -176,7 +176,7 @@ struct TaskBoardView: View {
                     if task.priority != .none {
                         HStack(spacing: 3) {
                             Image(systemName: task.priority.icon)
-                                .font(.system(size: 9, weight: .medium))
+                                .font(.system(size: DS.IconSize.xs, weight: .medium))
                             Text(task.priority.rawValue)
                                 .font(DS.Font.small)
                         }
@@ -186,7 +186,7 @@ struct TaskBoardView: View {
                     if let due = task.dueDate {
                         HStack(spacing: 3) {
                             Image(systemName: "calendar")
-                                .font(.system(size: 9))
+                                .font(.system(size: DS.IconSize.xs))
                             Text(due.shortFormatted)
                                 .font(DS.Font.small)
                         }
@@ -197,7 +197,7 @@ struct TaskBoardView: View {
                         let done = task.subtasks.filter { $0.status == .done }.count
                         HStack(spacing: 3) {
                             Image(systemName: "checklist")
-                                .font(.system(size: 9))
+                                .font(.system(size: DS.IconSize.xs))
                             Text("\(done)/\(task.subtasks.count)")
                                 .font(DS.Font.small)
                         }
@@ -212,7 +212,7 @@ struct TaskBoardView: View {
                             .fontWeight(.medium)
                             .foregroundStyle(DS.Colors.textTertiary)
                             .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: 4))
                     }
                 }

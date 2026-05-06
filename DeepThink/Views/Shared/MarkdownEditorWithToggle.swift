@@ -33,7 +33,7 @@ struct MarkdownEditorWithToggle: View {
                         } label: {
                             HStack(spacing: DS.Spacing.xs) {
                                 Image(systemName: m.icon)
-                                    .font(.system(size: 9, weight: .medium))
+                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
                                 Text(m.rawValue)
                                     .font(DS.Font.small)
                                     .fontWeight(.medium)
@@ -63,7 +63,7 @@ struct MarkdownEditorWithToggle: View {
                                 .foregroundStyle(DS.Colors.textTertiary)
                         } else {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 10))
+                                .font(.system(size: DS.IconSize.xs))
                                 .foregroundStyle(DS.Colors.success)
                             Text("Synced")
                                 .font(DS.Font.small)

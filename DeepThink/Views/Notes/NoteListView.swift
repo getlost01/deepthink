@@ -34,16 +34,17 @@ struct NoteListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            DSPageHeader(title: "Notes") {
-                DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.accent, size: DS.IconSize.md) {
+            HStack(spacing: DS.Spacing.sm) {
+                DSSearchField(text: $searchText, placeholder: "Search notes...")
+                DSAddButton() {
                     createNote()
                 }
                 .help("New Note (⌘N)")
             }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm)
 
-            DSSearchField(text: $searchText, placeholder: "Search notes...")
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
+            Divider()
 
             if let projectName = filterProjectName {
                 HStack(spacing: DS.Spacing.sm) {
@@ -102,7 +103,7 @@ struct NoteListView: View {
                             }
                             .padding(.vertical, DS.Spacing.sm)
                             .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(isSelected ? DS.Colors.accentFill : .clear)
                             .contentShape(Rectangle())
                         }
@@ -115,6 +116,9 @@ struct NoteListView: View {
                             Button("Delete", role: .destructive) {
                                 deleteNote(note)
                             }
+                        }
+                        if note.id != filteredNotes.last?.id {
+                            Divider()
                         }
                     }
                 }

@@ -65,7 +65,7 @@ struct ObsidianImportView: View {
                             .foregroundStyle(vaultURL != nil ? DS.Colors.success : DS.Colors.textTertiary)
 
                         if let url = vaultURL {
-                            VStack(alignment: .leading, spacing: 2) {
+                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                 Text(url.lastPathComponent)
                                     .font(DS.Font.body)
                                     .fontWeight(.medium)

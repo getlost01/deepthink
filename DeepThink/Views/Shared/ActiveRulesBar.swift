@@ -10,7 +10,7 @@ struct ActiveRulesBar: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "bolt.fill")
-                        .font(.system(size: 8))
+                        .font(.system(size: DS.IconSize.xs))
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     ForEach(rules) { rule in
@@ -33,7 +33,7 @@ struct ActiveRulesBar: View {
                                     .font(DS.Font.micro)
                             }
                             .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(
                                 isActive ? DS.Colors.accentFill : DS.Colors.fill,
                                 in: Capsule()

@@ -70,7 +70,9 @@ struct TaskListView: View {
         @Bindable var appState = appState
 
         VStack(spacing: 0) {
-            DSPageHeader(title: "Tasks") {
+            HStack(spacing: DS.Spacing.sm) {
+                DSSearchField(text: $searchText, placeholder: "Search tasks...")
+
                 Menu {
                     Button("All") { filterStatus = nil }
                     Divider()
@@ -83,20 +85,28 @@ struct TaskListView: View {
                     }
                 } label: {
                     Image(systemName: filterStatus == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
-                        .font(.system(size: DS.IconSize.md, weight: .medium))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(filterStatus == nil ? DS.Colors.textSecondary : DS.Colors.accent)
+                        .frame(width: 28, height: 28)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                        )
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 28)
+                .pointerOnHover()
 
-                DSToolbarButton(icon: "plus.circle.fill", color: DS.Colors.accent, size: DS.IconSize.lg) {
+                DSAddButton() {
                     createTask()
                 }
                 .help("New Task (⌘T)")
             }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.sm)
 
-            DSSearchField(text: $searchText, placeholder: "Search tasks...")
-                .padding(.horizontal, DS.Spacing.md)
+            Divider()
                 .padding(.bottom, DS.Spacing.xs)
 
             ScrollView(.horizontal, showsIndicators: false) {
@@ -170,7 +180,7 @@ struct TaskListView: View {
                                 } label: {
                                     TaskRowView(task: task)
                                         .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, 2)
+                                        .padding(.vertical, DS.Spacing.xxs)
                                         .background(isSelected ? DS.Colors.accentFill : .clear)
                                         .contentShape(Rectangle())
                                 }
@@ -184,6 +194,9 @@ struct TaskListView: View {
                                     }
                                     Divider()
                                     Button("Delete", role: .destructive) { deleteTask(task) }
+                                }
+                                if task.id != tasks.last?.id {
+                                    Divider()
                                 }
                             }
                         } header: {

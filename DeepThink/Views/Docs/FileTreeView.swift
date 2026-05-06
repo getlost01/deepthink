@@ -142,7 +142,7 @@ private struct FileNodeRow: View {
                 HStack(spacing: DS.Spacing.xs) {
                     if node.isDirectory {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
                             .frame(width: 12)
                     } else {

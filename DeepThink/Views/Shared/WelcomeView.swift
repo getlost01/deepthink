@@ -77,7 +77,7 @@ struct WelcomeView: View {
                                     .frame(width: 32, height: 32)
                                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-                                VStack(alignment: .leading, spacing: 2) {
+                                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                     Text(feature.title)
                                         .font(DS.Font.body)
                                         .fontWeight(.medium)

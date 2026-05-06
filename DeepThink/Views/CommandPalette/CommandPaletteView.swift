@@ -315,7 +315,7 @@ private struct KeyHint: View {
         Text(text)
             .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
             .padding(.horizontal, DS.Spacing.xs)
-            .padding(.vertical, 2)
+            .padding(.vertical, DS.Spacing.xxs)
             .background(DS.Colors.border, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }

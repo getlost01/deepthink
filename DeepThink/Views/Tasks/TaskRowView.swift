@@ -19,7 +19,7 @@ struct TaskRowView: View {
                 }
                 .buttonStyle(.plainPointer)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(task.title.isEmpty ? "Untitled" : task.title)
                         .font(DS.Font.body)
                         .lineLimit(1)
@@ -36,9 +36,9 @@ struct TaskRowView: View {
                 Spacer()
 
                 if !task.subtasks.isEmpty {
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "list.bullet.indent")
-                            .font(.system(size: 9))
+                            .font(.system(size: DS.IconSize.xs))
                         let done = task.subtasks.filter { $0.status == .done }.count
                         Text("\(done)/\(task.subtasks.count)")
                             .font(DS.Font.small)

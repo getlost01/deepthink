@@ -53,7 +53,7 @@ struct KnowledgeTimelineView: View {
                                 ProgressView().controlSize(.mini)
                             } else {
                                 Image(systemName: "sparkles")
-                                    .font(.system(size: 10))
+                                    .font(.system(size: DS.IconSize.xs))
                             }
                             Text("AI Digest")
                                 .font(DS.Font.small)
@@ -116,7 +116,7 @@ struct KnowledgeTimelineView: View {
                                         .foregroundStyle(DS.Colors.textTertiary)
                                         .frame(width: 20)
 
-                                    VStack(alignment: .leading, spacing: 2) {
+                                    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                         Text(note.title.isEmpty ? "Untitled" : note.title)
                                             .font(DS.Font.body)
                                             .foregroundStyle(DS.Colors.textPrimary)
@@ -132,13 +132,13 @@ struct KnowledgeTimelineView: View {
                                     if !linked.isEmpty {
                                         HStack(spacing: DS.Spacing.xs) {
                                             Image(systemName: "link")
-                                                .font(.system(size: 8))
+                                                .font(.system(size: DS.IconSize.xs))
                                             Text("\(linked.count)")
                                                 .font(DS.Font.small)
                                         }
                                         .foregroundStyle(DS.Colors.accent)
                                         .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, 2)
+                                        .padding(.vertical, DS.Spacing.xxs)
                                         .background(DS.Colors.accentFill, in: Capsule())
                                     }
                                 }
@@ -227,7 +227,7 @@ private struct TimelineSection: View {
                             .foregroundStyle(DS.Colors.textTertiary)
                             .frame(width: 20)
 
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                             Text(entry.title)
                                 .font(DS.Font.body)
                                 .foregroundStyle(DS.Colors.textPrimary)

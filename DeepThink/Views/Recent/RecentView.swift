@@ -244,7 +244,7 @@ struct RecentView: View {
                     Button(action: onViewMore) {
                         HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 10, weight: .semibold))
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
                             Text("View More")
                                 .font(DS.Font.body)
                                 .fontWeight(.medium)
@@ -321,7 +321,7 @@ private struct RecentItemRow: View {
                         .foregroundStyle(item.iconColor)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(item.title)
                         .font(DS.Font.body)
                         .fontWeight(.medium)
@@ -361,10 +361,10 @@ private struct RecentItemRow: View {
     @ViewBuilder
     private var kindBadge: some View {
         Text(item.kind.label)
-            .font(.system(size: 9, weight: .medium))
+            .font(.system(size: DS.IconSize.xs, weight: .medium))
             .foregroundStyle(item.kind.badgeColor)
             .padding(.horizontal, DS.Spacing.sm)
-            .padding(.vertical, 2)
+            .padding(.vertical, DS.Spacing.xxs)
             .background(item.kind.badgeColor.opacity(0.1), in: Capsule())
     }
 }

@@ -336,9 +336,9 @@ private struct ProjectTaskRow: View {
 
                 if !task.subtasks.isEmpty {
                     let done = task.subtasks.filter { $0.status == .done }.count
-                    HStack(spacing: 2) {
+                    HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "checklist")
-                            .font(.system(size: 8))
+                            .font(.system(size: DS.IconSize.xs))
                         Text("\(done)/\(task.subtasks.count)")
                             .font(DS.Font.small)
                     }
@@ -360,7 +360,7 @@ private struct ProjectTaskRow: View {
                 }
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .foregroundStyle(DS.Colors.textTertiary)
                     .opacity(isHovered ? 1 : 0)
             }
@@ -414,7 +414,7 @@ private struct ProjectNoteRow: View {
                     .foregroundStyle(DS.Colors.textTertiary)
 
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .foregroundStyle(DS.Colors.textTertiary)
                     .opacity(isHovered ? 1 : 0)
             }

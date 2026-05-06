@@ -408,9 +408,9 @@ struct AIChatView: View {
 
                     if !activeServers.isEmpty {
                         Toggle(isOn: $useMCP) {
-                            HStack(spacing: 2) {
+                            HStack(spacing: DS.Spacing.xxs) {
                                 Image(systemName: "wrench.and.screwdriver")
-                                    .font(.system(size: 8))
+                                    .font(.system(size: DS.IconSize.xs))
                                 Text("MCP")
                                     .font(DS.Font.micro)
                             }

@@ -35,7 +35,7 @@ struct NoteVersionsView: View {
                                     .font(DS.Font.small)
                                     .fontWeight(.bold)
                                     .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
+                                    .padding(.vertical, DS.Spacing.xxs)
                                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                                 Spacer()
                                 Text(version.createdAt.relativeFormatted)
@@ -51,7 +51,7 @@ struct NoteVersionsView: View {
                                 .foregroundStyle(DS.Colors.textSecondary)
                         }
                         .tag(version.id)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, DS.Spacing.xxs)
                     }
                 }
             }

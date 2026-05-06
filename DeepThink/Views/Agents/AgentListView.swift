@@ -22,7 +22,7 @@ struct AgentListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search assistants...")
-                    DSActionButton(title: "New", icon: "plus") {
+                    DSAddButton() {
                         createNewAgent()
                     }
                 }
@@ -57,7 +57,7 @@ struct AgentListView: View {
                                     selectedAgent = agent
                                 }
                                 if agent.id != filteredAgents.last?.id {
-                                    Divider().padding(.leading, 52)
+                                    Divider()
                                 }
                             }
                         }
@@ -185,7 +185,7 @@ private struct AgentTemplateSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text("Choose a Template")
                         .font(DS.Font.heading)
                     Text("Pick a starting point — you can customize everything later")
@@ -229,12 +229,12 @@ private struct TemplateCard: View {
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: template.icon)
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 36, height: 36)
+                        .frame(width: 28, height: 28)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                         Text(template.name)
                             .font(DS.Font.body)
                             .fontWeight(.semibold)
@@ -277,12 +277,12 @@ private struct AgentRow: View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
                 ZStack {
-                    Circle()
-                        .fill(isSelected ? DS.Colors.accent.opacity(0.15) : DS.Colors.accentFill)
-                        .frame(width: 32, height: 32)
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
+                        .frame(width: 28, height: 28)
                     Image(systemName: agent.icon)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(DS.Colors.textTertiary)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
                 }
 
                 HStack(spacing: DS.Spacing.xs) {
@@ -292,10 +292,10 @@ private struct AgentRow: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                     if agent.isBuiltIn {
                         Text("Built-in")
-                            .font(.system(size: 8, weight: .medium))
+                            .font(DS.Font.micro)
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .padding(.horizontal, 4)
-                            .padding(.vertical, 1)
+                            .padding(.horizontal, DS.Spacing.xs)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(DS.Colors.fill, in: Capsule())
                     }
                 }
@@ -307,7 +307,7 @@ private struct AgentRow: View {
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.accent)
                         .padding(.horizontal, DS.Spacing.xs)
-                        .padding(.vertical, 2)
+                        .padding(.vertical, DS.Spacing.xxs)
                         .background(DS.Colors.accentFill, in: Capsule())
                 }
             }
@@ -371,7 +371,7 @@ private struct AgentDetailEditor: View {
             Button(action: onChat) {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "bubble.left.fill")
-                        .font(.system(size: 9))
+                        .font(.system(size: DS.IconSize.xs))
                     Text("Chat")
                         .font(DS.Font.small)
                         .fontWeight(.medium)
@@ -419,9 +419,9 @@ private struct AgentDetailEditor: View {
                     showIconPicker.toggle()
                 } label: {
                     Image(systemName: icon)
-                        .font(.system(size: DS.IconSize.lg, weight: .medium))
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 32, height: 32)
+                        .frame(width: 28, height: 28)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
@@ -460,7 +460,7 @@ private struct AgentDetailEditor: View {
 
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "book")
-                    .font(.system(size: 10))
+                    .font(.system(size: DS.IconSize.xs))
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("e.g. Swift, macOS, UI design", text: $knowledgeScope)
                     .textFieldStyle(.plain)

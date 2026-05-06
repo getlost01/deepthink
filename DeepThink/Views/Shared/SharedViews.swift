@@ -33,7 +33,7 @@ struct StatusIndicator: View {
 
     var body: some View {
         Image(systemName: status.icon)
-            .font(.system(size: 10))
+            .font(.system(size: DS.IconSize.xs))
             .foregroundStyle(status.color)
     }
 }
