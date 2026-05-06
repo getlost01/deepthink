@@ -107,7 +107,7 @@ struct SidebarView: View {
                                 .strokeBorder(DS.Colors.border, lineWidth: 1)
                         )
 
-                        Text("Command Palette")
+                        Text("Spotlight")
                             .font(DS.Font.caption)
                             .foregroundStyle(DS.Colors.textSecondary)
                         Spacer()

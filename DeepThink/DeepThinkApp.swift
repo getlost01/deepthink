@@ -66,7 +66,7 @@ struct DeepThinkApp: App {
     var sharedModelContainer: ModelContainer = {
         StorageService.shared.ensureDirectoryStructure()
 
-        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self, Reminder.self])
+        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self, Reminder.self, UsageSession.self])
         let config = ModelConfiguration(
             schema: schema,
             url: StorageService.shared.storeURL,
@@ -106,6 +106,7 @@ struct DeepThinkApp: App {
                     KnowledgeService.shared.reload()
                     indexWorkspaceItems(container: sharedModelContainer)
                     CollectorScheduler.shared.start(container: sharedModelContainer)
+                    ClaudeService.shared.start(container: sharedModelContainer)
 
                     // Register global hotkey for Quick Capture (Option+Space)
                     GlobalHotKey.shared.register(container: sharedModelContainer)
@@ -151,7 +152,7 @@ struct DeepThinkApp: App {
             }
 
             CommandGroup(after: .toolbar) {
-                Button("Command Palette") {
+                Button("Spotlight") {
                     appState.toggleCommandPalette()
                 }
                 .keyboardShortcut("k", modifiers: .command)
@@ -228,7 +229,7 @@ struct DeepThinkApp: App {
 
         commandPaletteState.registerCommands(skillCommands + [
             // Create
-            Command(title: "New Note", icon: "doc.text.badge.plus", shortcut: "⌘N", section: "Create") {
+            Command(title: "New Note", icon: "doc.badge.plus", shortcut: "⌘N", section: "Create") {
                 appState.selectedSection = .workspace
                 appState.workspaceTab = .projects
                 NotificationCenter.default.post(name: .createNewNote, object: nil)
@@ -271,6 +272,12 @@ struct DeepThinkApp: App {
                 appState.workspaceTab = .tasks
             },
             Command(title: "Knowledge", icon: "brain", shortcut: "⌘2", section: "Navigate") {
+                appState.navigate(to: .knowledge)
+            },
+            Command(title: "Reload Knowledge", icon: "arrow.clockwise", shortcut: nil, section: "Knowledge") {
+                KnowledgeService.shared.reload()
+            },
+            Command(title: "Capture to Knowledge", icon: "brain.filled.head.profile", shortcut: nil, section: "Knowledge") {
                 appState.navigate(to: .knowledge)
             },
             Command(title: "AI Assistant", icon: "message.and.waveform", shortcut: "⌘3", section: "Navigate") {

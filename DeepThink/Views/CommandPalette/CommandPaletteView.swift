@@ -7,6 +7,7 @@ struct CommandPaletteView: View {
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         @Bindable var state = state
@@ -17,22 +18,35 @@ struct CommandPaletteView: View {
                 .onTapGesture { dismiss() }
 
             VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.md) {
+                // Search bar
+                HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: DS.IconSize.md))
                         .foregroundStyle(DS.Colors.textTertiary)
 
-                    TextField("Search commands, notes, tasks...", text: $state.query)
+                    if let prefix = state.activePrefix {
+                        Text(prefixLabel(prefix))
+                            .font(DS.Font.small)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.onAccent)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, 3)
+                            .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+
+                    TextField(placeholderText(state.activePrefix), text: $state.query)
                         .textFieldStyle(.plain)
                         .font(.system(size: DS.IconSize.lg))
+                        .focused($isSearchFocused)
                         .onSubmit {
                             if state.executeSelected() { dismiss() }
                         }
+                        .onKeyPress(.escape) { dismiss(); return .handled }
+                        .onKeyPress(.upArrow) { state.moveUp(); return .handled }
+                        .onKeyPress(.downArrow) { state.moveDown(); return .handled }
 
                     if !state.query.isEmpty {
-                        Button {
-                            state.query = ""
-                        } label: {
+                        Button { state.query = "" } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(DS.Colors.textTertiary)
@@ -41,6 +55,9 @@ struct CommandPaletteView: View {
                     }
                 }
                 .padding(DS.Spacing.lg)
+                .onHover { hovering in
+                    if hovering { NSCursor.iBeam.push() } else { NSCursor.pop() }
+                }
 
                 Divider().opacity(0.5)
 
@@ -49,7 +66,11 @@ struct CommandPaletteView: View {
                         LazyVStack(alignment: .leading, spacing: 0) {
                             let sections = state.sections
                             let flatItems = state.allFlatItems
-                            var runningIndex = 0
+
+                            // Recent items in empty state
+                            if state.query.isEmpty {
+                                recentSection
+                            }
 
                             ForEach(sections) { section in
                                 Text(section.title.uppercased())
@@ -65,6 +86,7 @@ struct CommandPaletteView: View {
                                     PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
                                         .id(item.id)
                                         .pointerOnHover()
+                                        .onHover { hovered in if hovered { state.selectedIndex = itemIndex } }
                                         .onTapGesture {
                                             switch item {
                                             case .command(let cmd): cmd.action()
@@ -90,7 +112,7 @@ struct CommandPaletteView: View {
                         }
                         .padding(.vertical, DS.Spacing.sm)
                     }
-                    .frame(maxHeight: 400)
+                    .frame(maxHeight: 420)
                     .onChange(of: state.selectedIndex) { _, newValue in
                         let items = state.allFlatItems
                         if items.indices.contains(newValue) {
@@ -108,25 +130,28 @@ struct CommandPaletteView: View {
                     }
                     HStack(spacing: DS.Spacing.xs) {
                         KeyHint("↵")
-                        Text("select")
+                        Text("open")
                     }
                     HStack(spacing: DS.Spacing.xs) {
                         KeyHint("esc")
                         Text("close")
                     }
                     Spacer()
-                    if !state.query.isEmpty {
-                        let count = state.allFlatItems.count
-                        Text("\(count) result\(count == 1 ? "" : "s")")
-                            .foregroundStyle(DS.Colors.textTertiary)
+                    HStack(spacing: DS.Spacing.xs) {
+                        KeyHint(">")
+                        KeyHint("#")
+                        KeyHint("@")
+                        KeyHint("%")
                     }
+                    Text("filter by type")
+                        .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
             }
-            .frame(width: 560)
+            .frame(width: 580)
             .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
@@ -142,9 +167,85 @@ struct CommandPaletteView: View {
         .onAppear {
             state.reset()
             updateWorkspaceItems()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                isSearchFocused = true
+            }
         }
         .onChange(of: state.query) {
             state.selectedIndex = 0
+        }
+    }
+
+    private var recentNotes: [Note] {
+        notes.sorted(by: { (a: Note, b: Note) in a.modifiedAt > b.modifiedAt }).prefix(3).map { $0 }
+    }
+
+    private var recentTasks: [TaskItem] {
+        tasks.filter { (t: TaskItem) in t.status != .done }
+            .sorted(by: { (a: TaskItem, b: TaskItem) in a.createdAt > b.createdAt })
+            .prefix(2).map { $0 }
+    }
+
+    @ViewBuilder
+    private var recentSection: some View {
+        if !recentNotes.isEmpty || !recentTasks.isEmpty {
+            Text("RECENT")
+                .font(DS.Font.micro)
+                .fontWeight(.bold)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.top, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.xs)
+            ForEach(recentNotes) { note in
+                PaletteItemRow(
+                    item: .workspaceItem(WorkspaceSearchItem(
+                        id: note.id,
+                        title: note.title.isEmpty ? "Untitled" : note.title,
+                        subtitle: note.firstLine,
+                        icon: "doc.text",
+                        type: .note,
+                        action: {}
+                    )),
+                    isSelected: false
+                )
+                .pointerOnHover()
+                .onTapGesture { appState.navigateToNote(note.id); dismiss() }
+            }
+            ForEach(recentTasks) { task in
+                PaletteItemRow(
+                    item: .workspaceItem(WorkspaceSearchItem(
+                        id: task.id,
+                        title: task.title.isEmpty ? "Untitled" : task.title,
+                        subtitle: task.status.rawValue,
+                        icon: task.status.icon,
+                        type: .task,
+                        action: {}
+                    )),
+                    isSelected: false
+                )
+                .pointerOnHover()
+                .onTapGesture { appState.navigateToTask(task.id); dismiss() }
+            }
+        }
+    }
+
+    private func prefixLabel(_ prefix: String) -> String {
+        switch prefix {
+        case ">": return "Commands"
+        case "#": return "Notes"
+        case "@": return "Tasks"
+        case "%": return "Knowledge"
+        default: return prefix
+        }
+    }
+
+    private func placeholderText(_ prefix: String?) -> String {
+        switch prefix {
+        case ">": return "Search commands..."
+        case "#": return "Search notes..."
+        case "@": return "Search tasks..."
+        case "%": return "Search knowledge..."
+        default: return "Search or type > # @ %"
         }
     }
 

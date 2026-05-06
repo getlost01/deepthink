@@ -246,6 +246,7 @@ final class MCPService {
                                         ClaudeService.shared.lastTokenUsage = tu
                                         ClaudeService.shared.sessionInputTokens += tu.inputTokens
                                         ClaudeService.shared.sessionOutputTokens += tu.outputTokens
+                                        ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
                                     }
                                 }
                             }
@@ -323,6 +324,7 @@ final class MCPService {
                                 ClaudeService.shared.lastQueryCostUSD = cost
                             }
                             ClaudeService.shared.lastQueryDurationMs = duration
+                            ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: duration ?? 0)
                         }
                         continuation.resume(returning: result)
                     } else {

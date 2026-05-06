@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import SwiftData
 
 @Observable
 final class ClaudeService {
@@ -14,18 +15,67 @@ final class ClaudeService {
     var selectedModelFamily: ModelFamily = .sonnet
     var selectedModelVersion: ModelVersion = ModelVersion.latestSonnet
 
-    // Usage tracking
+    // Usage tracking — all-time (loaded from DB + accumulated)
     var totalQueries: Int = 0
     var totalCostUSD: Double = 0
+    var totalDurationMs: Double = 0
+    var totalInputTokens: Int = 0
+    var totalOutputTokens: Int = 0
+    var totalCacheReadTokens: Int = 0
+    // Usage tracking — current session only
     var lastQueryCostUSD: Double?
     var lastQueryDurationMs: Double?
     var sessionStartDate: Date = Date()
     var lastTokenUsage: TokenUsage?
     var sessionInputTokens: Int = 0
     var sessionOutputTokens: Int = 0
+    var sessionCacheReadTokens: Int = 0
+    var sessionCacheCreationTokens: Int = 0
 
     // CLI info
     var cliVersion: String?
+
+    private var container: ModelContainer?
+    private var currentSession: UsageSession?
+
+    func start(container: ModelContainer) {
+        self.container = container
+        let context = ModelContext(container)
+        let session = UsageSession()
+        context.insert(session)
+        try? context.save()
+        currentSession = session
+
+        let descriptor = FetchDescriptor<UsageSession>()
+        if let all = try? context.fetch(descriptor) {
+            totalQueries = all.reduce(0) { $0 + $1.queries }
+            totalCostUSD = all.reduce(0) { $0 + $1.costUSD }
+            totalDurationMs = all.reduce(0) { $0 + $1.durationMs }
+            totalInputTokens = all.reduce(0) { $0 + $1.inputTokens }
+            totalOutputTokens = all.reduce(0) { $0 + $1.outputTokens }
+            totalCacheReadTokens = all.reduce(0) { $0 + $1.cacheReadTokens }
+            sessionStartDate = session.startDate
+        }
+    }
+
+    func recordUsage(queries: Int = 0, cost: Double = 0, durationMs: Double = 0, inputTokens: Int = 0, outputTokens: Int = 0, cacheReadTokens: Int = 0, cacheCreationTokens: Int = 0) {
+        guard let container, let session = currentSession else { return }
+        let context = ModelContext(container)
+        session.queries += queries
+        session.costUSD += cost
+        session.durationMs += durationMs
+        session.inputTokens += inputTokens
+        session.outputTokens += outputTokens
+        session.cacheReadTokens += cacheReadTokens
+        context.insert(session)
+        try? context.save()
+        sessionCacheReadTokens += cacheReadTokens
+        sessionCacheCreationTokens += cacheCreationTokens
+        totalDurationMs += durationMs
+        totalInputTokens += inputTokens
+        totalOutputTokens += outputTokens
+        totalCacheReadTokens += cacheReadTokens
+    }
 
     struct ModelVersion: Identifiable, Hashable {
         let id: String
@@ -300,6 +350,7 @@ final class ClaudeService {
                             ClaudeService.shared.lastTokenUsage = tu
                             ClaudeService.shared.sessionInputTokens += tu.inputTokens
                             ClaudeService.shared.sessionOutputTokens += tu.outputTokens
+                            ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
                         }
                         continuation.resume(returning: result)
                     } else {
@@ -424,6 +475,7 @@ final class ClaudeService {
                                         ClaudeService.shared.lastTokenUsage = tu
                                         ClaudeService.shared.sessionInputTokens += tu.inputTokens
                                         ClaudeService.shared.sessionOutputTokens += tu.outputTokens
+                                        ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
                                     }
                                 }
                             }

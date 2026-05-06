@@ -2,6 +2,23 @@ import Foundation
 import SwiftData
 
 @Model
+final class UsageSession {
+    var id: UUID = UUID()
+    var startDate: Date = Date()
+    var inputTokens: Int = 0
+    var outputTokens: Int = 0
+    var cacheReadTokens: Int = 0
+    var queries: Int = 0
+    var costUSD: Double = 0
+    var durationMs: Double = 0
+
+    init() {
+        self.id = UUID()
+        self.startDate = Date()
+    }
+}
+
+@Model
 final class Conversation {
     var id: UUID = UUID()
     var title: String = ""

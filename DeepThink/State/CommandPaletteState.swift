@@ -58,21 +58,47 @@ final class CommandPaletteState {
     private var commands: [Command] = []
     var workspaceItems: [WorkspaceSearchItem] = []
 
+    var activePrefix: String? {
+        guard let first = query.first else { return nil }
+        switch first {
+        case ">": return ">"
+        case "#": return "#"
+        case "@": return "@"
+        case "%": return "%"
+        default: return nil
+        }
+    }
+
+    private var searchQuery: String {
+        guard let prefix = activePrefix else { return query }
+        return String(query.dropFirst()).trimmingCharacters(in: .whitespaces)
+    }
+
     var sections: [PaletteSection] {
         if query.isEmpty {
             let commandSection = PaletteSection(title: "Commands", items: commands.prefix(8).map { .command($0) })
             return [commandSection]
         }
 
+        let q = searchQuery
         var result: [PaletteSection] = []
 
-        let matchedCommands = commands.filter { fuzzyMatch(query, in: $0.title) }
-        if !matchedCommands.isEmpty {
-            result.append(PaletteSection(title: "Commands", items: matchedCommands.map { .command($0) }))
+        if activePrefix == nil || activePrefix == ">" {
+            let matched = q.isEmpty ? Array(commands.prefix(8)) : commands.filter { fuzzyMatch(q, in: $0.title) }
+            if !matched.isEmpty {
+                result.append(PaletteSection(title: "Commands", items: matched.map { .command($0) }))
+            }
+            if activePrefix == ">" { return result }
         }
 
-        let grouped = Dictionary(grouping: matchedWorkspaceItems) { $0.type }
+        let filteredType: WorkspaceSearchItem.ItemType? = activePrefix == "#" ? .note : activePrefix == "@" ? .task : activePrefix == "%" ? .knowledge : nil
+        let candidates = q.isEmpty
+            ? workspaceItems
+            : workspaceItems.filter { fuzzyMatch(q, in: $0.title) || fuzzyMatch(q, in: $0.subtitle) }
+
+        let grouped = Dictionary(grouping: candidates) { $0.type }
         for type in [WorkspaceSearchItem.ItemType.note, .task, .project, .knowledge] {
+            guard filteredType == nil || filteredType == type else { continue }
             if let items = grouped[type], !items.isEmpty {
                 result.append(PaletteSection(title: type.rawValue, items: items.prefix(5).map { .workspaceItem($0) }))
             }

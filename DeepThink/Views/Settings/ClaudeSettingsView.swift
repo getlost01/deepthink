@@ -21,8 +21,6 @@ struct ClaudeSettingsView: View {
                 usageDashboard
                 configurationSection
 
-                Divider()
-
                 cliSection
             }
             .padding(DS.Spacing.xl)
@@ -613,27 +611,95 @@ struct ClaudeSettingsView: View {
 
     @ViewBuilder
     private var usageDashboard: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            HStack {
-                DSSectionHeader(title: "Session Usage")
-                Spacer()
-                HStack(spacing: DS.Spacing.xs) {
-                    Circle()
-                        .fill(DS.Colors.success)
-                        .frame(width: 5, height: 5)
-                    Text("Since \(claude.sessionStartDate.formatted(date: .abbreviated, time: .shortened))")
-                        .font(DS.Font.small)
-                }
-                .foregroundStyle(DS.Colors.textTertiary)
-            }
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            DSSectionHeader(title: "Usage")
 
-            HStack(spacing: DS.Spacing.md) {
-                UsageStatCard(title: "Queries", value: "\(claude.totalQueries)", icon: "bubble.left.and.bubble.right", color: DS.Colors.accent)
-                UsageStatCard(title: "Total Cost", value: formatCost(claude.totalCostUSD), icon: "dollarsign.circle", color: DS.Colors.success)
-                UsageStatCard(title: "Last Duration", value: claude.lastQueryDurationMs.map { formatDuration($0) } ?? "--", icon: "clock", color: DS.Colors.warning)
-                UsageStatCard(title: "Avg/Query", value: claude.totalQueries > 0 ? formatCost(claude.totalCostUSD / Double(claude.totalQueries)) : "--", icon: "chart.bar", color: DS.Colors.knowledge)
+            HStack(alignment: .top, spacing: DS.Spacing.md) {
+                // Cost & performance
+                VStack(spacing: 0) {
+                    usageRow(icon: "dollarsign.circle", color: DS.Colors.success,
+                             label: "Total Cost",
+                             value: formatCost(claude.totalCostUSD),
+                             note: claude.lastQueryCostUSD.map { "last \(formatCost($0))" })
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "bubble.left.and.bubble.right", color: DS.Colors.accent,
+                             label: "Queries",
+                             value: "\(claude.totalQueries)",
+                             note: claude.totalQueries > 0 ? "avg \(formatCost(claude.totalCostUSD / Double(claude.totalQueries)))" : nil)
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "clock", color: DS.Colors.warning,
+                             label: "Avg Duration",
+                             value: claude.totalQueries > 0 ? formatDuration(claude.totalDurationMs / Double(claude.totalQueries)) : "--",
+                             note: claude.totalQueries > 0 ? {
+                                let avg = claude.totalDurationMs / Double(claude.totalQueries)
+                                return avg > 10_000 ? "slow" : avg > 4_000 ? "moderate" : "fast"
+                             }() : nil)
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "creditcard", color: DS.Colors.knowledge,
+                             label: "Cost / 1K Tokens",
+                             value: (claude.totalInputTokens + claude.totalOutputTokens) > 0
+                                ? formatCost(claude.totalCostUSD / Double(claude.totalInputTokens + claude.totalOutputTokens) * 1000)
+                                : "--",
+                             note: nil)
+                }
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+
+                // Tokens
+                VStack(spacing: 0) {
+                    usageRow(icon: "arrow.down.circle", color: DS.Colors.knowledge,
+                             label: "Input Tokens",
+                             value: formatTokens(claude.totalInputTokens),
+                             note: "all time")
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "arrow.up.circle", color: DS.Colors.accent,
+                             label: "Output Tokens",
+                             value: formatTokens(claude.totalOutputTokens),
+                             note: claude.totalInputTokens > 0 ? "ratio \(String(format: "%.1f", Double(claude.totalOutputTokens) / Double(claude.totalInputTokens)))x" : nil)
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "bolt.circle", color: DS.Colors.success,
+                             label: "Cache Read",
+                             value: formatTokens(claude.totalCacheReadTokens),
+                             note: (claude.totalInputTokens + claude.totalCacheReadTokens) > 0
+                                ? "\(Int(Double(claude.totalCacheReadTokens) / Double(claude.totalInputTokens + claude.totalCacheReadTokens) * 100))% hit rate"
+                                : "no cache yet")
+                    Divider().padding(.leading, 28)
+                    usageRow(icon: "circle.grid.2x2", color: DS.Colors.textSecondary,
+                             label: "Total Tokens",
+                             value: formatTokens(claude.totalInputTokens + claude.totalOutputTokens + claude.totalCacheReadTokens),
+                             note: claude.totalQueries > 0 ? "\(formatTokens((claude.totalInputTokens + claude.totalOutputTokens) / max(1, claude.totalQueries)))/query avg" : nil)
+                }
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
         }
+    }
+
+    @ViewBuilder
+    private func usageRow(icon: String, color: Color, label: String, value: String, note: String?) -> some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.system(size: DS.IconSize.xs, weight: .medium))
+                .foregroundStyle(color)
+                .frame(width: 16)
+            Text(label)
+                .font(DS.Font.caption)
+                .foregroundStyle(DS.Colors.textSecondary)
+            Spacer()
+            if let note {
+                Text(note)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+            Text(value)
+                .font(DS.Font.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(DS.Colors.textPrimary)
+                .monospacedDigit()
+                .frame(minWidth: 48, alignment: .trailing)
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm)
     }
 
     // MARK: - Helpers
@@ -696,6 +762,12 @@ struct ClaudeSettingsView: View {
 
     private func formatDuration(_ ms: Double) -> String {
         ms < 1000 ? String(format: "%.0fms", ms) : String(format: "%.1fs", ms / 1000)
+    }
+
+    private func formatTokens(_ n: Int) -> String {
+        n >= 1_000_000 ? String(format: "%.1fM", Double(n) / 1_000_000)
+            : n >= 1_000 ? String(format: "%.1fK", Double(n) / 1_000)
+            : "\(n)"
     }
 
     private func tokenDescription(_ tokens: Int) -> String {
@@ -868,6 +940,7 @@ private struct UsageStatCard: View {
     let value: String
     let icon: String
     let color: Color
+    var subtitle: String? = nil
     @State private var isHovered = false
 
     var body: some View {
@@ -886,6 +959,13 @@ private struct UsageStatCard: View {
                 .fontWeight(.regular)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .textCase(.uppercase)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(DS.Font.micro)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .lineLimit(1)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.Spacing.md)
