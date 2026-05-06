@@ -23,7 +23,7 @@ final class QuickCaptureWindowController: NSWindowController {
 
     private init() {
         let panel = QuickCapturePanel(
-            contentRect: NSRect(x: 0, y: 0, width: 640, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 620),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: true
@@ -39,8 +39,8 @@ final class QuickCaptureWindowController: NSWindowController {
         super.init(window: panel)
 
         if let screen = NSScreen.main {
-            let x = (screen.frame.width - 640) / 2
-            let y = (screen.frame.height - 520) / 2 + 100
+            let x = (screen.frame.width - 720) / 2
+            let y = (screen.frame.height - 620) / 2 + 100
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
     }
@@ -68,6 +68,17 @@ final class QuickCaptureWindowController: NSWindowController {
 
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func showPrefilled(with container: ModelContainer, content: String) {
+        show(with: container)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            NotificationCenter.default.post(
+                name: .quickCapturePrefill,
+                object: nil,
+                userInfo: ["content": content]
+            )
+        }
     }
 
     func dismiss() {

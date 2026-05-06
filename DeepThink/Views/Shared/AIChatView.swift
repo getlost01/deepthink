@@ -151,21 +151,27 @@ struct AIChatView: View {
                         if isSavingKnowledge {
                             HStack(spacing: 4) {
                                 ProgressView().controlSize(.mini)
-                                Text("Saving...")
+                                Text("Summarizing...")
                                     .font(DS.Font.buttonSmall)
                             }
                             .foregroundStyle(DS.Colors.textTertiary)
                         } else {
-                            Text("Save to Knowledge")
-                                .font(DS.Font.buttonSmall)
-                                .foregroundStyle(DS.Colors.accent)
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "brain")
+                                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                Text("Summarize & Save")
+                                    .font(DS.Font.buttonSmall)
+                            }
+                            .foregroundStyle(DS.Colors.accent)
                         }
                     }
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xs)
                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.accent.opacity(0.2), lineWidth: 1))
                     .buttonStyle(.plainPointer)
                     .disabled(isSavingKnowledge)
+                    .help("Summarize this conversation and save key insights to knowledge base")
                 }
 
                 if let onShowConfig {
@@ -197,7 +203,7 @@ struct AIChatView: View {
                     .help("Assistants & Automations")
                 }
 
-                DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
+                DSToolbarButton(icon: "square.and.pencil", color: DS.Colors.textSecondary, size: DS.IconSize.sm) {
                     appState.chatMessages.removeAll()
                     appState.editBranchPoints.removeAll()
                     currentConversation = nil
@@ -227,10 +233,16 @@ struct AIChatView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         if appState.chatMessages.isEmpty && !appState.isChatProcessing {
-                            WelcomePrompts { prompt in
-                                inputText = prompt
-                                sendMessage()
-                            }
+                            WelcomePrompts(
+                                onSelect: { prompt in
+                                    inputText = prompt
+                                    sendMessage()
+                                },
+                                noteCount: notes.count,
+                                taskCount: tasks.count,
+                                pendingTaskCount: tasks.filter { $0.status == .todo || $0.status == .inProgress }.count,
+                                knowledgeCount: KnowledgeService.shared.entries.count
+                            )
                             .padding(.top, 80)
                         }
 
@@ -242,11 +254,8 @@ struct AIChatView: View {
                                     onEdit: message.role == .user ? { newText in
                                         editAndResend(at: index, newText: newText)
                                     } : nil,
-                                    onSaveAsNote: message.role == .assistant ? { content in
-                                        saveAsNote(content)
-                                    } : nil,
-                                    onCreateTask: message.role == .assistant ? { content in
-                                        createTaskFromChat(content)
+                                    onSaveResponse: message.role == .assistant ? { content in
+                                        saveResponseToQuickCapture(content)
                                     } : nil,
                                     branchInfo: branchInfo(for: index),
                                     onSwitchBranch: appState.editBranchPoints[index] != nil ? { newIndex in
@@ -413,14 +422,23 @@ struct AIChatView: View {
                                     .font(.system(size: DS.IconSize.xs))
                                 Text("MCP")
                                     .font(DS.Font.micro)
+                                Text("(\(activeServers.count))")
+                                    .font(DS.Font.micro)
+                                    .foregroundStyle(DS.Colors.textTertiary)
                             }
                             .foregroundStyle(useMCP ? DS.Colors.accent : DS.Colors.textTertiary)
                         }
                         .toggleStyle(.switch)
                         .controlSize(.mini)
+                        .pointerOnHover()
                     }
 
                     Spacer()
+
+                    Text("⏎ Send")
+                        .font(DS.Font.micro)
+                        .foregroundStyle(DS.Colors.textTertiary.opacity(0.6))
+
                     if appState.isChatProcessing {
                         Button {
                             chatTask?.cancel()
@@ -473,19 +491,11 @@ struct AIChatView: View {
 
     // MARK: - Actions
 
-    private func saveAsNote(_ content: String) {
-        let title = String(content.prefix(60)).trimmingCharacters(in: .whitespacesAndNewlines)
-        let note = Note(title: title, content: content)
-        modelContext.insert(note)
-        try? modelContext.save()
-    }
-
-    private func createTaskFromChat(_ content: String) {
-        let title = String(content.prefix(80)).trimmingCharacters(in: .whitespacesAndNewlines)
-        let task = TaskItem(title: title)
-        task.detail = content
-        modelContext.insert(task)
-        try? modelContext.save()
+    private func saveResponseToQuickCapture(_ content: String) {
+        QuickCaptureWindowController.shared.showPrefilled(
+            with: modelContext.container,
+            content: content
+        )
     }
 
     /// Scrolls so the newest content stays in view. Uses the last bubble id (not a 1pt spacer)
@@ -801,8 +811,10 @@ struct AIChatView: View {
                 try Task.checkCancellation()
 
                 await MainActor.run {
-                    persistMessage(role: "assistant", content: response)
+                    let lastUsage = appState.chatMessages.last?.tokenUsage
+                    persistMessage(role: "assistant", content: response, tokenUsage: lastUsage)
                     lastFailedMessage = nil
+                    updateActiveBranchSnapshot()
                     generateFollowUps(userMessage: text, assistantMessage: response)
                 }
 
@@ -838,56 +850,101 @@ struct AIChatView: View {
     }
 
     private func editAndResend(at index: Int, newText: String) {
+        guard index >= 0, index < appState.chatMessages.count else { return }
+
+        chatTask?.cancel()
+        appState.isChatProcessing = false
+        appState.chatProcessingStartTime = nil
+
         let oldBranch = EditBranch(messages: Array(appState.chatMessages[index...]))
 
         if var branchPoint = appState.editBranchPoints[index] {
-            branchPoint.branches.append(oldBranch)
-            branchPoint.activeBranchIndex = branchPoint.branches.count
+            branchPoint.branches[branchPoint.activeBranchIndex] = oldBranch
+            let newIndex = branchPoint.branches.count
+            branchPoint.branches.append(EditBranch(messages: []))
+            branchPoint.activeBranchIndex = newIndex
             appState.editBranchPoints[index] = branchPoint
         } else {
             appState.editBranchPoints[index] = BranchPoint(
-                branches: [oldBranch],
+                branches: [oldBranch, EditBranch(messages: [])],
                 activeBranchIndex: 1
             )
         }
 
+        deletePersistedMessages(fromIndex: index)
         appState.chatMessages.removeSubrange(index...)
+        persistBranches()
         inputText = newText
         sendMessage()
     }
 
     private func branchInfo(for index: Int) -> (current: Int, total: Int)? {
         guard let bp = appState.editBranchPoints[index] else { return nil }
-        return (bp.activeBranchIndex, bp.branches.count + 1)
+        return (bp.activeBranchIndex, bp.branches.count)
     }
 
     private func switchBranch(at index: Int, to branchIndex: Int) {
+        guard index >= 0, index < appState.chatMessages.count else { return }
         guard var bp = appState.editBranchPoints[index] else { return }
+        guard branchIndex >= 0, branchIndex < bp.branches.count else { return }
 
         let currentSuffix = Array(appState.chatMessages[index...])
-        let currentBranch = EditBranch(messages: currentSuffix)
-
-        if bp.activeBranchIndex < bp.branches.count {
-            bp.branches[bp.activeBranchIndex] = currentBranch
-        } else {
-            bp.branches.append(currentBranch)
-        }
+        bp.branches[bp.activeBranchIndex] = EditBranch(messages: currentSuffix)
 
         let target = bp.branches[branchIndex]
         bp.activeBranchIndex = branchIndex
         appState.editBranchPoints[index] = bp
 
+        deletePersistedMessages(fromIndex: index)
         appState.chatMessages.removeSubrange(index...)
         appState.chatMessages.append(contentsOf: target.messages)
 
-        // Clear branch points that existed beyond this edit point
+        for msg in target.messages {
+            let role = msg.role == .user ? "user" : (msg.role == .error ? "error" : "assistant")
+            let chatMsg = ChatMessage(role: role, content: msg.content)
+            chatMsg.timestamp = msg.timestamp
+            chatMsg.conversation = currentConversation
+            modelContext.insert(chatMsg)
+        }
+        try? modelContext.save()
+
         for key in appState.editBranchPoints.keys where key > index {
             appState.editBranchPoints.removeValue(forKey: key)
         }
+        persistBranches()
+    }
+
+    private func deletePersistedMessages(fromIndex index: Int) {
+        guard let conv = currentConversation else { return }
+        let sorted = conv.sortedMessages
+        guard index < sorted.count else { return }
+        for i in index..<sorted.count {
+            modelContext.delete(sorted[i])
+        }
+        try? modelContext.save()
+    }
+
+    private func updateActiveBranchSnapshot() {
+        for (index, var bp) in appState.editBranchPoints {
+            guard index < appState.chatMessages.count else { continue }
+            let currentMessages = Array(appState.chatMessages[index...])
+            bp.branches[bp.activeBranchIndex] = EditBranch(messages: currentMessages)
+            appState.editBranchPoints[index] = bp
+        }
+        persistBranches()
+    }
+
+    private func persistBranches() {
+        guard let conv = currentConversation else { return }
+        conv.branchDataJSON = BranchSerializer.serialize(appState.editBranchPoints)
+        try? modelContext.save()
     }
 
     private func retryLastMessage() {
         guard let msg = lastFailedMessage else { return }
+        chatTask?.cancel()
+        appState.isChatProcessing = false
+        appState.chatProcessingStartTime = nil
         if let last = appState.chatMessages.last, last.role == .error {
             appState.chatMessages.removeLast()
         }
@@ -897,7 +954,7 @@ struct AIChatView: View {
 
     // MARK: - Persistence
 
-    private func persistMessage(role: String, content: String) {
+    private func persistMessage(role: String, content: String, tokenUsage: TokenUsage? = nil) {
         if currentConversation == nil {
             let title = String(content.prefix(60))
             let conv = Conversation(title: title, agentName: selectedAgent?.name)
@@ -905,6 +962,14 @@ struct AIChatView: View {
             currentConversation = conv
         }
         let msg = ChatMessage(role: role, content: content)
+        if let usage = tokenUsage {
+            msg.inputTokens = usage.inputTokens
+            msg.outputTokens = usage.outputTokens
+            msg.cacheReadTokens = usage.cacheReadTokens
+            msg.cacheCreationTokens = usage.cacheCreationTokens
+            msg.costUSD = usage.costUSD
+            msg.durationMs = usage.durationMs
+        }
         msg.conversation = currentConversation
         modelContext.insert(msg)
         currentConversation?.updatedAt = Date()
@@ -917,8 +982,15 @@ struct AIChatView: View {
         appState.chatMessages = conversation.sortedMessages.map { msg in
             AIMessage(
                 role: msg.isUser ? .user : (msg.isError ? .error : .assistant),
-                content: msg.content
+                content: msg.content,
+                timestamp: msg.timestamp,
+                tokenUsage: msg.tokenUsage
             )
+        }
+        if let branchData = conversation.branchDataJSON {
+            appState.editBranchPoints = BranchSerializer.deserialize(branchData)
+        } else {
+            appState.editBranchPoints.removeAll()
         }
         if let agentName = conversation.agentName {
             appState.selectedAgentPath = agentService.agents.first { $0.name == agentName }?.filePath.path
@@ -1006,23 +1078,33 @@ struct FollowUpChipsView: View {
 
             FlowLayout(spacing: DS.Spacing.xs) {
                 ForEach(suggestions, id: \.self) { suggestion in
-                    Button {
-                        onSelect(suggestion)
-                    } label: {
-                        Text(suggestion)
-                            .font(DS.Font.caption)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                            .padding(.horizontal, DS.Spacing.md)
-                            .padding(.vertical, DS.Spacing.xs + 1)
-                            .background(DS.Colors.fill, in: Capsule())
-                            .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
-                    }
-                    .buttonStyle(.plainPointer)
+                    FollowUpChip(text: suggestion) { onSelect(suggestion) }
                 }
             }
 
             Spacer(minLength: 40)
         }
+    }
+}
+
+private struct FollowUpChip: View {
+    let text: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(text)
+                .font(DS.Font.caption)
+                .foregroundStyle(isHovered ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs + 1)
+                .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: Capsule())
+                .overlay(Capsule().strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 0.5))
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 

@@ -172,6 +172,14 @@ private struct HistoryRow: View {
                     (isHovered ? DS.Colors.fillSecondary : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(
+                        isSelected ? DS.Colors.accent.opacity(0.3) :
+                            (isHovered ? DS.Colors.borderHover : .clear),
+                        lineWidth: 1
+                    )
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)

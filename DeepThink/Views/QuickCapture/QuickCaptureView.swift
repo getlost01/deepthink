@@ -37,7 +37,7 @@ struct QuickCaptureView: View {
             Rectangle().fill(DS.Colors.border.opacity(0.5)).frame(height: 0.5)
             footer
         }
-        .frame(width: 640, height: 520)
+        .frame(width: 720, height: 620)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
         .background(
             .ultraThickMaterial,
@@ -55,6 +55,12 @@ struct QuickCaptureView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .quickCaptureReset)) { _ in
             resetForm()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .quickCapturePrefill)) { notification in
+            if let prefillContent = notification.userInfo?["content"] as? String {
+                content = prefillContent
+                title = String(prefillContent.prefix(60)).components(separatedBy: "\n").first ?? "AI Response"
+            }
         }
     }
 

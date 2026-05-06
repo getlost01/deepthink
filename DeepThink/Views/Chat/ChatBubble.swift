@@ -4,14 +4,12 @@ struct ChatBubble: View {
     let message: AIMessage
     var onRetry: (() -> Void)? = nil
     var onEdit: ((String) -> Void)? = nil
-    var onSaveAsNote: ((String) -> Void)? = nil
-    var onCreateTask: ((String) -> Void)? = nil
+    var onSaveResponse: ((String) -> Void)? = nil
     var branchInfo: (current: Int, total: Int)? = nil
     var onSwitchBranch: ((Int) -> Void)? = nil
     @State private var copied = false
     @State private var isEditing = false
     @State private var editText = ""
-    @State private var isHovered = false
     @State private var showTokenDetail = false
 
     var body: some View {
@@ -25,8 +23,8 @@ struct ChatBubble: View {
     }
 
     private var userBubble: some View {
-        HStack {
-            Spacer(minLength: 120)
+        HStack(alignment: .top, spacing: DS.Spacing.sm) {
+            Spacer(minLength: 80)
 
             if isEditing {
                 VStack(alignment: .trailing, spacing: DS.Spacing.xs) {
@@ -65,22 +63,25 @@ struct ChatBubble: View {
                     }
                 }
             } else {
-                HStack(spacing: DS.Spacing.xs) {
-                    if isHovered && onEdit != nil {
-                        Button {
-                            editText = message.content
-                            isEditing = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: DS.IconSize.sm, weight: .medium))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
-                                .background(DS.Colors.fill, in: Circle())
+                VStack(alignment: .trailing, spacing: 0) {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Text(message.timestamp.formatted(.dateTime.hour().minute()))
+                            .font(DS.Font.micro)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Text("You")
+                            .font(DS.Font.micro)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textTertiary)
+
+                        if onEdit != nil {
+                            ChatEditButton {
+                                editText = message.content
+                                isEditing = true
+                            }
                         }
-                        .buttonStyle(.plainPointer)
-                        .help("Edit message")
-                        .transition(.opacity)
                     }
+                    .padding(.trailing, DS.Spacing.sm)
+                    .padding(.bottom, DS.Spacing.xxs)
 
                     Text(message.content)
                         .font(DS.Font.body)
@@ -93,11 +94,19 @@ struct ChatBubble: View {
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(DS.Opacity.subtle), lineWidth: 1))
                 }
             }
+
+            ZStack {
+                Circle()
+                    .fill(DS.Colors.accent.opacity(0.12))
+                    .frame(width: 28, height: 28)
+                Text("Y")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(DS.Colors.accent)
+            }
+            .padding(.top, DS.Spacing.lg)
         }
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.sm)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
         .overlay(alignment: .bottomTrailing) {
             if let info = branchInfo, info.total > 1 {
                 HStack(spacing: DS.Spacing.xs) {
@@ -137,102 +146,85 @@ struct ChatBubble: View {
 
     private var assistantBubble: some View {
         HStack(alignment: .top, spacing: DS.Spacing.sm) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(
-                        LinearGradient(
-                            colors: [DS.Colors.accent.opacity(0.14), DS.Colors.accent.opacity(0.06)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
-                Image(systemName: "sparkles")
-                    .font(.system(size: DS.IconSize.sm, weight: .semibold))
-                    .foregroundStyle(DS.Colors.accent)
-            }
-            .padding(.top, DS.Spacing.md)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .padding(.top, DS.Spacing.sm)
 
             VStack(alignment: .leading, spacing: 0) {
-                ChatContentView(content: message.content)
-                    .padding(DS.Spacing.md)
-
-                HStack(spacing: DS.Spacing.md) {
-                    Text(message.timestamp.formatted(.dateTime.hour().minute()))
-                        .font(DS.Font.buttonSmall)
-                        .foregroundStyle(DS.Colors.textTertiary)
-
-                    if let usage = message.tokenUsage {
-                        Button {
-                            showTokenDetail.toggle()
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "number")
-                                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                                Text(usage.formattedTokens)
-                                    .font(DS.Font.buttonSmall)
-                            }
-                            .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-                        .popover(isPresented: $showTokenDetail, arrowEdge: .top) {
-                            TokenDetailPopover(usage: usage)
-                        }
-                    }
-
+                HStack(spacing: DS.Spacing.xs) {
                     if message.isStreaming {
-                        StreamingAsterisk(showLabel: true)
+                        StreamingAsterisk()
+                        Text("DeepThinking...")
+                            .font(DS.Font.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(DS.Colors.accent)
+                        StreamingTimer(startTime: message.timestamp)
+                    } else {
+                        Text("DeepThink")
+                            .font(DS.Font.micro)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.top, DS.Spacing.sm)
+                .padding(.bottom, DS.Spacing.xxs)
 
-                    if !message.isStreaming {
-                        Button {
+                ChatContentView(content: message.content)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.bottom, DS.Spacing.sm)
+
+                if !message.isStreaming {
+                    Divider()
+                        .padding(.horizontal, DS.Spacing.sm)
+
+                    HStack(spacing: DS.Spacing.xs) {
+                        assistantActionButton(icon: copied ? "checkmark" : "doc.on.doc", label: copied ? "Copied" : "Copy", color: copied ? DS.Colors.success : DS.Colors.textTertiary) {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(message.content, forType: .string)
                             copied = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                                    .font(.system(size: DS.IconSize.xs, weight: .medium))
-                                Text(copied ? "Copied" : "Copy")
-                                    .font(DS.Font.buttonSmall)
-                            }
-                            .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-
-                        if let onSaveAsNote {
-                            Button {
-                                onSaveAsNote(message.content)
-                            } label: {
-                                HStack(spacing: 3) {
-                                    Image(systemName: "doc.text.badge.plus")
-                                        .font(.system(size: DS.IconSize.xs, weight: .medium))
-                                    Text("Note")
-                                        .font(DS.Font.buttonSmall)
-                                }
-                                .foregroundStyle(DS.Colors.textTertiary)
-                            }
-                            .buttonStyle(.plainPointer)
                         }
 
-                        if let onCreateTask {
+                        if let onSaveResponse {
+                            assistantActionButton(icon: "square.and.arrow.down", label: "Save Response", color: DS.Colors.textTertiary) {
+                                onSaveResponse(message.content)
+                            }
+                        }
+
+                        Spacer()
+
+                        if let usage = message.tokenUsage {
                             Button {
-                                onCreateTask(message.content)
+                                showTokenDetail.toggle()
                             } label: {
                                 HStack(spacing: 3) {
-                                    Image(systemName: "checklist.checked")
-                                        .font(.system(size: DS.IconSize.xs, weight: .medium))
-                                    Text("Task")
-                                        .font(DS.Font.buttonSmall)
+                                    Image(systemName: "number")
+                                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                    Text(usage.formattedTokens)
+                                        .font(DS.Font.micro)
                                 }
                                 .foregroundStyle(DS.Colors.textTertiary)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(DS.Colors.fill, in: Capsule())
                             }
                             .buttonStyle(.plainPointer)
+                            .popover(isPresented: $showTokenDetail, arrowEdge: .top) {
+                                TokenDetailPopover(usage: usage)
+                            }
                         }
+
+                        Text(message.timestamp.formatted(.dateTime.hour().minute()))
+                            .font(DS.Font.micro)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs + 1)
                 }
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.bottom, DS.Spacing.sm)
             }
             .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.border, lineWidth: 0.5))
@@ -241,6 +233,10 @@ struct ChatBubble: View {
         }
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.sm)
+    }
+
+    private func assistantActionButton(icon: String, label: String, color: Color, action: @escaping () -> Void) -> some View {
+        ChatActionButton(icon: icon, label: label, color: color, action: action)
     }
 
     // MARK: - Error classification

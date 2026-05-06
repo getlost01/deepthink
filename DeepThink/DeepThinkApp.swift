@@ -431,4 +431,5 @@ extension Notification.Name {
     static let createNewProject = Notification.Name("createNewProject")
     static let createNewReminder = Notification.Name("createNewReminder")
     static let quickCaptureReset = Notification.Name("quickCaptureReset")
+    static let quickCapturePrefill = Notification.Name("quickCapturePrefill")
 }

@@ -678,7 +678,7 @@ struct DSSectionBanner: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg)
-        .padding(.vertical, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DS.Colors.fill)
     }

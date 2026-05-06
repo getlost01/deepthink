@@ -34,35 +34,28 @@ final class ContextEngine {
 
     func rebuildIndex(with entries: [KnowledgeEntry]? = nil) {
         let allEntries = entries ?? KnowledgeService.shared.entries
-        isIndexing = true
-        defer {
-            isIndexing = false
-            lastIndexedAt = Date()
-        }
 
-        documentFrequency.removeAll()
-        documentTerms.removeAll()
-        chunks.removeAll()
-        contentFingerprints.removeAll()
-        documentCount = allEntries.count
+        var newDocFreq: [String: Int] = [:]
+        var newDocTerms: [String: [String: Double]] = [:]
+        var newChunks: [ContentChunk] = []
+        var newFingerprints: Set<UInt64> = []
 
         for entry in allEntries {
             let docID = entry.id
             let allText = "\(entry.title) \(entry.tags.joined(separator: " ")) \(entry.content)"
             let terms = tokenize(allText)
             let tf = computeTF(terms)
-            documentTerms[docID] = tf
+            newDocTerms[docID] = tf
 
             for term in tf.keys {
-                documentFrequency[term, default: 0] += 1
+                newDocFreq[term, default: 0] += 1
             }
 
-            // Build chunks for large entries
             if entry.content.count > chunkSize {
                 let entryChunks = chunkContent(entry)
-                chunks.append(contentsOf: entryChunks)
+                newChunks.append(contentsOf: entryChunks)
             } else {
-                chunks.append(ContentChunk(
+                newChunks.append(ContentChunk(
                     entryID: docID,
                     entryTitle: entry.title,
                     content: entry.content,
@@ -74,10 +67,18 @@ final class ContextEngine {
                 ))
             }
 
-            contentFingerprints.insert(fingerprint(entry.content))
+            newFingerprints.insert(fingerprint(entry.content))
         }
 
-        indexedCount = allEntries.count
+        DispatchQueue.main.async { [self] in
+            documentFrequency = newDocFreq
+            documentTerms = newDocTerms
+            chunks = newChunks
+            contentFingerprints = newFingerprints
+            documentCount = allEntries.count
+            indexedCount = allEntries.count
+            lastIndexedAt = Date()
+        }
     }
 
     // MARK: - Smart Retrieval (TF-IDF + BM25-inspired)

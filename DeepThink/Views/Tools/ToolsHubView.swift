@@ -208,6 +208,13 @@ private struct ToolCard: View {
                 .lineLimit(1)
 
             HStack(spacing: DS.Spacing.sm) {
+                Button("Test", action: onTest)
+                    .font(DS.Font.small)
+                    .buttonStyle(.dsSecondary)
+                    .controlSize(.mini)
+
+                Spacer()
+
                 if server.isCore {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "lock.fill")
@@ -219,16 +226,7 @@ private struct ToolCard: View {
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.accentFill, in: Capsule())
-                }
-
-                Button("Test", action: onTest)
-                    .font(DS.Font.small)
-                    .buttonStyle(.dsSecondary)
-                    .controlSize(.mini)
-
-                Spacer()
-
-                if !server.isCore {
+                } else {
                     Button(role: .destructive, action: onDelete) {
                         Image(systemName: "trash")
                             .font(DS.Font.small)

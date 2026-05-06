@@ -10,6 +10,8 @@ final class Conversation {
     var updatedAt: Date = Date()
     var isArchived: Bool = false
 
+    var branchDataJSON: Data?
+
     @Relationship(deleteRule: .cascade) var messages: [ChatMessage] = []
 
     init(title: String, agentName: String? = nil) {
@@ -37,6 +39,12 @@ final class ChatMessage {
     var role: String = "user"
     var content: String = ""
     var timestamp: Date = Date()
+    var inputTokens: Int = 0
+    var outputTokens: Int = 0
+    var cacheReadTokens: Int = 0
+    var cacheCreationTokens: Int = 0
+    var costUSD: Double = 0
+    var durationMs: Double = 0
 
     var conversation: Conversation?
 
@@ -50,4 +58,16 @@ final class ChatMessage {
     var isUser: Bool { role == "user" }
     var isAssistant: Bool { role == "assistant" }
     var isError: Bool { role == "error" }
+
+    var tokenUsage: TokenUsage? {
+        guard inputTokens > 0 || outputTokens > 0 else { return nil }
+        return TokenUsage(
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            cacheReadTokens: cacheReadTokens,
+            cacheCreationTokens: cacheCreationTokens,
+            costUSD: costUSD,
+            durationMs: durationMs
+        )
+    }
 }
