@@ -12,7 +12,7 @@ final class TerminalSession: Identifiable {
 
     init(title: String, directory: String? = nil) {
         self.title = title
-        self.currentDirectory = directory ?? NSHomeDirectory() + "/Documents/deepthink"
+        self.currentDirectory = directory ?? NSHomeDirectory() + "/DeepThink"
     }
 
     func start() {

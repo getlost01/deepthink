@@ -298,7 +298,7 @@ cli/src/
 └── tools/             # Tool implementations
 ```
 
-Built with Bun, compiled to standalone binaries. Shares the same data directory (`~/Documents/DeepThink/`) with the app.
+Built with Bun, compiled to standalone binaries. Shares the same data directory (`~/DeepThink/`) with the app.
 
 ## Design System
 

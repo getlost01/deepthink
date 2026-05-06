@@ -60,8 +60,8 @@ Embeddings are expensive to compute. The service tracks content hashes to skip u
 
 | File | Content |
 |------|---------|
-| `~/Documents/DeepThink/data/embeddings.json` | All vectors as JSON `[{id, v: "0.23,-0.14,..."}]` |
-| `~/Documents/DeepThink/data/embedding_hashes.json` | Content hashes `{entryID: "hash"}` |
+| `~/DeepThink/data/embeddings.json` | All vectors as JSON `[{id, v: "0.23,-0.14,..."}]` |
+| `~/DeepThink/data/embedding_hashes.json` | Content hashes `{entryID: "hash"}` |
 
 On app launch, embeddings load from disk. Only new/changed entries get re-embedded.
 
@@ -69,7 +69,7 @@ On app launch, embeddings load from disk. Only new/changed entries get re-embedd
 
 Semantic search is available in the CLI via `cli/src/core/embedding-service.ts`:
 
-- **Reads shared embeddings** from `~/Documents/DeepThink/data/embeddings.json` (indexed by Swift app)
+- **Reads shared embeddings** from `~/DeepThink/data/embeddings.json` (indexed by Swift app)
 - **Query embedding** via a compiled Swift helper binary (`~/.cache/embed-helper`) using the same NLEmbedding model
 - **Hybrid retrieval** in `context-engine.ts` merges BM25 + semantic via RRF, same as Swift app
 - **CLI commands**:

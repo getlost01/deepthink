@@ -256,7 +256,7 @@ Add to your MCP client's config:
 
 ## Data Storage
 
-All data in `~/Documents/DeepThink/`:
+All data in `~/DeepThink/`:
 
 ```
 DeepThink/

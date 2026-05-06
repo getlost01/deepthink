@@ -27,7 +27,9 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 
 - Create reminders with or without scheduled dates
 - Overdue detection and highlighting
-- System notifications (when `notificationScheduled = true`)
+- Native macOS notifications at scheduled date/time (banner + sound)
+- "Acknowledge" action on notification marks reminder as completed
+- Clicking notification opens the app and navigates to that reminder
 - Optional project assignment
 - Sort by date, completion status
 
@@ -38,9 +40,26 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 - Also accessible via Command Palette (`Cmd+K` → "New Reminder")
 - MCP tools: `workspace_create_reminder`, `workspace_list_reminders`, etc.
 
+## CLI & MCP
+
+Reminders are fully accessible via CLI and MCP tools:
+
+| Tool | Description |
+|------|-------------|
+| `workspace_list_reminders` | List all reminders, optionally filter by completion |
+| `workspace_get_reminder` | Get by ID or fuzzy title match |
+| `workspace_create_reminder` | Create with optional date/time |
+| `workspace_update_reminder` | Update title, notes, date, completion |
+| `workspace_delete_reminder` | Delete by ID |
+
+MCP resource: `deepthink://reminders`
+
+> **Note:** Reminders created via CLI/MCP do not schedule macOS notifications. Notifications are only scheduled when setting a date through the app UI.
+
 ## Key Files
 
 | File | Role |
 |------|------|
 | `Models/Reminder.swift` | SwiftData model |
 | `Views/Reminders/` | List, detail, and row views |
+| `DeepThinkApp.swift` | Notification delegate, categories, and action handling |

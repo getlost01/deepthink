@@ -14,7 +14,7 @@ let previewContainer: ModelContainer = {
     let project1 = Project(name: "DeepThink", summary: "AI productivity app for macOS", color: "#007AFF")
     let project2 = Project(name: "Website Redesign", summary: "Landing page refresh", color: "#34C759")
 
-    let note1 = Note(title: "Architecture Notes", content: "# Architecture\n\nUsing SwiftUI + SwiftData for the frontend.\n\nKey decisions:\n- NavigationSplitView for 3-panel layout\n- Observable macro for state management\n- Local-first storage in ~/Documents/DeepThink/")
+    let note1 = Note(title: "Architecture Notes", content: "# Architecture\n\nUsing SwiftUI + SwiftData for the frontend.\n\nKey decisions:\n- NavigationSplitView for 3-panel layout\n- Observable macro for state management\n- Local-first storage in ~/DeepThink/")
     note1.project = project1
     note1.tags = [tag1]
 

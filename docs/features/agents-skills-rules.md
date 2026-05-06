@@ -8,7 +8,7 @@ Custom AI personas with specialized knowledge and behavior.
 
 ### Structure
 
-Stored as markdown files in `~/Documents/DeepThink/.claude/agents/`:
+Stored as markdown files in `~/DeepThink/.claude/agents/`:
 
 ```markdown
 ---
@@ -65,7 +65,7 @@ Reusable AI actions invokable via `/slash-commands` in chat.
 
 ### Structure
 
-Stored in `~/Documents/DeepThink/.claude/commands/`:
+Stored in `~/DeepThink/.claude/commands/`:
 
 ```markdown
 ---
@@ -134,7 +134,7 @@ Always-on instructions that auto-inject into AI prompts based on context.
 
 ### Structure
 
-Stored in `~/Documents/DeepThink/.claude/rules/`:
+Stored in `~/DeepThink/.claude/rules/`:
 
 ```markdown
 ---

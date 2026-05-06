@@ -165,7 +165,7 @@ The CLI has its own hybrid retrieval engine matching the Swift app's capabilitie
 - Token estimation for budget management
 
 ### Semantic Search (`cli/src/core/embedding-service.ts`)
-- Reads embeddings from shared `~/Documents/DeepThink/data/embeddings.json` (indexed by the Swift app)
+- Reads embeddings from shared `~/DeepThink/data/embeddings.json` (indexed by the Swift app)
 - Query embedding via compiled Swift helper using Apple NLEmbedding (512-dim vectors)
 - Cosine similarity search with 0.3 minimum threshold
 - Helper binary auto-compiled and cached at `~/.cache/embed-helper`
@@ -178,7 +178,7 @@ The CLI has its own hybrid retrieval engine matching the Swift app's capabilitie
 
 ## Shared Data
 
-CLI and app share the same data directory (`~/Documents/DeepThink/`):
+CLI and app share the same data directory (`~/DeepThink/`):
 - Both read/write to the same knowledge base
 - Both use the same agents, skills, rules
 - SwiftData database (notes, tasks) accessed via MCP bridge

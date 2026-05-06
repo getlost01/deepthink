@@ -37,7 +37,7 @@ We use rotating refresh tokens with 15-minute access token TTL...
 ## Directory Structure
 
 ```
-~/Documents/DeepThink/knowledge/
+~/DeepThink/knowledge/
 ├── general/           # Default folder
 ├── web/               # Scraped web pages
 ├── clipboard/         # Clipboard captures

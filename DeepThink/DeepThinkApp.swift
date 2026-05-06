@@ -1,10 +1,67 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
+
+private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    weak var appState: AppState?
+    var modelContainer: ModelContainer?
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .sound, .badge]
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let reminderIDString = response.notification.request.identifier
+        guard let reminderID = UUID(uuidString: reminderIDString) else { return }
+
+        await MainActor.run {
+            if response.actionIdentifier == "ACKNOWLEDGE" {
+                markCompleted(reminderID: reminderID)
+            }
+            appState?.navigateToReminder(reminderID)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
+    @MainActor
+    private func markCompleted(reminderID: UUID) {
+        guard let container = modelContainer else { return }
+        let context = container.mainContext
+        let descriptor = FetchDescriptor<Reminder>(predicate: #Predicate { $0.id == reminderID })
+        guard let reminder = try? context.fetch(descriptor).first else { return }
+        reminder.isCompleted = true
+        reminder.completedAt = Date()
+        reminder.modifiedAt = Date()
+        reminder.notificationScheduled = false
+        try? context.save()
+    }
+
+    static func registerCategories() {
+        let acknowledge = UNNotificationAction(
+            identifier: "ACKNOWLEDGE",
+            title: "Acknowledge",
+            options: [.foreground]
+        )
+        let category = UNNotificationCategory(
+            identifier: "REMINDER",
+            actions: [acknowledge],
+            intentIdentifiers: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+}
 
 @main
 struct DeepThinkApp: App {
     @State private var appState = AppState()
     @State private var commandPaletteState = CommandPaletteState()
+    private let notificationDelegate = NotificationDelegate()
 
     var sharedModelContainer: ModelContainer = {
         StorageService.shared.ensureDirectoryStructure()
@@ -31,7 +88,14 @@ struct DeepThinkApp: App {
                     minWidth: AppConstants.minWindowWidth,
                     minHeight: AppConstants.minWindowHeight
                 )
+                .handlesExternalEvents(preferring: ["main"], allowing: ["main"])
                 .onAppear {
+                    notificationDelegate.appState = appState
+                    notificationDelegate.modelContainer = sharedModelContainer
+                    NotificationDelegate.registerCategories()
+                    let center = UNUserNotificationCenter.current()
+                    center.delegate = notificationDelegate
+                    center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
                     UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
                     registerCommands()
                     installCLI()
@@ -46,6 +110,7 @@ struct DeepThinkApp: App {
                     GlobalHotKey.shared.register(container: sharedModelContainer)
                 }
         }
+        .handlesExternalEvents(matching: ["main"])
         .modelContainer(sharedModelContainer)
         .commands {
             CommandGroup(replacing: .newItem) {

@@ -55,8 +55,8 @@ Indexing happens automatically on app launch and whenever knowledge changes.
 - **Model**: Apple NaturalLanguage `NLEmbedding.sentenceEmbedding(for: .english)` — 512 dimensions
 - **Input**: Combined `title + first 500 chars of content` per entry
 - **Incremental**: content hash tracks changes — only re-embeds modified entries
-- **Storage**: `~/Documents/DeepThink/data/embeddings.json` (persisted across launches)
-- **Change detection**: `~/Documents/DeepThink/data/embedding_hashes.json`
+- **Storage**: `~/DeepThink/data/embeddings.json` (persisted across launches)
+- **Change detection**: `~/DeepThink/data/embedding_hashes.json`
 
 ## Retrieval
 

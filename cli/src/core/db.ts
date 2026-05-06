@@ -1,8 +1,8 @@
 import { Database } from "bun:sqlite";
 import { join } from "path";
-import { HOME } from "../config";
+import { DEEPTHINK_ROOT } from "../config";
 
-const STORE_PATH = join(HOME, "Documents", "DeepThink", "data", "deepthink.store");
+const STORE_PATH = join(DEEPTHINK_ROOT, "data", "deepthink.store");
 
 // Core Data epoch: 2001-01-01T00:00:00Z
 const CD_EPOCH = Date.UTC(2001, 0, 1) / 1000;

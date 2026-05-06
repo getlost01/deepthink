@@ -69,7 +69,7 @@ my-vault/
 Becomes:
 
 ```
-~/Documents/DeepThink/knowledge/obsidian/
+~/DeepThink/knowledge/obsidian/
   daily/2024-03-15.md
   projects/api-redesign.md
   research/caching-strategies.md

@@ -6,8 +6,8 @@ final class StorageService {
     let baseURL: URL
 
     private init() {
-        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        baseURL = documents.appendingPathComponent("DeepThink")
+        baseURL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("DeepThink")
     }
 
     // MARK: - Core Data

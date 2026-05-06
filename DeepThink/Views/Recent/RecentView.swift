@@ -7,10 +7,20 @@ struct RecentView: View {
     @Query(sort: \Note.modifiedAt, order: .reverse) private var notes: [Note]
     @Query(sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @Query(filter: #Predicate<Reminder> { !$0.isCompleted }) private var reminders: [Reminder]
 
     @State private var thisWeekVisibleCount = 20
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
+
+    private var todayRemindersCount: Int {
+        let startOfToday = Calendar.current.startOfDay(for: Date())
+        let endOfToday = Calendar.current.date(byAdding: .day, value: 1, to: startOfToday) ?? Date()
+        return reminders.filter { reminder in
+            guard let date = reminder.reminderDate else { return false }
+            return date >= startOfToday && date < endOfToday
+        }.count
+    }
 
     private var todayItems: [RecentItem] {
         buildItems(from: Calendar.current.startOfDay(for: Date()), to: Date())
@@ -114,6 +124,12 @@ struct RecentView: View {
                 // Quick stats
                 HStack(spacing: DS.Spacing.md) {
                     quickStat(
+                        value: "\(projects.count)",
+                        label: "Projects",
+                        icon: "folder",
+                        color: DS.Colors.accent
+                    )
+                    quickStat(
                         value: "\(tasks.filter { $0.status == .inProgress }.count)",
                         label: "In Progress",
                         icon: "circle.lefthalf.filled",
@@ -132,10 +148,10 @@ struct RecentView: View {
                         color: DS.Colors.success
                     )
                     quickStat(
-                        value: "\(projects.count)",
-                        label: "Projects",
-                        icon: "folder",
-                        color: DS.Colors.accent
+                        value: "\(todayRemindersCount)",
+                        label: "Reminders",
+                        icon: "bell",
+                        color: DS.Colors.purple
                     )
                 }
 
@@ -236,7 +252,6 @@ struct RecentView: View {
 
                     if index < visibleItems.count - 1 || hasMore {
                         Divider()
-                            .padding(.leading, 44)
                     }
                 }
 

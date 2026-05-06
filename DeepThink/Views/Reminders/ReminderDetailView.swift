@@ -69,7 +69,6 @@ struct ReminderDetailView: View {
                                         cancelNotification(for: reminder)
                                     }
                                     reminder.modifiedAt = Date()
-                                    scheduleNotification(for: reminder)
                                 }
                             ),
                             isPresented: $showCalendar
@@ -98,7 +97,6 @@ struct ReminderDetailView: View {
                                     set: { newDate in
                                         reminder.reminderDate = newDate
                                         reminder.modifiedAt = Date()
-                                        scheduleNotification(for: reminder)
                                     }
                                 ),
                                 isPresented: $showTimePicker
@@ -145,6 +143,12 @@ struct ReminderDetailView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: reminder.notes) { reminder.modifiedAt = Date() }
+        .onChange(of: showCalendar) {
+            if !showCalendar { scheduleNotification(for: reminder) }
+        }
+        .onChange(of: showTimePicker) {
+            if !showTimePicker { scheduleNotification(for: reminder) }
+        }
     }
 
     private var dateChipColor: Color {
@@ -152,29 +156,46 @@ struct ReminderDetailView: View {
     }
 
     private func scheduleNotification(for reminder: Reminder) {
-        guard let date = reminder.reminderDate, date > Date() else { return }
+        guard let date = reminder.reminderDate, date > Date() else {
+            print("[Notification] Skipped: date=\(String(describing: reminder.reminderDate)), now=\(Date())")
+            return
+        }
+
+        let reminderID = reminder.id
+        let reminderTitle = reminder.title
 
         let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
+            print("[Notification] Authorization granted: \(granted), error: \(String(describing: error))")
             guard granted else { return }
 
+            center.removePendingNotificationRequests(withIdentifiers: [reminderID.uuidString])
+
             let content = UNMutableNotificationContent()
-            content.title = "Reminder"
-            content.body = reminder.title.isEmpty ? "You have a reminder" : reminder.title
+            content.title = "DeepThink Reminder"
+            content.body = reminderTitle.isEmpty ? "You have a reminder" : reminderTitle
             content.sound = .default
+            content.interruptionLevel = .timeSensitive
+            content.categoryIdentifier = "REMINDER"
 
             let components = Calendar.current.dateComponents(
-                [.year, .month, .day, .hour, .minute], from: date
+                [.year, .month, .day, .hour, .minute, .second], from: date
             )
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
 
             let request = UNNotificationRequest(
-                identifier: reminder.id.uuidString,
+                identifier: reminderID.uuidString,
                 content: content,
                 trigger: trigger
             )
 
-            center.add(request)
+            center.add(request) { error in
+                if let error {
+                    print("[Notification] Failed to schedule: \(error)")
+                } else {
+                    print("[Notification] Scheduled for \(date) id=\(reminderID)")
+                }
+            }
             DispatchQueue.main.async {
                 reminder.notificationScheduled = true
             }

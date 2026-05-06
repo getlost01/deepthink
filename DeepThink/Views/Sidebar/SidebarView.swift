@@ -39,10 +39,10 @@ struct SidebarView: View {
                 }
             }
             .padding(.horizontal, DS.Spacing.sm)
-            .padding(.top, DS.Spacing.md)
+            .padding(.top, DS.Spacing.sm)
 
             Divider()
-                .padding(.vertical, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
 
             VStack(spacing: DS.Spacing.xs) {
                 ForEach(SidebarSection.mainSections) { section in
@@ -58,7 +58,7 @@ struct SidebarView: View {
             .padding(.horizontal, DS.Spacing.sm)
 
             Divider()
-                .padding(.vertical, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
 
             VStack(spacing: DS.Spacing.xs) {
                 ForEach(SidebarSection.toolSections) { section in

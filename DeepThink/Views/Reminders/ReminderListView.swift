@@ -96,8 +96,6 @@ struct ReminderListView: View {
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
 
-            Divider()
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
                     ForEach(FilterMode.allCases, id: \.self) { filter in

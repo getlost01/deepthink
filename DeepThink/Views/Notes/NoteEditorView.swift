@@ -12,74 +12,81 @@ struct NoteEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DS.Spacing.md) {
-                    TextField("Give your note a title...", text: $note.title)
-                        .textFieldStyle(.plain)
-                        .font(DS.Font.title)
-                        .focused($titleFocused)
+            HStack(spacing: DS.Spacing.md) {
+                TextField("Give your note a title...", text: $note.title)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.title)
+                    .focused($titleFocused)
 
-                    Spacer()
+                Spacer()
 
-                    Text("\(note.wordCount) words")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                Text("\(note.wordCount) words")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
 
-                    Menu {
-                        Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
-                        Divider()
-                        ForEach(projects) { project in
-                            Button {
-                                note.project = project
-                                note.modifiedAt = Date()
-                            } label: {
-                                Label(project.name, systemImage: "folder")
-                            }
+                Menu {
+                    Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
+                    Divider()
+                    ForEach(projects) { project in
+                        Button {
+                            note.project = project
+                            note.modifiedAt = Date()
+                        } label: {
+                            Label(project.name, systemImage: "folder")
                         }
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "folder")
-                                .font(.system(size: DS.IconSize.sm))
-                                .foregroundStyle(note.project.map { Color(hex: $0.color) } ?? DS.Colors.textTertiary)
-                            Text(note.project?.name ?? "Project")
-                                .font(DS.Font.caption)
-                                .foregroundStyle(note.project != nil ? DS.Colors.textPrimary : DS.Colors.textTertiary)
-                        }
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-
-                    Menu {
-                        ForEach(SkillFileService.shared.skills) { skill in
-                            Button {
-                                appState.navigate(to: .aiAssistant)
-                                appState.pendingSkillExecution = skill
-                            } label: {
-                                Label(skill.name, systemImage: skill.icon)
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "sparkles")
-                                .font(.system(size: DS.IconSize.sm))
-                            Text("Skills")
-                                .font(DS.Font.caption)
-                        }
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "folder")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(note.project.map { Color(hex: $0.color) } ?? DS.Colors.textTertiary)
+                        Text(note.project?.name ?? "Project")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(note.project != nil ? DS.Colors.textPrimary : DS.Colors.textTertiary)
                     }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .help("Run AI skill on this note")
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.sm)
+                            .strokeBorder(DS.Colors.border, lineWidth: 1)
+                    )
                 }
+                .buttonStyle(.plainPointer)
+                .fixedSize()
+
+                Menu {
+                    ForEach(SkillFileService.shared.skills) { skill in
+                        Button {
+                            appState.navigate(to: .aiAssistant)
+                            appState.pendingSkillExecution = skill
+                        } label: {
+                            Label(skill.name, systemImage: skill.icon)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Skills")
+                            .font(DS.Font.caption)
+                    }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.sm)
+                            .strokeBorder(DS.Colors.border, lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plainPointer)
+                .fixedSize()
+                .help("Run AI skill on this note")
             }
-            .frame(height: DS.Layout.toolbarHeight)
             .padding(.horizontal, DS.Spacing.xl)
-            .zIndex(1)
+            .padding(.vertical, DS.Spacing.md)
+
+            Divider()
 
             RichMarkdownEditor(text: $note.content)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

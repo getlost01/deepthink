@@ -96,6 +96,8 @@ struct TaskDetailView: View {
             }
             .padding(.bottom, DS.Spacing.md)
 
+            Divider()
+
             // Subtasks
             VStack(alignment: .leading, spacing: 0) {
                 Button {
