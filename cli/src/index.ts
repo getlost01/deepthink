@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { version as pkgVersion } from "../package.json";
 import { DEEPTHINK_ROOT, SANDBOX_ROOT, KNOWLEDGE_DIR } from "./config";
 import { initSandbox, listFiles } from "./core/sandbox";
 import { query, isClaudeAvailable } from "./core/llm";
@@ -865,6 +866,9 @@ const dispatch: Record<string, () => Promise<void> | void> = {
   help: cmdHelp,
   "--help": cmdHelp,
   "-h": cmdHelp,
+  version: () => { console.log(pkgVersion); },
+  "--version": () => { console.log(pkgVersion); },
+  "-v": () => { console.log(pkgVersion); },
 };
 
 async function main() {

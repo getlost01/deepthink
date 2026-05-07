@@ -11,6 +11,8 @@ final class MCPService {
     var isCheckingGlobalMCP = false
     var isCLIInstalled = false
     var isMCPInstalled = false
+    var cliVersion: String?
+    var mcpVersion: String?
 
     static let cliInstallPath = DeepThinkPaths.localBin + "/deepthink"
     static let mcpInstallPath = DeepThinkPaths.localBin + "/deepthink-mcp"
@@ -19,6 +21,11 @@ final class MCPService {
         let fm = FileManager.default
         isCLIInstalled = fm.isExecutableFile(atPath: Self.cliInstallPath)
         isMCPInstalled = fm.isExecutableFile(atPath: Self.mcpInstallPath)
+
+        if isCLIInstalled { fetchVersion(path: Self.cliInstallPath) { self.cliVersion = $0 } }
+        else { cliVersion = nil }
+        if isMCPInstalled { fetchVersion(path: Self.mcpInstallPath) { self.mcpVersion = $0 } }
+        else { mcpVersion = nil }
 
         let claudePath = ClaudeService.shared.claudePath
         guard !claudePath.isEmpty else {
@@ -46,6 +53,22 @@ final class MCPService {
                 self?.isGlobalMCPRegistered = found
                 self?.isCheckingGlobalMCP = false
             }
+        }
+    }
+
+    private func fetchVersion(path: String, completion: @escaping @Sendable (String?) -> Void) {
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: path)
+            process.arguments = ["--version"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            try? process.run()
+            process.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            DispatchQueue.main.async { completion(version?.isEmpty == false ? version : nil) }
         }
     }
 

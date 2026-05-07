@@ -12,6 +12,7 @@ interface LogEntry {
 export abstract class Agent {
   abstract name: string;
   abstract systemPrompt: string;
+  saveOutput: boolean = false;
   log: LogEntry[] = [];
 
   async think(prompt: string): Promise<string> {
@@ -30,6 +31,8 @@ export abstract class Agent {
       promptPreview: prompt.slice(0, 100),
       responsePreview: response.slice(0, 200),
     });
-    saveIntegrationData("agent", this.name, response, { type: "agent-output" });
+    if (this.saveOutput) {
+      saveIntegrationData("agent", this.name, response, { type: "agent-output" });
+    }
   }
 }

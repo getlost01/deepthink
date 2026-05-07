@@ -48,7 +48,7 @@ final class MCPCatalogService {
 
     private func searchNPM(query: String) async -> [MCPPackage] {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=50") else { return [] }
+        guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=100") else { return [] }
 
         do {
             let (data, response) = try await URLSession.shared.data(from: url)
@@ -112,6 +112,37 @@ final class MCPCatalogService {
         let cache = CatalogCache(packages: packages, fetchedAt: lastFetchedAt ?? Date())
         if let data = try? JSONEncoder().encode(cache) {
             try? data.write(to: cacheFile)
+        }
+    }
+
+    func searchLive(query: String, from: Int = 0) async -> [MCPPackage] {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
+        guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=30&from=\(from)") else { return [] }
+        do {
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
+            let result = try JSONDecoder().decode(NPMSearchResult.self, from: data)
+            return result.objects.compactMap { obj -> MCPPackage? in
+                let pkg = obj.package
+                let isMCP = pkg.name.contains("mcp") ||
+                    (pkg.keywords ?? []).contains(where: { $0.lowercased().contains("mcp") }) ||
+                    pkg.name.contains("modelcontextprotocol")
+                guard isMCP else { return nil }
+                return MCPPackage(
+                    name: pkg.name,
+                    version: pkg.version,
+                    description: pkg.description ?? "",
+                    keywords: pkg.keywords ?? [],
+                    author: pkg.publisher?.username ?? pkg.author?.name ?? "",
+                    category: inferCategory(from: pkg),
+                    installCommand: "npx",
+                    installArgs: "-y \(pkg.name)",
+                    score: obj.score?.final ?? 0,
+                    downloads: obj.score?.detail?.popularity ?? 0
+                )
+            }
+        } catch {
+            return []
         }
     }
 

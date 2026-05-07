@@ -14,7 +14,9 @@ struct KnowledgeBrowserView: View {
     @State private var showNewBucket = false
     @State private var newBucketName = ""
     @State private var showObsidianImport = false
+    @State private var displayedCount = 20
 
+    private let pageSize = 20
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
     private var filteredEntries: [KnowledgeEntry] {
@@ -135,9 +137,11 @@ struct KnowledgeBrowserView: View {
                         actionTitle: "Save a Web Page"
                     )
                 } else {
+                    let visibleEntries = Array(filteredEntries.prefix(displayedCount))
+                    let hasMore = filteredEntries.count > displayedCount
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(filteredEntries) { entry in
+                            ForEach(visibleEntries) { entry in
                                 EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
                                     selectedEntry = entry
                                 }
@@ -156,9 +160,21 @@ struct KnowledgeBrowserView: View {
                                         showDeleteConfirm = true
                                     }
                                 }
-                                if entry.id != filteredEntries.last?.id {
+                                if entry.id != visibleEntries.last?.id || hasMore {
                                     Divider()
                                 }
+                            }
+                            if hasMore {
+                                Button {
+                                    displayedCount += pageSize
+                                } label: {
+                                    Text("Load \(min(pageSize, filteredEntries.count - displayedCount)) more")
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, DS.Spacing.md)
+                                }
+                                .buttonStyle(.plainPointer)
                             }
                         }
                     }
@@ -177,6 +193,8 @@ struct KnowledgeBrowserView: View {
                 )
             }
         }
+        .onChange(of: searchText) { displayedCount = pageSize }
+        .onChange(of: bucketFilter) { displayedCount = pageSize }
         .onAppear {
             knowledge.reload()
             if let entryID = appState.selectedKnowledgeEntryID {
@@ -596,8 +614,9 @@ struct KnowledgeDetailView: View {
     }
 
     private func saveEntry() {
-        guard hasLoaded, editableContent != activeEntry.content else { return }
         let filePath = activeEntry.filePath
+        guard hasLoaded, editableContent != activeEntry.content,
+              FileManager.default.fileExists(atPath: filePath.path) else { return }
         let (frontmatter, _) = KnowledgeService.shared.parseFrontmatter(
             (try? String(contentsOf: filePath, encoding: .utf8)) ?? ""
         )

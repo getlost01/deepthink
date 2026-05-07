@@ -385,7 +385,8 @@ struct ClaudeSettingsView: View {
                 iconColor: DS.Colors.accent,
                 label: "CLI",
                 path: MCPService.cliInstallPath,
-                isInstalled: mcp.isCLIInstalled
+                isInstalled: mcp.isCLIInstalled,
+                version: mcp.cliVersion
             )
 
             Divider()
@@ -395,7 +396,8 @@ struct ClaudeSettingsView: View {
                 iconColor: DS.Colors.knowledge,
                 label: "MCP",
                 path: MCPService.mcpInstallPath,
-                isInstalled: mcp.isMCPInstalled
+                isInstalled: mcp.isMCPInstalled,
+                version: mcp.mcpVersion
             )
 
             Divider()
@@ -705,7 +707,7 @@ struct ClaudeSettingsView: View {
     // MARK: - Helpers
 
     @ViewBuilder
-    private func installPathRow(icon: String, iconColor: Color, label: String, path: String, isInstalled: Bool) -> some View {
+    private func installPathRow(icon: String, iconColor: Color, label: String, path: String, isInstalled: Bool, version: String? = nil) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: icon)
                 .font(.system(size: DS.IconSize.sm, weight: .medium))
@@ -725,8 +727,13 @@ struct ClaudeSettingsView: View {
                 HStack(spacing: 3) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: DS.IconSize.sm))
-                    Text("Installed")
-                        .font(DS.Font.small)
+                    if let version {
+                        Text("v\(version)")
+                            .font(DS.Font.small)
+                    } else {
+                        Text("Installed")
+                            .font(DS.Font.small)
+                    }
                 }
                 .foregroundStyle(DS.Colors.success)
             } else {

@@ -168,10 +168,11 @@ private struct ToolCard: View {
     @Bindable var server: MCPServer
     let onTest: () -> Void
     let onDelete: () -> Void
+    @State private var showCopied = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            HStack(spacing: DS.Spacing.md) {
+            HStack(alignment: .center, spacing: DS.Spacing.sm) {
                 DSIconBadge(icon: iconFor(server.category), color: DS.Colors.textSecondary, background: DS.Colors.fill)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
@@ -183,12 +184,14 @@ private struct ToolCard: View {
                         .foregroundStyle(DS.Colors.textSecondary)
                 }
 
-                Spacer()
+                Spacer(minLength: DS.Spacing.sm)
 
                 Toggle("", isOn: $server.isEnabled)
                     .toggleStyle(.switch)
                     .controlSize(.mini)
+                    .labelsHidden()
                     .pointerOnHover()
+                    .fixedSize()
             }
 
             if !server.serverDescription.isEmpty {
@@ -198,16 +201,44 @@ private struct ToolCard: View {
                     .lineLimit(2)
             }
 
-            Text(server.command + " " + server.args)
-                .font(DS.Font.monoSmall)
-                .foregroundStyle(DS.Colors.textTertiary)
-                .lineLimit(1)
+            Button {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(server.command + (server.args.isEmpty ? "" : " " + server.args), forType: .string)
+                withAnimation(DS.Animation.quick) { showCopied = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    withAnimation(DS.Animation.quick) { showCopied = false }
+                }
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Text(server.command + (server.args.isEmpty ? "" : " " + server.args))
+                        .font(DS.Font.monoSmall)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                    Image(systemName: showCopied ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(showCopied ? DS.Colors.success : DS.Colors.textTertiary)
+                }
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
+                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+            }
+            .buttonStyle(.plainPointer)
 
             HStack(spacing: DS.Spacing.sm) {
                 Button("Test", action: onTest)
                     .font(DS.Font.small)
                     .buttonStyle(.dsSecondary)
                     .controlSize(.mini)
+
+                if !server.isCore {
+                    Button("Remove", action: onDelete)
+                        .font(DS.Font.small)
+                        .buttonStyle(.dsSecondary)
+                        .controlSize(.mini)
+                        .foregroundStyle(DS.Colors.danger)
+                }
 
                 Spacer()
 
@@ -222,8 +253,6 @@ private struct ToolCard: View {
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.accentFill, in: Capsule())
-                } else {
-                    DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm, action: onDelete)
                 }
             }
         }
@@ -247,7 +276,7 @@ private struct ToolCard: View {
     }
 }
 
-// MARK: - Add Server Sheet (redesigned)
+// MARK: - Add Server Sheet
 
 private struct AddServerSheet: View {
     @Environment(\.dismiss) private var dismiss
@@ -258,53 +287,60 @@ private struct AddServerSheet: View {
     @State private var envVars = ""
     @State private var category = "General"
     @State private var description = ""
-    @State private var extraFields: [ExtraField] = []
     @State private var jsonText = ""
     @State private var jsonError: String?
     let onAdd: (MCPServer) -> Void
+
+    private let categories = ["General", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management"]
 
     enum InputMode: String, CaseIterable {
         case form = "Form"
         case json = "JSON"
     }
 
-    struct ExtraField: Identifiable {
-        let id = UUID()
-        var key: String = ""
-        var value: String = ""
-    }
-
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Text("Add MCP Server")
-                    .font(DS.Font.heading)
+            HStack(spacing: DS.Spacing.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Add MCP Server")
+                        .font(DS.Font.heading)
+                    Text("Connect a tool for AI to use")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
                 Spacer()
-
-                Picker(selection: $inputMode) {
+                HStack(spacing: 0) {
                     ForEach(InputMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+                        Button {
+                            withAnimation(DS.Animation.quick) { inputMode = mode }
+                        } label: {
+                            Text(mode.rawValue)
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                                .foregroundStyle(inputMode == mode ? DS.Colors.accent : DS.Colors.textTertiary)
+                                .padding(.horizontal, DS.Spacing.md)
+                                .padding(.vertical, DS.Spacing.xs + 2)
+                                .background(inputMode == mode ? DS.Colors.accentFill : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
                     }
-                } label: { EmptyView() }
-                .pickerStyle(.segmented)
-                .frame(width: 140)
+                }
+                .padding(2)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm + 2))
 
                 Button("Cancel") { dismiss() }
                     .buttonStyle(.plainPointer)
                     .foregroundStyle(DS.Colors.textSecondary)
             }
-            .padding(DS.Spacing.lg)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
             .background(DS.Colors.surfaceElevated)
 
             Divider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                    if inputMode == .form {
-                        formContent
-                    } else {
-                        jsonContent
-                    }
+                    if inputMode == .form { formContent } else { jsonContent }
                 }
                 .padding(DS.Spacing.lg)
             }
@@ -320,81 +356,80 @@ private struct AddServerSheet: View {
                         .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.xl)
                         .padding(.vertical, DS.Spacing.sm)
-                        .background(canAdd ? DS.Colors.accent : DS.Colors.accent.opacity(0.5), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(
+                            canAdd ? DS.Colors.accent : DS.Colors.accent.opacity(DS.Opacity.disabled),
+                            in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        )
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(!canAdd)
             }
             .padding(DS.Spacing.lg)
         }
-        .frame(width: 520, height: 520)
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var canAdd: Bool {
-        if inputMode == .json {
-            return !jsonText.isEmpty && jsonError == nil
-        }
-        return !name.isEmpty && !command.isEmpty
+        inputMode == .json ? (!jsonText.isEmpty && jsonError == nil) : (!name.isEmpty && !command.isEmpty)
     }
 
     @ViewBuilder
     private var formContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
-            fieldRow(label: "Name", text: $name, placeholder: "My MCP Server")
-            fieldRow(label: "Command", text: $command, placeholder: "npx -y @modelcontextprotocol/server-xxx", mono: true)
-            fieldRow(label: "Arguments", text: $args, placeholder: "Optional arguments", mono: true)
-            fieldRow(label: "Category", text: $category, placeholder: "General")
-            fieldRow(label: "Description", text: $description, placeholder: "What does this server do?")
+            DSLabeledTextField(label: "Name *", text: $name, placeholder: "My MCP Server")
 
-            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                Text("Environment Variables")
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Category")
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textSecondary)
-                TextField("KEY=VALUE (one per line)", text: $envVars, axis: .vertical)
+                Picker("Category", selection: $category) {
+                    ForEach(categories, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
+                }
+                .pickerStyle(.menu)
+                .font(DS.Font.body)
+                .fixedSize()
+                .onHover { if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+            }
+
+            DSLabeledTextField(label: "Description", text: $description, placeholder: "What does this server do?")
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Command *")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                TextField("npx", text: $command)
                     .textFieldStyle(.plain)
-                    .font(DS.Font.mono)
-                    .lineLimit(2...4)
+                    .font(DS.Font.monoSmall)
                     .dsInputField()
             }
 
-            // Extra fields
-            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                HStack {
-                    Text("Extra Fields")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Spacer()
-                    Button {
-                        extraFields.append(ExtraField())
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                            .foregroundStyle(DS.Colors.accent)
-                    }
-                    .buttonStyle(.plainPointer)
-                }
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Arguments")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                TextField("-y @modelcontextprotocol/server-xxx", text: $args)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.monoSmall)
+                    .dsInputField()
+            }
 
-                ForEach($extraFields) { $field in
-                    HStack(spacing: DS.Spacing.sm) {
-                        TextField("Key", text: $field.key)
-                            .textFieldStyle(.plain)
-                            .font(DS.Font.mono)
-                            .dsInputField()
-                            .frame(width: 120)
-                        TextField("Value", text: $field.value)
-                            .textFieldStyle(.plain)
-                            .font(DS.Font.mono)
-                            .dsInputField()
-                        Button {
-                            extraFields.removeAll { $0.id == field.id }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: DS.IconSize.xs, weight: .bold))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-                }
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Environment Variables")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                Text("One per line: KEY=VALUE")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                TextField("API_KEY=abc123", text: $envVars, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.monoSmall)
+                    .lineLimit(2...4)
+                    .dsInputField()
             }
         }
     }
@@ -407,17 +442,13 @@ private struct AddServerSheet: View {
                 .foregroundStyle(DS.Colors.textSecondary)
 
             TextEditor(text: $jsonText)
-                .font(DS.Font.mono)
+                .font(DS.Font.monoSmall)
+                .scrollContentBackground(.hidden)
                 .frame(minHeight: 200)
                 .padding(DS.Spacing.sm)
                 .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                .overlay(
-                    RoundedRectangle(cornerRadius: DS.Radius.md)
-                        .strokeBorder(DS.Colors.border, lineWidth: 1)
-                )
-                .onChange(of: jsonText) { _, newValue in
-                    validateJSON(newValue)
-                }
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+                .onChange(of: jsonText) { _, v in validateJSON(v) }
 
             if let jsonError {
                 HStack(spacing: DS.Spacing.xs) {
@@ -430,22 +461,9 @@ private struct AddServerSheet: View {
                 }
             }
 
-            Text("Example: {\"command\": \"npx\", \"args\": \"-y @server/name\", \"env\": {\"API_KEY\": \"...\"}}")
+            Text(#"Example: {"command": "npx", "args": ["-y", "@server/name"], "env": {"API_KEY": "..."}}"#)
                 .font(DS.Font.small)
                 .foregroundStyle(DS.Colors.textTertiary)
-        }
-    }
-
-    @ViewBuilder
-    private func fieldRow(label: String, text: Binding<String>, placeholder: String, mono: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-            Text(label)
-                .font(DS.Font.caption)
-                .foregroundStyle(DS.Colors.textSecondary)
-            TextField(placeholder, text: text)
-                .textFieldStyle(.plain)
-                .font(mono ? DS.Font.mono : DS.Font.body)
-                .dsInputField()
         }
     }
 
@@ -454,7 +472,7 @@ private struct AddServerSheet: View {
         guard let data = text.data(using: .utf8) else { jsonError = "Invalid text"; return }
         do {
             let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            if obj == nil { jsonError = "Must be a JSON object" } else { jsonError = nil }
+            jsonError = obj == nil ? "Must be a JSON object" : nil
         } catch {
             jsonError = error.localizedDescription
         }
@@ -464,8 +482,7 @@ private struct AddServerSheet: View {
         if inputMode == .json {
             addFromJSON()
         } else {
-            let server = MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description)
-            onAdd(server)
+            onAdd(MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description))
         }
         dismiss()
     }
@@ -474,25 +491,23 @@ private struct AddServerSheet: View {
         guard let data = jsonText.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
-        let serverName = obj["name"] as? String ?? "Unnamed Server"
-        let serverCommand = obj["command"] as? String ?? ""
         let serverArgs: String
-        if let argsArray = obj["args"] as? [String] {
-            serverArgs = argsArray.joined(separator: " ")
-        } else {
-            serverArgs = obj["args"] as? String ?? ""
-        }
+        if let arr = obj["args"] as? [String] { serverArgs = arr.joined(separator: " ") }
+        else { serverArgs = obj["args"] as? String ?? "" }
 
         var envString = ""
         if let env = obj["env"] as? [String: String] {
             envString = env.map { "\($0.key)=\($0.value)" }.joined(separator: "\n")
         }
 
-        let serverCategory = obj["category"] as? String ?? "General"
-        let serverDesc = obj["description"] as? String ?? ""
-
-        let server = MCPServer(name: serverName, command: serverCommand, args: serverArgs, envVars: envString, category: serverCategory, description: serverDesc)
-        onAdd(server)
+        onAdd(MCPServer(
+            name: obj["name"] as? String ?? "Unnamed Server",
+            command: obj["command"] as? String ?? "",
+            args: serverArgs,
+            envVars: envString,
+            category: obj["category"] as? String ?? "General",
+            description: obj["description"] as? String ?? ""
+        ))
     }
 }
 
@@ -505,21 +520,20 @@ private struct PresetServersSheet: View {
     @State private var searchText = ""
     @State private var selectedCategory = "All"
     @State private var addedNames: Set<String> = []
+    @State private var liveResults: [MCPPackage] = []
+    @State private var isSearching = false
+    @State private var liveFrom = 0
+    @State private var hasMore = false
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
+    private var isLiveSearch: Bool { !searchText.isEmpty }
+
     private var filteredPackages: [MCPPackage] {
+        if isLiveSearch { return liveResults }
         var results = catalog.packages
         if selectedCategory != "All" {
             results = results.filter { $0.category == selectedCategory }
-        }
-        if !searchText.isEmpty {
-            let q = searchText.lowercased()
-            results = results.filter {
-                $0.name.lowercased().contains(q) ||
-                $0.description.lowercased().contains(q) ||
-                $0.displayName.lowercased().contains(q)
-            }
         }
         return results
     }
@@ -596,7 +610,7 @@ private struct PresetServersSheet: View {
 
             Divider()
 
-            if catalog.packages.isEmpty && !catalog.isLoading {
+            if (catalog.packages.isEmpty && !catalog.isLoading && !isLiveSearch) {
                 DSEmptyState(
                     icon: "puzzlepiece.extension",
                     title: "No Catalog Data",
@@ -604,6 +618,14 @@ private struct PresetServersSheet: View {
                     action: { Task { await catalog.fetchCatalog() } },
                     actionTitle: "Fetch Catalog"
                 )
+            } else if isSearching && liveResults.isEmpty {
+                VStack {
+                    Spacer()
+                    ProgressView("Searching...")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Spacer()
+                }
             } else if filteredPackages.isEmpty {
                 DSEmptyState(
                     icon: "magnifyingglass",
@@ -626,20 +648,66 @@ private struct PresetServersSheet: View {
                                 addedNames.insert(pkg.name)
                             }
 
-                            if pkg.id != filteredPackages.last?.id {
+                            if pkg.id != filteredPackages.last?.id || hasMore {
                                 Divider()
                             }
+                        }
+
+                        if isLiveSearch && hasMore {
+                            Button {
+                                Task { await loadMore() }
+                            } label: {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    if isSearching { ProgressView().controlSize(.mini) }
+                                    Text(isSearching ? "Loading..." : "Load More")
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, DS.Spacing.md)
+                            }
+                            .buttonStyle(.plainPointer)
+                            .disabled(isSearching)
                         }
                     }
                 }
             }
         }
         .frame(width: 640, height: 560)
+        .task(id: searchText) {
+            guard !searchText.isEmpty else {
+                liveResults = []
+                hasMore = false
+                liveFrom = 0
+                return
+            }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            isSearching = true
+            liveFrom = 0
+            let results = await catalog.searchLive(query: searchText, from: 0)
+            liveResults = results
+            hasMore = results.count >= 20
+            liveFrom = results.count
+            isSearching = false
+        }
         .onAppear {
             if catalog.needsRefresh {
                 Task { await catalog.fetchCatalog() }
             }
         }
+    }
+
+    private func loadMore() async {
+        guard !isSearching, hasMore else { return }
+        isSearching = true
+        let results = await catalog.searchLive(query: searchText, from: liveFrom)
+        let existing = Set(liveResults.map(\.id))
+        let fresh = results.filter { !existing.contains($0.id) }
+        liveResults.append(contentsOf: fresh)
+        hasMore = results.count >= 20
+        liveFrom += results.count
+        isSearching = false
     }
 }
 
