@@ -1,36 +1,9 @@
 import SwiftUI
-import SwiftData
 
 struct GeneralSettingsView: View {
-    @Environment(\.modelContext) private var modelContext
-
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-
-                // MARK: Tasks
-                DSSectionHeader(title: "Tasks")
-
-                VStack(spacing: 0) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                            Text("Archive completed tasks")
-                                .font(DS.Font.body)
-                                .foregroundStyle(DS.Colors.textPrimary)
-                            Text("Cascade-archives tasks and notes from archived projects. Use the Done column's \"Archive All\" button for quick archiving.")
-                                .font(DS.Font.caption)
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        Spacer()
-                        Button("Archive Now") {
-                            ArchiveService.shared.triggerRun(container: modelContext.container)
-                        }
-                        .buttonStyle(.dsSecondary)
-                    }
-                    .padding(DS.Spacing.lg)
-                }
-                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
 
                 // MARK: Backup
                 BackupSettingsSection()

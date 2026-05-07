@@ -85,8 +85,6 @@ struct CommandPaletteView: View {
                                     let itemIndex = flatItems.firstIndex(where: { $0.id == item.id }) ?? 0
                                     PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
                                         .id(item.id)
-                                        .pointerOnHover()
-                                        .onHover { hovered in if hovered { state.selectedIndex = itemIndex } }
                                         .onTapGesture {
                                             switch item {
                                             case .command(let cmd): cmd.action()
@@ -161,9 +159,6 @@ struct CommandPaletteView: View {
             .padding(.top, 80)
             .frame(maxHeight: .infinity, alignment: .top)
         }
-        .onKeyPress(.upArrow) { state.moveUp(); return .handled }
-        .onKeyPress(.downArrow) { state.moveDown(); return .handled }
-        .onKeyPress(.escape) { dismiss(); return .handled }
         .onAppear {
             state.reset()
             updateWorkspaceItems()
@@ -316,6 +311,7 @@ struct CommandPaletteView: View {
 private struct PaletteItemRow: View {
     let item: PaletteItem
     let isSelected: Bool
+    @State private var isHovered = false
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -369,11 +365,13 @@ private struct PaletteItemRow: View {
         .background(
             isSelected
                 ? AnyShapeStyle(LinearGradient(colors: [DS.Colors.accent, DS.Colors.accent.opacity(0.8)], startPoint: .leading, endPoint: .trailing))
-                : AnyShapeStyle(.clear),
+                : isHovered ? AnyShapeStyle(DS.Colors.fillSecondary) : AnyShapeStyle(Color.clear),
             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
         )
         .contentShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
         .padding(.horizontal, DS.Spacing.sm)
+        .onHover { isHovered = $0 }
+        .pointerOnHover()
     }
 
     private var itemIcon: String {

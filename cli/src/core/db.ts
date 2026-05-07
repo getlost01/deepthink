@@ -31,8 +31,11 @@ function nextPK(db: Database, entity: string): { pk: number; ent: number } {
   return { pk, ent: row.Z_ENT };
 }
 
-function openDB(): Database {
-  return new Database(STORE_PATH);
+let _db: Database | null = null;
+
+function getDB(): Database {
+  if (!_db) _db = new Database(STORE_PATH);
+  return _db;
 }
 
 // ── Project ──
@@ -51,7 +54,7 @@ export interface ProjectRow {
 }
 
 export function listProjects(): ProjectRow[] {
-  const db = openDB();
+  const db = getDB();
   const rows = db.query(`
     SELECT p.Z_PK, hex(p.ZID) as id, p.ZNAME, p.ZSUMMARY, p.ZCOLOR, p.ZISARCHIVED,
            p.ZCREATEDAT, p.ZMODIFIEDAT,
@@ -59,7 +62,6 @@ export function listProjects(): ProjectRow[] {
            (SELECT COUNT(*) FROM ZNOTE WHERE ZPROJECT = p.Z_PK) as noteCount
     FROM ZPROJECT p ORDER BY p.ZMODIFIEDAT DESC
   `).all() as any[];
-  db.close();
   return rows.map(r => ({
     pk: r.Z_PK, id: r.id, name: r.ZNAME, summary: r.ZSUMMARY ?? "",
     color: r.ZCOLOR ?? "#007AFF", isArchived: !!r.ZISARCHIVED,
@@ -78,19 +80,18 @@ export function getProject(nameOrPk: string): ProjectRow | null {
 }
 
 export function createProject(name: string, opts: { summary?: string; color?: string } = {}): number {
-  const db = openDB();
+  const db = getDB();
   const { pk, ent } = nextPK(db, "Project");
   const now = toCD(new Date());
   db.query(`
     INSERT INTO ZPROJECT (Z_PK, Z_ENT, Z_OPT, ZISARCHIVED, ZCREATEDAT, ZMODIFIEDAT, ZNAME, ZSUMMARY, ZCOLOR, ZID)
     VALUES (?, ?, 1, 0, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, now, now, name, opts.summary ?? "", opts.color ?? "#007AFF");
-  db.close();
   return pk;
 }
 
 export function updateProject(pk: number, fields: Record<string, any>): void {
-  const db = openDB();
+  const db = getDB();
   const sets: string[] = [];
   const vals: any[] = [];
 
@@ -99,22 +100,20 @@ export function updateProject(pk: number, fields: Record<string, any>): void {
   if (fields.color !== undefined) { sets.push("ZCOLOR = ?"); vals.push(fields.color); }
   if (fields.archived !== undefined) { sets.push("ZISARCHIVED = ?"); vals.push(fields.archived ? 1 : 0); }
 
-  if (sets.length === 0) { db.close(); return; }
+  if (sets.length === 0) { return; }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
   vals.push(pk);
 
   db.query(`UPDATE ZPROJECT SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
-  db.close();
 }
 
 export function deleteProject(pk: number): void {
-  const db = openDB();
+  const db = getDB();
   db.query("UPDATE ZTASKITEM SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
   db.query("UPDATE ZNOTE SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
   db.query("DELETE FROM ZPROJECT WHERE Z_PK = ?").run(pk);
-  db.close();
 }
 
 // ── Task ──
@@ -136,7 +135,7 @@ export interface TaskRow {
 }
 
 export function listTasks(opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}): TaskRow[] {
-  const db = openDB();
+  const db = getDB();
   let where = opts.excludeArchived ? "t.ZISARCHIVED = 0" : "1=1";
   const params: any[] = [];
 
@@ -155,7 +154,6 @@ export function listTasks(opts: { status?: string; priority?: string; project?: 
     WHERE ${where}
     ORDER BY t.ZMODIFIEDAT DESC
   `).all(...params) as any[];
-  db.close();
   return rows.map(r => ({
     pk: r.Z_PK, id: r.id, title: r.ZTITLE, detail: r.ZDETAIL ?? "",
     status: r.ZSTATUSRAW, priority: r.ZPRIORITYRAW,
@@ -179,7 +177,7 @@ export function createTask(title: string, opts: {
   detail?: string; status?: string; priority?: string;
   storyPoints?: number; dueDate?: string; project?: string;
 } = {}): number {
-  const db = openDB();
+  const db = getDB();
   const { pk, ent } = nextPK(db, "TaskItem");
   const now = toCD(new Date());
 
@@ -198,12 +196,11 @@ export function createTask(title: string, opts: {
     INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
     VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, opts.storyPoints ?? null, projectPk, now, dueDateCD, now, opts.detail ?? "", opts.priority ?? "None", opts.status ?? "To Do", title);
-  db.close();
   return pk;
 }
 
 export function updateTask(pk: number, fields: Record<string, any>): void {
-  const db = openDB();
+  const db = getDB();
   const sets: string[] = [];
   const vals: any[] = [];
 
@@ -229,21 +226,19 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
     }
   }
 
-  if (sets.length === 0) { db.close(); return; }
+  if (sets.length === 0) { return; }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
   vals.push(pk);
 
   db.query(`UPDATE ZTASKITEM SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
-  db.close();
 }
 
 export function deleteTask(pk: number): void {
-  const db = openDB();
+  const db = getDB();
   db.query("DELETE FROM Z_6TASKS WHERE Z_7TASKS = ?").run(pk);
   db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
-  db.close();
 }
 
 // ── Note ──
@@ -262,7 +257,7 @@ export interface NoteRow {
 }
 
 export function listNotes(opts: { project?: string; pinned?: boolean; excludeArchived?: boolean } = {}): NoteRow[] {
-  const db = openDB();
+  const db = getDB();
   let where = opts.excludeArchived ? "n.ZISARCHIVED = 0" : "1=1";
   const params: any[] = [];
 
@@ -279,7 +274,6 @@ export function listNotes(opts: { project?: string; pinned?: boolean; excludeArc
     WHERE ${where}
     ORDER BY n.ZMODIFIEDAT DESC
   `).all(...params) as any[];
-  db.close();
   return rows.map(r => ({
     pk: r.Z_PK, id: r.id, title: r.ZTITLE, content: r.ZCONTENT ?? "",
     isPinned: !!r.ZISPINNED, isArchived: !!r.ZISARCHIVED,
@@ -300,7 +294,7 @@ export function getNote(pkStr: string): NoteRow | null {
 export function createNote(title: string, opts: {
   content?: string; pinned?: boolean; project?: string;
 } = {}): number {
-  const db = openDB();
+  const db = getDB();
   const { pk, ent } = nextPK(db, "Note");
   const now = toCD(new Date());
 
@@ -314,12 +308,11 @@ export function createNote(title: string, opts: {
     INSERT INTO ZNOTE (Z_PK, Z_ENT, Z_OPT, ZISPINNED, ZPROJECT, ZCREATEDAT, ZMODIFIEDAT, ZCONTENT, ZTITLE, ZID)
     VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, opts.pinned ? 1 : 0, projectPk, now, now, opts.content ?? "", title);
-  db.close();
   return pk;
 }
 
 export function updateNote(pk: number, fields: Record<string, any>): void {
-  const db = openDB();
+  const db = getDB();
   const sets: string[] = [];
   const vals: any[] = [];
 
@@ -335,21 +328,19 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
     }
   }
 
-  if (sets.length === 0) { db.close(); return; }
+  if (sets.length === 0) { return; }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
   vals.push(pk);
 
   db.query(`UPDATE ZNOTE SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
-  db.close();
 }
 
 export function deleteNote(pk: number): void {
-  const db = openDB();
+  const db = getDB();
   db.query("DELETE FROM Z_2TAGS WHERE Z_2NOTES = ?").run(pk);
   db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
-  db.close();
 }
 
 // ── Reminder ──
@@ -367,7 +358,7 @@ export interface ReminderRow {
 }
 
 export function listReminders(opts: { completed?: boolean } = {}): ReminderRow[] {
-  const db = openDB();
+  const db = getDB();
   let where = "1=1";
   const params: any[] = [];
 
@@ -383,7 +374,6 @@ export function listReminders(opts: { completed?: boolean } = {}): ReminderRow[]
     WHERE ${where}
     ORDER BY r.ZMODIFIEDAT DESC
   `).all(...params) as any[];
-  db.close();
   return rows.map(r => ({
     pk: r.Z_PK, id: r.id, title: r.ZTITLE, notes: r.ZNOTES ?? "",
     reminderDate: r.ZREMINDERDATE ? fromCD(r.ZREMINDERDATE) : null,
@@ -405,7 +395,7 @@ export function getReminder(pkStr: string): ReminderRow | null {
 export function createReminder(title: string, opts: {
   notes?: string; reminderDate?: string;
 } = {}): number {
-  const db = openDB();
+  const db = getDB();
   const { pk, ent } = nextPK(db, "Reminder");
   const now = toCD(new Date());
 
@@ -418,12 +408,11 @@ export function createReminder(title: string, opts: {
     INSERT INTO ZREMINDER (Z_PK, Z_ENT, Z_OPT, ZISCOMPLETED, ZNOTIFICATIONSCHEDULED, ZCOMPLETEDAT, ZCREATEDAT, ZMODIFIEDAT, ZREMINDERDATE, ZNOTES, ZTITLE, ZID)
     VALUES (?, ?, 1, 0, 0, NULL, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, now, now, reminderDateCD, opts.notes ?? "", title);
-  db.close();
   return pk;
 }
 
 export function updateReminder(pk: number, fields: Record<string, any>): void {
-  const db = openDB();
+  const db = getDB();
   const sets: string[] = [];
   const vals: any[] = [];
 
@@ -439,20 +428,18 @@ export function updateReminder(pk: number, fields: Record<string, any>): void {
     vals.push(fields.reminderDate ? toCD(new Date(fields.reminderDate)) : null);
   }
 
-  if (sets.length === 0) { db.close(); return; }
+  if (sets.length === 0) { return; }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
   vals.push(pk);
 
   db.query(`UPDATE ZREMINDER SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
-  db.close();
 }
 
 export function deleteReminder(pk: number): void {
-  const db = openDB();
+  const db = getDB();
   db.query("DELETE FROM ZREMINDER WHERE Z_PK = ?").run(pk);
-  db.close();
 }
 
 // ── Helpers ──

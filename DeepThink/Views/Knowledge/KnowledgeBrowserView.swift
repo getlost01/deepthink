@@ -321,10 +321,7 @@ private struct EntryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
-        .onHover { hovering in
-            isHovered = hovering
-            if hovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
-        }
+        .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
     }
 }

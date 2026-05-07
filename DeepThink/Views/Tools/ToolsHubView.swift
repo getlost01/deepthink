@@ -172,7 +172,7 @@ private struct ToolCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.md) {
-                DSIconBadge(icon: iconFor(server.category), color: DS.Colors.accent, background: DS.Colors.accentFill)
+                DSIconBadge(icon: iconFor(server.category), color: DS.Colors.textSecondary, background: DS.Colors.fill)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(server.name)

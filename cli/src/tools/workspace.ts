@@ -16,16 +16,23 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Tasks ──
   {
     name: "workspace_list_tasks",
-    description: "List all tasks (includes archived, which have isArchived:true). Optionally filter by status, priority, or project.",
+    description: "List tasks with optional filters. Returns paginated results (default 50 per page).",
     inputSchema: {
       type: "object",
       properties: {
         status: { type: "string", enum: STATUS_ENUM, description: "Filter by status" },
         priority: { type: "string", enum: PRIORITY_ENUM, description: "Filter by priority" },
         project: { type: "string", description: "Filter by project name or ID" },
+        limit: { type: "number", description: "Max results to return (default 50)" },
+        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
       },
     },
-    execute: (p) => db.listTasks({ status: p.status, priority: p.priority, project: p.project }),
+    execute: (p) => {
+      const all = db.listTasks({ status: p.status, priority: p.priority, project: p.project });
+      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
+      const offset = typeof p.offset === "number" ? p.offset : 0;
+      return { tasks: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+    },
   },
   {
     name: "workspace_get_task",
@@ -114,15 +121,22 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Notes ──
   {
     name: "workspace_list_notes",
-    description: "List all notes (includes archived, which have isArchived:true). Optionally filter by project or pinned status.",
+    description: "List notes with optional filters. Returns paginated results (default 50 per page).",
     inputSchema: {
       type: "object",
       properties: {
         project: { type: "string", description: "Filter by project name or ID" },
         pinned: { type: "boolean", description: "Filter pinned notes only" },
+        limit: { type: "number", description: "Max results to return (default 50)" },
+        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
       },
     },
-    execute: (p) => db.listNotes({ project: p.project, pinned: p.pinned }),
+    execute: (p) => {
+      const all = db.listNotes({ project: p.project, pinned: p.pinned });
+      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
+      const offset = typeof p.offset === "number" ? p.offset : 0;
+      return { notes: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+    },
   },
   {
     name: "workspace_get_note",
@@ -204,9 +218,20 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Projects ──
   {
     name: "workspace_list_projects",
-    description: "List all projects with task/note counts.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => db.listProjects(),
+    description: "List all projects with task/note counts. Returns paginated results (default 50 per page).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: { type: "number", description: "Max results to return (default 50)" },
+        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
+      },
+    },
+    execute: (p) => {
+      const all = db.listProjects();
+      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
+      const offset = typeof p.offset === "number" ? p.offset : 0;
+      return { projects: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+    },
   },
   {
     name: "workspace_get_project",

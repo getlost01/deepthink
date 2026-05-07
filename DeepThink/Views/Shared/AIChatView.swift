@@ -523,6 +523,24 @@ struct AIChatView: View {
         }
     }
 
+    private func beginStreamSlot() async -> Int {
+        await MainActor.run {
+            appState.chatMessages.append(AIMessage(role: .assistant, content: "", isStreaming: true))
+            appState.isChatProcessing = false
+            appState.chatProcessingStartTime = nil
+            return appState.chatMessages.count - 1
+        }
+    }
+
+    private func endStreamSlot(_ idx: Int, response: String) async {
+        await MainActor.run {
+            guard idx < appState.chatMessages.count else { return }
+            appState.chatMessages[idx].content = response
+            appState.chatMessages[idx].isStreaming = false
+            appState.chatMessages[idx].tokenUsage = ClaudeService.shared.lastTokenUsage
+        }
+    }
+
     private func scrollChatToEndImpl(_ proxy: ScrollViewProxy) {
         if appState.isChatProcessing {
             proxy.scrollTo("thinking", anchor: .bottom)
@@ -766,13 +784,8 @@ struct AIChatView: View {
 
                 try Task.checkCancellation()
 
+                let streamIdx = await beginStreamSlot()
                 if servers.isEmpty {
-                    await MainActor.run {
-                        appState.chatMessages.append(AIMessage(role: .assistant, content: "", isStreaming: true))
-                        appState.isChatProcessing = false
-                        appState.chatProcessingStartTime = nil
-                    }
-                    let streamIdx = appState.chatMessages.count - 1
                     response = try await ClaudeService.shared.streamQuery(fullPrompt, systemPrompt: systemPrompt) { token in
                         DispatchQueue.main.async {
                             if streamIdx < appState.chatMessages.count {
@@ -780,37 +793,18 @@ struct AIChatView: View {
                             }
                         }
                     }
-                    await MainActor.run {
-                        if streamIdx < appState.chatMessages.count {
-                            appState.chatMessages[streamIdx].content = response
-                            appState.chatMessages[streamIdx].isStreaming = false
-                            appState.chatMessages[streamIdx].tokenUsage = ClaudeService.shared.lastTokenUsage
-                        }
-                    }
                 } else {
-                    await MainActor.run {
-                        appState.chatMessages.append(AIMessage(role: .assistant, content: "", isStreaming: true))
-                        appState.isChatProcessing = false
-                        appState.chatProcessingStartTime = nil
-                    }
-                    let mcpStreamIdx = appState.chatMessages.count - 1
                     response = try await MCPService.shared.streamQueryWithMCP(
                         prompt: fullPrompt, servers: servers, systemPrompt: systemPrompt
                     ) { token in
                         DispatchQueue.main.async {
-                            if mcpStreamIdx < appState.chatMessages.count {
-                                appState.chatMessages[mcpStreamIdx].content += token
+                            if streamIdx < appState.chatMessages.count {
+                                appState.chatMessages[streamIdx].content += token
                             }
                         }
                     }
-                    await MainActor.run {
-                        if mcpStreamIdx < appState.chatMessages.count {
-                            appState.chatMessages[mcpStreamIdx].content = response
-                            appState.chatMessages[mcpStreamIdx].isStreaming = false
-                            appState.chatMessages[mcpStreamIdx].tokenUsage = ClaudeService.shared.lastTokenUsage
-                        }
-                    }
                 }
+                await endStreamSlot(streamIdx, response: response)
 
                 try Task.checkCancellation()
 
