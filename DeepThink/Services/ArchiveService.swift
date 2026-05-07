@@ -105,12 +105,12 @@ final class ArchiveService {
         let threshold = days > 0 ? days : 3
         let cutoff = Calendar.current.date(byAdding: .day, value: -threshold, to: Date())!
         for task in project.tasks {
-            let isStale = task.status == .done && (task.completedAt.map { $0 < cutoff } ?? false)
+            let isStale = task.status == .done && (task.completedAt.map { $0 < cutoff } ?? true)
             if !isStale {
                 task.isArchived = false
                 task.manuallyArchived = false
                 for subtask in task.subtasks {
-                    let subtaskStale = subtask.status == .done && (subtask.completedAt.map { $0 < cutoff } ?? false)
+                    let subtaskStale = subtask.status == .done && (subtask.completedAt.map { $0 < cutoff } ?? true)
                     if !subtaskStale {
                         subtask.isArchived = false
                         subtask.manuallyArchived = false

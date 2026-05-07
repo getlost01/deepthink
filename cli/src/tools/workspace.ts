@@ -16,7 +16,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Tasks ──
   {
     name: "workspace_list_tasks",
-    description: "List all tasks. Optionally filter by status, priority, or project.",
+    description: "List all tasks (includes archived, which have isArchived:true). Optionally filter by status, priority, or project.",
     inputSchema: {
       type: "object",
       properties: {
@@ -86,6 +86,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const t = db.getTask(p.ref);
       if (!t) throw new Error(`task not found: ${p.ref}`);
+      if (t.isArchived) throw new Error(`task is archived and cannot be edited. Unarchive it first.`);
       const { ref, ...fields } = p;
       db.updateTask(t.pk, fields);
       const updated = db.getTask(t.pk.toString());
@@ -113,7 +114,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Notes ──
   {
     name: "workspace_list_notes",
-    description: "List all notes. Optionally filter by project or pinned status.",
+    description: "List all notes (includes archived, which have isArchived:true). Optionally filter by project or pinned status.",
     inputSchema: {
       type: "object",
       properties: {
@@ -175,6 +176,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const n = db.getNote(p.ref);
       if (!n) throw new Error(`note not found: ${p.ref}`);
+      if (n.isArchived) throw new Error(`note is archived and cannot be edited. Unarchive it first.`);
       const { ref, ...fields } = p;
       db.updateNote(n.pk, fields);
       const updated = db.getNote(n.pk.toString());
@@ -254,6 +256,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const pr = db.getProject(p.ref);
       if (!pr) throw new Error(`project not found: ${p.ref}`);
+      if (pr.isArchived && !("archived" in p)) throw new Error(`project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`);
       const { ref, ...fields } = p;
       db.updateProject(pr.pk, fields);
       return { pk: pr.pk, updated: Object.keys(fields) };
@@ -367,21 +370,22 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     description: "Get a summary of the entire workspace: project, task, and note counts plus recent items.",
     inputSchema: { type: "object", properties: {} },
     execute: () => {
-      const projects = db.listProjects();
-      const tasks = db.listTasks();
-      const notes = db.listNotes();
+      const allProjects = db.listProjects();
+      const activeTasks = db.listTasks({ excludeArchived: true });
+      const activeNotes = db.listNotes({ excludeArchived: true });
       const reminders = db.listReminders();
 
+      const activeProjects = allProjects.filter(p => !p.isArchived);
       const tasksByStatus: Record<string, number> = {};
-      for (const t of tasks) tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
+      for (const t of activeTasks) tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
 
       const activeReminders = reminders.filter(r => !r.isCompleted);
       const overdueReminders = activeReminders.filter(r => r.reminderDate && r.reminderDate < new Date());
 
       return {
-        projects: { total: projects.length, items: projects.slice(0, 5).map(p => ({ pk: p.pk, name: p.name, tasks: p.taskCount, notes: p.noteCount })) },
-        tasks: { total: tasks.length, byStatus: tasksByStatus, recent: tasks.slice(0, 5).map(t => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })) },
-        notes: { total: notes.length, recent: notes.slice(0, 5).map(n => ({ pk: n.pk, title: n.title, project: n.projectName })) },
+        projects: { active: activeProjects.length, archived: allProjects.length - activeProjects.length, items: activeProjects.slice(0, 5).map(p => ({ pk: p.pk, name: p.name, tasks: p.taskCount, notes: p.noteCount })) },
+        tasks: { active: activeTasks.length, byStatus: tasksByStatus, recent: activeTasks.slice(0, 5).map(t => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })) },
+        notes: { active: activeNotes.length, recent: activeNotes.slice(0, 5).map(n => ({ pk: n.pk, title: n.title, project: n.projectName })) },
         reminders: { total: reminders.length, active: activeReminders.length, overdue: overdueReminders.length, recent: activeReminders.slice(0, 5).map(r => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate })) },
       };
     },

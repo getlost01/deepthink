@@ -4,8 +4,8 @@ import SwiftData
 struct WorkspaceOverviewView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
-    @Query private var notes: [Note]
-    @Query private var tasks: [TaskItem]
+    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var notes: [Note]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
 
     private var recentNotes: [Note] {

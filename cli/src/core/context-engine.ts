@@ -374,15 +374,15 @@ export function retrieveContextHybrid(
 import * as db from "./db";
 
 export function workspaceContext(query: string, maxItems = 5): {
-  tasks: { pk: number; title: string; status: string; priority: string; score: number }[];
-  notes: { pk: number; title: string; project: string | null; score: number }[];
+  tasks: { pk: number; title: string; status: string; priority: string; score: number; isArchived?: boolean }[];
+  notes: { pk: number; title: string; project: string | null; score: number; isArchived?: boolean }[];
   reminders: { pk: number; title: string; reminderDate: Date | null; score: number }[];
   totalTokensEstimate: number;
 } {
   const queryTerms = new Set(tokenize(query));
   if (queryTerms.size === 0) {
-    const tasks = db.listTasks().slice(0, maxItems);
-    const notes = db.listNotes().slice(0, maxItems);
+    const tasks = db.listTasks({ excludeArchived: true }).slice(0, maxItems);
+    const notes = db.listNotes({ excludeArchived: true }).slice(0, maxItems);
     const reminders = db.listReminders({ completed: false }).slice(0, maxItems);
     return {
       tasks: tasks.map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: 0 })),
@@ -399,16 +399,16 @@ export function workspaceContext(query: string, maxItems = 5): {
   }
 
   const tasks = db.listTasks()
-    .map((t) => ({ ...t, score: scoreText(`${t.title} ${t.detail}`) }))
+    .map((t) => ({ ...t, score: scoreText(`${t.title} ${t.detail}`) * (t.isArchived ? 0.2 : 1) }))
     .sort((a, b) => b.score - a.score || b.modifiedAt.getTime() - a.modifiedAt.getTime())
     .slice(0, maxItems)
-    .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: Math.round(t.score * 100) / 100 }));
+    .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: Math.round(t.score * 100) / 100, ...(t.isArchived ? { isArchived: true } : {}) }));
 
   const notes = db.listNotes()
-    .map((n) => ({ ...n, score: scoreText(`${n.title} ${n.content}`) }))
+    .map((n) => ({ ...n, score: scoreText(`${n.title} ${n.content}`) * (n.isArchived ? 0.2 : 1) }))
     .sort((a, b) => b.score - a.score || b.modifiedAt.getTime() - a.modifiedAt.getTime())
     .slice(0, maxItems)
-    .map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: Math.round(n.score * 100) / 100 }));
+    .map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: Math.round(n.score * 100) / 100, ...(n.isArchived ? { isArchived: true } : {}) }));
 
   const reminders = db.listReminders({ completed: false })
     .map((r) => ({ ...r, score: scoreText(`${r.title} ${r.notes}`) }))

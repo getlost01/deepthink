@@ -452,6 +452,7 @@ function cmdTask() {
     if (!ref) err("usage: deepthink task update <id|name> [--title t] [--status s] [--priority p] [--points n] [--due date] [--detail d] [--project name]");
     const t = db.getTask(ref);
     if (!t) err(`task not found: ${ref}`);
+    if (t!.isArchived) err(`task is archived and cannot be edited. Unarchive it first.`);
     const fields: Record<string, any> = {};
     const title = flagVal("--title"); if (title) fields.title = title;
     const status = flagVal("--status"); if (status) fields.status = status;
@@ -534,6 +535,7 @@ function cmdNote() {
     if (!ref) err("usage: deepthink note update <id|name> [--title t] [--content text] [--pinned] [--unpinned] [--project name]");
     const n = db.getNote(ref);
     if (!n) err(`note not found: ${ref}`);
+    if (n!.isArchived) err(`note is archived and cannot be edited. Unarchive it first.`);
     const fields: Record<string, any> = {};
     const title = flagVal("--title"); if (title) fields.title = title;
     const content = flagVal("--content"); if (content) fields.content = content;

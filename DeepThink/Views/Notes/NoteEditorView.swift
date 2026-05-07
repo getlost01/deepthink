@@ -40,6 +40,7 @@ struct NoteEditorView: View {
                     .textFieldStyle(.plain)
                     .font(DS.Font.title)
                     .focused($titleFocused)
+                    .disabled(note.isArchived)
 
                 Spacer()
 
@@ -77,6 +78,7 @@ struct NoteEditorView: View {
                 }
                 .buttonStyle(.plainPointer)
                 .fixedSize()
+                .disabled(note.isArchived)
 
                 Menu {
                     ForEach(SkillFileService.shared.skills) { skill in
@@ -104,6 +106,7 @@ struct NoteEditorView: View {
                 }
                 .buttonStyle(.plainPointer)
                 .fixedSize()
+                .disabled(note.isArchived)
                 .help("Run AI skill on this note")
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -111,7 +114,7 @@ struct NoteEditorView: View {
 
             Divider()
 
-            RichMarkdownEditor(text: $note.content)
+            RichMarkdownEditor(text: $note.content, isReadOnly: note.isArchived)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
         }

@@ -526,4 +526,10 @@ window.getMarkdown = function() {
   return editor.storage.markdown.getMarkdown()
 }
 
+window.setReadOnly = function(readOnly) {
+  editor.setEditable(!readOnly)
+  const toolbar = document.getElementById('toolbar')
+  if (toolbar) toolbar.style.display = readOnly ? 'none' : ''
+}
+
 window.webkit.messageHandlers.editorReady.postMessage('ready')

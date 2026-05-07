@@ -177,11 +177,11 @@ struct CommandPaletteView: View {
     }
 
     private var recentNotes: [Note] {
-        notes.sorted(by: { (a: Note, b: Note) in a.modifiedAt > b.modifiedAt }).prefix(3).map { $0 }
+        notes.filter { !$0.isArchived }.sorted(by: { (a: Note, b: Note) in a.modifiedAt > b.modifiedAt }).prefix(3).map { $0 }
     }
 
     private var recentTasks: [TaskItem] {
-        tasks.filter { (t: TaskItem) in t.status != .done }
+        tasks.filter { (t: TaskItem) in t.status != .done && !t.isArchived }
             .sorted(by: { (a: TaskItem, b: TaskItem) in a.createdAt > b.createdAt })
             .prefix(2).map { $0 }
     }
@@ -204,7 +204,7 @@ struct CommandPaletteView: View {
                         subtitle: note.firstLine,
                         icon: "doc.text",
                         type: .note,
-                        isArchived: false,
+                        isArchived: note.isArchived,
                         action: {}
                     )),
                     isSelected: false
@@ -220,7 +220,7 @@ struct CommandPaletteView: View {
                         subtitle: task.status.rawValue,
                         icon: task.status.icon,
                         type: .task,
-                        isArchived: false,
+                        isArchived: task.isArchived,
                         action: {}
                     )),
                     isSelected: false

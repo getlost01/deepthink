@@ -175,7 +175,7 @@ private struct ProjectCard: View {
             Spacer()
 
             HStack(spacing: DS.Spacing.sm) {
-                let noteCount = project.notes.count
+                let noteCount = project.isArchived ? project.notes.count : project.notes.filter { !$0.isArchived }.count
                 let taskCount = project.isArchived ? project.tasks.count : project.openTaskCount
                 if noteCount > 0 {
                     HStack(spacing: DS.Spacing.xxs) {

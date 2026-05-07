@@ -43,6 +43,7 @@ struct TaskDetailView: View {
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.top, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.md)
+                .disabled(task.isArchived)
 
             // Compact metadata chips
             ScrollView(.horizontal, showsIndicators: false) {
@@ -119,11 +120,13 @@ struct TaskDetailView: View {
                 .padding(.horizontal, DS.Spacing.xl)
             }
             .padding(.bottom, DS.Spacing.md)
+            .disabled(task.isArchived)
 
             Divider()
 
             // Subtasks
             VStack(alignment: .leading, spacing: 0) {
+
                 Button {
                     withAnimation(DS.Animation.quick) { showSubtasks.toggle() }
                 } label: {
@@ -209,9 +212,10 @@ struct TaskDetailView: View {
                 Divider()
                     .padding(.top, DS.Spacing.xs)
             }
+            .disabled(task.isArchived)
 
             // Rich markdown editor (toolbar is built-in)
-            RichMarkdownEditor(text: $task.detail)
+            RichMarkdownEditor(text: $task.detail, isReadOnly: task.isArchived)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

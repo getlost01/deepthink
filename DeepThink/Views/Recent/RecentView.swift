@@ -4,8 +4,8 @@ import SwiftData
 struct RecentView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Note.modifiedAt, order: .reverse) private var notes: [Note]
-    @Query(sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
+    @Query(filter: #Predicate<Note> { !$0.isArchived }, sort: \Note.modifiedAt, order: .reverse) private var notes: [Note]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }, sort: \TaskItem.modifiedAt, order: .reverse) private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
     @Query(filter: #Predicate<Reminder> { !$0.isCompleted }) private var reminders: [Reminder]
 

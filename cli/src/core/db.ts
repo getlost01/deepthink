@@ -130,13 +130,14 @@ export interface TaskRow {
   dueDate: Date | null;
   projectPk: number | null;
   projectName: string | null;
+  isArchived: boolean;
   createdAt: Date;
   modifiedAt: Date;
 }
 
-export function listTasks(opts: { status?: string; priority?: string; project?: string } = {}): TaskRow[] {
+export function listTasks(opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}): TaskRow[] {
   const db = openDB();
-  let where = "1=1";
+  let where = opts.excludeArchived ? "t.ZISARCHIVED = 0" : "1=1";
   const params: any[] = [];
 
   if (opts.status) { where += " AND t.ZSTATUSRAW = ?"; params.push(opts.status); }
@@ -148,7 +149,7 @@ export function listTasks(opts: { status?: string; priority?: string; project?: 
 
   const rows = db.query(`
     SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
-           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZPROJECT, t.ZCREATEDAT, t.ZMODIFIEDAT,
+           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
            p.ZNAME as projectName
     FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
     WHERE ${where}
@@ -160,6 +161,7 @@ export function listTasks(opts: { status?: string; priority?: string; project?: 
     status: r.ZSTATUSRAW, priority: r.ZPRIORITYRAW,
     storyPoints: r.ZSTORYPOINTS, dueDate: r.ZDUEDATE ? fromCD(r.ZDUEDATE) : null,
     projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
+    isArchived: !!r.ZISARCHIVED,
     createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
   }));
 }
@@ -252,15 +254,16 @@ export interface NoteRow {
   title: string;
   content: string;
   isPinned: boolean;
+  isArchived: boolean;
   projectPk: number | null;
   projectName: string | null;
   createdAt: Date;
   modifiedAt: Date;
 }
 
-export function listNotes(opts: { project?: string; pinned?: boolean } = {}): NoteRow[] {
+export function listNotes(opts: { project?: string; pinned?: boolean; excludeArchived?: boolean } = {}): NoteRow[] {
   const db = openDB();
-  let where = "1=1";
+  let where = opts.excludeArchived ? "n.ZISARCHIVED = 0" : "1=1";
   const params: any[] = [];
 
   if (opts.pinned !== undefined) { where += " AND n.ZISPINNED = ?"; params.push(opts.pinned ? 1 : 0); }
@@ -270,7 +273,7 @@ export function listNotes(opts: { project?: string; pinned?: boolean } = {}): No
   }
 
   const rows = db.query(`
-    SELECT n.Z_PK, hex(n.ZID) as id, n.ZTITLE, n.ZCONTENT, n.ZISPINNED, n.ZPROJECT,
+    SELECT n.Z_PK, hex(n.ZID) as id, n.ZTITLE, n.ZCONTENT, n.ZISPINNED, n.ZISARCHIVED, n.ZPROJECT,
            n.ZCREATEDAT, n.ZMODIFIEDAT, p.ZNAME as projectName
     FROM ZNOTE n LEFT JOIN ZPROJECT p ON n.ZPROJECT = p.Z_PK
     WHERE ${where}
@@ -279,7 +282,8 @@ export function listNotes(opts: { project?: string; pinned?: boolean } = {}): No
   db.close();
   return rows.map(r => ({
     pk: r.Z_PK, id: r.id, title: r.ZTITLE, content: r.ZCONTENT ?? "",
-    isPinned: !!r.ZISPINNED, projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
+    isPinned: !!r.ZISPINNED, isArchived: !!r.ZISARCHIVED,
+    projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
     createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
   }));
 }

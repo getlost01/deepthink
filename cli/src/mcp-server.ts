@@ -52,20 +52,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 const RESOURCES = [
-  { uri: "deepthink://tasks", name: "Tasks", description: "All tasks", fn: () => db.listTasks() },
-  { uri: "deepthink://notes", name: "Notes", description: "All notes", fn: () => db.listNotes() },
-  { uri: "deepthink://projects", name: "Projects", description: "All projects", fn: () => db.listProjects() },
+  { uri: "deepthink://tasks", name: "Tasks", description: "Active (non-archived) tasks", fn: () => db.listTasks({ excludeArchived: true }) },
+  { uri: "deepthink://notes", name: "Notes", description: "Active (non-archived) notes", fn: () => db.listNotes({ excludeArchived: true }) },
+  { uri: "deepthink://projects", name: "Projects", description: "Active (non-archived) projects", fn: () => db.listProjects().filter(p => !p.isArchived) },
   { uri: "deepthink://reminders", name: "Reminders", description: "All reminders", fn: () => db.listReminders() },
   { uri: "deepthink://knowledge/stats", name: "Knowledge Stats", description: "Knowledge base overview", fn: () => knowledge.knowledgeStats() },
   { uri: "deepthink://knowledge/projects", name: "Knowledge Projects", description: "All knowledge projects", fn: () => knowledge.listProjects() },
   { uri: "deepthink://knowledge/integrations", name: "Integrations", description: "All integration sources and channels", fn: () => knowledge.listIntegrations() },
   { uri: "deepthink://overview", name: "Overview", description: "Compact system overview (~200 tokens)", fn: () => {
-    const projects = db.listProjects();
-    const tasks = db.listTasks();
+    const projects = db.listProjects().filter(p => !p.isArchived);
+    const tasks = db.listTasks({ excludeArchived: true });
     const ks = knowledge.knowledgeStats();
     const byStatus: Record<string, number> = {};
     for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
-    return { projects: projects.length, tasks: { total: tasks.length, byStatus }, notes: db.listNotes().length, reminders: db.listReminders().length, knowledge: ks, recentTasks: tasks.slice(0, 3).map(t => `[${t.status}] ${t.title}`) };
+    return { projects: projects.length, tasks: { total: tasks.length, byStatus }, notes: db.listNotes({ excludeArchived: true }).length, reminders: db.listReminders().length, knowledge: ks, recentTasks: tasks.slice(0, 3).map(t => `[${t.status}] ${t.title}`) };
   }},
 ];
 

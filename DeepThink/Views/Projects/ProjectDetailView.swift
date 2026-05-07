@@ -86,6 +86,7 @@ struct ProjectDetailView: View {
                     TextField("Give your project a name", text: $project.name)
                         .textFieldStyle(.plain)
                         .font(DS.Font.title)
+                        .disabled(project.isArchived)
                 }
 
                 TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
@@ -93,6 +94,7 @@ struct ProjectDetailView: View {
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textSecondary)
                     .lineLimit(3)
+                    .disabled(project.isArchived)
 
                 if !project.tasks.isEmpty {
                     let total = project.tasks.count
@@ -144,12 +146,20 @@ struct ProjectDetailView: View {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "archivebox.fill")
                         .font(.system(size: DS.IconSize.xs, weight: .medium))
-                    Text("This project is archived")
+                    Text("Archived — unarchive to edit")
                         .font(DS.Font.caption)
                         .fontWeight(.medium)
+                    Spacer()
+                    Button("Unarchive") {
+                        project.isArchived = false
+                        project.modifiedAt = Date()
+                    }
+                    .font(DS.Font.caption)
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.accent)
                 }
                 .foregroundStyle(DS.Colors.textSecondary)
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
                 .background(DS.Colors.fillSecondary)
                 .overlay(Divider(), alignment: .bottom)
@@ -230,7 +240,7 @@ struct ProjectDetailView: View {
 
                 HStack(spacing: DS.Spacing.xs) {
                     DSArchiveButton(isOn: showArchivedTasks, count: project.tasks.filter { $0.isArchived }.count) { showArchivedTasks.toggle() }
-                    DSAddButton { createTaskInProject() }
+                    if !project.isArchived { DSAddButton { createTaskInProject() } }
                 }
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -294,7 +304,7 @@ struct ProjectDetailView: View {
 
                 HStack(spacing: DS.Spacing.xs) {
                     DSArchiveButton(isOn: showArchivedNotes, count: project.notes.filter { $0.isArchived }.count) { showArchivedNotes.toggle() }
-                    DSAddButton { createNoteInProject() }
+                    if !project.isArchived { DSAddButton { createNoteInProject() } }
                 }
             }
             .padding(.horizontal, DS.Spacing.xl)

@@ -1090,6 +1090,7 @@ import WebKit
 
 struct RichMarkdownEditor: NSViewRepresentable {
     @Binding var text: String
+    var isReadOnly: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1113,6 +1114,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.pendingText = text
+        context.coordinator.pendingReadOnly = isReadOnly
         context.coordinator.pushIfReady()
     }
 
@@ -1121,23 +1123,30 @@ struct RichMarkdownEditor: NSViewRepresentable {
         weak var webView: WKWebView?
         var isReady = false
         var pendingText: String?
+        var pendingReadOnly: Bool = false
         private var isReceiving = false
         private var lastPushed: String?
+        private var lastReadOnly: Bool?
 
         init(_ parent: RichMarkdownEditor) {
             self.parent = parent
         }
 
         func pushIfReady() {
-            guard isReady, let webView = webView, let text = pendingText else { return }
-            if text == lastPushed || isReceiving { return }
-            lastPushed = text
-            let escaped = text
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "`", with: "\\`")
-                .replacingOccurrences(of: "$", with: "\\$")
-            webView.evaluateJavaScript("window.setMarkdown(`\(escaped)`)")
-            pendingText = nil
+            guard isReady, let webView = webView else { return }
+            if let text = pendingText, text != lastPushed, !isReceiving {
+                lastPushed = text
+                let escaped = text
+                    .replacingOccurrences(of: "\\", with: "\\\\")
+                    .replacingOccurrences(of: "`", with: "\\`")
+                    .replacingOccurrences(of: "$", with: "\\$")
+                webView.evaluateJavaScript("window.setMarkdown(`\(escaped)`)")
+                pendingText = nil
+            }
+            if pendingReadOnly != lastReadOnly {
+                lastReadOnly = pendingReadOnly
+                webView.evaluateJavaScript("window.setReadOnly(\(pendingReadOnly ? "true" : "false"))")
+            }
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
