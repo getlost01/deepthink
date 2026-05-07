@@ -13,6 +13,8 @@ final class TaskItem {
     var createdAt: Date = Date()
     var modifiedAt: Date = Date()
     var completedAt: Date?
+    var isArchived: Bool = false
+    var manuallyArchived: Bool = false
 
     var project: Project?
     var tags: [Tag] = []

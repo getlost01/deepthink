@@ -11,17 +11,13 @@ struct AllNotesView: View {
     @State private var filterProjectID: UUID?
     @State private var noteToDelete: Note?
     @State private var showDeleteConfirm = false
+    @State private var showArchived = false
 
-    private var pinnedNotes: [Note] {
-        filteredNotes.filter { $0.isPinned }
-    }
-
-    private var unpinnedNotes: [Note] {
-        filteredNotes.filter { !$0.isPinned }
-    }
+    private var pinnedNotes: [Note] { filteredNotes.filter { $0.isPinned } }
+    private var unpinnedNotes: [Note] { filteredNotes.filter { !$0.isPinned } }
 
     private var filteredNotes: [Note] {
-        var result = notes
+        var result = notes.filter { showArchived ? $0.isArchived : !$0.isArchived }
 
         if let filterProjectID {
             result = result.filter { $0.project?.id == filterProjectID }
@@ -46,7 +42,10 @@ struct AllNotesView: View {
         ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             VStack(spacing: 0) {
                 VStack(spacing: DS.Spacing.sm) {
-                    DSSearchField(text: $searchText, placeholder: "Search notes...")
+                    HStack(spacing: DS.Spacing.sm) {
+                        DSSearchField(text: $searchText, placeholder: "Search notes...")
+                        DSArchiveButton(isOn: showArchived, count: notes.filter { $0.isArchived }.count) { showArchived.toggle() }
+                    }
 
                     HStack {
                         Picker(selection: $filterProjectID) {
@@ -162,6 +161,12 @@ struct AllNotesView: View {
             note.modifiedAt = Date()
         } label: {
             Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+        }
+        Button {
+            note.isArchived.toggle()
+            note.modifiedAt = Date()
+        } label: {
+            Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "archivebox" : "archivebox.fill")
         }
         Divider()
         Button(role: .destructive) { noteToDelete = note; showDeleteConfirm = true } label: {

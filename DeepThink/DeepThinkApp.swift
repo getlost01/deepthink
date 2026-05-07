@@ -107,6 +107,7 @@ struct DeepThinkApp: App {
                     indexWorkspaceItems(container: sharedModelContainer)
                     CollectorScheduler.shared.start(container: sharedModelContainer)
                     ClaudeService.shared.start(container: sharedModelContainer)
+                    ArchiveService.shared.start(container: sharedModelContainer)
 
                     // Register global hotkey for Quick Capture (Option+Space)
                     GlobalHotKey.shared.register(container: sharedModelContainer)

@@ -8,10 +8,11 @@ struct NoteListView: View {
     @State private var searchText = ""
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
+    @State private var showArchived = false
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
 
     private var filteredNotes: [Note] {
-        var result = notes
+        var result = notes.filter { showArchived ? $0.isArchived : !$0.isArchived }
         if let projectID = appState.filterProjectID {
             result = result.filter { $0.project?.id == projectID }
         }
@@ -36,6 +37,7 @@ struct NoteListView: View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search notes...")
+                DSArchiveButton(isOn: showArchived, count: notes.filter { $0.isArchived }.count) { showArchived.toggle() }
                 DSAddButton() {
                     createNote()
                 }
@@ -84,6 +86,11 @@ struct NoteListView: View {
                                             .font(.system(size: DS.IconSize.sm))
                                             .foregroundStyle(DS.Colors.warning)
                                     }
+                                    if note.isArchived {
+                                        Image(systemName: "archivebox")
+                                            .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                    }
                                     Text(note.title.isEmpty ? "Untitled" : note.title)
                                         .font(DS.Font.body)
                                         .fontWeight(.medium)
@@ -111,6 +118,10 @@ struct NoteListView: View {
                         .contextMenu {
                             Button(note.isPinned ? "Unpin" : "Pin") {
                                 note.isPinned.toggle()
+                            }
+                            Button(note.isArchived ? "Unarchive" : "Archive") {
+                                note.isArchived.toggle()
+                                note.modifiedAt = Date()
                             }
                             Divider()
                             Button("Delete", role: .destructive) {
@@ -144,6 +155,12 @@ struct NoteListView: View {
                 try? await Task.sleep(for: .milliseconds(200))
                 guard !Task.isCancelled else { return }
                 debouncedSearch = searchText
+            }
+        }
+        .onChange(of: appState.selectedNoteID) { _, id in
+            guard let id, !showArchived else { return }
+            if let note = notes.first(where: { $0.id == id }), note.isArchived {
+                showArchived = true
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewNote)) { _ in

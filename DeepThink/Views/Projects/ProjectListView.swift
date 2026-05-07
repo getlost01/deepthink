@@ -13,7 +13,7 @@ struct ProjectListView: View {
     @State private var showDeleteConfirm = false
 
     private var projects: [Project] {
-        var result = showArchived ? allProjects : allProjects.filter { !$0.isArchived }
+        var result = showArchived ? allProjects.filter { $0.isArchived } : allProjects.filter { !$0.isArchived }
         if !debouncedSearch.isEmpty {
             let lowered = debouncedSearch.lowercased()
             result = result.filter { $0.name.lowercased().contains(lowered) || $0.summary.lowercased().contains(lowered) }
@@ -28,21 +28,7 @@ struct ProjectListView: View {
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search projects...")
 
-                Button {
-                    showArchived.toggle()
-                } label: {
-                    Image(systemName: showArchived ? "archivebox.fill" : "archivebox")
-                        .font(.system(size: DS.IconSize.sm, weight: .medium))
-                        .foregroundStyle(showArchived ? DS.Colors.accent : DS.Colors.textSecondary)
-                        .frame(width: 28, height: 28)
-                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                .strokeBorder(DS.Colors.border, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plainPointer)
-                .help(showArchived ? "Hide Archived" : "Show Archived")
+                DSArchiveButton(isOn: showArchived, count: allProjects.filter { $0.isArchived }.count) { showArchived.toggle() }
 
                 DSAddButton() {
                     createProject()
@@ -70,8 +56,14 @@ struct ProjectListView: View {
                         .buttonStyle(.plainPointer)
                         .contextMenu {
                             Button(project.isArchived ? "Unarchive" : "Archive") {
-                                project.isArchived.toggle()
+                                let archiving = !project.isArchived
+                                project.isArchived = archiving
                                 project.modifiedAt = Date()
+                                if archiving {
+                                    ArchiveService.archiveProjectTasks(project, context: modelContext)
+                                } else {
+                                    ArchiveService.unarchiveProjectTasks(project, context: modelContext)
+                                }
                             }
                             Divider()
                             Button("Delete", role: .destructive) {
@@ -109,8 +101,12 @@ struct ProjectListView: View {
                 debouncedSearch = searchText
             }
         }
-        .onChange(of: appState.selectedProjectID) {
+        .onChange(of: appState.selectedProjectID) { _, id in
             appState.projectDetailMode = .overview
+            guard let id, !showArchived else { return }
+            if let project = allProjects.first(where: { $0.id == id }), project.isArchived {
+                showArchived = true
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .createNewProject)) { _ in
             createProject()
@@ -179,23 +175,25 @@ private struct ProjectCard: View {
             Spacer()
 
             HStack(spacing: DS.Spacing.sm) {
-                if project.notes.count > 0 {
+                let noteCount = project.notes.count
+                let taskCount = project.isArchived ? project.tasks.count : project.openTaskCount
+                if noteCount > 0 {
                     HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "doc.text")
                             .font(.system(size: DS.IconSize.xs))
-                        Text("\(project.notes.count)")
+                        Text("\(noteCount)")
                             .font(DS.Font.small)
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
                 }
-                if project.openTaskCount > 0 {
+                if taskCount > 0 {
                     HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "checklist")
                             .font(.system(size: DS.IconSize.xs))
-                        Text("\(project.openTaskCount)")
+                        Text("\(taskCount)")
                             .font(DS.Font.small)
                     }
-                    .foregroundStyle(DS.Colors.accent)
+                    .foregroundStyle(project.isArchived ? DS.Colors.textTertiary : DS.Colors.accent)
                 }
             }
         }

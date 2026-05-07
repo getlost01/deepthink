@@ -16,6 +16,7 @@ struct WorkspaceSearchItem: Identifiable {
     let subtitle: String
     let icon: String
     let type: ItemType
+    let isArchived: Bool
     let action: () -> Void
 
     enum ItemType: String {
@@ -47,6 +48,13 @@ enum PaletteItem: Identifiable {
         switch self {
         case .command(let c): c.title
         case .workspaceItem(let w): w.title
+        }
+    }
+
+    var isArchived: Bool {
+        switch self {
+        case .command: false
+        case .workspaceItem(let w): w.isArchived
         }
     }
 }
@@ -100,7 +108,8 @@ final class CommandPaletteState {
         for type in [WorkspaceSearchItem.ItemType.note, .task, .project, .knowledge] {
             guard filteredType == nil || filteredType == type else { continue }
             if let items = grouped[type], !items.isEmpty {
-                result.append(PaletteSection(title: type.rawValue, items: items.prefix(5).map { .workspaceItem($0) }))
+                let sorted = items.sorted { !$0.isArchived && $1.isArchived }
+                result.append(PaletteSection(title: type.rawValue, items: sorted.prefix(5).map { .workspaceItem($0) }))
             }
         }
 

@@ -4,7 +4,7 @@ import SwiftData
 struct TaskDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Bindable var task: TaskItem
-    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @Query private var projects: [Project]
     @State private var showCustomPoints = false
     @State private var customPointsText = ""
     @State private var showCalendar = false
@@ -13,6 +13,30 @@ struct TaskDetailView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if task.isArchived {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    Text("Archived — unarchive to edit")
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Button("Unarchive") {
+                        task.isArchived = false
+                        task.manuallyArchived = false
+                        task.modifiedAt = Date()
+                    }
+                    .font(DS.Font.caption)
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.accent)
+                }
+                .foregroundStyle(DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.fillSecondary)
+                .overlay(Divider(), alignment: .bottom)
+            }
+
             TextField("What needs to be done?", text: $task.title)
                 .textFieldStyle(.plain)
                 .font(DS.Font.title)

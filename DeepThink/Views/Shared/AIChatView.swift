@@ -7,7 +7,10 @@ struct AIChatView: View {
     @Query(filter: #Predicate<MCPServer> { $0.isEnabled }) private var activeServers: [MCPServer]
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
+    @Query private var projects: [Project]
     @Query(sort: \Conversation.updatedAt, order: .reverse) private var conversations: [Conversation]
+
+    @State private var knowledgeService = KnowledgeService.shared
 
     var onShowConfig: ((AgentConfigTab) -> Void)?
 
@@ -241,7 +244,8 @@ struct AIChatView: View {
                                 noteCount: notes.count,
                                 taskCount: tasks.count,
                                 pendingTaskCount: tasks.filter { $0.status == .todo || $0.status == .inProgress }.count,
-                                knowledgeCount: KnowledgeService.shared.entries.count
+                                projectCount: projects.count,
+                                knowledgeCount: knowledgeService.entries.count
                             )
                             .padding(.top, 80)
                         }

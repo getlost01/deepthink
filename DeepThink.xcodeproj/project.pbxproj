@@ -56,6 +56,8 @@
 		7E1D33B08BF6F77EB7DD5EE9 /* KnowledgeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C223BF79E3501B2849D0061 /* KnowledgeView.swift */; };
 		7EA4E3A0F47DF9E591AEB963 /* KnowledgeEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431213AB0C48A2EDE4799C6C /* KnowledgeEntry.swift */; };
 		7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */; };
+		AA11BB22CC33DD44EE55FF66 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* GeneralSettingsView.swift */; };
+		AA11BB22CC33DD44EE55FF68 /* ArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */; };
 		81D50A098EF35CD8F47578C3 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F1A0F50C47FEEFD23BB385 /* ChatBubble.swift */; };
 		85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */; };
 		866353BCAA3F9EF09DF6E835 /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24730C11D122CF0AEB59686 /* AgentListView.swift */; };
@@ -162,6 +164,8 @@
 		7C12FE837420908C2DEE2AF7 /* AutomationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutomationView.swift; sourceTree = "<group>"; };
 		7C66CC1E57209BBE097F8539 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF67 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
+		AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveService.swift; sourceTree = "<group>"; };
 		7E1BAEE7E4B74ECC4FD56366 /* ReminderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderDetailView.swift; sourceTree = "<group>"; };
 		7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectorScheduler.swift; sourceTree = "<group>"; };
 		7EA735EA8B612913B7083EA8 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeGraphView.swift; sourceTree = "<group>"; };
@@ -336,6 +340,7 @@
 			isa = PBXGroup;
 			children = (
 				7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */,
+				AA11BB22CC33DD44EE55FF67 /* GeneralSettingsView.swift */,
 				4F257EA6BF7E39381490714F /* IntegrationsView.swift */,
 				7C66CC1E57209BBE097F8539 /* SettingsView.swift */,
 			);
@@ -345,6 +350,7 @@
 		4826115129246EC45C2069F7 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */,
 				AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
@@ -688,6 +694,7 @@
 				ADD2B6A0C5CDF057A6C73230 /* ChatHistorySidebar.swift in Sources */,
 				2E47277475F632844BA34247 /* ChatMarkdownView.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF68 /* ArchiveService.swift in Sources */,
 				7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */,
 				FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */,
 				5CD76ED30916874BA82DA5AB /* CommandPaletteState.swift in Sources */,
@@ -743,6 +750,7 @@
 				E71E56164473C564597D92D7 /* ReminderListView.swift in Sources */,
 				D15D6F27ABC385D256DA2115 /* ReminderRowView.swift in Sources */,
 				F08AFC211B77938F7CBD0481 /* RuleFileService.swift in Sources */,
+				AA11BB22CC33DD44EE55FF66 /* GeneralSettingsView.swift in Sources */,
 				FB3FD7BEF0822312E250DBE0 /* SettingsView.swift in Sources */,
 				1794973874E25BCBD75720EE /* SharedViews.swift in Sources */,
 				75274A244834AFCFD470C59C /* SidebarView.swift in Sources */,

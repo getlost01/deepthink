@@ -6,7 +6,7 @@ struct CommandPaletteView: View {
     @Environment(CommandPaletteState.self) private var state
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
-    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @Query private var projects: [Project]
     @FocusState private var isSearchFocused: Bool
 
     var body: some View {
@@ -204,6 +204,7 @@ struct CommandPaletteView: View {
                         subtitle: note.firstLine,
                         icon: "doc.text",
                         type: .note,
+                        isArchived: false,
                         action: {}
                     )),
                     isSelected: false
@@ -219,6 +220,7 @@ struct CommandPaletteView: View {
                         subtitle: task.status.rawValue,
                         icon: task.status.icon,
                         type: .task,
+                        isArchived: false,
                         action: {}
                     )),
                     isSelected: false
@@ -263,6 +265,7 @@ struct CommandPaletteView: View {
                 subtitle: note.firstLine,
                 icon: "doc.text",
                 type: .note,
+                isArchived: note.isArchived,
                 action: { [note] in appState.navigateToNote(note.id) }
             ))
         }
@@ -274,6 +277,7 @@ struct CommandPaletteView: View {
                 subtitle: "[\(task.status.rawValue)] \(task.detail.prefix(60))",
                 icon: task.status.icon,
                 type: .task,
+                isArchived: task.isArchived,
                 action: { [task] in appState.navigateToTask(task.id) }
             ))
         }
@@ -282,9 +286,10 @@ struct CommandPaletteView: View {
             items.append(WorkspaceSearchItem(
                 id: project.id,
                 title: project.name,
-                subtitle: "\(project.openTaskCount) tasks · \(project.notes.count) notes",
+                subtitle: "\(project.isArchived ? project.tasks.count : project.openTaskCount) tasks · \(project.notes.count) notes",
                 icon: "folder",
                 type: .project,
+                isArchived: project.isArchived,
                 action: { [project] in appState.navigateToProject(project.id) }
             ))
         }
@@ -297,6 +302,7 @@ struct CommandPaletteView: View {
                 subtitle: String(entry.content.prefix(80)),
                 icon: "brain",
                 type: .knowledge,
+                isArchived: false,
                 action: { appState.navigateToContext() }
             ))
         }
@@ -333,6 +339,12 @@ private struct PaletteItemRow: View {
             }
 
             Spacer()
+
+            if item.isArchived {
+                Image(systemName: "archivebox")
+                    .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.6) : DS.Colors.textTertiary)
+            }
 
             if let shortcut = itemShortcut {
                 Text(shortcut)

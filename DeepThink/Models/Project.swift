@@ -25,7 +25,7 @@ final class Project {
     }
 
     var openTaskCount: Int {
-        tasks.filter { $0.status != .done && $0.status != .cancelled }.count
+        tasks.filter { !$0.isArchived && $0.status != .done && $0.status != .cancelled }.count
     }
 
     var completedTaskCount: Int {

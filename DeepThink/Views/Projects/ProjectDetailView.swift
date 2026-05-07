@@ -70,6 +70,8 @@ struct ProjectDetailView: View {
 
     @State private var splitRatio: CGFloat = 0.5
     private let minPaneRatio: CGFloat = 0.2
+    @State private var showArchivedTasks = false
+    @State private var showArchivedNotes = false
 
     @ViewBuilder
     private var projectOverview: some View {
@@ -138,6 +140,21 @@ struct ProjectDetailView: View {
 
             Divider()
 
+            if project.isArchived {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    Text("This project is archived")
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                }
+                .foregroundStyle(DS.Colors.textSecondary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.fillSecondary)
+                .overlay(Divider(), alignment: .bottom)
+            }
+
             // Split pane: Tasks top, Notes bottom
             GeometryReader { geo in
                 let totalHeight = geo.size.height
@@ -168,11 +185,33 @@ struct ProjectDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: project.name) { project.modifiedAt = Date() }
         .onChange(of: project.summary) { project.modifiedAt = Date() }
-        .onAppear { appState.currentProjectName = project.name }
+        .onAppear {
+            appState.currentProjectName = project.name
+            if project.isArchived {
+                showArchivedTasks = true
+                showArchivedNotes = true
+            }
+        }
+        .onChange(of: project.id) {
+            showArchivedTasks = project.isArchived
+            showArchivedNotes = project.isArchived
+        }
         .onDisappear { appState.currentProjectName = nil }
     }
 
     // MARK: - Tasks Pane
+
+    private var visibleTasks: [TaskItem] {
+        project.tasks
+            .filter { showArchivedTasks ? $0.isArchived : !$0.isArchived }
+            .sorted(by: { $0.status.sortOrder < $1.status.sortOrder })
+    }
+
+    private var visibleNotes: [Note] {
+        project.notes
+            .filter { showArchivedNotes ? $0.isArchived : !$0.isArchived }
+            .sorted(by: { $0.modifiedAt > $1.modifiedAt })
+    }
 
     @ViewBuilder
     private var tasksPane: some View {
@@ -183,14 +222,15 @@ struct ProjectDetailView: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
 
-                if !project.tasks.isEmpty {
-                    DSPill(text: "\(project.openTaskCount) open", color: DS.Colors.accent)
+                if !visibleTasks.isEmpty {
+                    DSPill(text: showArchivedTasks ? "\(visibleTasks.count) archived" : "\(project.openTaskCount) open", color: showArchivedTasks ? DS.Colors.textSecondary : DS.Colors.accent)
                 }
 
                 Spacer()
 
-                DSToolbarButton(icon: "plus", color: DS.Colors.accent, size: DS.IconSize.sm) {
-                    createTaskInProject()
+                HStack(spacing: DS.Spacing.xs) {
+                    DSArchiveButton(isOn: showArchivedTasks, count: project.tasks.filter { $0.isArchived }.count) { showArchivedTasks.toggle() }
+                    DSAddButton { createTaskInProject() }
                 }
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -198,13 +238,13 @@ struct ProjectDetailView: View {
 
             Divider()
 
-            if project.tasks.isEmpty {
+            if visibleTasks.isEmpty {
                 ScrollView {
                     DSEmptyState(
                         icon: "checklist",
-                        title: "No tasks yet",
-                        subtitle: "Break this project into smaller steps you can check off",
-                        action: createTaskInProject,
+                        title: showArchivedTasks ? "No archived tasks" : "No tasks yet",
+                        subtitle: showArchivedTasks ? "Archived tasks will appear here." : "Break this project into smaller steps you can check off",
+                        action: showArchivedTasks ? nil : createTaskInProject,
                         actionTitle: "Add Task"
                     )
                     .frame(minHeight: 200)
@@ -212,7 +252,7 @@ struct ProjectDetailView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 1) {
-                        ForEach(project.tasks.sorted(by: { $0.status.sortOrder < $1.status.sortOrder })) { task in
+                        ForEach(visibleTasks) { task in
                             ProjectTaskRow(task: task, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToTaskInProject(task.id)
@@ -246,14 +286,15 @@ struct ProjectDetailView: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
 
-                if !project.notes.isEmpty {
-                    DSPill(text: "\(project.notes.count)", color: DS.Colors.warning)
+                if !visibleNotes.isEmpty {
+                    DSPill(text: showArchivedNotes ? "\(visibleNotes.count) archived" : "\(visibleNotes.count)", color: showArchivedNotes ? DS.Colors.textSecondary : DS.Colors.warning)
                 }
 
                 Spacer()
 
-                DSToolbarButton(icon: "plus", color: DS.Colors.accent, size: DS.IconSize.sm) {
-                    createNoteInProject()
+                HStack(spacing: DS.Spacing.xs) {
+                    DSArchiveButton(isOn: showArchivedNotes, count: project.notes.filter { $0.isArchived }.count) { showArchivedNotes.toggle() }
+                    DSAddButton { createNoteInProject() }
                 }
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -261,13 +302,13 @@ struct ProjectDetailView: View {
 
             Divider()
 
-            if project.notes.isEmpty {
+            if visibleNotes.isEmpty {
                 ScrollView {
                     DSEmptyState(
                         icon: "doc.text",
-                        title: "No notes yet",
-                        subtitle: "Write down ideas, plans, or meeting notes for this project",
-                        action: createNoteInProject,
+                        title: showArchivedNotes ? "No archived notes" : "No notes yet",
+                        subtitle: showArchivedNotes ? "Archived notes will appear here." : "Write down ideas, plans, or meeting notes for this project",
+                        action: showArchivedNotes ? nil : createNoteInProject,
                         actionTitle: "Add Note"
                     )
                     .frame(minHeight: 200)
@@ -275,7 +316,7 @@ struct ProjectDetailView: View {
             } else {
                 ScrollView {
                     VStack(spacing: 1) {
-                        ForEach(project.notes.sorted(by: { $0.modifiedAt > $1.modifiedAt })) { note in
+                        ForEach(visibleNotes) { note in
                             ProjectNoteRow(note: note, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToNoteInProject(note.id)
@@ -299,6 +340,7 @@ struct ProjectDetailView: View {
     }
 
     private func createTaskInProject() {
+        showArchivedTasks = false
         let task = TaskItem(title: "New Task")
         task.project = project
         modelContext.insert(task)
@@ -306,6 +348,7 @@ struct ProjectDetailView: View {
     }
 
     private func createNoteInProject() {
+        showArchivedNotes = false
         let note = Note(title: "Untitled Note")
         note.project = project
         modelContext.insert(note)
@@ -376,6 +419,24 @@ private struct ProjectTaskRow: View {
             Button(action: action) {
                 Label("Open", systemImage: "doc.text")
             }
+            Divider()
+            ForEach(TaskStatus.allCases) { newStatus in
+                Button("Mark as \(newStatus.rawValue)") {
+                    task.status = newStatus
+                    task.modifiedAt = Date()
+                }
+            }
+            Divider()
+            Button(task.isArchived ? "Unarchive" : "Archive") {
+                if task.isArchived {
+                    task.isArchived = false
+                    task.manuallyArchived = false
+                } else {
+                    task.isArchived = true
+                    task.manuallyArchived = true
+                }
+                task.modifiedAt = Date()
+            }
             if let onDelete {
                 Divider()
                 Button(role: .destructive, action: onDelete) {
@@ -429,6 +490,14 @@ private struct ProjectNoteRow: View {
         .contextMenu {
             Button(action: action) {
                 Label("Open", systemImage: "doc.text")
+            }
+            Divider()
+            Button(note.isPinned ? "Unpin" : "Pin") {
+                note.isPinned.toggle()
+            }
+            Button(note.isArchived ? "Unarchive" : "Archive") {
+                note.isArchived.toggle()
+                note.modifiedAt = Date()
             }
             if let onDelete {
                 Divider()

@@ -5,7 +5,7 @@ struct NoteInspectorView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
     @Query private var allNotes: [Note]
-    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @Query private var projects: [Project]
 
     private var selectedNote: Note? {
         guard let id = appState.selectedNoteID else { return nil }
@@ -91,6 +91,7 @@ private struct NoteInspectorContent: View {
                 }
 
                 Toggle("Pinned", isOn: $note.isPinned)
+                Toggle("Archived", isOn: $note.isArchived)
             }
 
             if !note.tags.isEmpty {

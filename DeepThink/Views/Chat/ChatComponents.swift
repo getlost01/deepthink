@@ -59,6 +59,7 @@ struct WelcomePrompts: View {
     var noteCount: Int = 0
     var taskCount: Int = 0
     var pendingTaskCount: Int = 0
+    var projectCount: Int = 0
     var knowledgeCount: Int = 0
 
     private let suggestions = [
@@ -103,8 +104,11 @@ struct WelcomePrompts: View {
                     .foregroundStyle(DS.Colors.textTertiary)
             }
 
-            if noteCount > 0 || taskCount > 0 || knowledgeCount > 0 {
+            if noteCount > 0 || taskCount > 0 || knowledgeCount > 0 || projectCount > 0 {
                 HStack(spacing: DS.Spacing.md) {
+                    if projectCount > 0 {
+                        welcomeStat(icon: "folder", value: "\(projectCount)", label: "projects")
+                    }
                     if noteCount > 0 {
                         welcomeStat(icon: "doc.text", value: "\(noteCount)", label: "notes")
                     }

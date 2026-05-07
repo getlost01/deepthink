@@ -13,6 +13,8 @@ final class ContextEngine {
     private var documentTerms: [String: [String: Double]] = [:]
     private var documentCount = 0
 
+    var vocabularySize: Int { documentFrequency.count }
+
     private var conversationSummaries: [UUID: String] = [:]
     private var contentFingerprints: Set<UInt64> = []
 

@@ -31,6 +31,7 @@ struct ProjectInspectorView: View {
 
 private struct ProjectInspectorContent: View {
     @Bindable var project: Project
+    @Environment(\.modelContext) private var modelContext
 
     private let colorOptions = ["#007AFF", "#FF3B30", "#FF9500", "#34C759", "#5856D6", "#AF52DE", "#FF2D55", "#A2845E"]
 
@@ -40,6 +41,13 @@ private struct ProjectInspectorContent: View {
                 LabeledContent("Created", value: project.createdAt.shortFormatted)
                 LabeledContent("Modified", value: project.modifiedAt.relativeFormatted)
                 Toggle("Archived", isOn: $project.isArchived)
+                    .onChange(of: project.isArchived) { _, newValue in
+                        if newValue {
+                            ArchiveService.archiveProjectTasks(project, context: modelContext)
+                        } else {
+                            ArchiveService.unarchiveProjectTasks(project, context: modelContext)
+                        }
+                    }
             }
 
             Section("Color") {

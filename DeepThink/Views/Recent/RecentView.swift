@@ -54,7 +54,8 @@ struct RecentView: View {
                 detail: "\(note.wordCount) words",
                 date: note.modifiedAt,
                 kind: .note,
-                entityID: note.id
+                entityID: note.id,
+                isArchived: note.isArchived
             ))
         }
 
@@ -70,7 +71,8 @@ struct RecentView: View {
                 detail: action,
                 date: task.modifiedAt,
                 kind: .task,
-                entityID: task.id
+                entityID: task.id,
+                isArchived: task.isArchived
             ))
         }
 
@@ -311,6 +313,7 @@ struct RecentItem: Identifiable {
     let kind: RecentItemKind
     let entityID: UUID?
     var knowledgeEntryID: String? = nil
+    var isArchived: Bool = false
 }
 
 enum RecentItemKind {
@@ -360,6 +363,12 @@ private struct RecentItemRow: View {
                 Text(item.date.relativeFormatted)
                     .font(DS.Font.small)
                     .foregroundStyle(DS.Colors.textTertiary)
+
+                if item.isArchived {
+                    Image(systemName: "archivebox")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
 
                 kindBadge
             }

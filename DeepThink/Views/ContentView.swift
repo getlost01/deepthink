@@ -91,7 +91,7 @@ struct ContentRouter: View {
             case .terminal:
                 DeepThinkTerminalView()
             case .settings:
-                ClaudeSettingsView()
+                SettingsView()
             case nil:
                 RecentView()
             }

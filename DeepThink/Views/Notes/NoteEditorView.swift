@@ -12,6 +12,29 @@ struct NoteEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if note.isArchived {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "archivebox.fill")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                    Text("Archived — unarchive to edit")
+                        .font(DS.Font.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                    Button("Unarchive") {
+                        note.isArchived = false
+                        note.modifiedAt = Date()
+                    }
+                    .font(DS.Font.caption)
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.accent)
+                }
+                .foregroundStyle(DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.fillSecondary)
+                .overlay(Divider(), alignment: .bottom)
+            }
+
             HStack(spacing: DS.Spacing.md) {
                 TextField("Give your note a title...", text: $note.title)
                     .textFieldStyle(.plain)

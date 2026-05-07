@@ -4,7 +4,7 @@ import SwiftData
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
-    @Query(sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }, sort: \TaskItem.createdAt, order: .reverse) private var allTasks: [TaskItem]
     @State private var searchText = ""
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
@@ -192,6 +192,11 @@ struct TaskListView: View {
                                             task.status = newStatus
                                             task.modifiedAt = Date()
                                         }
+                                    }
+                                    Divider()
+                                    Button(task.isArchived ? "Unarchive" : "Archive") {
+                                        task.isArchived.toggle()
+                                        task.modifiedAt = Date()
                                     }
                                     Divider()
                                     Button("Delete", role: .destructive) { deleteTask(task) }

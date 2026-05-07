@@ -581,6 +581,7 @@ struct KnowledgeDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { editableContent = entry.content; editableTitle = entry.title; hasLoaded = true }
         .onChange(of: entry.id) { editableContent = entry.content; editableTitle = entry.title; showCopied = false; isEditingTitle = false }
+        .onDisappear { commitTitleEdit(); saveEntry() }
     }
 
     private func saveEntry() {

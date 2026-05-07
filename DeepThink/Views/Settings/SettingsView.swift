@@ -3,14 +3,14 @@ import SwiftData
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case claude = "Claude"
-    case integrations = "Integrations"
+    case general = "General"
 
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .claude: "sparkles"
-        case .integrations: "puzzlepiece.extension"
+        case .general: "gearshape"
         }
     }
 }
@@ -37,8 +37,8 @@ struct SettingsView: View {
             switch selectedTab {
             case .claude:
                 ClaudeSettingsView()
-            case .integrations:
-                IntegrationsView()
+            case .general:
+                GeneralSettingsView()
             }
         }
     }

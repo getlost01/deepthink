@@ -14,6 +14,7 @@ struct AllTasksView: View {
     @State private var showDeleteConfirm = false
     @State private var viewMode: TaskViewMode = .list
     @State private var smartFilter: SmartFilter = .all
+    @State private var showArchived = false
 
     enum TaskViewMode: String {
         case list, board
@@ -25,21 +26,23 @@ struct AllTasksView: View {
     }
 
     private var filteredTasks: [TaskItem] {
-        var result = tasks.filter { $0.parent == nil }
+        var result = tasks.filter { $0.parent == nil && (showArchived ? $0.isArchived : !$0.isArchived) }
 
-        switch smartFilter {
-        case .all:
-            break
-        case .overdue:
-            result = result.filter { $0.isOverdue }
-        }
+        if !showArchived {
+            switch smartFilter {
+            case .all:
+                break
+            case .overdue:
+                result = result.filter { $0.isOverdue }
+            }
 
-        if let statusFilter {
-            result = result.filter { $0.status == statusFilter }
-        }
+            if let statusFilter {
+                result = result.filter { $0.status == statusFilter }
+            }
 
-        if let priorityFilter {
-            result = result.filter { $0.priority == priorityFilter }
+            if let priorityFilter {
+                result = result.filter { $0.priority == priorityFilter }
+            }
         }
 
         if !searchText.isEmpty {
@@ -58,10 +61,25 @@ struct AllTasksView: View {
     }
 
     var body: some View {
-        if viewMode == .board {
-            boardLayout
-        } else {
-            listLayout
+        Group {
+            if viewMode == .board {
+                boardLayout
+            } else {
+                listLayout
+            }
+        }
+        .onChange(of: appState.selectedTaskID) { _, id in
+            guard let id, !showArchived else { return }
+            if let task = tasks.first(where: { $0.id == id }), task.isArchived {
+                showArchived = true
+            }
+        }
+        .onChange(of: showArchived) { _, archived in
+            if archived {
+                smartFilter = .all
+                statusFilter = nil
+                priorityFilter = nil
+            }
         }
     }
 
@@ -70,6 +88,7 @@ struct AllTasksView: View {
             VStack(spacing: DS.Spacing.sm) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search tasks...")
+                    DSArchiveButton(isOn: showArchived, count: tasks.filter { $0.parent == nil && $0.isArchived }.count) { showArchived.toggle() }
                     viewModeToggle
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -195,6 +214,7 @@ struct AllTasksView: View {
                 VStack(spacing: DS.Spacing.sm) {
                     HStack(spacing: DS.Spacing.sm) {
                         DSSearchField(text: $searchText, placeholder: "Search tasks...")
+                        DSArchiveButton(isOn: showArchived, count: tasks.filter { $0.parent == nil && $0.isArchived }.count) { showArchived.toggle() }
                         viewModeToggle
                     }
 
@@ -258,6 +278,18 @@ struct AllTasksView: View {
                                         task.modifiedAt = Date()
                                     } label: {
                                         Label("Mark Done", systemImage: "checkmark.circle")
+                                    }
+                                    Button {
+                                        if task.isArchived {
+                                            task.isArchived = false
+                                            task.manuallyArchived = false
+                                        } else {
+                                            task.isArchived = true
+                                            task.manuallyArchived = true
+                                        }
+                                        task.modifiedAt = Date()
+                                    } label: {
+                                        Label(task.isArchived ? "Unarchive" : "Archive", systemImage: task.isArchived ? "archivebox" : "archivebox.fill")
                                     }
                                     Divider()
                                     Button(role: .destructive) { taskToDelete = task; showDeleteConfirm = true } label: {
@@ -334,6 +366,9 @@ struct AllTasksView: View {
                         Text(project.name)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
+                        if showArchived && project.isArchived {
+                            DSPill(text: "project archived", color: DS.Colors.textTertiary)
+                        }
                     }
 
                     if !task.subtasks.isEmpty {

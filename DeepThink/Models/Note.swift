@@ -9,6 +9,7 @@ final class Note {
     var createdAt: Date = Date()
     var modifiedAt: Date = Date()
     var isPinned: Bool = false
+    var isArchived: Bool = false
 
     var project: Project?
     var tags: [Tag] = []

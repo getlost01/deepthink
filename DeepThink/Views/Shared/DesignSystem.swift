@@ -490,6 +490,44 @@ struct DSToolbarButton: View {
     }
 }
 
+// MARK: - Archive Button
+
+struct DSArchiveButton: View {
+    let isOn: Bool
+    var count: Int = 0
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: isOn ? "archivebox.fill" : "archivebox")
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .foregroundStyle(isOn ? DS.Colors.accent : (isHovered ? DS.Colors.accent : DS.Colors.textSecondary))
+                .frame(width: 28, height: 28)
+                .background(isOn ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fill), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .strokeBorder(isOn ? DS.Colors.accent.opacity(0.4) : (isHovered ? DS.Colors.borderHover : DS.Colors.border), lineWidth: 1)
+                )
+                .overlay(alignment: .topTrailing) {
+                    if count > 0 {
+                        Text(count > 99 ? "99+" : "\(count)")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 3)
+                            .frame(minWidth: 14, minHeight: 14)
+                            .background(isOn ? DS.Colors.accent : DS.Colors.textSecondary, in: Capsule())
+                            .offset(x: 5, y: -5)
+                    }
+                }
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
+        .help(isOn ? "Hide Archived" : "Show Archived (\(count))")
+    }
+}
+
 // MARK: - Add Button
 
 struct DSAddButton: View {
