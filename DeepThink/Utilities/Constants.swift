@@ -43,8 +43,8 @@ enum DeepThinkPaths {
         let candidates = [
             bundledMCPPath,
             localBin + "/deepthink-mcp",
-            devCLIDir + "/out/deepthink-mcp",
-        ].compactMap { $0 }
+            devCLIDir + "/out/deepthink-mcp"
+        ].compactMap(\.self)
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
             ?? localBin + "/deepthink-mcp"
     }
@@ -55,9 +55,8 @@ enum DeepThinkPaths {
         candidates.append(contentsOf: [
             devCLIDir + "/deepthink",
             localBin + "/deepthink",
-            "/usr/local/bin/deepthink",
+            "/usr/local/bin/deepthink"
         ])
         return candidates
     }
-
 }

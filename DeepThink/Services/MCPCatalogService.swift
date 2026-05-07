@@ -13,7 +13,7 @@ final class MCPCatalogService {
         "keywords:mcp-server",
         "@modelcontextprotocol",
         "@anthropic-ai/mcp",
-        "mcp-server-",
+        "mcp-server-"
     ]
 
     private init() {
@@ -85,12 +85,14 @@ final class MCPCatalogService {
         let text = (pkg.name + " " + (pkg.description ?? "") + " " + (pkg.keywords ?? []).joined(separator: " ")).lowercased()
         if text.contains("slack") || text.contains("discord") || text.contains("email") || text.contains("telegram") { return "Communication" }
         if text.contains("github") || text.contains("gitlab") || text.contains("git") || text.contains("sentry") { return "Dev" }
-        if text.contains("postgres") || text.contains("sqlite") || text.contains("mysql") || text.contains("mongo") || text.contains("redis") || text.contains("database") { return "Data" }
+        if text.contains("postgres") || text.contains("sqlite") || text.contains("mysql") || text.contains("mongo") || text.contains("redis") || text
+            .contains("database") { return "Data" }
         if text.contains("file") || text.contains("drive") || text.contains("storage") || text.contains("s3") { return "Files" }
         if text.contains("search") || text.contains("brave") || text.contains("google") { return "Search" }
         if text.contains("web") || text.contains("fetch") || text.contains("scrape") || text.contains("browser") || text.contains("puppeteer") { return "Web" }
         if text.contains("memory") || text.contains("knowledge") || text.contains("rag") || text.contains("vector") { return "Knowledge" }
-        if text.contains("linear") || text.contains("jira") || text.contains("notion") || text.contains("asana") || text.contains("trello") { return "Project Management" }
+        if text.contains("linear") || text.contains("jira") || text.contains("notion") || text.contains("asana") || text
+            .contains("trello") { return "Project Management" }
         return "General"
     }
 
@@ -155,7 +157,10 @@ final class MCPCatalogService {
 // MARK: - Models
 
 struct MCPPackage: Codable, Identifiable, Hashable {
-    var id: String { name }
+    var id: String {
+        name
+    }
+
     var name: String
     var version: String
     var description: String
@@ -179,15 +184,15 @@ struct MCPPackage: Codable, Identifiable, Hashable {
 
     var iconName: String {
         switch category {
-        case "Communication": return "message"
-        case "Dev": return "chevron.left.forwardslash.chevron.right"
-        case "Data": return "cylinder"
-        case "Files": return "folder"
-        case "Search": return "magnifyingglass"
-        case "Web": return "globe"
-        case "Knowledge": return "brain"
-        case "Project Management": return "list.bullet.rectangle"
-        default: return "puzzlepiece.extension"
+        case "Communication": "message"
+        case "Dev": "chevron.left.forwardslash.chevron.right"
+        case "Data": "cylinder"
+        case "Files": "folder"
+        case "Search": "magnifyingglass"
+        case "Web": "globe"
+        case "Knowledge": "brain"
+        case "Project Management": "list.bullet.rectangle"
+        default: "puzzlepiece.extension"
         }
     }
 }
@@ -230,7 +235,7 @@ private struct NPMScore: Codable {
     let detail: NPMScoreDetail?
 
     enum CodingKeys: String, CodingKey {
-        case final = "final"
+        case final
         case detail
     }
 }

@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TaskDetailView: View {
     @Environment(\.modelContext) private var modelContext
@@ -126,7 +126,6 @@ struct TaskDetailView: View {
 
             // Subtasks
             VStack(alignment: .leading, spacing: 0) {
-
                 Button {
                     withAnimation(DS.Animation.quick) { showSubtasks.toggle() }
                 } label: {
@@ -140,7 +139,7 @@ struct TaskDetailView: View {
                             .fontWeight(.semibold)
                             .foregroundStyle(DS.Colors.textPrimary)
                         if !task.subtasks.isEmpty {
-                            let done = task.subtasks.filter { $0.status == .done }.count
+                            let done = task.subtasks.count(where: { $0.status == .done })
                             Text("\(done)/\(task.subtasks.count)")
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
@@ -242,12 +241,11 @@ struct TaskDetailView: View {
         task.isOverdue ? DS.Colors.danger : DS.Colors.textPrimary
     }
 
-    @ViewBuilder
-    private func metadataChip<MenuContent: View>(
+    private func metadataChip(
         icon: String,
         color: Color,
         text: String,
-        @ViewBuilder menu: () -> MenuContent
+        @ViewBuilder menu: () -> some View
     ) -> some View {
         Menu {
             menu()
@@ -303,4 +301,3 @@ private struct CustomPointsSheet: View {
         isPresented = false
     }
 }
-

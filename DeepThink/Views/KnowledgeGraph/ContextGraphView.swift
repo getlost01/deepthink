@@ -27,21 +27,21 @@ private struct ContextEdge: Identifiable {
 
 private func colorForSource(_ source: String) -> Color {
     let s = source.lowercased()
-    if s.contains("slack")  { return Color(hue: 0.57, saturation: 0.7, brightness: 0.9) }
+    if s.contains("slack") { return Color(hue: 0.57, saturation: 0.7, brightness: 0.9) }
     if s.contains("github") { return Color(hue: 0.08, saturation: 0.0, brightness: 0.4) }
-    if s.contains("rss")    { return Color(hue: 0.09, saturation: 0.75, brightness: 0.9) }
-    if s.contains("web")    { return Color(hue: 0.55, saturation: 0.6, brightness: 0.85) }
-    if s.contains("file")   { return Color(hue: 0.38, saturation: 0.55, brightness: 0.75) }
+    if s.contains("rss") { return Color(hue: 0.09, saturation: 0.75, brightness: 0.9) }
+    if s.contains("web") { return Color(hue: 0.55, saturation: 0.6, brightness: 0.85) }
+    if s.contains("file") { return Color(hue: 0.38, saturation: 0.55, brightness: 0.75) }
     return Color(hue: 0.72, saturation: 0.5, brightness: 0.85)
 }
 
 private func labelForSource(_ source: String) -> String {
     let s = source.lowercased()
-    if s.contains("slack")  { return "Slack" }
+    if s.contains("slack") { return "Slack" }
     if s.contains("github") { return "GitHub" }
-    if s.contains("rss")    { return "RSS" }
-    if s.contains("web")    { return "Web" }
-    if s.contains("file")   { return "File" }
+    if s.contains("rss") { return "RSS" }
+    if s.contains("web") { return "Web" }
+    if s.contains("file") { return "File" }
     return "Manual"
 }
 
@@ -70,9 +70,9 @@ struct ContextGraphView: View {
     @State private var isBuilding = false
     @State private var showLegend = false
     @State private var showHint = false
-    @State private var activeSourceFilter: String? = nil
-    @State private var queryDebounceTask: Task<Void, Never>? = nil
-    @State private var thresholdDebounceTask: Task<Void, Never>? = nil
+    @State private var activeSourceFilter: String?
+    @State private var queryDebounceTask: Task<Void, Never>?
+    @State private var thresholdDebounceTask: Task<Void, Never>?
     @State private var isDraggingCanvas = false
 
     private let repulsionStrength: CGFloat = 9000
@@ -238,7 +238,6 @@ struct ContextGraphView: View {
                     lineWidth: query.isEmpty ? 1 : 1.5
                 ))
                 .animation(DS.Animation.quick, value: query.isEmpty)
-
             }
 
             HStack(spacing: DS.Spacing.sm) {
@@ -394,7 +393,7 @@ struct ContextGraphView: View {
                 .font(DS.Font.micro)
                 .foregroundStyle(DS.Colors.textTertiary)
 
-            ForEach([("Slack","slack"),("GitHub","github"),("RSS","rss"),("Web","web"),("File","file"),("Manual","")], id: \.0) { label, key in
+            ForEach([("Slack", "slack"), ("GitHub", "github"), ("RSS", "rss"), ("Web", "web"), ("File", "file"), ("Manual", "")], id: \.0) { label, key in
                 HStack(spacing: DS.Spacing.sm) {
                     Circle().fill(colorForSource(key)).frame(width: 10, height: 10)
                     Text(label).font(DS.Font.caption).foregroundStyle(DS.Colors.textSecondary)
@@ -444,11 +443,31 @@ struct ContextGraphView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                HintStep(number: "1", title: "Indexing", text: "Every knowledge entry is tokenized and scored using TF-IDF — common words are discounted, rare meaningful words get higher weight.")
-                HintStep(number: "2", title: "Similarity", text: "Each pair of entries is compared using cosine similarity on their TF-IDF vectors. Pairs above the threshold become connected by an edge.")
-                HintStep(number: "3", title: "Threshold slider", text: "Lower = more connections (looser matching). Higher = fewer, stronger connections only. Drag it to explore different cluster densities.")
-                HintStep(number: "4", title: "Layout", text: "Nodes are positioned by a force simulation — connected nodes pull together, all nodes push apart — until the graph settles.")
-                HintStep(number: "5", title: "Search highlight", text: "Type a query to run BM25 retrieval. Matching nodes light up with a relevance % badge. Non-matching nodes fade out.")
+                HintStep(
+                    number: "1",
+                    title: "Indexing",
+                    text: "Every knowledge entry is tokenized and scored using TF-IDF — common words are discounted, rare meaningful words get higher weight."
+                )
+                HintStep(
+                    number: "2",
+                    title: "Similarity",
+                    text: "Each pair of entries is compared using cosine similarity on their TF-IDF vectors. Pairs above the threshold become connected by an edge."
+                )
+                HintStep(
+                    number: "3",
+                    title: "Threshold slider",
+                    text: "Lower = more connections (looser matching). Higher = fewer, stronger connections only. Drag it to explore different cluster densities."
+                )
+                HintStep(
+                    number: "4",
+                    title: "Layout",
+                    text: "Nodes are positioned by a force simulation — connected nodes pull together, all nodes push apart — until the graph settles."
+                )
+                HintStep(
+                    number: "5",
+                    title: "Search highlight",
+                    text: "Type a query to run BM25 retrieval. Matching nodes light up with a relevance % badge. Non-matching nodes fade out."
+                )
             }
 
             Divider()
@@ -463,7 +482,10 @@ struct ContextGraphView: View {
     }
 
     // MARK: - Canvas Overlay Controls (unused — zoom controls moved to toolbar row)
-    private var canvasControls: some View { EmptyView() }
+
+    private var canvasControls: some View {
+        EmptyView()
+    }
 
     // MARK: - Canvas
 
@@ -502,11 +524,13 @@ struct ContextGraphView: View {
                     let dx = t.position.x - s.position.x
                     let dy = t.position.y - s.position.y
                     let dist = max(sqrt(dx * dx + dy * dy), 1)
-                    let mid = CGPoint(x: (s.position.x + t.position.x) / 2,
-                                     y: (s.position.y + t.position.y) / 2)
+                    let mid = CGPoint(
+                        x: (s.position.x + t.position.x) / 2,
+                        y: (s.position.y + t.position.y) / 2
+                    )
                     let curvature = min(dist * 0.08, 20.0)
                     let nx = -dy / dist * curvature
-                    let ny =  dx / dist * curvature
+                    let ny = dx / dist * curvature
                     let control = CGPoint(x: mid.x + nx, y: mid.y + ny)
 
                     var path = Path()
@@ -522,12 +546,14 @@ struct ContextGraphView: View {
                     } else {
                         let colorA = colorForSource(s.source)
                         let colorB = colorForSource(t.source)
-                        context.stroke(path,
+                        context.stroke(
+                            path,
                             with: .linearGradient(
                                 Gradient(colors: [colorA.opacity(opacity), colorB.opacity(opacity)]),
                                 startPoint: s.position, endPoint: t.position
                             ),
-                            style: strokeStyle)
+                            style: strokeStyle
+                        )
                     }
                 }
             }
@@ -567,7 +593,7 @@ struct ContextGraphView: View {
 
         let ringColor: Color = {
             if isSelected { return DS.Colors.accent }
-            if isHovered  { return DS.Colors.accent.opacity(0.85) }
+            if isHovered { return DS.Colors.accent.opacity(0.85) }
             if isNeighbor { return DS.Colors.accent.opacity(0.5) }
             if isQueryMatch { return nodeColor }
             return nodeColor.opacity(0.45)
@@ -599,8 +625,10 @@ struct ContextGraphView: View {
                             ? [DS.Colors.accent.opacity(0.85), DS.Colors.accent]
                             : (isNeighbor
                                 ? [nodeColor.opacity(0.7), nodeColor.opacity(0.95)]
-                                : [nodeColor.opacity(hasQueryScore && !isQueryMatch ? 0.15 : 0.65),
-                                   nodeColor.opacity(hasQueryScore && !isQueryMatch ? 0.25 : 0.95)]),
+                                : [
+                                    nodeColor.opacity(hasQueryScore && !isQueryMatch ? 0.15 : 0.65),
+                                    nodeColor.opacity(hasQueryScore && !isQueryMatch ? 0.25 : 0.95)
+                                ]),
                         center: UnitPoint(x: 0.35, y: 0.3),
                         startRadius: 0,
                         endRadius: radius * 0.85
@@ -788,13 +816,15 @@ struct ContextGraphView: View {
                                 .font(DS.Font.micro)
                                 .foregroundStyle(DS.Colors.textTertiary)
                             ForEach(nodes.filter { neighbors.contains($0.id) }.sorted { lhs, rhs in
-                                let lw = edges.first(where: { ($0.fromID == node.id && $0.toID == lhs.id) || ($0.toID == node.id && $0.fromID == lhs.id) })?.weight ?? 0
-                                let rw = edges.first(where: { ($0.fromID == node.id && $0.toID == rhs.id) || ($0.toID == node.id && $0.fromID == rhs.id) })?.weight ?? 0
+                                let lw = edges.first(where: { ($0.fromID == node.id && $0.toID == lhs.id) || ($0.toID == node.id && $0.fromID == lhs.id) })?
+                                    .weight ?? 0
+                                let rw = edges.first(where: { ($0.fromID == node.id && $0.toID == rhs.id) || ($0.toID == node.id && $0.fromID == rhs.id) })?
+                                    .weight ?? 0
                                 return lw > rw
                             }.prefix(10)) { n in
                                 let edgeWeight = edges.first(where: {
                                     ($0.fromID == node.id && $0.toID == n.id) ||
-                                    ($0.toID == node.id && $0.fromID == n.id)
+                                        ($0.toID == node.id && $0.fromID == n.id)
                                 })?.weight ?? 0
                                 Button {
                                     withAnimation(DS.Animation.quick) { selectedNodeID = n.id }
@@ -840,8 +870,10 @@ struct ContextGraphView: View {
                     isDraggingCanvas = true
                     NSCursor.closedHand.push()
                 }
-                offset = CGPoint(x: lastDragOffset.x + value.translation.width,
-                                 y: lastDragOffset.y + value.translation.height)
+                offset = CGPoint(
+                    x: lastDragOffset.x + value.translation.width,
+                    y: lastDragOffset.y + value.translation.height
+                )
             }
             .onEnded { _ in
                 if isDraggingCanvas {
@@ -926,7 +958,9 @@ struct ContextGraphView: View {
         let center = CGPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
         var forces = Array(repeating: CGPoint.zero, count: n)
         var indexMap: [String: Int] = [:]
-        for i in nodes.indices { indexMap[nodes[i].id] = i }
+        for i in nodes.indices {
+            indexMap[nodes[i].id] = i
+        }
 
         for i in 0..<n {
             for j in (i + 1)..<n {
@@ -995,8 +1029,10 @@ struct ContextGraphView: View {
         let centerY = (minY + maxY) / 2
         withAnimation(DS.Animation.standard) {
             scale = newScale; lastScale = newScale
-            offset = CGPoint(x: (canvasSize.width / 2 - centerX) * newScale,
-                             y: (canvasSize.height / 2 - centerY) * newScale)
+            offset = CGPoint(
+                x: (canvasSize.width / 2 - centerX) * newScale,
+                y: (canvasSize.height / 2 - centerY) * newScale
+            )
             lastDragOffset = offset
         }
     }

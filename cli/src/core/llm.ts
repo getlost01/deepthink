@@ -1,17 +1,13 @@
-import { execSync } from "child_process";
-import { homedir } from "os";
-import { existsSync } from "fs";
+import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
 
 let claudePath: string | null = null;
 
 function findClaude(): string {
   if (claudePath) return claudePath;
 
-  const candidates = [
-    `${homedir()}/.local/bin/claude`,
-    "/usr/local/bin/claude",
-    "/opt/homebrew/bin/claude",
-  ];
+  const candidates = [`${homedir()}/.local/bin/claude`, "/usr/local/bin/claude", "/opt/homebrew/bin/claude"];
 
   for (const p of candidates) {
     if (existsSync(p)) {
@@ -31,28 +27,25 @@ interface CLIResponse {
   total_cost_usd?: number;
 }
 
-export async function query(
-  prompt: string,
-  system: string = "",
-  model: string = "claude-sonnet-4-6"
-): Promise<string> {
+export async function query(prompt: string, system: string = "", model: string = "claude-sonnet-4-6"): Promise<string> {
   const claude = findClaude();
 
   const args = [
-    "-p", prompt,
-    "--output-format", "json",
+    "-p",
+    prompt,
+    "--output-format",
+    "json",
     "--no-session-persistence",
     "--dangerously-skip-permissions",
-    "--model", model,
+    "--model",
+    model,
   ];
 
   if (system) {
     args.push("--append-system-prompt", system);
   }
 
-  const escaped = args
-    .map((a) => `'${a.replace(/'/g, "'\\''")}'`)
-    .join(" ");
+  const escaped = args.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
 
   const result = execSync(`${claude} ${escaped}`, {
     encoding: "utf-8",

@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 
 interface SearchResult {
   title: string;
@@ -22,11 +22,7 @@ export async function searchWeb(q: string, numResults = 5): Promise<SearchResult
   ];
 }
 
-async function searchSerper(
-  q: string,
-  apiKey: string,
-  numResults: number
-): Promise<SearchResult[]> {
+async function searchSerper(q: string, apiKey: string, numResults: number): Promise<SearchResult[]> {
   const resp = await fetch("https://google.serper.dev/search", {
     method: "POST",
     headers: { "X-API-KEY": apiKey, "Content-Type": "application/json" },

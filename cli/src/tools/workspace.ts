@@ -1,5 +1,5 @@
 import * as db from "../core/db";
-import { indexEntry, removeEntry } from "../core/embedding-service";
+import { indexEntry } from "../core/embedding-service";
 import { deleteChunksForEntry } from "../core/vector-store";
 
 export interface WorkspaceTool {
@@ -31,7 +31,13 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const all = db.listTasks({ status: p.status, priority: p.priority, project: p.project });
       const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
       const offset = typeof p.offset === "number" ? p.offset : 0;
-      return { tasks: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+      return {
+        tasks: all.slice(offset, offset + limit),
+        total: all.length,
+        limit,
+        offset,
+        hasMore: offset + limit < all.length,
+      };
     },
   },
   {
@@ -66,10 +72,22 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
     execute: (p) => {
       const pk = db.createTask(p.title, {
-        detail: p.detail, status: p.status, priority: p.priority,
-        storyPoints: p.storyPoints, dueDate: p.dueDate, project: p.project,
+        detail: p.detail,
+        status: p.status,
+        priority: p.priority,
+        storyPoints: p.storyPoints,
+        dueDate: p.dueDate,
+        project: p.project,
       });
-      indexEntry({ id: `task:${pk}`, type: "task", title: p.title, content: p.detail ?? "", tags: [], source: "task", importedAt: new Date() });
+      indexEntry({
+        id: `task:${pk}`,
+        type: "task",
+        title: p.title,
+        content: p.detail ?? "",
+        tags: [],
+        source: "task",
+        importedAt: new Date(),
+      });
       return { pk, title: p.title, status: p.status ?? "To Do" };
     },
   },
@@ -97,7 +115,16 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const { ref, ...fields } = p;
       db.updateTask(t.pk, fields);
       const updated = db.getTask(t.pk.toString());
-      if (updated) indexEntry({ id: `task:${t.pk}`, type: "task", title: updated.title, content: updated.detail, tags: [], source: "task", importedAt: updated.modifiedAt });
+      if (updated)
+        indexEntry({
+          id: `task:${t.pk}`,
+          type: "task",
+          title: updated.title,
+          content: updated.detail,
+          tags: [],
+          source: "task",
+          importedAt: updated.modifiedAt,
+        });
       return { pk: t.pk, updated: Object.keys(fields) };
     },
   },
@@ -135,7 +162,13 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const all = db.listNotes({ project: p.project, pinned: p.pinned });
       const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
       const offset = typeof p.offset === "number" ? p.offset : 0;
-      return { notes: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+      return {
+        notes: all.slice(offset, offset + limit),
+        total: all.length,
+        limit,
+        offset,
+        hasMore: offset + limit < all.length,
+      };
     },
   },
   {
@@ -167,9 +200,19 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
     execute: (p) => {
       const pk = db.createNote(p.title, {
-        content: p.content, pinned: p.pinned, project: p.project,
+        content: p.content,
+        pinned: p.pinned,
+        project: p.project,
       });
-      indexEntry({ id: `note:${pk}`, type: "note", title: p.title, content: p.content ?? "", tags: [], source: "note", importedAt: new Date() });
+      indexEntry({
+        id: `note:${pk}`,
+        type: "note",
+        title: p.title,
+        content: p.content ?? "",
+        tags: [],
+        source: "note",
+        importedAt: new Date(),
+      });
       return { pk, title: p.title };
     },
   },
@@ -194,7 +237,16 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const { ref, ...fields } = p;
       db.updateNote(n.pk, fields);
       const updated = db.getNote(n.pk.toString());
-      if (updated) indexEntry({ id: `note:${n.pk}`, type: "note", title: updated.title, content: updated.content, tags: [], source: "note", importedAt: updated.modifiedAt });
+      if (updated)
+        indexEntry({
+          id: `note:${n.pk}`,
+          type: "note",
+          title: updated.title,
+          content: updated.content,
+          tags: [],
+          source: "note",
+          importedAt: updated.modifiedAt,
+        });
       return { pk: n.pk, updated: Object.keys(fields) };
     },
   },
@@ -230,7 +282,13 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const all = db.listProjects();
       const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
       const offset = typeof p.offset === "number" ? p.offset : 0;
-      return { projects: all.slice(offset, offset + limit), total: all.length, limit, offset, hasMore: offset + limit < all.length };
+      return {
+        projects: all.slice(offset, offset + limit),
+        total: all.length,
+        limit,
+        offset,
+        hasMore: offset + limit < all.length,
+      };
     },
   },
   {
@@ -261,7 +319,15 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
     execute: (p) => {
       const pk = db.createProject(p.name, { summary: p.summary, color: p.color });
-      indexEntry({ id: `project:${pk}`, type: "project", title: p.name, content: p.summary ?? "", tags: [], source: "project", importedAt: new Date() });
+      indexEntry({
+        id: `project:${pk}`,
+        type: "project",
+        title: p.name,
+        content: p.summary ?? "",
+        tags: [],
+        source: "project",
+        importedAt: new Date(),
+      });
       return { pk, name: p.name };
     },
   },
@@ -282,11 +348,23 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const pr = db.getProject(p.ref);
       if (!pr) throw new Error(`project not found: ${p.ref}`);
-      if (pr.isArchived && !("archived" in p)) throw new Error(`project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`);
+      if (pr.isArchived && !("archived" in p))
+        throw new Error(
+          `project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`
+        );
       const { ref, ...fields } = p;
       db.updateProject(pr.pk, fields);
       const updated2 = db.getProject(pr.pk.toString());
-      if (updated2) indexEntry({ id: `project:${pr.pk}`, type: "project", title: updated2.name, content: updated2.summary, tags: [], source: "project", importedAt: updated2.modifiedAt });
+      if (updated2)
+        indexEntry({
+          id: `project:${pr.pk}`,
+          type: "project",
+          title: updated2.name,
+          content: updated2.summary,
+          tags: [],
+          source: "project",
+          importedAt: updated2.modifiedAt,
+        });
       return { pk: pr.pk, updated: Object.keys(fields) };
     },
   },
@@ -340,13 +418,24 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       properties: {
         title: { type: "string", description: "Reminder title" },
         notes: { type: "string", description: "Additional notes" },
-        reminderDate: { type: "string", description: "When to remind, in ISO 8601 format (e.g. 2026-05-05T14:00:00). Optional." },
+        reminderDate: {
+          type: "string",
+          description: "When to remind, in ISO 8601 format (e.g. 2026-05-05T14:00:00). Optional.",
+        },
       },
       required: ["title"],
     },
     execute: (p) => {
       const pk = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
-      indexEntry({ id: `reminder:${pk}`, type: "reminder", title: p.title, content: p.notes ?? "", tags: [], source: "reminder", importedAt: new Date() });
+      indexEntry({
+        id: `reminder:${pk}`,
+        type: "reminder",
+        title: p.title,
+        content: p.notes ?? "",
+        tags: [],
+        source: "reminder",
+        importedAt: new Date(),
+      });
       return { pk, title: p.title, reminderDate: p.reminderDate ?? null };
     },
   },
@@ -371,7 +460,16 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       if (fields.reminderDate === "none") fields.reminderDate = null;
       db.updateReminder(r.pk, fields);
       const updated = db.getReminder(r.pk.toString());
-      if (updated) indexEntry({ id: `reminder:${r.pk}`, type: "reminder", title: updated.title, content: updated.notes, tags: [], source: "reminder", importedAt: updated.modifiedAt });
+      if (updated)
+        indexEntry({
+          id: `reminder:${r.pk}`,
+          type: "reminder",
+          title: updated.title,
+          content: updated.notes,
+          tags: [],
+          source: "reminder",
+          importedAt: updated.modifiedAt,
+        });
       return { pk: r.pk, updated: Object.keys(fields) };
     },
   },
@@ -403,18 +501,38 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const activeNotes = db.listNotes({ excludeArchived: true });
       const reminders = db.listReminders();
 
-      const activeProjects = allProjects.filter(p => !p.isArchived);
+      const activeProjects = allProjects.filter((p) => !p.isArchived);
       const tasksByStatus: Record<string, number> = {};
       for (const t of activeTasks) tasksByStatus[t.status] = (tasksByStatus[t.status] ?? 0) + 1;
 
-      const activeReminders = reminders.filter(r => !r.isCompleted);
-      const overdueReminders = activeReminders.filter(r => r.reminderDate && r.reminderDate < new Date());
+      const activeReminders = reminders.filter((r) => !r.isCompleted);
+      const overdueReminders = activeReminders.filter((r) => r.reminderDate && r.reminderDate < new Date());
 
       return {
-        projects: { active: activeProjects.length, archived: allProjects.length - activeProjects.length, items: activeProjects.slice(0, 5).map(p => ({ pk: p.pk, name: p.name, tasks: p.taskCount, notes: p.noteCount })) },
-        tasks: { active: activeTasks.length, byStatus: tasksByStatus, recent: activeTasks.slice(0, 5).map(t => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })) },
-        notes: { active: activeNotes.length, recent: activeNotes.slice(0, 5).map(n => ({ pk: n.pk, title: n.title, project: n.projectName })) },
-        reminders: { total: reminders.length, active: activeReminders.length, overdue: overdueReminders.length, recent: activeReminders.slice(0, 5).map(r => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate })) },
+        projects: {
+          active: activeProjects.length,
+          archived: allProjects.length - activeProjects.length,
+          items: activeProjects
+            .slice(0, 5)
+            .map((p) => ({ pk: p.pk, name: p.name, tasks: p.taskCount, notes: p.noteCount })),
+        },
+        tasks: {
+          active: activeTasks.length,
+          byStatus: tasksByStatus,
+          recent: activeTasks
+            .slice(0, 5)
+            .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })),
+        },
+        notes: {
+          active: activeNotes.length,
+          recent: activeNotes.slice(0, 5).map((n) => ({ pk: n.pk, title: n.title, project: n.projectName })),
+        },
+        reminders: {
+          total: reminders.length,
+          active: activeReminders.length,
+          overdue: overdueReminders.length,
+          recent: activeReminders.slice(0, 5).map((r) => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate })),
+        },
       };
     },
   },

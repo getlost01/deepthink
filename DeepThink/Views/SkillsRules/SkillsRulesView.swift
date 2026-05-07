@@ -8,7 +8,9 @@ struct SkillsListView: View {
     @State private var showDeleteConfirm = false
     @State private var searchText = ""
 
-    private var skillService: SkillFileService { SkillFileService.shared }
+    private var skillService: SkillFileService {
+        SkillFileService.shared
+    }
 
     private var filteredSkills: [SkillFile] {
         if searchText.isEmpty { return skillService.skills }
@@ -23,7 +25,7 @@ struct SkillsListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search skills...")
-                    DSAddButton() {
+                    DSAddButton {
                         createNewSkill()
                     }
                 }
@@ -122,7 +124,9 @@ struct RulesListView: View {
     @State private var showDeleteConfirm = false
     @State private var searchText = ""
 
-    private var ruleService: RuleFileService { RuleFileService.shared }
+    private var ruleService: RuleFileService {
+        RuleFileService.shared
+    }
 
     private var filteredRules: [RuleFile] {
         if searchText.isEmpty { return ruleService.rules }
@@ -137,7 +141,7 @@ struct RulesListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search rules...")
-                    DSAddButton() {
+                    DSAddButton {
                         createNewRule()
                     }
                 }
@@ -229,8 +233,8 @@ private struct SkillRow: View {
     let skill: SkillFile
     let isSelected: Bool
     let action: () -> Void
-    var onRun: (() -> Void)? = nil
-    var onDelete: (() -> Void)? = nil
+    var onRun: (() -> Void)?
+    var onDelete: (() -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -302,7 +306,7 @@ private struct RuleRow: View {
     let rule: RuleFile
     let isSelected: Bool
     let action: () -> Void
-    var onDelete: (() -> Void)? = nil
+    var onDelete: (() -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -396,7 +400,20 @@ private struct SkillInlineEditor: View {
     @State private var showIconPicker = false
     @State private var duplicated = false
 
-    private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis", "Knowledge", "Research", "Finance", "Design", "Data"]
+    private let categories = [
+        "General",
+        "Writing",
+        "Productivity",
+        "Development",
+        "Communication",
+        "Organization",
+        "Analysis",
+        "Knowledge",
+        "Research",
+        "Finance",
+        "Design",
+        "Data"
+    ]
 
     private let icons = [
         "sparkles", "wand.and.stars", "text.bubble", "doc.text",
@@ -618,7 +635,20 @@ private struct RuleInlineEditor: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
 
-    private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis", "Knowledge", "Research", "Finance", "Design", "Data"]
+    private let categories = [
+        "General",
+        "Writing",
+        "Productivity",
+        "Development",
+        "Communication",
+        "Organization",
+        "Analysis",
+        "Knowledge",
+        "Research",
+        "Finance",
+        "Design",
+        "Data"
+    ]
 
     private let icons = [
         "bolt", "bolt.circle", "exclamationmark.triangle", "checkmark.shield",

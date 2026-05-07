@@ -3,16 +3,16 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
-  ListToolsRequestSchema,
   ListResourcesRequestSchema,
+  ListToolsRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { WORKSPACE_TOOLS, WORKSPACE_TOOL_MAP } from "./tools/workspace";
-import { KNOWLEDGE_TOOLS, KNOWLEDGE_TOOL_MAP } from "./tools/knowledge-mcp";
-import { CONFIG_TOOLS, CONFIG_TOOL_MAP } from "./tools/config-mcp";
-import { SMART_TOOLS, SMART_TOOL_MAP } from "./tools/smart-mcp";
 import * as db from "./core/db";
+import { CONFIG_TOOL_MAP, CONFIG_TOOLS } from "./tools/config-mcp";
 import * as knowledge from "./tools/knowledge";
+import { KNOWLEDGE_TOOL_MAP, KNOWLEDGE_TOOLS } from "./tools/knowledge-mcp";
+import { SMART_TOOL_MAP, SMART_TOOLS } from "./tools/smart-mcp";
+import { WORKSPACE_TOOL_MAP, WORKSPACE_TOOLS } from "./tools/workspace";
 
 const ALL_TOOLS = [...SMART_TOOLS, ...WORKSPACE_TOOLS, ...KNOWLEDGE_TOOLS, ...CONFIG_TOOLS];
 const ALL_TOOL_MAP = { ...SMART_TOOL_MAP, ...WORKSPACE_TOOL_MAP, ...KNOWLEDGE_TOOL_MAP, ...CONFIG_TOOL_MAP };
@@ -52,25 +52,72 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 const RESOURCES = [
-  { uri: "deepthink://tasks", name: "Tasks", description: "Active (non-archived) tasks", fn: () => db.listTasks({ excludeArchived: true }) },
-  { uri: "deepthink://notes", name: "Notes", description: "Active (non-archived) notes", fn: () => db.listNotes({ excludeArchived: true }) },
-  { uri: "deepthink://projects", name: "Projects", description: "Active (non-archived) projects", fn: () => db.listProjects().filter(p => !p.isArchived) },
+  {
+    uri: "deepthink://tasks",
+    name: "Tasks",
+    description: "Active (non-archived) tasks",
+    fn: () => db.listTasks({ excludeArchived: true }),
+  },
+  {
+    uri: "deepthink://notes",
+    name: "Notes",
+    description: "Active (non-archived) notes",
+    fn: () => db.listNotes({ excludeArchived: true }),
+  },
+  {
+    uri: "deepthink://projects",
+    name: "Projects",
+    description: "Active (non-archived) projects",
+    fn: () => db.listProjects().filter((p) => !p.isArchived),
+  },
   { uri: "deepthink://reminders", name: "Reminders", description: "All reminders", fn: () => db.listReminders() },
-  { uri: "deepthink://knowledge/stats", name: "Knowledge Stats", description: "Knowledge base overview", fn: () => knowledge.knowledgeStats() },
-  { uri: "deepthink://knowledge/projects", name: "Knowledge Projects", description: "All knowledge projects", fn: () => knowledge.listProjects() },
-  { uri: "deepthink://knowledge/integrations", name: "Integrations", description: "All integration sources and channels", fn: () => knowledge.listIntegrations() },
-  { uri: "deepthink://overview", name: "Overview", description: "Compact system overview (~200 tokens)", fn: () => {
-    const projects = db.listProjects().filter(p => !p.isArchived);
-    const tasks = db.listTasks({ excludeArchived: true });
-    const ks = knowledge.knowledgeStats();
-    const byStatus: Record<string, number> = {};
-    for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
-    return { projects: projects.length, tasks: { total: tasks.length, byStatus }, notes: db.listNotes({ excludeArchived: true }).length, reminders: db.listReminders().length, knowledge: ks, recentTasks: tasks.slice(0, 3).map(t => `[${t.status}] ${t.title}`) };
-  }},
+  {
+    uri: "deepthink://knowledge/stats",
+    name: "Knowledge Stats",
+    description: "Knowledge base overview",
+    fn: () => knowledge.knowledgeStats(),
+  },
+  {
+    uri: "deepthink://knowledge/projects",
+    name: "Knowledge Projects",
+    description: "All knowledge projects",
+    fn: () => knowledge.listProjects(),
+  },
+  {
+    uri: "deepthink://knowledge/integrations",
+    name: "Integrations",
+    description: "All integration sources and channels",
+    fn: () => knowledge.listIntegrations(),
+  },
+  {
+    uri: "deepthink://overview",
+    name: "Overview",
+    description: "Compact system overview (~200 tokens)",
+    fn: () => {
+      const projects = db.listProjects().filter((p) => !p.isArchived);
+      const tasks = db.listTasks({ excludeArchived: true });
+      const ks = knowledge.knowledgeStats();
+      const byStatus: Record<string, number> = {};
+      for (const t of tasks) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
+      return {
+        projects: projects.length,
+        tasks: { total: tasks.length, byStatus },
+        notes: db.listNotes({ excludeArchived: true }).length,
+        reminders: db.listReminders().length,
+        knowledge: ks,
+        recentTasks: tasks.slice(0, 3).map((t) => `[${t.status}] ${t.title}`),
+      };
+    },
+  },
 ];
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-  resources: RESOURCES.map((r) => ({ uri: r.uri, name: r.name, description: r.description, mimeType: "application/json" })),
+  resources: RESOURCES.map((r) => ({
+    uri: r.uri,
+    name: r.name,
+    description: r.description,
+    mimeType: "application/json",
+  })),
 }));
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {

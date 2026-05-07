@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct RecentView: View {
     @Environment(AppState.self) private var appState
@@ -13,15 +13,17 @@ struct RecentView: View {
     @State private var insightsRefreshID = UUID()
     @State private var showDailyBrief = false
 
-    private var knowledge: KnowledgeService { KnowledgeService.shared }
+    private var knowledge: KnowledgeService {
+        KnowledgeService.shared
+    }
 
     private var todayRemindersCount: Int {
         let startOfToday = Calendar.current.startOfDay(for: Date())
         let endOfToday = Calendar.current.date(byAdding: .day, value: 1, to: startOfToday) ?? Date()
-        return reminders.filter { reminder in
+        return reminders.count(where: { reminder in
             guard let date = reminder.reminderDate else { return false }
             return date >= startOfToday && date < endOfToday
-        }.count
+        })
     }
 
     private var todayItems: [RecentItem] {
@@ -99,9 +101,9 @@ struct RecentView: View {
 
     private var summaryLine: String {
         let todayCount = todayItems.count
-        let noteCount = todayItems.filter { $0.kind == .note }.count
-        let taskDoneCount = todayItems.filter { $0.kind == .task && $0.detail == "Completed" }.count
-        let knowledgeCount = todayItems.filter { $0.kind == .knowledge }.count
+        let noteCount = todayItems.count(where: { $0.kind == .note })
+        let taskDoneCount = todayItems.count(where: { $0.kind == .task && $0.detail == "Completed" })
+        let knowledgeCount = todayItems.count(where: { $0.kind == .knowledge })
 
         var parts: [String] = []
         if noteCount > 0 { parts.append("\(noteCount) note\(noteCount == 1 ? "" : "s") edited") }
@@ -156,19 +158,19 @@ struct RecentView: View {
                         color: DS.Colors.accent
                     )
                     quickStat(
-                        value: "\(tasks.filter { $0.status == .inProgress }.count)",
+                        value: "\(tasks.count(where: { $0.status == .inProgress }))",
                         label: "In Progress",
                         icon: "circle.lefthalf.filled",
                         color: DS.Colors.amber
                     )
                     quickStat(
-                        value: "\(tasks.filter { $0.isOverdue }.count)",
+                        value: "\(tasks.count(where: { $0.isOverdue }))",
                         label: "Overdue",
                         icon: "exclamationmark.triangle",
                         color: DS.Colors.danger
                     )
                     quickStat(
-                        value: "\(todayItems.filter { $0.kind == .task && $0.detail == "Completed" }.count)",
+                        value: "\(todayItems.count(where: { $0.kind == .task && $0.detail == "Completed" }))",
                         label: "Done Today",
                         icon: "checkmark.circle",
                         color: DS.Colors.success
@@ -199,7 +201,7 @@ struct RecentView: View {
                     )
                 }
 
-                if todayItems.isEmpty && yesterdayItems.isEmpty && thisWeekItems.isEmpty {
+                if todayItems.isEmpty, yesterdayItems.isEmpty, thisWeekItems.isEmpty {
                     DSEmptyState(
                         icon: "clock.arrow.circlepath",
                         title: "No Recent Activity",
@@ -221,7 +223,6 @@ struct RecentView: View {
         return "\(timeOfDay) — \(dateStr)"
     }
 
-    @ViewBuilder
     private func quickStat(value: String, label: String, icon: String, color: Color) -> some View {
         VStack(spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.xs) {
@@ -336,12 +337,14 @@ struct RecentItem: Identifiable {
     let date: Date
     let kind: RecentItemKind
     let entityID: UUID?
-    var knowledgeEntryID: String? = nil
+    var knowledgeEntryID: String?
     var isArchived: Bool = false
 }
 
 enum RecentItemKind {
-    case note, task, knowledge
+    case note
+    case task
+    case knowledge
 }
 
 // MARK: - Row
@@ -406,7 +409,6 @@ private struct RecentItemRow: View {
         .animation(DS.Animation.quick, value: isHovered)
     }
 
-    @ViewBuilder
     private var kindBadge: some View {
         Text(item.kind.label)
             .font(.system(size: DS.IconSize.xs, weight: .medium))
@@ -446,11 +448,10 @@ private struct AgentsSection: View {
     var onRan: () -> Void
 
     private let agents: [(id: String, name: String, icon: String, hours: Int, knowledgeKey: String)] = [
-        ("daily-brief",  "Daily Brief",        "sun.horizon",                 20,  "daily-brief"),
-        ("stale-tasks",  "Stale Task Scan",     "clock.badge.exclamationmark", 168, "stale-task"),
-        ("insight-scan", "Proactive Insights",  "sparkles",                    4,   "insight"),
+        ("daily-brief", "Daily Brief", "sun.horizon", 20, "daily-brief"),
+        ("stale-tasks", "Stale Task Scan", "clock.badge.exclamationmark", 168, "stale-task"),
+        ("insight-scan", "Proactive Insights", "sparkles", 4, "insight")
     ]
-
 
     @State private var lastRun: [String: String] = [:]
     @State private var outputs: [String: String] = [:]
@@ -586,7 +587,8 @@ private struct AgentsSection: View {
     private func loadState() {
         let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
         if let data = try? Data(contentsOf: url),
-           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data)
+        {
             lastRun = state.lastRun
         }
         loadOutputs()
@@ -629,7 +631,8 @@ private struct AgentsSection: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // If content is a JSON object, extract "suggestion" or "result" field
         if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
             if let s = json["suggestion"] as? String { return s }
             if let s = json["result"] as? String { return s }
             if let s = json["message"] as? String { return s }
@@ -643,7 +646,8 @@ private struct AgentsSection: View {
                 .joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            {
                 if let s = json["suggestion"] as? String { return s }
                 if let s = json["result"] as? String { return s }
                 return ""
@@ -749,7 +753,7 @@ private struct InsightsStrip: View {
     @State private var isScanning = false
 
     var body: some View {
-        if insights.isEmpty && !isScanning { EmptyView() } else {
+        if insights.isEmpty, !isScanning { EmptyView() } else {
             VStack(spacing: 0) {
                 // Header row
                 Button {
@@ -786,7 +790,7 @@ private struct InsightsStrip: View {
                 }
                 .buttonStyle(.plainPointer)
 
-                if isExpanded && !insights.isEmpty {
+                if isExpanded, !insights.isEmpty {
                     Divider()
                     ForEach(Array(insights.enumerated()), id: \.element.id) { idx, insight in
                         if idx > 0 { Divider().padding(.leading, 40) }
@@ -829,17 +833,17 @@ private struct InsightsStrip: View {
 
     private func severityIcon(_ s: String) -> String {
         switch s {
-        case "action": return "exclamationmark.circle.fill"
-        case "warning": return "exclamationmark.triangle.fill"
-        default: return "info.circle.fill"
+        case "action": "exclamationmark.circle.fill"
+        case "warning": "exclamationmark.triangle.fill"
+        default: "info.circle.fill"
         }
     }
 
     private func severityColor(_ s: String) -> Color {
         switch s {
-        case "action": return DS.Colors.danger
-        case "warning": return .orange
-        default: return DS.Colors.accent
+        case "action": DS.Colors.danger
+        case "warning": .orange
+        default: DS.Colors.accent
         }
     }
 

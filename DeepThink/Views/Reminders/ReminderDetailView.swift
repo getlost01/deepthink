@@ -58,7 +58,10 @@ struct ReminderDetailView: View {
                                     if let newDate {
                                         let existing = reminder.reminderDate
                                         let cal = Calendar.current
-                                        let hour = existing.map { cal.component(.hour, from: $0) } ?? cal.component(.hour, from: cal.date(byAdding: .hour, value: 1, to: Date())!)
+                                        let hour = existing.map { cal.component(.hour, from: $0) } ?? cal.component(
+                                            .hour,
+                                            from: cal.date(byAdding: .hour, value: 1, to: Date())!
+                                        )
                                         let minute = existing.map { cal.component(.minute, from: $0) } ?? 0
                                         var comps = cal.dateComponents([.year, .month, .day], from: newDate)
                                         comps.hour = hour
@@ -215,14 +218,14 @@ struct ReminderDetailView: View {
 private struct ReminderTimePicker: View {
     @Binding var date: Date
     @Binding var isPresented: Bool
-    @State private var editingDate: Date = Date()
+    @State private var editingDate: Date = .init()
 
     private let quickTimes: [(String, Int, Int)] = [
         ("9 AM", 9, 0),
         ("12 PM", 12, 0),
         ("3 PM", 15, 0),
         ("6 PM", 18, 0),
-        ("9 PM", 21, 0),
+        ("9 PM", 21, 0)
     ]
 
     var body: some View {
@@ -308,6 +311,6 @@ private struct ReminderTimePicker: View {
     private func isTimeSelected(hour: Int, minute: Int) -> Bool {
         let cal = Calendar.current
         return cal.component(.hour, from: date) == hour &&
-               cal.component(.minute, from: date) == minute
+            cal.component(.minute, from: date) == minute
     }
 }

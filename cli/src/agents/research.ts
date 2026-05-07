@@ -1,10 +1,10 @@
-import { Agent } from "./base";
-import { Writer } from "./writer";
-import { Planner } from "./planner";
+import { retrieveContextHybrid } from "../core/context-engine";
+import * as db from "../core/db";
 import * as knowledge from "../tools/knowledge";
 import * as search from "../tools/search";
-import * as db from "../core/db";
-import { retrieveContextHybrid } from "../core/context-engine";
+import { Agent } from "./base";
+import { Planner } from "./planner";
+import { Writer } from "./writer";
 
 interface ResearchQuestion {
   question: string;
@@ -22,7 +22,8 @@ export interface ResearchResult {
 
 export class ResearchPipeline extends Agent {
   name = "research";
-  systemPrompt = "You are a research assistant. Extract key facts, synthesize findings, and write clear structured notes.";
+  systemPrompt =
+    "You are a research assistant. Extract key facts, synthesize findings, and write clear structured notes.";
 
   private writer = new Writer();
   private planner = new Planner();
@@ -45,7 +46,13 @@ export class ResearchPipeline extends Agent {
 
       const localCtx = retrieveContextHybrid(q, { topK: 3, maxTokens: 800 });
       if (localCtx.parts.length > 0) {
-        sources.push({ title: "Local Knowledge", content: localCtx.parts.map((p) => `**${p.title}**: ${p.content}`).join("\n").slice(0, 800) });
+        sources.push({
+          title: "Local Knowledge",
+          content: localCtx.parts
+            .map((p) => `**${p.title}**: ${p.content}`)
+            .join("\n")
+            .slice(0, 800),
+        });
       }
 
       const webHits = await search.searchWeb(q, depth === "deep" ? 5 : 3);
@@ -67,7 +74,11 @@ export class ResearchPipeline extends Agent {
 
     let savedTo: string | undefined;
     if (opts.saveToKnowledge !== false) {
-      const channel = topic.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "").slice(0, 40);
+      const channel = topic
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")
+        .slice(0, 40);
       knowledge.saveIntegrationData("research", channel, noteContent);
       savedTo = `research/${channel}`;
 
@@ -84,14 +95,11 @@ export class ResearchPipeline extends Agent {
       `Generate exactly ${count} focused research questions for: "${topic}"\nOutput ONLY a JSON array of strings.`
     );
     try {
-      const s = res.indexOf("["), e = res.lastIndexOf("]") + 1;
+      const s = res.indexOf("["),
+        e = res.lastIndexOf("]") + 1;
       return (JSON.parse(res.slice(s, e)) as string[]).slice(0, count);
     } catch {
-      return [
-        topic,
-        `What are the key aspects of ${topic}?`,
-        `What are best practices for ${topic}?`,
-      ].slice(0, count);
+      return [topic, `What are the key aspects of ${topic}?`, `What are best practices for ${topic}?`].slice(0, count);
     }
   }
 

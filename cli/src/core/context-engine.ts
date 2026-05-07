@@ -1,15 +1,15 @@
-import { readFileSync, readdirSync, existsSync } from "fs";
-import { join, relative } from "path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
-import { semanticSearch, type SemanticResult } from "./embedding-service";
+import { type SemanticResult, semanticSearch } from "./embedding-service";
 import {
-  type VectorChunk,
   allChunks,
-  simpleHash,
-  semanticChunk,
-  upsertChunks,
   contentHash as getContentHash,
   pruneStaleEntries,
+  semanticChunk,
+  simpleHash,
+  upsertChunks,
+  type VectorChunk,
 } from "./vector-store";
 
 // ── Types ──
@@ -24,7 +24,15 @@ export interface IndexedEntry {
 }
 
 export interface ContextResult {
-  parts: { entryId: string; title: string; content: string; tags: string[]; source: string; score: number; chunk?: string }[];
+  parts: {
+    entryId: string;
+    title: string;
+    content: string;
+    tags: string[];
+    source: string;
+    score: number;
+    chunk?: string;
+  }[];
   totalTokensEstimate: number;
   entriesScanned: number;
   entriesReturned: number;
@@ -33,22 +41,136 @@ export interface ContextResult {
 // ── Stopwords ──
 
 const STOPWORDS = new Set([
-  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-  "have", "has", "had", "do", "does", "did", "will", "would", "could",
-  "should", "may", "might", "shall", "can", "need", "dare", "ought",
-  "and", "but", "or", "nor", "not", "so", "yet", "both", "either",
-  "neither", "each", "every", "all", "any", "few", "more", "most",
-  "other", "some", "such", "no", "only", "own", "same", "than",
-  "too", "very", "just", "because", "as", "until", "while", "of",
-  "at", "by", "for", "with", "about", "against", "between", "through",
-  "during", "before", "after", "above", "below", "to", "from", "up",
-  "down", "in", "out", "on", "off", "over", "under", "again", "further",
-  "then", "once", "here", "there", "when", "where", "why", "how",
-  "what", "which", "who", "whom", "this", "that", "these", "those",
-  "i", "me", "my", "myself", "we", "our", "ours", "ourselves",
-  "you", "your", "yours", "yourself", "yourselves", "he", "him",
-  "his", "himself", "she", "her", "hers", "herself", "it", "its",
-  "itself", "they", "them", "their", "theirs", "themselves",
+  "a",
+  "an",
+  "the",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "shall",
+  "can",
+  "need",
+  "dare",
+  "ought",
+  "and",
+  "but",
+  "or",
+  "nor",
+  "not",
+  "so",
+  "yet",
+  "both",
+  "either",
+  "neither",
+  "each",
+  "every",
+  "all",
+  "any",
+  "few",
+  "more",
+  "most",
+  "other",
+  "some",
+  "such",
+  "no",
+  "only",
+  "own",
+  "same",
+  "than",
+  "too",
+  "very",
+  "just",
+  "because",
+  "as",
+  "until",
+  "while",
+  "of",
+  "at",
+  "by",
+  "for",
+  "with",
+  "about",
+  "against",
+  "between",
+  "through",
+  "during",
+  "before",
+  "after",
+  "above",
+  "below",
+  "to",
+  "from",
+  "up",
+  "down",
+  "in",
+  "out",
+  "on",
+  "off",
+  "over",
+  "under",
+  "again",
+  "further",
+  "then",
+  "once",
+  "here",
+  "there",
+  "when",
+  "where",
+  "why",
+  "how",
+  "what",
+  "which",
+  "who",
+  "whom",
+  "this",
+  "that",
+  "these",
+  "those",
+  "i",
+  "me",
+  "my",
+  "myself",
+  "we",
+  "our",
+  "ours",
+  "ourselves",
+  "you",
+  "your",
+  "yours",
+  "yourself",
+  "yourselves",
+  "he",
+  "him",
+  "his",
+  "himself",
+  "she",
+  "her",
+  "hers",
+  "herself",
+  "it",
+  "its",
+  "itself",
+  "they",
+  "them",
+  "their",
+  "theirs",
+  "themselves",
 ]);
 
 // ── Stemmer ──
@@ -58,8 +180,8 @@ function stem(word: string): string {
   if (word.length > 4 && word.endsWith("ies")) return word.slice(0, -2);
   if (word.length > 3 && word.endsWith("ss")) return word;
   if (word.length > 2 && word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
-  if (word.length > 6 && word.endsWith("ational")) return word.slice(0, -7) + "ate";
-  if (word.length > 5 && word.endsWith("ation")) return word.slice(0, -5) + "ate";
+  if (word.length > 6 && word.endsWith("ational")) return `${word.slice(0, -7)}ate`;
+  if (word.length > 5 && word.endsWith("ation")) return `${word.slice(0, -5)}ate`;
   if (word.length > 4 && word.endsWith("ness")) return word.slice(0, -4);
   if (word.length > 4 && word.endsWith("ment")) return word.slice(0, -4);
   if (word.length > 4 && word.endsWith("ting")) return word.slice(0, -3);
@@ -159,7 +281,7 @@ function loadAllEntries(): IndexedEntry[] {
 
           const dateStr = meta.importedAt ?? meta.imported_at ?? meta.importedat;
           const parsed = dateStr ? new Date(dateStr) : new Date();
-          const importedAt = isNaN(parsed.getTime()) ? new Date() : parsed;
+          const importedAt = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 
           entries.push({
             id: relative(KNOWLEDGE_DIR, join(dir, item.name)),
@@ -251,15 +373,21 @@ function ensureIndexed(entries: IndexedEntry[]): void {
     }
 
     const chunks = semanticChunk(
-      entry.content, entry.id, "knowledge", entry.title,
-      entry.tags, entry.source, entry.importedAt, hash
+      entry.content,
+      entry.id,
+      "knowledge",
+      entry.title,
+      entry.tags,
+      entry.source,
+      entry.importedAt,
+      hash
     );
     upsertChunks(chunks);
     _hashCache.set(entry.id, hash);
     _indexVersion++;
     _tfidfCache = null; // invalidate on write
   }
-  const validIds = new Set(entries.map(e => e.id));
+  const validIds = new Set(entries.map((e) => e.id));
   pruneStaleEntries(validIds, "knowledge");
 }
 
@@ -304,10 +432,7 @@ function ensureWorkspaceIndexed(tasks: db.TaskRow[], notes: db.NoteRow[]): void 
     _hashCache.set(entryId, hash);
   }
 
-  const validIds = new Set([
-    ...tasks.map((t) => `task:${t.pk}`),
-    ...notes.map((n) => `note:${n.pk}`),
-  ]);
+  const validIds = new Set([...tasks.map((t) => `task:${t.pk}`), ...notes.map((n) => `note:${n.pk}`)]);
   pruneStaleEntries(validIds, "workspace");
 }
 
@@ -326,7 +451,8 @@ export function retrieveContext(
   ensureIndexed(entries);
 
   const queryTerms = tokenize(query);
-  if (queryTerms.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
+  if (queryTerms.length === 0)
+    return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
 
   const queryTermSet = new Set(queryTerms);
   const { docFreq, docTerms, entryCount: docCount } = getTFIDF(entries);
@@ -352,7 +478,7 @@ export function retrieveContext(
       const df = docFreq[term] ?? 0;
       const idf = Math.log((docCount - df + 0.5) / (df + 0.5) + 1.0);
       const termTF = tf[term] ?? 0;
-      const tfNorm = (termTF * (k1 + 1)) / (termTF + k1 * (1 - b + b * docLen / avgDocLen));
+      const tfNorm = (termTF * (k1 + 1)) / (termTF + k1 * (1 - b + (b * docLen) / avgDocLen));
       score += idf * tfNorm * qFreq;
     }
 
@@ -451,7 +577,7 @@ export function retrieveContextHybrid(
   function resolveEntryId(embeddingID: string): string | undefined {
     if (entryMap.has(embeddingID)) return embeddingID;
     for (const id of entryMap.keys()) {
-      if (embeddingID.endsWith("/" + id) || embeddingID.endsWith("/" + id.split("/").pop())) {
+      if (embeddingID.endsWith(`/${id}`) || embeddingID.endsWith(`/${id.split("/").pop()}`)) {
         return id;
       }
     }
@@ -519,7 +645,12 @@ export function retrieveContextHybrid(
 export function workspaceContext(
   query: string,
   maxItems = 5,
-  preloaded?: { tasks: db.TaskRow[]; notes: db.NoteRow[]; reminders: ReturnType<typeof db.listReminders>; semantic: SemanticResult[] }
+  preloaded?: {
+    tasks: db.TaskRow[];
+    notes: db.NoteRow[];
+    reminders: ReturnType<typeof db.listReminders>;
+    semantic: SemanticResult[];
+  }
 ): {
   tasks: { pk: number; title: string; status: string; priority: string; score: number; isArchived?: boolean }[];
   notes: { pk: number; title: string; project: string | null; score: number; isArchived?: boolean }[];
@@ -578,25 +709,49 @@ export function workspaceContext(
     .map((t, rank) => ({ ...t, score: rrfScore(rank, `task:${t.pk}`) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, maxItems)
-    .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: Math.round(t.score * 10000) / 10000, ...(t.isArchived ? { isArchived: true } : {}) }));
+    .map((t) => ({
+      pk: t.pk,
+      title: t.title,
+      status: t.status,
+      priority: t.priority,
+      score: Math.round(t.score * 10000) / 10000,
+      ...(t.isArchived ? { isArchived: true } : {}),
+    }));
 
   const scoredNotes = notesBM25
     .map((n, rank) => ({ ...n, score: rrfScore(rank, `note:${n.pk}`) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, maxItems)
-    .map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: Math.round(n.score * 10000) / 10000, ...(n.isArchived ? { isArchived: true } : {}) }));
+    .map((n) => ({
+      pk: n.pk,
+      title: n.title,
+      project: n.projectName,
+      score: Math.round(n.score * 10000) / 10000,
+      ...(n.isArchived ? { isArchived: true } : {}),
+    }));
 
   const scoredReminders = remindersBM25
     .map((r, rank) => ({ ...r, score: rrfScore(rank, `reminder:${r.pk}`) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, maxItems)
-    .map((r) => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate, score: Math.round(r.score * 10000) / 10000 }));
+    .map((r) => ({
+      pk: r.pk,
+      title: r.title,
+      reminderDate: r.reminderDate,
+      score: Math.round(r.score * 10000) / 10000,
+    }));
 
   const totalChars = [...scoredTasks, ...scoredNotes, ...scoredReminders].reduce(
-    (s, item) => s + JSON.stringify(item).length, 0
+    (s, item) => s + JSON.stringify(item).length,
+    0
   );
 
-  return { tasks: scoredTasks, notes: scoredNotes, reminders: scoredReminders, totalTokensEstimate: Math.round(totalChars / 4) };
+  return {
+    tasks: scoredTasks,
+    notes: scoredNotes,
+    reminders: scoredReminders,
+    totalTokensEstimate: Math.round(totalChars / 4),
+  };
 }
 
 // ── Unified Search (workspace + knowledge, BM25 + semantic, RRF-fused) ──
@@ -640,7 +795,16 @@ export function unifiedSearch(
     ws.tasks.forEach((t, rank) => {
       const key = `task:${t.pk}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
-      if (!resultMap.has(key)) resultMap.set(key, { type: "task", pk: t.pk, title: t.title, content: "", status: t.status, priority: t.priority, score: 0 });
+      if (!resultMap.has(key))
+        resultMap.set(key, {
+          type: "task",
+          pk: t.pk,
+          title: t.title,
+          content: "",
+          status: t.status,
+          priority: t.priority,
+          score: 0,
+        });
     });
   }
 
@@ -648,7 +812,8 @@ export function unifiedSearch(
     ws.notes.forEach((n, rank) => {
       const key = `note:${n.pk}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
-      if (!resultMap.has(key)) resultMap.set(key, { type: "note", pk: n.pk, title: n.title, content: "", project: n.project, score: 0 });
+      if (!resultMap.has(key))
+        resultMap.set(key, { type: "note", pk: n.pk, title: n.title, content: "", project: n.project, score: 0 });
     });
   }
 
@@ -656,7 +821,8 @@ export function unifiedSearch(
     ws.reminders.forEach((r, rank) => {
       const key = `reminder:${r.pk}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
-      if (!resultMap.has(key)) resultMap.set(key, { type: "reminder", pk: r.pk, title: r.title, content: "", score: 0 });
+      if (!resultMap.has(key))
+        resultMap.set(key, { type: "reminder", pk: r.pk, title: r.title, content: "", score: 0 });
     });
   }
 
@@ -666,7 +832,15 @@ export function unifiedSearch(
     kn.parts.forEach((p, rank) => {
       const key = `knowledge:${p.entryId}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
-      if (!resultMap.has(key)) resultMap.set(key, { type: "knowledge", title: p.title, content: p.content, tags: p.tags, source: p.source, score: 0 });
+      if (!resultMap.has(key))
+        resultMap.set(key, {
+          type: "knowledge",
+          title: p.title,
+          content: p.content,
+          tags: p.tags,
+          source: p.source,
+          score: 0,
+        });
     });
   }
 

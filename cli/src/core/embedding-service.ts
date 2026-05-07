@@ -1,17 +1,16 @@
-import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
-import { execSync, execFileSync } from "child_process";
+import { execFileSync, execSync } from "node:child_process";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 import {
-  type VectorChunk,
   chunksWithEmbeddings,
-  upsertChunks,
   deleteChunksForEntry,
+  embeddedCount,
   contentHash as getContentHash,
   pruneStaleEntries,
-  embeddedCount,
-  simpleHash,
   semanticChunk,
+  simpleHash,
+  upsertChunks,
 } from "./vector-store";
 
 const CACHE_DIR = join(DEEPTHINK_ROOT, ".cache");
@@ -58,7 +57,7 @@ function embedQuery(text: string): Float32Array | null {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const values = result.trim().split(",").map(Number);
-    if (values.length > 0 && !values.some(isNaN)) return new Float32Array(values);
+    if (values.length > 0 && !values.some(Number.isNaN)) return new Float32Array(values);
     return null;
   } catch {
     return null;
@@ -67,7 +66,9 @@ function embedQuery(text: string): Float32Array | null {
 
 function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array): number {
   if (a.length !== b.length || a.length === 0) return 0;
-  let dot = 0, normA = 0, normB = 0;
+  let dot = 0,
+    normA = 0,
+    normB = 0;
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
     normA += a[i] * a[i];
@@ -95,11 +96,17 @@ export function indexEntry(entry: IndexableEntry): void {
   if (existing !== null && existing === hash) return;
 
   const chunks = semanticChunk(
-    entry.content, entry.id, entry.type, entry.title,
-    entry.tags, entry.source, entry.importedAt, hash
+    entry.content,
+    entry.id,
+    entry.type,
+    entry.title,
+    entry.tags,
+    entry.source,
+    entry.importedAt,
+    hash
   );
 
-  const withEmbeddings = chunks.map(chunk => {
+  const withEmbeddings = chunks.map((chunk) => {
     const text = `${entry.title}. ${chunk.content.slice(0, 500)}`;
     const embedding = embedQuery(text);
     return { ...chunk, embedding };
@@ -113,7 +120,7 @@ export function indexEntries(entries: IndexableEntry[]): void {
   for (const entry of entries) {
     indexEntry(entry);
   }
-  const validIds = new Set(entries.map(e => e.id));
+  const validIds = new Set(entries.map((e) => e.id));
   pruneStaleEntries(validIds, entries[0]?.type ?? "knowledge");
 }
 
@@ -128,11 +135,7 @@ export interface SemanticResult {
   score: number;
 }
 
-export function semanticSearch(
-  query: string,
-  topK: number = 10,
-  scope?: string[]
-): SemanticResult[] {
+export function semanticSearch(query: string, topK: number = 10, scope?: string[]): SemanticResult[] {
   const queryVector = embedQuery(query);
   if (!queryVector) return [];
 
@@ -148,9 +151,7 @@ export function semanticSearch(
     }
   }
 
-  return results
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  return results.sort((a, b) => b.score - a.score).slice(0, topK);
 }
 
 export function embeddingStats(): { indexed: number; available: boolean } {

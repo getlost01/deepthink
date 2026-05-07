@@ -1,9 +1,9 @@
-import { Agent } from "./base";
-import { WORKSPACE_TOOL_MAP } from "../tools/workspace";
+import { retrieveContextHybrid, unifiedSearch } from "../core/context-engine";
+import * as fileTools from "../tools/file";
 import * as knowledge from "../tools/knowledge";
 import * as search from "../tools/search";
-import * as fileTools from "../tools/file";
-import { unifiedSearch, retrieveContextHybrid } from "../core/context-engine";
+import { WORKSPACE_TOOL_MAP } from "../tools/workspace";
+import { Agent } from "./base";
 
 const REACT_TOOLS: Record<string, { description: string; fn: (p: any) => any }> = {};
 
@@ -11,30 +11,31 @@ for (const [name, tool] of Object.entries(WORKSPACE_TOOL_MAP)) {
   REACT_TOOLS[name] = { description: tool.description, fn: (p) => tool.execute(p) };
 }
 
-REACT_TOOLS["knowledge_search"] = {
+REACT_TOOLS.knowledge_search = {
   description: "Hybrid search (BM25 + semantic) on knowledge base. params: {query: string, topK?: number}",
   fn: (p: { query: string; topK?: number }) => retrieveContextHybrid(p.query, { topK: p.topK ?? 5 }),
 };
-REACT_TOOLS["unified_search"] = {
-  description: "Search across tasks, notes, reminders, and knowledge in one ranked list. params: {query: string, maxItems?: number, types?: string[]}",
+REACT_TOOLS.unified_search = {
+  description:
+    "Search across tasks, notes, reminders, and knowledge in one ranked list. params: {query: string, maxItems?: number, types?: string[]}",
   fn: (p: { query: string; maxItems?: number; types?: Array<"task" | "note" | "reminder" | "knowledge"> }) =>
     unifiedSearch(p.query, { maxItems: p.maxItems ?? 8, types: p.types }),
 };
-REACT_TOOLS["knowledge_save"] = {
+REACT_TOOLS.knowledge_save = {
   description: "Save content to knowledge base. params: {source: string, channel: string, content: string}",
   fn: (p: { source: string; channel: string; content: string }) =>
     knowledge.saveIntegrationData(p.source, p.channel, p.content),
 };
-REACT_TOOLS["read_file"] = {
+REACT_TOOLS.read_file = {
   description: "Read a sandbox file. params: {path: string}",
   fn: (p: { path: string }) => fileTools.readFile(p.path),
 };
-REACT_TOOLS["write_file"] = {
+REACT_TOOLS.write_file = {
   description: "Write a sandbox file. params: {content: string, filename: string, category?: string}",
   fn: (p: { content: string; filename: string; category?: string }) =>
     fileTools.writeFile(p.content, p.filename, (p.category as any) ?? "outputs"),
 };
-REACT_TOOLS["search_web"] = {
+REACT_TOOLS.search_web = {
   description: "Search the web. Requires DEEPTHINK_SEARCH_API. params: {query: string, numResults?: number}",
   fn: (p: { query: string; numResults?: number }) => search.searchWeb(p.query, p.numResults ?? 5),
 };
@@ -59,7 +60,11 @@ function parseStep(text: string): { thought: string; action: string; params: Rec
   const paramsRaw = text.match(/PARAMS:\s*(\{[\s\S]*?\})(?=\n[A-Z]|$)/)?.[1];
   if (!thought || !action) return null;
   let params: Record<string, any> = {};
-  if (paramsRaw) { try { params = JSON.parse(paramsRaw); } catch {} }
+  if (paramsRaw) {
+    try {
+      params = JSON.parse(paramsRaw);
+    } catch {}
+  }
   return { thought, action, params };
 }
 
@@ -82,11 +87,7 @@ Rules:
 - Call DONE only when goal is fully achieved
 - Never repeat the same tool call with identical params`;
 
-  async run(
-    goal: string,
-    context = "",
-    maxSteps = 12
-  ): Promise<{ steps: ReActStep[]; result: string }> {
+  async run(goal: string, context = "", maxSteps = 12): Promise<{ steps: ReActStep[]; result: string }> {
     const steps: ReActStep[] = [];
     let history = `Goal: ${goal}`;
     if (context) history += `\n\nContext:\n${context}`;

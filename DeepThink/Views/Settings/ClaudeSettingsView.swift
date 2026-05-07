@@ -1,8 +1,14 @@
 import SwiftUI
 
 struct ClaudeSettingsView: View {
-    private var claude: ClaudeService { ClaudeService.shared }
-    private var mcp: MCPService { MCPService.shared }
+    private var claude: ClaudeService {
+        ClaudeService.shared
+    }
+
+    private var mcp: MCPService {
+        MCPService.shared
+    }
+
     @State private var showCLIDetails = false
     @State private var animateStatus = false
 
@@ -36,7 +42,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Setup Banner
 
-    @ViewBuilder
     private var setupBanner: some View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
@@ -90,7 +95,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Rate Limit Banner
 
-    @ViewBuilder
     private var rateLimitBanner: some View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
@@ -139,7 +143,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - No Credits Banner
 
-    @ViewBuilder
     private var noCreditsBanner: some View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
@@ -308,7 +311,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - CLI Section (Path + Install + MCP)
 
-    @ViewBuilder
     private var cliSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             DSSectionHeader(title: "Claude CLI")
@@ -322,7 +324,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - CLI Path (compact inline)
 
-    @ViewBuilder
     private var cliPathRow: some View {
         VStack(spacing: DS.Spacing.sm) {
             Button {
@@ -377,7 +378,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - MCP Status
 
-    @ViewBuilder
     private var mcpStatusSection: some View {
         VStack(spacing: 0) {
             installPathRow(
@@ -468,7 +468,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Troubleshoot Hints
 
-    @ViewBuilder
     private var troubleshootHints: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Button {
@@ -506,7 +505,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Configuration (Model + Version + Tokens)
 
-    @ViewBuilder
     private var configurationSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             DSSectionHeader(title: "Configuration")
@@ -611,7 +609,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Usage Dashboard
 
-    @ViewBuilder
     private var usageDashboard: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             DSSectionHeader(title: "Usage")
@@ -619,57 +616,85 @@ struct ClaudeSettingsView: View {
             HStack(alignment: .top, spacing: DS.Spacing.md) {
                 // Cost & performance
                 VStack(spacing: 0) {
-                    usageRow(icon: "dollarsign.circle", color: DS.Colors.success,
-                             label: "Total Cost",
-                             value: formatCost(claude.totalCostUSD),
-                             note: claude.lastQueryCostUSD.map { "last \(formatCost($0))" })
+                    usageRow(
+                        icon: "dollarsign.circle",
+                        color: DS.Colors.success,
+                        label: "Total Cost",
+                        value: formatCost(claude.totalCostUSD),
+                        note: claude.lastQueryCostUSD.map { "last \(formatCost($0))" }
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "bubble.left.and.bubble.right", color: DS.Colors.accent,
-                             label: "Queries",
-                             value: "\(claude.totalQueries)",
-                             note: claude.totalQueries > 0 ? "avg \(formatCost(claude.totalCostUSD / Double(claude.totalQueries)))" : nil)
+                    usageRow(
+                        icon: "bubble.left.and.bubble.right",
+                        color: DS.Colors.accent,
+                        label: "Queries",
+                        value: "\(claude.totalQueries)",
+                        note: claude.totalQueries > 0 ? "avg \(formatCost(claude.totalCostUSD / Double(claude.totalQueries)))" : nil
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "clock", color: DS.Colors.warning,
-                             label: "Avg Duration",
-                             value: claude.totalQueries > 0 ? formatDuration(claude.totalDurationMs / Double(claude.totalQueries)) : "--",
-                             note: claude.totalQueries > 0 ? {
-                                let avg = claude.totalDurationMs / Double(claude.totalQueries)
-                                return avg > 10_000 ? "slow" : avg > 4_000 ? "moderate" : "fast"
-                             }() : nil)
+                    usageRow(
+                        icon: "clock",
+                        color: DS.Colors.warning,
+                        label: "Avg Duration",
+                        value: claude.totalQueries > 0 ? formatDuration(claude.totalDurationMs / Double(claude.totalQueries)) : "--",
+                        note: claude.totalQueries > 0 ? {
+                            let avg = claude.totalDurationMs / Double(claude.totalQueries)
+                            return avg > 10000 ? "slow" : avg > 4000 ? "moderate" : "fast"
+                        }() : nil
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "creditcard", color: DS.Colors.knowledge,
-                             label: "Cost / 1K Tokens",
-                             value: (claude.totalInputTokens + claude.totalOutputTokens) > 0
-                                ? formatCost(claude.totalCostUSD / Double(claude.totalInputTokens + claude.totalOutputTokens) * 1000)
-                                : "--",
-                             note: nil)
+                    usageRow(
+                        icon: "creditcard",
+                        color: DS.Colors.knowledge,
+                        label: "Cost / 1K Tokens",
+                        value: (claude.totalInputTokens + claude.totalOutputTokens) > 0
+                            ? formatCost(claude.totalCostUSD / Double(claude.totalInputTokens + claude.totalOutputTokens) * 1000)
+                            : "--",
+                        note: nil
+                    )
                 }
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
 
                 // Tokens
                 VStack(spacing: 0) {
-                    usageRow(icon: "arrow.down.circle", color: DS.Colors.knowledge,
-                             label: "Input Tokens",
-                             value: formatTokens(claude.totalInputTokens),
-                             note: "all time")
+                    usageRow(
+                        icon: "arrow.down.circle",
+                        color: DS.Colors.knowledge,
+                        label: "Input Tokens",
+                        value: formatTokens(claude.totalInputTokens),
+                        note: "all time"
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "arrow.up.circle", color: DS.Colors.accent,
-                             label: "Output Tokens",
-                             value: formatTokens(claude.totalOutputTokens),
-                             note: claude.totalInputTokens > 0 ? "ratio \(String(format: "%.1f", Double(claude.totalOutputTokens) / Double(claude.totalInputTokens)))x" : nil)
+                    usageRow(
+                        icon: "arrow.up.circle",
+                        color: DS.Colors.accent,
+                        label: "Output Tokens",
+                        value: formatTokens(claude.totalOutputTokens),
+                        note: claude
+                            .totalInputTokens > 0 ? "ratio \(String(format: "%.1f", Double(claude.totalOutputTokens) / Double(claude.totalInputTokens)))x" :
+                            nil
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "bolt.circle", color: DS.Colors.success,
-                             label: "Cache Read",
-                             value: formatTokens(claude.totalCacheReadTokens),
-                             note: (claude.totalInputTokens + claude.totalCacheReadTokens) > 0
-                                ? "\(Int(Double(claude.totalCacheReadTokens) / Double(claude.totalInputTokens + claude.totalCacheReadTokens) * 100))% hit rate"
-                                : "no cache yet")
+                    usageRow(
+                        icon: "bolt.circle",
+                        color: DS.Colors.success,
+                        label: "Cache Read",
+                        value: formatTokens(claude.totalCacheReadTokens),
+                        note: (claude.totalInputTokens + claude.totalCacheReadTokens) > 0
+                            ? "\(Int(Double(claude.totalCacheReadTokens) / Double(claude.totalInputTokens + claude.totalCacheReadTokens) * 100))% hit rate"
+                            : "no cache yet"
+                    )
                     Divider().padding(.leading, 28)
-                    usageRow(icon: "circle.grid.2x2", color: DS.Colors.textSecondary,
-                             label: "Total Tokens",
-                             value: formatTokens(claude.totalInputTokens + claude.totalOutputTokens + claude.totalCacheReadTokens),
-                             note: claude.totalQueries > 0 ? "\(formatTokens((claude.totalInputTokens + claude.totalOutputTokens) / max(1, claude.totalQueries)))/query avg" : nil)
+                    usageRow(
+                        icon: "circle.grid.2x2",
+                        color: DS.Colors.textSecondary,
+                        label: "Total Tokens",
+                        value: formatTokens(claude.totalInputTokens + claude.totalOutputTokens + claude.totalCacheReadTokens),
+                        note: claude
+                            .totalQueries > 0 ?
+                            "\(formatTokens((claude.totalInputTokens + claude.totalOutputTokens) / max(1, claude.totalQueries)))/query avg" : nil
+                    )
                 }
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -677,7 +702,6 @@ struct ClaudeSettingsView: View {
         }
     }
 
-    @ViewBuilder
     private func usageRow(icon: String, color: Color, label: String, value: String, note: String?) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: icon)
@@ -706,7 +730,6 @@ struct ClaudeSettingsView: View {
 
     // MARK: - Helpers
 
-    @ViewBuilder
     private func installPathRow(icon: String, iconColor: Color, label: String, path: String, isInstalled: Bool, version: String? = nil) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: icon)
@@ -773,16 +796,16 @@ struct ClaudeSettingsView: View {
 
     private func formatTokens(_ n: Int) -> String {
         n >= 1_000_000 ? String(format: "%.1fM", Double(n) / 1_000_000)
-            : n >= 1_000 ? String(format: "%.1fK", Double(n) / 1_000)
+            : n >= 1000 ? String(format: "%.1fK", Double(n) / 1000)
             : "\(n)"
     }
 
     private func tokenDescription(_ tokens: Int) -> String {
         switch tokens {
-        case ...1024: return "Quick answers"
-        case ...4096: return "Standard tasks"
-        case ...8192: return "Detailed analysis"
-        default: return "Full documents"
+        case ...1024: "Quick answers"
+        case ...4096: "Standard tasks"
+        case ...8192: "Detailed analysis"
+        default: "Full documents"
         }
     }
 }
@@ -947,7 +970,7 @@ private struct UsageStatCard: View {
     let value: String
     let icon: String
     let color: Color
-    var subtitle: String? = nil
+    var subtitle: String?
     @State private var isHovered = false
 
     var body: some View {

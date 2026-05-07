@@ -1,5 +1,5 @@
 import { Database } from "bun:sqlite";
-import { join } from "path";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 const STORE_PATH = join(DEEPTHINK_ROOT, "data", "deepthink.store");
@@ -65,28 +65,39 @@ export interface ProjectRow {
 
 export function listProjects(): ProjectRow[] {
   const db = getDB();
-  const rows = db.query(`
+  const rows = db
+    .query(`
     SELECT p.Z_PK, hex(p.ZID) as id, p.ZNAME, p.ZSUMMARY, p.ZCOLOR, p.ZISARCHIVED,
            p.ZCREATEDAT, p.ZMODIFIEDAT,
            (SELECT COUNT(*) FROM ZTASKITEM WHERE ZPROJECT = p.Z_PK) as taskCount,
            (SELECT COUNT(*) FROM ZNOTE WHERE ZPROJECT = p.Z_PK) as noteCount
     FROM ZPROJECT p ORDER BY p.ZMODIFIEDAT DESC
-  `).all() as any[];
-  return rows.map(r => ({
-    pk: r.Z_PK, id: r.id, name: r.ZNAME, summary: r.ZSUMMARY ?? "",
-    color: r.ZCOLOR ?? "#007AFF", isArchived: !!r.ZISARCHIVED,
-    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
-    taskCount: r.taskCount, noteCount: r.noteCount,
+  `)
+    .all() as any[];
+  return rows.map((r) => ({
+    pk: r.Z_PK,
+    id: r.id,
+    name: r.ZNAME,
+    summary: r.ZSUMMARY ?? "",
+    color: r.ZCOLOR ?? "#007AFF",
+    isArchived: !!r.ZISARCHIVED,
+    createdAt: fromCD(r.ZCREATEDAT),
+    modifiedAt: fromCD(r.ZMODIFIEDAT),
+    taskCount: r.taskCount,
+    noteCount: r.noteCount,
   }));
 }
 
 export function getProject(nameOrPk: string): ProjectRow | null {
   const projects = listProjects();
-  const byPk = projects.find(p => p.pk.toString() === nameOrPk);
+  const byPk = projects.find((p) => p.pk.toString() === nameOrPk);
   if (byPk) return byPk;
   const lower = nameOrPk.toLowerCase();
-  return projects.find(p => p.name.toLowerCase() === lower) ??
-         projects.find(p => p.name.toLowerCase().includes(lower)) ?? null;
+  return (
+    projects.find((p) => p.name.toLowerCase() === lower) ??
+    projects.find((p) => p.name.toLowerCase().includes(lower)) ??
+    null
+  );
 }
 
 export function createProject(name: string, opts: { summary?: string; color?: string } = {}): number {
@@ -105,12 +116,26 @@ export function updateProject(pk: number, fields: Record<string, any>): void {
   const sets: string[] = [];
   const vals: any[] = [];
 
-  if (fields.name !== undefined) { sets.push("ZNAME = ?"); vals.push(fields.name); }
-  if (fields.summary !== undefined) { sets.push("ZSUMMARY = ?"); vals.push(fields.summary); }
-  if (fields.color !== undefined) { sets.push("ZCOLOR = ?"); vals.push(fields.color); }
-  if (fields.archived !== undefined) { sets.push("ZISARCHIVED = ?"); vals.push(fields.archived ? 1 : 0); }
+  if (fields.name !== undefined) {
+    sets.push("ZNAME = ?");
+    vals.push(fields.name);
+  }
+  if (fields.summary !== undefined) {
+    sets.push("ZSUMMARY = ?");
+    vals.push(fields.summary);
+  }
+  if (fields.color !== undefined) {
+    sets.push("ZCOLOR = ?");
+    vals.push(fields.color);
+  }
+  if (fields.archived !== undefined) {
+    sets.push("ZISARCHIVED = ?");
+    vals.push(fields.archived ? 1 : 0);
+  }
 
-  if (sets.length === 0) { return; }
+  if (sets.length === 0) {
+    return;
+  }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
@@ -144,49 +169,79 @@ export interface TaskRow {
   modifiedAt: Date;
 }
 
-export function listTasks(opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}): TaskRow[] {
+export function listTasks(
+  opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}
+): TaskRow[] {
   const db = getDB();
   let where = opts.excludeArchived ? "(t.ZISARCHIVED = 0 OR t.ZISARCHIVED IS NULL)" : "1=1";
   const params: any[] = [];
 
-  if (opts.status) { where += " AND t.ZSTATUSRAW = ?"; params.push(opts.status); }
-  if (opts.priority) { where += " AND t.ZPRIORITYRAW = ?"; params.push(opts.priority); }
+  if (opts.status) {
+    where += " AND t.ZSTATUSRAW = ?";
+    params.push(opts.status);
+  }
+  if (opts.priority) {
+    where += " AND t.ZPRIORITYRAW = ?";
+    params.push(opts.priority);
+  }
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) { where += " AND t.ZPROJECT = ?"; params.push(proj.pk); }
+    if (proj) {
+      where += " AND t.ZPROJECT = ?";
+      params.push(proj.pk);
+    }
   }
 
-  const rows = db.query(`
+  const rows = db
+    .query(`
     SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
            t.ZSTORYPOINTS, t.ZDUEDATE, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
            p.ZNAME as projectName
     FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
     WHERE ${where}
     ORDER BY t.ZMODIFIEDAT DESC
-  `).all(...params) as any[];
-  return rows.map(r => ({
-    pk: r.Z_PK, id: r.id, title: r.ZTITLE, detail: r.ZDETAIL ?? "",
-    status: r.ZSTATUSRAW, priority: r.ZPRIORITYRAW,
-    storyPoints: r.ZSTORYPOINTS, dueDate: r.ZDUEDATE ? fromCD(r.ZDUEDATE) : null,
-    projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
+  `)
+    .all(...params) as any[];
+  return rows.map((r) => ({
+    pk: r.Z_PK,
+    id: r.id,
+    title: r.ZTITLE,
+    detail: r.ZDETAIL ?? "",
+    status: r.ZSTATUSRAW,
+    priority: r.ZPRIORITYRAW,
+    storyPoints: r.ZSTORYPOINTS,
+    dueDate: r.ZDUEDATE ? fromCD(r.ZDUEDATE) : null,
+    projectPk: r.ZPROJECT,
+    projectName: r.projectName ?? null,
     isArchived: !!r.ZISARCHIVED,
-    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+    createdAt: fromCD(r.ZCREATEDAT),
+    modifiedAt: fromCD(r.ZMODIFIEDAT),
   }));
 }
 
 export function getTask(pkStr: string): TaskRow | null {
   const tasks = listTasks();
-  const byPk = tasks.find(t => t.pk.toString() === pkStr);
+  const byPk = tasks.find((t) => t.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return tasks.find(t => t.title.toLowerCase() === lower) ??
-         tasks.find(t => t.title.toLowerCase().includes(lower)) ?? null;
+  return (
+    tasks.find((t) => t.title.toLowerCase() === lower) ??
+    tasks.find((t) => t.title.toLowerCase().includes(lower)) ??
+    null
+  );
 }
 
-export function createTask(title: string, opts: {
-  detail?: string; status?: string; priority?: string;
-  storyPoints?: number; dueDate?: string; project?: string;
-} = {}): number {
+export function createTask(
+  title: string,
+  opts: {
+    detail?: string;
+    status?: string;
+    priority?: string;
+    storyPoints?: number;
+    dueDate?: string;
+    project?: string;
+  } = {}
+): number {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "TaskItem");
   const now = toCD(new Date());
@@ -205,7 +260,19 @@ export function createTask(title: string, opts: {
   db.query(`
     INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
     VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
-  `).run(pk, ent, opts.storyPoints ?? null, projectPk, now, dueDateCD, now, opts.detail ?? "", opts.priority ?? "None", opts.status ?? "To Do", title);
+  `).run(
+    pk,
+    ent,
+    opts.storyPoints ?? null,
+    projectPk,
+    now,
+    dueDateCD,
+    now,
+    opts.detail ?? "",
+    opts.priority ?? "None",
+    opts.status ?? "To Do",
+    title
+  );
   return pk;
 }
 
@@ -214,29 +281,53 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
   const sets: string[] = [];
   const vals: any[] = [];
 
-  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
-  if (fields.detail !== undefined) { sets.push("ZDETAIL = ?"); vals.push(fields.detail); }
-  if (fields.status !== undefined) {
-    sets.push("ZSTATUSRAW = ?"); vals.push(fields.status);
-    if (fields.status === "Done") { sets.push("ZCOMPLETEDAT = ?"); vals.push(toCD(new Date())); }
-    else { sets.push("ZCOMPLETEDAT = ?"); vals.push(null); }
+  if (fields.title !== undefined) {
+    sets.push("ZTITLE = ?");
+    vals.push(fields.title);
   }
-  if (fields.priority !== undefined) { sets.push("ZPRIORITYRAW = ?"); vals.push(fields.priority); }
-  if (fields.storyPoints !== undefined) { sets.push("ZSTORYPOINTS = ?"); vals.push(fields.storyPoints); }
+  if (fields.detail !== undefined) {
+    sets.push("ZDETAIL = ?");
+    vals.push(fields.detail);
+  }
+  if (fields.status !== undefined) {
+    sets.push("ZSTATUSRAW = ?");
+    vals.push(fields.status);
+    if (fields.status === "Done") {
+      sets.push("ZCOMPLETEDAT = ?");
+      vals.push(toCD(new Date()));
+    } else {
+      sets.push("ZCOMPLETEDAT = ?");
+      vals.push(null);
+    }
+  }
+  if (fields.priority !== undefined) {
+    sets.push("ZPRIORITYRAW = ?");
+    vals.push(fields.priority);
+  }
+  if (fields.storyPoints !== undefined) {
+    sets.push("ZSTORYPOINTS = ?");
+    vals.push(fields.storyPoints);
+  }
   if (fields.dueDate !== undefined) {
     sets.push("ZDUEDATE = ?");
     vals.push(fields.dueDate ? toCD(new Date(fields.dueDate)) : null);
   }
   if (fields.project !== undefined) {
     if (fields.project === null || fields.project === "none") {
-      sets.push("ZPROJECT = ?"); vals.push(null);
+      sets.push("ZPROJECT = ?");
+      vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) { sets.push("ZPROJECT = ?"); vals.push(proj.pk); }
+      if (proj) {
+        sets.push("ZPROJECT = ?");
+        vals.push(proj.pk);
+      }
     }
   }
 
-  if (sets.length === 0) { return; }
+  if (sets.length === 0) {
+    return;
+  }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
@@ -271,39 +362,61 @@ export function listNotes(opts: { project?: string; pinned?: boolean; excludeArc
   let where = opts.excludeArchived ? "(n.ZISARCHIVED = 0 OR n.ZISARCHIVED IS NULL)" : "1=1";
   const params: any[] = [];
 
-  if (opts.pinned !== undefined) { where += " AND n.ZISPINNED = ?"; params.push(opts.pinned ? 1 : 0); }
+  if (opts.pinned !== undefined) {
+    where += " AND n.ZISPINNED = ?";
+    params.push(opts.pinned ? 1 : 0);
+  }
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) { where += " AND n.ZPROJECT = ?"; params.push(proj.pk); }
+    if (proj) {
+      where += " AND n.ZPROJECT = ?";
+      params.push(proj.pk);
+    }
   }
 
-  const rows = db.query(`
+  const rows = db
+    .query(`
     SELECT n.Z_PK, hex(n.ZID) as id, n.ZTITLE, n.ZCONTENT, n.ZISPINNED, n.ZISARCHIVED, n.ZPROJECT,
            n.ZCREATEDAT, n.ZMODIFIEDAT, p.ZNAME as projectName
     FROM ZNOTE n LEFT JOIN ZPROJECT p ON n.ZPROJECT = p.Z_PK
     WHERE ${where}
     ORDER BY n.ZMODIFIEDAT DESC
-  `).all(...params) as any[];
-  return rows.map(r => ({
-    pk: r.Z_PK, id: r.id, title: r.ZTITLE, content: r.ZCONTENT ?? "",
-    isPinned: !!r.ZISPINNED, isArchived: !!r.ZISARCHIVED,
-    projectPk: r.ZPROJECT, projectName: r.projectName ?? null,
-    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+  `)
+    .all(...params) as any[];
+  return rows.map((r) => ({
+    pk: r.Z_PK,
+    id: r.id,
+    title: r.ZTITLE,
+    content: r.ZCONTENT ?? "",
+    isPinned: !!r.ZISPINNED,
+    isArchived: !!r.ZISARCHIVED,
+    projectPk: r.ZPROJECT,
+    projectName: r.projectName ?? null,
+    createdAt: fromCD(r.ZCREATEDAT),
+    modifiedAt: fromCD(r.ZMODIFIEDAT),
   }));
 }
 
 export function getNote(pkStr: string): NoteRow | null {
   const notes = listNotes();
-  const byPk = notes.find(n => n.pk.toString() === pkStr);
+  const byPk = notes.find((n) => n.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return notes.find(n => n.title.toLowerCase() === lower) ??
-         notes.find(n => n.title.toLowerCase().includes(lower)) ?? null;
+  return (
+    notes.find((n) => n.title.toLowerCase() === lower) ??
+    notes.find((n) => n.title.toLowerCase().includes(lower)) ??
+    null
+  );
 }
 
-export function createNote(title: string, opts: {
-  content?: string; pinned?: boolean; project?: string;
-} = {}): number {
+export function createNote(
+  title: string,
+  opts: {
+    content?: string;
+    pinned?: boolean;
+    project?: string;
+  } = {}
+): number {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "Note");
   const now = toCD(new Date());
@@ -326,19 +439,34 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
   const sets: string[] = [];
   const vals: any[] = [];
 
-  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
-  if (fields.content !== undefined) { sets.push("ZCONTENT = ?"); vals.push(fields.content); }
-  if (fields.pinned !== undefined) { sets.push("ZISPINNED = ?"); vals.push(fields.pinned ? 1 : 0); }
+  if (fields.title !== undefined) {
+    sets.push("ZTITLE = ?");
+    vals.push(fields.title);
+  }
+  if (fields.content !== undefined) {
+    sets.push("ZCONTENT = ?");
+    vals.push(fields.content);
+  }
+  if (fields.pinned !== undefined) {
+    sets.push("ZISPINNED = ?");
+    vals.push(fields.pinned ? 1 : 0);
+  }
   if (fields.project !== undefined) {
     if (fields.project === null || fields.project === "none") {
-      sets.push("ZPROJECT = ?"); vals.push(null);
+      sets.push("ZPROJECT = ?");
+      vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) { sets.push("ZPROJECT = ?"); vals.push(proj.pk); }
+      if (proj) {
+        sets.push("ZPROJECT = ?");
+        vals.push(proj.pk);
+      }
     }
   }
 
-  if (sets.length === 0) { return; }
+  if (sets.length === 0) {
+    return;
+  }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));
@@ -377,34 +505,47 @@ export function listReminders(opts: { completed?: boolean } = {}): ReminderRow[]
     params.push(opts.completed ? 1 : 0);
   }
 
-  const rows = db.query(`
+  const rows = db
+    .query(`
     SELECT r.Z_PK, hex(r.ZID) as id, r.ZTITLE, r.ZNOTES, r.ZREMINDERDATE,
            r.ZISCOMPLETED, r.ZCOMPLETEDAT, r.ZCREATEDAT, r.ZMODIFIEDAT
     FROM ZREMINDER r
     WHERE ${where}
     ORDER BY r.ZMODIFIEDAT DESC
-  `).all(...params) as any[];
-  return rows.map(r => ({
-    pk: r.Z_PK, id: r.id, title: r.ZTITLE, notes: r.ZNOTES ?? "",
+  `)
+    .all(...params) as any[];
+  return rows.map((r) => ({
+    pk: r.Z_PK,
+    id: r.id,
+    title: r.ZTITLE,
+    notes: r.ZNOTES ?? "",
     reminderDate: r.ZREMINDERDATE ? fromCD(r.ZREMINDERDATE) : null,
     isCompleted: !!r.ZISCOMPLETED,
     completedAt: r.ZCOMPLETEDAT ? fromCD(r.ZCOMPLETEDAT) : null,
-    createdAt: fromCD(r.ZCREATEDAT), modifiedAt: fromCD(r.ZMODIFIEDAT),
+    createdAt: fromCD(r.ZCREATEDAT),
+    modifiedAt: fromCD(r.ZMODIFIEDAT),
   }));
 }
 
 export function getReminder(pkStr: string): ReminderRow | null {
   const reminders = listReminders();
-  const byPk = reminders.find(r => r.pk.toString() === pkStr);
+  const byPk = reminders.find((r) => r.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return reminders.find(r => r.title.toLowerCase() === lower) ??
-         reminders.find(r => r.title.toLowerCase().includes(lower)) ?? null;
+  return (
+    reminders.find((r) => r.title.toLowerCase() === lower) ??
+    reminders.find((r) => r.title.toLowerCase().includes(lower)) ??
+    null
+  );
 }
 
-export function createReminder(title: string, opts: {
-  notes?: string; reminderDate?: string;
-} = {}): number {
+export function createReminder(
+  title: string,
+  opts: {
+    notes?: string;
+    reminderDate?: string;
+  } = {}
+): number {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "Reminder");
   const now = toCD(new Date());
@@ -426,19 +567,33 @@ export function updateReminder(pk: number, fields: Record<string, any>): void {
   const sets: string[] = [];
   const vals: any[] = [];
 
-  if (fields.title !== undefined) { sets.push("ZTITLE = ?"); vals.push(fields.title); }
-  if (fields.notes !== undefined) { sets.push("ZNOTES = ?"); vals.push(fields.notes); }
+  if (fields.title !== undefined) {
+    sets.push("ZTITLE = ?");
+    vals.push(fields.title);
+  }
+  if (fields.notes !== undefined) {
+    sets.push("ZNOTES = ?");
+    vals.push(fields.notes);
+  }
   if (fields.completed !== undefined) {
-    sets.push("ZISCOMPLETED = ?"); vals.push(fields.completed ? 1 : 0);
-    if (fields.completed) { sets.push("ZCOMPLETEDAT = ?"); vals.push(toCD(new Date())); }
-    else { sets.push("ZCOMPLETEDAT = ?"); vals.push(null); }
+    sets.push("ZISCOMPLETED = ?");
+    vals.push(fields.completed ? 1 : 0);
+    if (fields.completed) {
+      sets.push("ZCOMPLETEDAT = ?");
+      vals.push(toCD(new Date()));
+    } else {
+      sets.push("ZCOMPLETEDAT = ?");
+      vals.push(null);
+    }
   }
   if (fields.reminderDate !== undefined) {
     sets.push("ZREMINDERDATE = ?");
     vals.push(fields.reminderDate ? toCD(new Date(fields.reminderDate)) : null);
   }
 
-  if (sets.length === 0) { return; }
+  if (sets.length === 0) {
+    return;
+  }
 
   sets.push("ZMODIFIEDAT = ?");
   vals.push(toCD(new Date()));

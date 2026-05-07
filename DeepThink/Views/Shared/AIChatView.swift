@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct AIChatView: View {
     @Environment(AppState.self) private var appState
@@ -31,8 +31,13 @@ struct AIChatView: View {
     @State private var suggestedFollowUps: [String] = []
     @State private var followUpTask: Task<Void, Never>?
 
-    private var skillService: SkillFileService { SkillFileService.shared }
-    private var agentService: AgentFileService { AgentFileService.shared }
+    private var skillService: SkillFileService {
+        SkillFileService.shared
+    }
+
+    private var agentService: AgentFileService {
+        AgentFileService.shared
+    }
 
     private var selectedAgent: AgentFile? {
         guard let path = appState.selectedAgentPath else { return nil }
@@ -40,8 +45,8 @@ struct AIChatView: View {
     }
 
     private func smartWorkspaceContext(for query: String) -> String {
-        let recentNotes: [any WorkspaceItem] = notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(15).map { $0 }
-        let activeTasks: [any WorkspaceItem] = tasks.filter { $0.status == .inProgress || $0.status == .todo }.prefix(10).map { $0 }
+        let recentNotes: [any WorkspaceItem] = notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(15).map(\.self)
+        let activeTasks: [any WorkspaceItem] = tasks.filter { $0.status == .inProgress || $0.status == .todo }.prefix(10).map(\.self)
         return ContextEngine.shared.buildWorkspaceContext(notes: recentNotes, tasks: activeTasks, query: query, maxTokens: 600)
     }
 
@@ -235,7 +240,7 @@ struct AIChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                        if appState.chatMessages.isEmpty && !appState.isChatProcessing {
+                        if appState.chatMessages.isEmpty, !appState.isChatProcessing {
                             WelcomePrompts(
                                 onSelect: { prompt in
                                     inputText = prompt
@@ -243,7 +248,7 @@ struct AIChatView: View {
                                 },
                                 noteCount: notes.count,
                                 taskCount: tasks.count,
-                                pendingTaskCount: tasks.filter { $0.status == .todo || $0.status == .inProgress }.count,
+                                pendingTaskCount: tasks.count(where: { $0.status == .todo || $0.status == .inProgress }),
                                 projectCount: projects.count,
                                 knowledgeCount: knowledgeService.entries.count
                             )
@@ -270,7 +275,7 @@ struct AIChatView: View {
                                 .padding(.top, index == 0 ? DS.Spacing.xl : 0)
                             }
 
-                            if !suggestedFollowUps.isEmpty && !appState.isChatProcessing {
+                            if !suggestedFollowUps.isEmpty, !appState.isChatProcessing {
                                 FollowUpChipsView(suggestions: suggestedFollowUps) { prompt in
                                     suggestedFollowUps = []
                                     inputText = prompt
@@ -324,7 +329,7 @@ struct AIChatView: View {
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if isScrolledUp && !appState.chatMessages.isEmpty {
+                    if isScrolledUp, !appState.chatMessages.isEmpty {
                         Button {
                             scrollChatToEnd(proxy, preferAnimated: true)
                         } label: {
@@ -459,7 +464,8 @@ struct AIChatView: View {
                         Button(action: sendMessage) {
                             Image(systemName: "arrow.up.circle.fill")
                                 .font(.system(size: DS.IconSize.xl))
-                                .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary.opacity(DS.Opacity.disabled) : DS.Colors.accent)
+                                .foregroundStyle(inputText.trimmingCharacters(in: .whitespaces).isEmpty ? DS.Colors.textTertiary
+                                    .opacity(DS.Opacity.disabled) : DS.Colors.accent)
                         }
                         .buttonStyle(.plainPointer)
                         .disabled(inputText.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -561,7 +567,7 @@ struct AIChatView: View {
     }
 
     private func updateSlashMenu(_ text: String) {
-        if text.hasPrefix("/") && !text.contains(" ") && text.count > 0 {
+        if text.hasPrefix("/"), !text.contains(" "), !text.isEmpty {
             slashFilter = String(text.dropFirst())
             withAnimation(DS.Animation.quick) { showSlashMenu = true }
         } else {
@@ -580,15 +586,14 @@ struct AIChatView: View {
     }
 
     private func executeSkill(_ skill: SkillFile, input: String) {
-        let resolvedInput: String
-        if !input.isEmpty {
-            resolvedInput = input
+        let resolvedInput: String = if !input.isEmpty {
+            input
         } else if let selected = appState.selectedText, !selected.isEmpty {
-            resolvedInput = selected
+            selected
         } else if let noteContent = appState.currentNoteContent, !noteContent.isEmpty {
-            resolvedInput = noteContent
+            noteContent
         } else {
-            resolvedInput = ""
+            ""
         }
 
         appState.chatMessages.append(AIMessage(role: .user, content: "/\(skill.commandName) \(resolvedInput.prefix(100))..."))
@@ -626,7 +631,8 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID)
+        {
             let recent = Array(prior.suffix(4))
             return "# Conversation summary\n\(summary)\n\n# Recent\n\(compactMessages(recent))"
         }
@@ -687,7 +693,7 @@ struct AIChatView: View {
         "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
         "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
         "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
-        "knowledge", "tally", "count", "how many", "list all",
+        "knowledge", "tally", "count", "how many", "list all"
     ]
 
     private func isWorkspaceRequest(_ text: String) -> Bool {
@@ -744,7 +750,7 @@ struct AIChatView: View {
                 let shouldUpdate = existing == nil || appState.chatMessages.count % 6 == 0
                 if shouldUpdate {
                     let toSummarize = Array(appState.chatMessages.prefix(appState.chatMessages.count - 4))
-                    var prompt = toSummarize.map { $0 }
+                    var prompt = toSummarize.map(\.self)
                     if let prev = existing {
                         prompt.insert(AIMessage(role: .assistant, content: "[Previous summary: \(prev)]"), at: 0)
                     }
@@ -762,20 +768,18 @@ struct AIChatView: View {
                 if !ctx.isEmpty { contextParts.append("# Workspace Context\n\n\(ctx)") }
                 if !conversationHistory.isEmpty { contextParts.append(conversationHistory) }
 
-                let fullPrompt: String
-                if contextParts.isEmpty {
-                    fullPrompt = text
+                let fullPrompt: String = if contextParts.isEmpty {
+                    text
                 } else {
-                    fullPrompt = contextParts.joined(separator: "\n\n") + "\n\nUser: \(text)"
+                    contextParts.joined(separator: "\n\n") + "\n\nUser: \(text)"
                 }
 
-                var systemPrompt: String
-                if let agent = selectedAgent {
-                    systemPrompt = AgentFileService.shared.buildSystemPrompt(for: agent, query: text)
+                var systemPrompt: String = if let agent = selectedAgent {
+                    AgentFileService.shared.buildSystemPrompt(for: agent, query: text)
                 } else if isWorkspace {
-                    systemPrompt = "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
+                    "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
                 } else {
-                    systemPrompt = "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
+                    "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
                 }
 
                 if selectedAgent == nil, let rulesPrompt = activeRulesSystemPrompt() {
@@ -822,7 +826,7 @@ struct AIChatView: View {
                     }
                 }
 
-                if appState.chatMessages.count > 0 && appState.chatMessages.count % 6 == 0 {
+                if !appState.chatMessages.isEmpty, appState.chatMessages.count % 6 == 0 {
                     let msgs = appState.chatMessages
                     Task.detached(priority: .background) {
                         _ = await KnowledgeExtractionService.shared.extractFromConversation(messages: msgs)
@@ -1009,7 +1013,7 @@ struct AIChatView: View {
         let prompt = "Generate a 3-5 word title for this conversation. Output ONLY the title, nothing else.\n\nUser: \(userMessage.prefix(200))\nAssistant: \(assistantMessage.prefix(300))"
         if let title = try? await ClaudeService.shared.query(prompt, systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.") {
             let cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\"", with: "")
-            if !cleaned.isEmpty && cleaned.count < 60 {
+            if !cleaned.isEmpty, cleaned.count < 60 {
                 await MainActor.run {
                     conv.title = cleaned
                     try? modelContext.save()
@@ -1105,4 +1109,3 @@ private struct FollowUpChip: View {
         .animation(DS.Animation.quick, value: isHovered)
     }
 }
-

@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftTerm
+import SwiftUI
 
 struct TerminalHostView: NSViewRepresentable {
     let session: TerminalSession
@@ -29,14 +29,13 @@ struct TerminalHostView: NSViewRepresentable {
             termView.topAnchor.constraint(equalTo: wrapper.topAnchor),
             termView.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
             termView.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor),
-            termView.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor),
+            termView.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor)
         ])
 
         return wrapper
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {
-    }
+    func updateNSView(_ nsView: NSView, context: Context) {}
 
     func makeCoordinator() -> Coordinator {
         Coordinator(session: session)

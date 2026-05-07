@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, readdirSync, mkdirSync, unlinkSync } from "fs";
-import { join } from "path";
+import { mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 export interface MCPTool {
@@ -19,7 +19,10 @@ function ensureDir(dir: string) {
 }
 
 function slugify(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 }
 
 // ── Frontmatter parser ──
@@ -192,7 +195,12 @@ export const CONFIG_TOOLS: MCPTool[] = [
       required: ["name"],
     },
     execute: (p) => {
-      const agent = loadAgents().find((a) => a.name.toLowerCase() === p.name.toLowerCase() || a.filename === p.name || a.filename === `${slugify(p.name)}.md`);
+      const agent = loadAgents().find(
+        (a) =>
+          a.name.toLowerCase() === p.name.toLowerCase() ||
+          a.filename === p.name ||
+          a.filename === `${slugify(p.name)}.md`
+      );
       if (!agent) throw new Error(`agent not found: ${p.name}`);
       return agent;
     },
@@ -209,7 +217,11 @@ export const CONFIG_TOOLS: MCPTool[] = [
         model: { type: "string", description: "Model override (e.g. claude-sonnet-4-6)" },
         systemPrompt: { type: "string", description: "System prompt / instructions for the agent" },
         skills: { type: "array", items: { type: "string" }, description: "Skill names this agent can use" },
-        knowledgeScope: { type: "array", items: { type: "string" }, description: "Knowledge scope tags for RAG filtering" },
+        knowledgeScope: {
+          type: "array",
+          items: { type: "string" },
+          description: "Knowledge scope tags for RAG filtering",
+        },
       },
       required: ["name", "role", "systemPrompt"],
     },
@@ -241,7 +253,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
       required: ["name"],
     },
     execute: (p) => {
-      const agent = loadAgents().find((a) => a.name.toLowerCase() === p.name.toLowerCase() || a.filename === `${slugify(p.name)}.md`);
+      const agent = loadAgents().find(
+        (a) => a.name.toLowerCase() === p.name.toLowerCase() || a.filename === `${slugify(p.name)}.md`
+      );
       if (!agent) throw new Error(`agent not found: ${p.name}`);
       unlinkSync(join(AGENTS_DIR, agent.filename));
       return { name: agent.name, deleted: true };
@@ -267,7 +281,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
       required: ["name"],
     },
     execute: (p) => {
-      const rule = loadRules().find((r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`);
+      const rule = loadRules().find(
+        (r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`
+      );
       if (!rule) throw new Error(`rule not found: ${p.name}`);
       return rule;
     },
@@ -279,7 +295,10 @@ export const CONFIG_TOOLS: MCPTool[] = [
       type: "object",
       properties: {
         name: { type: "string", description: "Rule name" },
-        trigger: { type: "string", description: "When to activate: 'always', 'note.tagged.X', 'content_type.code', etc." },
+        trigger: {
+          type: "string",
+          description: "When to activate: 'always', 'note.tagged.X', 'content_type.code', etc.",
+        },
         icon: { type: "string", description: "SF Symbol icon name (default: bolt)" },
         category: { type: "string", description: "Category for grouping (default: General)" },
         instruction: { type: "string", description: "The instruction text injected into the system prompt" },
@@ -312,7 +331,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
       required: ["name"],
     },
     execute: (p) => {
-      const rule = loadRules().find((r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`);
+      const rule = loadRules().find(
+        (r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`
+      );
       if (!rule) throw new Error(`rule not found: ${p.name}`);
       unlinkSync(join(RULES_DIR, rule.filename));
       return { name: rule.name, deleted: true };
@@ -342,7 +363,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
     },
     execute: (p) => {
       const q = p.name.toLowerCase();
-      const skill = loadSkills().find((s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`);
+      const skill = loadSkills().find(
+        (s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`
+      );
       if (!skill) throw new Error(`skill not found: ${p.name}`);
       return skill;
     },
@@ -375,7 +398,7 @@ export const CONFIG_TOOLS: MCPTool[] = [
         model: p.model,
         category: p.category ?? "General",
       });
-      if (p.systemPrompt) md += p.systemPrompt + "\n\n---\n\n";
+      if (p.systemPrompt) md += `${p.systemPrompt}\n\n---\n\n`;
       md += p.promptTemplate;
 
       writeFileSync(filepath, md, "utf-8");
@@ -392,7 +415,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
     },
     execute: (p) => {
       const q = p.name.toLowerCase();
-      const skill = loadSkills().find((s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`);
+      const skill = loadSkills().find(
+        (s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`
+      );
       if (!skill) throw new Error(`skill not found: ${p.name}`);
       unlinkSync(join(SKILLS_DIR, skill.filename));
       return { name: skill.name, deleted: true };
@@ -400,6 +425,4 @@ export const CONFIG_TOOLS: MCPTool[] = [
   },
 ];
 
-export const CONFIG_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(
-  CONFIG_TOOLS.map((t) => [t.name, t])
-);
+export const CONFIG_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(CONFIG_TOOLS.map((t) => [t.name, t]));

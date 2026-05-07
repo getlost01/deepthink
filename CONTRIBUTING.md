@@ -11,6 +11,7 @@
 | Claude CLI | latest | [docs.anthropic.com](https://docs.anthropic.com/claude/docs/claude-cli) |
 | lefthook | latest | `brew install lefthook` |
 | SwiftLint | latest | `brew install swiftlint` (optional — build warns if missing) |
+| SwiftFormat | latest | `brew install swiftformat` (optional — build warns if missing) |
 
 ## Build from Source
 

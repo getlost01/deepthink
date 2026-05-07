@@ -1,14 +1,20 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 const STATE_PATH = join(DEEPTHINK_ROOT, "data", "schedule-state.json");
 
-interface ScheduleState { lastRun: Record<string, string> }
+interface ScheduleState {
+  lastRun: Record<string, string>;
+}
 
 function load(): ScheduleState {
   if (!existsSync(STATE_PATH)) return { lastRun: {} };
-  try { return JSON.parse(readFileSync(STATE_PATH, "utf-8")); } catch { return { lastRun: {} }; }
+  try {
+    return JSON.parse(readFileSync(STATE_PATH, "utf-8"));
+  } catch {
+    return { lastRun: {} };
+  }
 }
 function save(s: ScheduleState) {
   mkdirSync(join(DEEPTHINK_ROOT, "data"), { recursive: true });
@@ -19,12 +25,17 @@ function hoursSince(iso: string | undefined): number {
   return (Date.now() - new Date(iso).getTime()) / 3_600_000;
 }
 
-export interface JobResult { job: string; ran: boolean; result?: string; error?: string }
+export interface JobResult {
+  job: string;
+  ran: boolean;
+  result?: string;
+  error?: string;
+}
 
 const JOBS = [
-  { id: "daily-brief",   name: "Daily Brief",       hours: 20 },
-  { id: "stale-tasks",   name: "Stale Task Scan",    hours: 7 * 24 },
-  { id: "insight-scan",  name: "Proactive Insights", hours: 4 },
+  { id: "daily-brief", name: "Daily Brief", hours: 20 },
+  { id: "stale-tasks", name: "Stale Task Scan", hours: 7 * 24 },
+  { id: "insight-scan", name: "Proactive Insights", hours: 4 },
 ];
 
 async function runJob(id: string): Promise<string> {
@@ -51,7 +62,10 @@ export async function runScheduledJobs(opts: { force?: boolean } = {}): Promise<
   const results: JobResult[] = [];
   for (const job of JOBS) {
     const due = opts.force || hoursSince(state.lastRun[job.id]) >= job.hours;
-    if (!due) { results.push({ job: job.name, ran: false }); continue; }
+    if (!due) {
+      results.push({ job: job.name, ran: false });
+      continue;
+    }
     console.log(`  Running: ${job.name}...`);
     try {
       const result = await runJob(job.id);

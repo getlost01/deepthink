@@ -2,11 +2,11 @@ import SwiftUI
 
 struct ChatBubble: View {
     let message: AIMessage
-    var onRetry: (() -> Void)? = nil
-    var onEdit: ((String) -> Void)? = nil
-    var onSaveResponse: ((String) -> Void)? = nil
-    var branchInfo: (current: Int, total: Int)? = nil
-    var onSwitchBranch: ((Int) -> Void)? = nil
+    var onRetry: (() -> Void)?
+    var onEdit: ((String) -> Void)?
+    var onSaveResponse: ((String) -> Void)?
+    var branchInfo: (current: Int, total: Int)?
+    var onSwitchBranch: ((Int) -> Void)?
     @State private var copied = false
     @State private var isEditing = false
     @State private var editText = ""
@@ -182,7 +182,11 @@ struct ChatBubble: View {
                         .padding(.horizontal, DS.Spacing.sm)
 
                     HStack(spacing: DS.Spacing.xs) {
-                        assistantActionButton(icon: copied ? "checkmark" : "doc.on.doc", label: copied ? "Copied" : "Copy", color: copied ? DS.Colors.success : DS.Colors.textTertiary) {
+                        assistantActionButton(
+                            icon: copied ? "checkmark" : "doc.on.doc",
+                            label: copied ? "Copied" : "Copy",
+                            color: copied ? DS.Colors.success : DS.Colors.textTertiary
+                        ) {
                             NSPasteboard.general.clearContents()
                             NSPasteboard.general.setString(message.content, forType: .string)
                             copied = true
@@ -242,7 +246,9 @@ struct ChatBubble: View {
     // MARK: - Error classification
 
     private enum ChatErrorKind {
-        case rateLimited, noCredits, other
+        case rateLimited
+        case noCredits
+        case other
 
         init(_ text: String) {
             let l = text.lowercased()
@@ -376,11 +382,11 @@ struct ChatBubble: View {
     private func errorBubbleBody(_ kind: ChatErrorKind, raw: String) -> String {
         switch kind {
         case .rateLimited:
-            return "You've hit the Claude API rate limit. Please wait a moment and try again. If this happens often, consider upgrading your plan at console.anthropic.com."
+            "You've hit the Claude API rate limit. Please wait a moment and try again. If this happens often, consider upgrading your plan at console.anthropic.com."
         case .noCredits:
-            return "Your Claude API account has run out of credits. Add credits to your account at console.anthropic.com to continue using AI features."
+            "Your Claude API account has run out of credits. Add credits to your account at console.anthropic.com to continue using AI features."
         case .other:
-            return raw
+            raw
         }
     }
 }
@@ -463,7 +469,7 @@ struct TokenDetailPopover: View {
 
     private func formatTokenCount(_ count: Int) -> String {
         if count >= 1_000_000 { return String(format: "%.1fM", Double(count) / 1_000_000) }
-        if count >= 1_000 { return String(format: "%.1fK", Double(count) / 1_000) }
+        if count >= 1000 { return String(format: "%.1fK", Double(count) / 1000) }
         return "\(count)"
     }
 }

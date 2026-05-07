@@ -64,7 +64,9 @@ final class SkillFileService {
         skills.first { $0.commandName == command }
     }
 
-    var pinnedSkills: [SkillFile] { skills.filter(\.isPinned) }
+    var pinnedSkills: [SkillFile] {
+        skills.filter(\.isPinned)
+    }
 
     func togglePin(skill: SkillFile) {
         guard let idx = skills.firstIndex(where: { $0.id == skill.id }) else { return }
@@ -171,42 +173,78 @@ final class SkillFileService {
         guard existing == 0 else { reload(); return }
 
         let defaults: [(String, String, String, String, String, [String])] = [
-            ("Summarize", "text.justify.leading", "Writing",
-             "You are a concise summarizer. Output only bullet points, no preamble.",
-             "Summarize the following in 3-5 bullet points. Lead each bullet with the key takeaway:\n\n{{input}}",
-             []),
-            ("Extract Action Items", "checklist", "Productivity",
-             "You extract actionable tasks. Output only a markdown checklist. Each item should be specific enough to act on immediately.",
-             "Extract all actionable tasks from this text. Format as a markdown checklist with - [ ] prefix:\n\n{{input}}",
-             []),
-            ("Clean Up Note", "doc.text", "Knowledge",
-             "You rewrite messy captures into clean, well-structured notes. Preserve all facts. Add a clear title if missing. Use markdown headings and bullet points.",
-             "Clean up and restructure this note. Keep all information but make it scannable and well-organized:\n\n{{input}}",
-             []),
-            ("Auto-Tag", "tag", "Knowledge",
-             "Output only comma-separated tags. No explanations. Tags should be lowercase, specific, and useful for later retrieval.",
-             "Suggest 3-6 specific tags for this content. Output only the tags, comma-separated:\n\n{{input}}",
-             []),
-            ("Connect Ideas", "link", "Knowledge",
-             "You find connections between ideas. Identify themes, contradictions, complementary concepts, and potential synthesis points.",
-             "Analyze these pieces of information and identify connections, patterns, or contradictions between them:\n\n{{input}}",
-             []),
-            ("Weekly Review", "calendar", "Productivity",
-             "Generate a structured weekly review. Sections: Accomplished, In Progress, Blocked, Next Week Priorities. Be concise.",
-             "Based on these items from the past week, generate a weekly review:\n\n{{input}}",
-             []),
-            ("Daily Standup", "sun.max", "Productivity",
-             "",
-             "You summarize yesterday's completed work and today's planned work from the workspace. Be concise, bullet-pointed, Slack-ready. Group by project. Keep total under 150 words.\n\nGenerate my standup for today. Show:\n- **Yesterday:** tasks moved to Done in the last 24h\n- **Today:** tasks In Progress or To Do, ordered by priority\n- **Blockers:** anything Urgent or explicitly blocked\n\nGroup by project if more than one is active. No preamble, output only the standup.",
-             ["tasks", "projects"]),
-            ("Project Health Check", "chart.bar.doc.horizontal", "Projects",
-             "",
-             "You analyze a project's task distribution, overdue items, and stalled work. Surface risks and blockers clearly. Be direct — no filler.\n\nAnalyze project \"{{input}}\" and report:\n1. Task breakdown by status (counts + %)\n2. Overdue tasks (past due date, not Done/Cancelled)\n3. Tasks stuck In Progress >7 days\n4. Tasks with no due date and High/Urgent priority\n5. Top 3 risks based on the above\n\nFormat as sections with bullet points.",
-             ["tasks", "projects", "notes"]),
-            ("Find Knowledge Gaps", "questionmark.diamond", "Knowledge",
-             "",
-             "You identify topics mentioned in tasks and notes that lack corresponding knowledge base entries. Surface what's undocumented.\n\nScan my current tasks and notes. Identify topics, decisions, concepts, or tools that are referenced but NOT documented in the knowledge base.\n\nOutput as a ranked list:\n- **Topic** — why it matters, which task/note references it\n- Sort by: how frequently referenced > how recently mentioned\n\nEnd with 3 specific capture prompts the user can act on immediately.",
-             ["tasks", "notes", "knowledge"]),
+            (
+                "Summarize",
+                "text.justify.leading",
+                "Writing",
+                "You are a concise summarizer. Output only bullet points, no preamble.",
+                "Summarize the following in 3-5 bullet points. Lead each bullet with the key takeaway:\n\n{{input}}",
+                []
+            ),
+            (
+                "Extract Action Items",
+                "checklist",
+                "Productivity",
+                "You extract actionable tasks. Output only a markdown checklist. Each item should be specific enough to act on immediately.",
+                "Extract all actionable tasks from this text. Format as a markdown checklist with - [ ] prefix:\n\n{{input}}",
+                []
+            ),
+            (
+                "Clean Up Note",
+                "doc.text",
+                "Knowledge",
+                "You rewrite messy captures into clean, well-structured notes. Preserve all facts. Add a clear title if missing. Use markdown headings and bullet points.",
+                "Clean up and restructure this note. Keep all information but make it scannable and well-organized:\n\n{{input}}",
+                []
+            ),
+            (
+                "Auto-Tag",
+                "tag",
+                "Knowledge",
+                "Output only comma-separated tags. No explanations. Tags should be lowercase, specific, and useful for later retrieval.",
+                "Suggest 3-6 specific tags for this content. Output only the tags, comma-separated:\n\n{{input}}",
+                []
+            ),
+            (
+                "Connect Ideas",
+                "link",
+                "Knowledge",
+                "You find connections between ideas. Identify themes, contradictions, complementary concepts, and potential synthesis points.",
+                "Analyze these pieces of information and identify connections, patterns, or contradictions between them:\n\n{{input}}",
+                []
+            ),
+            (
+                "Weekly Review",
+                "calendar",
+                "Productivity",
+                "Generate a structured weekly review. Sections: Accomplished, In Progress, Blocked, Next Week Priorities. Be concise.",
+                "Based on these items from the past week, generate a weekly review:\n\n{{input}}",
+                []
+            ),
+            (
+                "Daily Standup",
+                "sun.max",
+                "Productivity",
+                "",
+                "You summarize yesterday's completed work and today's planned work from the workspace. Be concise, bullet-pointed, Slack-ready. Group by project. Keep total under 150 words.\n\nGenerate my standup for today. Show:\n- **Yesterday:** tasks moved to Done in the last 24h\n- **Today:** tasks In Progress or To Do, ordered by priority\n- **Blockers:** anything Urgent or explicitly blocked\n\nGroup by project if more than one is active. No preamble, output only the standup.",
+                ["tasks", "projects"]
+            ),
+            (
+                "Project Health Check",
+                "chart.bar.doc.horizontal",
+                "Projects",
+                "",
+                "You analyze a project's task distribution, overdue items, and stalled work. Surface risks and blockers clearly. Be direct — no filler.\n\nAnalyze project \"{{input}}\" and report:\n1. Task breakdown by status (counts + %)\n2. Overdue tasks (past due date, not Done/Cancelled)\n3. Tasks stuck In Progress >7 days\n4. Tasks with no due date and High/Urgent priority\n5. Top 3 risks based on the above\n\nFormat as sections with bullet points.",
+                ["tasks", "projects", "notes"]
+            ),
+            (
+                "Find Knowledge Gaps",
+                "questionmark.diamond",
+                "Knowledge",
+                "",
+                "You identify topics mentioned in tasks and notes that lack corresponding knowledge base entries. Surface what's undocumented.\n\nScan my current tasks and notes. Identify topics, decisions, concepts, or tools that are referenced but NOT documented in the knowledge base.\n\nOutput as a ranked list:\n- **Topic** — why it matters, which task/note references it\n- Sort by: how frequently referenced > how recently mentioned\n\nEnd with 3 specific capture prompts the user can act on immediately.",
+                ["tasks", "notes", "knowledge"]
+            )
         ]
 
         for (name, icon, category, system, prompt, scope) in defaults {

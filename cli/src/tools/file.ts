@@ -1,5 +1,5 @@
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync } from "fs";
-import { dirname } from "path";
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { getPath } from "../core/sandbox";
 
 export function writeFile(

@@ -1,6 +1,6 @@
-import { mkdirSync, readdirSync, existsSync } from "fs";
-import { join } from "path";
-import { SANDBOX_ROOT, SANDBOX_DIRS, KNOWLEDGE_DIRS, LOGS_DIR } from "../config";
+import { existsSync, mkdirSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { KNOWLEDGE_DIRS, LOGS_DIR, SANDBOX_DIRS, SANDBOX_ROOT } from "../config";
 
 export function initSandbox(): void {
   const dirs = [

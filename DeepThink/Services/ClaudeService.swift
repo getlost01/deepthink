@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 @Observable
 final class ClaudeService {
@@ -13,7 +13,7 @@ final class ClaudeService {
 
     // Model selection
     var selectedModelFamily: ModelFamily = .sonnet
-    var selectedModelVersion: ModelVersion = ModelVersion.latestSonnet
+    var selectedModelVersion: ModelVersion = .latestSonnet
 
     // Usage tracking — all-time (loaded from DB + accumulated)
     var totalQueries: Int = 0
@@ -25,14 +25,14 @@ final class ClaudeService {
     // Usage tracking — current session only
     var lastQueryCostUSD: Double?
     var lastQueryDurationMs: Double?
-    var sessionStartDate: Date = Date()
+    var sessionStartDate: Date = .init()
     var lastTokenUsage: TokenUsage?
     var sessionInputTokens: Int = 0
     var sessionOutputTokens: Int = 0
     var sessionCacheReadTokens: Int = 0
     var sessionCacheCreationTokens: Int = 0
 
-    // CLI info
+    /// CLI info
     var cliVersion: String?
 
     private var container: ModelContainer?
@@ -58,7 +58,15 @@ final class ClaudeService {
         }
     }
 
-    func recordUsage(queries: Int = 0, cost: Double = 0, durationMs: Double = 0, inputTokens: Int = 0, outputTokens: Int = 0, cacheReadTokens: Int = 0, cacheCreationTokens: Int = 0) {
+    func recordUsage(
+        queries: Int = 0,
+        cost: Double = 0,
+        durationMs: Double = 0,
+        inputTokens: Int = 0,
+        outputTokens: Int = 0,
+        cacheReadTokens: Int = 0,
+        cacheCreationTokens: Int = 0
+    ) {
         guard let container, let session = currentSession else { return }
         let context = ModelContext(container)
         session.queries += queries
@@ -92,18 +100,100 @@ final class ClaudeService {
             "Claude \(family.rawValue.capitalized) \(version)\(suffix.map { " (\($0))" } ?? "")"
         }
 
-        var modelID: String { id }
+        var modelID: String {
+            id
+        }
 
-        static let opus47 = ModelVersion(id: "claude-opus-4-7", family: .opus, version: "4.7", suffix: "Latest", isLatest: true, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
-        static let opus46 = ModelVersion(id: "claude-opus-4-6", family: .opus, version: "4.6", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
-        static let opus45 = ModelVersion(id: "claude-opus-4-5-20250414", family: .opus, version: "4.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "32K", inputCostPer1M: "$15", outputCostPer1M: "$75")
+        static let opus47 = ModelVersion(
+            id: "claude-opus-4-7",
+            family: .opus,
+            version: "4.7",
+            suffix: "Latest",
+            isLatest: true,
+            contextWindow: "200K",
+            maxOutput: "32K",
+            inputCostPer1M: "$15",
+            outputCostPer1M: "$75"
+        )
+        static let opus46 = ModelVersion(
+            id: "claude-opus-4-6",
+            family: .opus,
+            version: "4.6",
+            suffix: nil,
+            isLatest: false,
+            contextWindow: "200K",
+            maxOutput: "32K",
+            inputCostPer1M: "$15",
+            outputCostPer1M: "$75"
+        )
+        static let opus45 = ModelVersion(
+            id: "claude-opus-4-5-20250414",
+            family: .opus,
+            version: "4.5",
+            suffix: nil,
+            isLatest: false,
+            contextWindow: "200K",
+            maxOutput: "32K",
+            inputCostPer1M: "$15",
+            outputCostPer1M: "$75"
+        )
 
-        static let sonnet46 = ModelVersion(id: "claude-sonnet-4-6", family: .sonnet, version: "4.6", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "16K", inputCostPer1M: "$3", outputCostPer1M: "$15")
-        static let sonnet45 = ModelVersion(id: "claude-sonnet-4-5-20241022", family: .sonnet, version: "4.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$3", outputCostPer1M: "$15")
-        static let sonnet37 = ModelVersion(id: "claude-3-7-sonnet-20250219", family: .sonnet, version: "3.7", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$3", outputCostPer1M: "$15")
+        static let sonnet46 = ModelVersion(
+            id: "claude-sonnet-4-6",
+            family: .sonnet,
+            version: "4.6",
+            suffix: nil,
+            isLatest: true,
+            contextWindow: "200K",
+            maxOutput: "16K",
+            inputCostPer1M: "$3",
+            outputCostPer1M: "$15"
+        )
+        static let sonnet45 = ModelVersion(
+            id: "claude-sonnet-4-5-20241022",
+            family: .sonnet,
+            version: "4.5",
+            suffix: nil,
+            isLatest: false,
+            contextWindow: "200K",
+            maxOutput: "8K",
+            inputCostPer1M: "$3",
+            outputCostPer1M: "$15"
+        )
+        static let sonnet37 = ModelVersion(
+            id: "claude-3-7-sonnet-20250219",
+            family: .sonnet,
+            version: "3.7",
+            suffix: nil,
+            isLatest: false,
+            contextWindow: "200K",
+            maxOutput: "8K",
+            inputCostPer1M: "$3",
+            outputCostPer1M: "$15"
+        )
 
-        static let haiku45 = ModelVersion(id: "claude-haiku-4-5-20251001", family: .haiku, version: "4.5", suffix: nil, isLatest: true, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
-        static let haiku35 = ModelVersion(id: "claude-3-5-haiku-20241022", family: .haiku, version: "3.5", suffix: nil, isLatest: false, contextWindow: "200K", maxOutput: "8K", inputCostPer1M: "$0.80", outputCostPer1M: "$4")
+        static let haiku45 = ModelVersion(
+            id: "claude-haiku-4-5-20251001",
+            family: .haiku,
+            version: "4.5",
+            suffix: nil,
+            isLatest: true,
+            contextWindow: "200K",
+            maxOutput: "8K",
+            inputCostPer1M: "$0.80",
+            outputCostPer1M: "$4"
+        )
+        static let haiku35 = ModelVersion(
+            id: "claude-3-5-haiku-20241022",
+            family: .haiku,
+            version: "3.5",
+            suffix: nil,
+            isLatest: false,
+            contextWindow: "200K",
+            maxOutput: "8K",
+            inputCostPer1M: "$0.80",
+            outputCostPer1M: "$4"
+        )
 
         // Legacy aliases
         static let latestOpus = opus47
@@ -116,7 +206,9 @@ final class ClaudeService {
         case sonnet = "Sonnet"
         case opus = "Opus"
 
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
 
         var color: Color {
             switch self {
@@ -159,8 +251,13 @@ final class ClaudeService {
         }
     }
 
-    var modelDisplayName: String { selectedModelVersion.displayName }
-    var fullModelID: String { selectedModelVersion.modelID }
+    var modelDisplayName: String {
+        selectedModelVersion.displayName
+    }
+
+    var fullModelID: String {
+        selectedModelVersion.modelID
+    }
 
     static let maxTokenOptions = [4096, 8192, 16384, 32768]
 
@@ -183,16 +280,19 @@ final class ClaudeService {
 
     private init() {
         if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
-           FileManager.default.isExecutableFile(atPath: saved) {
-            self.claudePath = saved
-            self.customCLIPath = saved
+           FileManager.default.isExecutableFile(atPath: saved)
+        {
+            claudePath = saved
+            customCLIPath = saved
         } else {
-            self.claudePath = Self.defaultCandidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
+            claudePath = Self.defaultCandidates.first { FileManager.default.isExecutableFile(atPath: $0) } ?? ""
         }
         fetchCLIVersion()
     }
 
-    var isAvailable: Bool { !claudePath.isEmpty }
+    var isAvailable: Bool {
+        !claudePath.isEmpty
+    }
 
     /// Inspects raw CLI output/stderr text and returns a typed error if a known condition is detected.
     static func classifyOutput(_ text: String) -> ClaudeError? {
@@ -205,7 +305,7 @@ final class ClaudeService {
             || lower.contains("402") || lower.contains("payment required")
             || lower.contains("billing") || lower.contains("usage limit")
         if isRateLimit { return .rateLimited }
-        if isCredits   { return .noCredits }
+        if isCredits { return .noCredits }
         return nil
     }
 
@@ -287,7 +387,16 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID]
+                var args = [
+                    "-p",
+                    prompt,
+                    "--output-format",
+                    "json",
+                    "--no-session-persistence",
+                    "--dangerously-skip-permissions",
+                    "--model",
+                    ClaudeService.shared.fullModelID
+                ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -329,7 +438,8 @@ final class ClaudeService {
 
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
-                       let result = response.result {
+                       let result = response.result
+                    {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         let usage = response.usage
@@ -350,7 +460,15 @@ final class ClaudeService {
                             ClaudeService.shared.lastTokenUsage = tu
                             ClaudeService.shared.sessionInputTokens += tu.inputTokens
                             ClaudeService.shared.sessionOutputTokens += tu.outputTokens
-                            ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
+                            ClaudeService.shared.recordUsage(
+                                queries: 1,
+                                cost: cost ?? 0,
+                                durationMs: tu.durationMs,
+                                inputTokens: tu.inputTokens,
+                                outputTokens: tu.outputTokens,
+                                cacheReadTokens: tu.cacheReadTokens,
+                                cacheCreationTokens: tu.cacheCreationTokens
+                            )
                         }
                         continuation.resume(returning: result)
                     } else {
@@ -403,7 +521,17 @@ final class ClaudeService {
                 process.executableURL = URL(fileURLWithPath: cliPath)
                 process.currentDirectoryURL = storage.baseURL
 
-                var args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--dangerously-skip-permissions", "--model", modelID]
+                var args = [
+                    "-p",
+                    prompt,
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    "--no-session-persistence",
+                    "--dangerously-skip-permissions",
+                    "--model",
+                    modelID
+                ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -428,7 +556,7 @@ final class ClaudeService {
                     let handle = outPipe.fileHandleForReading
                     var buffer = Data()
 
-                    while process.isRunning || handle.availableData.count > 0 {
+                    while process.isRunning || !handle.availableData.isEmpty {
                         let chunk = handle.availableData
                         if chunk.isEmpty { break }
                         buffer.append(chunk)
@@ -440,14 +568,16 @@ final class ClaudeService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+                            {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String {
+                                              let text = delta["text"] as? String
+                                    {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -475,7 +605,15 @@ final class ClaudeService {
                                         ClaudeService.shared.lastTokenUsage = tu
                                         ClaudeService.shared.sessionInputTokens += tu.inputTokens
                                         ClaudeService.shared.sessionOutputTokens += tu.outputTokens
-                                        ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
+                                        ClaudeService.shared.recordUsage(
+                                            queries: 1,
+                                            cost: cost ?? 0,
+                                            durationMs: tu.durationMs,
+                                            inputTokens: tu.inputTokens,
+                                            outputTokens: tu.outputTokens,
+                                            cacheReadTokens: tu.cacheReadTokens,
+                                            cacheCreationTokens: tu.cacheCreationTokens
+                                        )
                                     }
                                 }
                             }
@@ -484,7 +622,7 @@ final class ClaudeService {
 
                     process.waitUntilExit()
 
-                    if process.terminationStatus != 0 && fullText.isEmpty {
+                    if process.terminationStatus != 0, fullText.isEmpty {
                         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
                         if let typed = ClaudeService.classifyOutput(stderr) {
@@ -536,13 +674,15 @@ final class ClaudeService {
     }
 
     func analyzeCLIOutput(_ output: String, question: String? = nil) async throws -> String {
-        let prompt: String
-        if let question {
-            prompt = "Analyze this command output and answer: \(question)\n\n```\n\(output.prefix(8000))\n```"
+        let prompt = if let question {
+            "Analyze this command output and answer: \(question)\n\n```\n\(output.prefix(8000))\n```"
         } else {
-            prompt = "Analyze this command output. Summarize key findings, highlight issues or anomalies, and suggest next steps if applicable:\n\n```\n\(output.prefix(8000))\n```"
+            "Analyze this command output. Summarize key findings, highlight issues or anomalies, and suggest next steps if applicable:\n\n```\n\(output.prefix(8000))\n```"
         }
-        return try await query(prompt, systemPrompt: "You are a CLI and devops expert. Analyze command output concisely. Use bullet points. Highlight errors, warnings, and anomalies.")
+        return try await query(
+            prompt,
+            systemPrompt: "You are a CLI and devops expert. Analyze command output concisely. Use bullet points. Highlight errors, warnings, and anomalies."
+        )
     }
 
     func explainError(_ command: String, stderr: String, exitCode: Int32) async throws -> String {
@@ -554,11 +694,10 @@ final class ClaudeService {
         let url = URL(fileURLWithPath: path)
         let content = try String(contentsOf: url, encoding: .utf8)
         let ext = url.pathExtension
-        let prompt: String
-        if let question {
-            prompt = "Analyze this \(ext) file and answer: \(question)\n\n```\(ext)\n\(content.prefix(10000))\n```"
+        let prompt = if let question {
+            "Analyze this \(ext) file and answer: \(question)\n\n```\(ext)\n\(content.prefix(10000))\n```"
         } else {
-            prompt = "Analyze this \(ext) file. Describe its purpose, highlight key patterns, potential issues, and suggest improvements:\n\n```\(ext)\n\(content.prefix(10000))\n```"
+            "Analyze this \(ext) file. Describe its purpose, highlight key patterns, potential issues, and suggest improvements:\n\n```\(ext)\n\(content.prefix(10000))\n```"
         }
         return try await query(prompt, systemPrompt: "You are a code and data analysis expert. Be concise and actionable.")
     }
@@ -572,7 +711,7 @@ enum ClaudeError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .cliError(let msg): msg
+        case let .cliError(msg): msg
         case .notInstalled: "Claude CLI not found at ~/.local/bin/claude. Install from https://claude.ai/code"
         case .rateLimited: "Rate limit reached — Claude is temporarily unavailable. Please wait a moment and try again, or check your plan limits at console.anthropic.com."
         case .noCredits: "Your Claude API account has run out of credits. Add credits at console.anthropic.com to continue using AI features."

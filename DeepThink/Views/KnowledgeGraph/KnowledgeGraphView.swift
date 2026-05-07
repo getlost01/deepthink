@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 // MARK: - Layout Mode
 
@@ -8,7 +8,9 @@ enum GraphLayoutMode: String, CaseIterable, Identifiable {
     case circular = "Circular"
     case radial = "Radial"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 }
 
 // MARK: - Node Position
@@ -55,7 +57,7 @@ struct KnowledgeGraphView: View {
     private let maxSteps: Int = 300
     private let idealEdgeLength: CGFloat = 150
 
-    // Edge lookup for fast neighbor queries
+    /// Edge lookup for fast neighbor queries
     private var selectedNeighborIDs: Set<UUID> {
         guard let sel = selectedNodeID else { return [] }
         var neighbors = Set<UUID>()
@@ -66,7 +68,7 @@ struct KnowledgeGraphView: View {
         return neighbors
     }
 
-    // Connection count per edge for opacity
+    /// Connection count per edge for opacity
     private var edgeConnectionCounts: [String: Int] {
         var counts: [String: Int] = [:]
         for (a, b) in edges {
@@ -131,79 +133,81 @@ struct KnowledgeGraphView: View {
 
             Divider()
 
-        GeometryReader { geo in
-            let transformedContent = ZStack {
-                DS.Colors.surface
+            GeometryReader { geo in
+                let transformedContent = ZStack {
+                    DS.Colors.surface
 
-                // Edges
-                Canvas { context, size in
-                    let counts = edgeConnectionCounts
-                    let maxW = CGFloat(maxEdgeWeight)
-                    for (source, target) in edges {
-                        guard let s = nodes.first(where: { $0.id == source }),
-                              let t = nodes.first(where: { $0.id == target }) else { continue }
+                    // Edges
+                    Canvas { context, _ in
+                        let counts = edgeConnectionCounts
+                        let maxW = CGFloat(maxEdgeWeight)
+                        for (source, target) in edges {
+                            guard let s = nodes.first(where: { $0.id == source }),
+                                  let t = nodes.first(where: { $0.id == target }) else { continue }
 
-                        let key = edgeKey(source, target)
-                        let weight = CGFloat(counts[key] ?? 1)
-                        let normalizedWeight = weight / maxW
+                            let key = edgeKey(source, target)
+                            let weight = CGFloat(counts[key] ?? 1)
+                            let normalizedWeight = weight / maxW
 
-                        let isHighlighted = selectedNodeID != nil &&
-                            (source == selectedNodeID || target == selectedNodeID)
+                            let isHighlighted = selectedNodeID != nil &&
+                                (source == selectedNodeID || target == selectedNodeID)
 
-                        let baseOpacity = 0.15 + 0.5 * normalizedWeight
-                        let opacity = isHighlighted ? 0.9 : baseOpacity
+                            let baseOpacity = 0.15 + 0.5 * normalizedWeight
+                            let opacity = isHighlighted ? 0.9 : baseOpacity
 
-                        // Quadratic bezier with control point offset perpendicular to the line
-                        let mid = CGPoint(x: (s.position.x + t.position.x) / 2,
-                                          y: (s.position.y + t.position.y) / 2)
-                        let dx = t.position.x - s.position.x
-                        let dy = t.position.y - s.position.y
-                        let dist = sqrt(dx * dx + dy * dy)
-                        let curvature: CGFloat = min(dist * 0.15, 30)
-                        // Perpendicular offset
-                        let nx = dist > 0 ? -dy / dist * curvature : 0
-                        let ny = dist > 0 ? dx / dist * curvature : 0
-                        let control = CGPoint(x: mid.x + nx, y: mid.y + ny)
+                            // Quadratic bezier with control point offset perpendicular to the line
+                            let mid = CGPoint(
+                                x: (s.position.x + t.position.x) / 2,
+                                y: (s.position.y + t.position.y) / 2
+                            )
+                            let dx = t.position.x - s.position.x
+                            let dy = t.position.y - s.position.y
+                            let dist = sqrt(dx * dx + dy * dy)
+                            let curvature: CGFloat = min(dist * 0.15, 30)
+                            // Perpendicular offset
+                            let nx = dist > 0 ? -dy / dist * curvature : 0
+                            let ny = dist > 0 ? dx / dist * curvature : 0
+                            let control = CGPoint(x: mid.x + nx, y: mid.y + ny)
 
-                        var path = Path()
-                        path.move(to: s.position)
-                        path.addQuadCurve(to: t.position, control: control)
+                            var path = Path()
+                            path.move(to: s.position)
+                            path.addQuadCurve(to: t.position, control: control)
 
-                        let lineWidth: CGFloat = isHighlighted ? 2 : 1
-                        let color = isHighlighted
-                            ? DS.Colors.accent.opacity(opacity)
-                            : Color.primary.opacity(opacity)
+                            let lineWidth: CGFloat = isHighlighted ? 2 : 1
+                            let color = isHighlighted
+                                ? DS.Colors.accent.opacity(opacity)
+                                : Color.primary.opacity(opacity)
 
-                        context.stroke(path, with: .color(color), lineWidth: lineWidth)
+                            context.stroke(path, with: .color(color), lineWidth: lineWidth)
+                        }
+                    }
+
+                    // Nodes
+                    ForEach(nodes) { node in
+                        nodeView(for: node)
                     }
                 }
+                .frame(width: geo.size.width, height: geo.size.height)
 
-                // Nodes
-                ForEach(nodes) { node in
-                    nodeView(for: node)
-                }
+                transformedContent
+                    .scaleEffect(scale, anchor: .center)
+                    .offset(x: offset.x, y: offset.y)
+                    .gesture(panGesture)
+                    .gesture(zoomGesture)
+                    .onAppear {
+                        canvasSize = geo.size
+                        buildAndLayout(in: geo.size)
+                    }
+                    .onChange(of: geo.size) { _, newSize in
+                        canvasSize = newSize
+                    }
+                    .onChange(of: notes.count) {
+                        buildAndLayout(in: canvasSize)
+                    }
+                    .onChange(of: layoutMode) {
+                        applyLayout(in: canvasSize)
+                    }
             }
-            .frame(width: geo.size.width, height: geo.size.height)
-
-            transformedContent
-                .scaleEffect(scale, anchor: .center)
-                .offset(x: offset.x, y: offset.y)
-                .gesture(panGesture)
-                .gesture(zoomGesture)
-                .onAppear {
-                    canvasSize = geo.size
-                    buildAndLayout(in: geo.size)
-                }
-                .onChange(of: geo.size) { _, newSize in
-                    canvasSize = newSize
-                }
-                .onChange(of: notes.count) {
-                    buildAndLayout(in: canvasSize)
-                }
-                .onChange(of: layoutMode) {
-                    applyLayout(in: canvasSize)
-                }
-        }
         }
     }
 
@@ -261,8 +265,8 @@ struct KnowledgeGraphView: View {
                     .background(
                         isHovered
                             ? RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                .fill(DS.Colors.surfaceElevated.opacity(0.95))
-                                .shadow(color: .black.opacity(0.1), radius: 4)
+                            .fill(DS.Colors.surfaceElevated.opacity(0.95))
+                            .shadow(color: .black.opacity(0.1), radius: 4)
                             : nil
                     )
             }
@@ -432,7 +436,7 @@ struct KnowledgeGraphView: View {
         var currentTier: [Int] = []
         var lastCount = -1
         for (i, node) in sorted.enumerated() {
-            if node.connectionCount != lastCount && !currentTier.isEmpty {
+            if node.connectionCount != lastCount, !currentTier.isEmpty {
                 tiers.append(currentTier)
                 currentTier = []
             }
@@ -489,7 +493,7 @@ struct KnowledgeGraphView: View {
     private func startSimulation() {
         simulationTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60.0, repeats: true) { _ in
             DispatchQueue.main.async {
-                self.simulationStep()
+                simulationStep()
             }
         }
     }

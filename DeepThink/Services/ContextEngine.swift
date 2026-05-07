@@ -13,7 +13,9 @@ final class ContextEngine {
     private var documentTerms: [String: [String: Double]] = [:]
     private var documentCount = 0
 
-    var vocabularySize: Int { documentFrequency.count }
+    var vocabularySize: Int {
+        documentFrequency.count
+    }
 
     private var conversationSummaries: [UUID: String] = [:]
     private var contentFingerprints: Set<UInt64> = []
@@ -107,7 +109,7 @@ final class ContextEngine {
 
             if let project = projectScope {
                 if chunk.title.localizedCaseInsensitiveContains(project) ||
-                   chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame }) {
+                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame }) {
                     score *= 1.5
                 }
             }
@@ -171,7 +173,9 @@ final class ContextEngine {
 
         let chunks = store.allChunks(entryType: "knowledge", scope: agentScope)
         var chunkByEntryID: [String: VectorChunk] = [:]
-        for c in chunks { if chunkByEntryID[c.entryID] == nil { chunkByEntryID[c.entryID] = c } }
+        for c in chunks {
+            if chunkByEntryID[c.entryID] == nil { chunkByEntryID[c.entryID] = c }
+        }
 
         let k = 60.0
         var fusedScores: [String: Double] = [:]
@@ -391,34 +395,136 @@ final class ContextEngine {
 
     private func stem(_ word: String) -> String {
         var w = word
-        if w.count > 4 && w.hasSuffix("sses") { return String(w.dropLast(2)) }
-        if w.count > 4 && w.hasSuffix("ies")  { return String(w.dropLast(2)) }
-        if w.count > 2 && w.hasSuffix("s") && !w.hasSuffix("ss") { w = String(w.dropLast()) }
-        if w.count > 6 && w.hasSuffix("ational") { return String(w.dropLast(7)) + "ate" }
-        if w.count > 5 && w.hasSuffix("ation")   { return String(w.dropLast(5)) + "ate" }
-        if w.count > 4 && w.hasSuffix("ness") { return String(w.dropLast(4)) }
-        if w.count > 4 && w.hasSuffix("ment") { return String(w.dropLast(4)) }
-        if w.count > 4 && w.hasSuffix("ting") { return String(w.dropLast(3)) }
-        if w.count > 3 && w.hasSuffix("ing")  { return String(w.dropLast(3)) }
-        if w.count > 3 && w.hasSuffix("ely")  { return String(w.dropLast(3)) }
-        if w.count > 2 && w.hasSuffix("ed")   { return String(w.dropLast(2)) }
-        if w.count > 2 && w.hasSuffix("er")   { return String(w.dropLast(2)) }
-        if w.count > 2 && w.hasSuffix("ly")   { return String(w.dropLast(2)) }
+        if w.count > 4, w.hasSuffix("sses") { return String(w.dropLast(2)) }
+        if w.count > 4, w.hasSuffix("ies") { return String(w.dropLast(2)) }
+        if w.count > 2, w.hasSuffix("s"), !w.hasSuffix("ss") { w = String(w.dropLast()) }
+        if w.count > 6, w.hasSuffix("ational") { return String(w.dropLast(7)) + "ate" }
+        if w.count > 5, w.hasSuffix("ation") { return String(w.dropLast(5)) + "ate" }
+        if w.count > 4, w.hasSuffix("ness") { return String(w.dropLast(4)) }
+        if w.count > 4, w.hasSuffix("ment") { return String(w.dropLast(4)) }
+        if w.count > 4, w.hasSuffix("ting") { return String(w.dropLast(3)) }
+        if w.count > 3, w.hasSuffix("ing") { return String(w.dropLast(3)) }
+        if w.count > 3, w.hasSuffix("ely") { return String(w.dropLast(3)) }
+        if w.count > 2, w.hasSuffix("ed") { return String(w.dropLast(2)) }
+        if w.count > 2, w.hasSuffix("er") { return String(w.dropLast(2)) }
+        if w.count > 2, w.hasSuffix("ly") { return String(w.dropLast(2)) }
         return w
     }
 
     private func tokenize(_ text: String) -> [String] {
-        let stopWords: Set<String> = ["the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
-            "may", "might", "shall", "can", "to", "of", "in", "for", "on", "with", "at",
-            "by", "from", "as", "into", "through", "during", "before", "after", "above",
-            "below", "between", "out", "off", "over", "under", "again", "further", "then",
-            "once", "here", "there", "when", "where", "why", "how", "all", "each", "every",
-            "both", "few", "more", "most", "other", "some", "such", "no", "nor", "not",
-            "only", "own", "same", "so", "than", "too", "very", "just", "because", "but",
-            "and", "or", "if", "while", "about", "up", "its", "it", "this", "that", "these",
-            "those", "am", "what", "which", "who", "whom", "i", "me", "my", "we", "our", "you", "your",
-            "he", "him", "his", "she", "her", "they", "them", "their"]
+        let stopWords: Set = [
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "shall",
+            "can",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "out",
+            "off",
+            "over",
+            "under",
+            "again",
+            "further",
+            "then",
+            "once",
+            "here",
+            "there",
+            "when",
+            "where",
+            "why",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "no",
+            "nor",
+            "not",
+            "only",
+            "own",
+            "same",
+            "so",
+            "than",
+            "too",
+            "very",
+            "just",
+            "because",
+            "but",
+            "and",
+            "or",
+            "if",
+            "while",
+            "about",
+            "up",
+            "its",
+            "it",
+            "this",
+            "that",
+            "these",
+            "those",
+            "am",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "i",
+            "me",
+            "my",
+            "we",
+            "our",
+            "you",
+            "your",
+            "he",
+            "him",
+            "his",
+            "she",
+            "her",
+            "they",
+            "them",
+            "their"
+        ]
 
         return text.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)

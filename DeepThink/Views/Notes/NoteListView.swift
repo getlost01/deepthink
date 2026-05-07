@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct NoteListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -20,7 +20,7 @@ struct NoteListView: View {
             let lowered = debouncedSearch.lowercased()
             result = result.filter {
                 $0.title.lowercased().contains(lowered) ||
-                $0.content.lowercased().contains(lowered)
+                    $0.content.lowercased().contains(lowered)
             }
         }
         return result
@@ -37,8 +37,8 @@ struct NoteListView: View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search notes...")
-                DSArchiveButton(isOn: showArchived, count: notes.filter { $0.isArchived }.count) { showArchived.toggle() }
-                DSAddButton() {
+                DSArchiveButton(isOn: showArchived, count: notes.count(where: { $0.isArchived })) { showArchived.toggle() }
+                DSAddButton {
                     createNote()
                 }
                 .help("New Note (⌘N)")
@@ -180,7 +180,9 @@ struct NoteListView: View {
     }
 
     private func deleteNotes(at offsets: IndexSet) {
-        for index in offsets { deleteNote(filteredNotes[index]) }
+        for index in offsets {
+            deleteNote(filteredNotes[index])
+        }
     }
 
     private func moveSelection(_ direction: Int) {

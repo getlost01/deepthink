@@ -1,10 +1,11 @@
-import SwiftUI
 import SwiftTerm
+import SwiftUI
 
 // MARK: - Split Pane Model
 
 enum SplitDirection {
-    case horizontal, vertical
+    case horizontal
+    case vertical
 }
 
 @Observable
@@ -16,11 +17,14 @@ final class TerminalTab: Identifiable {
     var activeSessionID: UUID
 
     init(session: TerminalSession) {
-        self.primarySession = session
-        self.activeSessionID = session.id
+        primarySession = session
+        activeSessionID = session.id
     }
 
-    var isSplit: Bool { secondarySession != nil }
+    var isSplit: Bool {
+        secondarySession != nil
+    }
+
     var splitRatio: CGFloat = 0.5
 
     func split(_ direction: SplitDirection) {
@@ -60,11 +64,15 @@ final class TerminalTab: Identifiable {
 
 struct DeepThinkTerminalView: View {
     @Environment(AppState.self) private var appState
-    private var tabs: [TerminalTab] { appState.terminalTabs }
+    private var tabs: [TerminalTab] {
+        appState.terminalTabs
+    }
+
     private var activeTabID: UUID? {
         get { appState.activeTerminalTabID }
         nonmutating set { appState.activeTerminalTabID = newValue }
     }
+
     @State private var isAnalyzing = false
     @State private var analysisResult: String?
     @State private var showAnalysisSheet = false
@@ -98,7 +106,6 @@ struct DeepThinkTerminalView: View {
         }
     }
 
-    @ViewBuilder
     private var tabBar: some View {
         DSToolbarBar {
             ScrollView(.horizontal, showsIndicators: false) {
@@ -152,7 +159,8 @@ struct DeepThinkTerminalView: View {
             showSearch.toggle()
             if !showSearch { dismissSearch() }
             return .handled
-        case "=", "+":
+        case "=",
+             "+":
             activeTab?.activeSession().updateFontSize((activeTab?.activeSession().fontSize ?? 13) + 1)
             return .handled
         case "-":
@@ -169,8 +177,7 @@ struct DeepThinkTerminalView: View {
             return .handled
         case "w":
             if let tab = activeTab {
-                if tab.isSplit { tab.closeSplit() }
-                else if tabs.count > 1 { closeTab(tab.id) }
+                if tab.isSplit { tab.closeSplit() } else if tabs.count > 1 { closeTab(tab.id) }
             }
             return .handled
         default:
@@ -184,7 +191,6 @@ struct DeepThinkTerminalView: View {
         searchResults = []
     }
 
-    @ViewBuilder
     private var toolbarActions: some View {
         HStack(spacing: DS.Spacing.sm) {
             if let tab = activeTab {
@@ -260,7 +266,7 @@ struct DeepThinkTerminalView: View {
             guard let index = appState.terminalTabs.firstIndex(where: { $0.id == tab.id }) else { return }
             let wasActive = tab.id == appState.activeTerminalTabID
             appState.terminalTabs.remove(at: index)
-            if wasActive && !appState.terminalTabs.isEmpty {
+            if wasActive, !appState.terminalTabs.isEmpty {
                 let newIndex = min(index, appState.terminalTabs.count - 1)
                 appState.activeTerminalTabID = appState.terminalTabs[newIndex].id
             }
@@ -358,7 +364,6 @@ private struct TerminalPaneView: View {
         }
     }
 
-    @ViewBuilder
     private func pane(session: TerminalSession, onTap: @escaping () -> Void) -> some View {
         TerminalHostView(session: session)
             .id(session.id)

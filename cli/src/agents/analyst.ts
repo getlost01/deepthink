@@ -1,6 +1,6 @@
-import { Agent } from "./base";
-import { analyzeFile, summarizeData, computeNumericStats, analyzeJSON } from "../tools/analytics";
+import { analyzeFile, analyzeJSON, computeNumericStats, summarizeData } from "../tools/analytics";
 import { readFile, writeFile } from "../tools/file";
+import { Agent } from "./base";
 
 export class Analyst extends Agent {
   name = "analyst";
@@ -32,9 +32,7 @@ export class Analyst extends Agent {
       const lines = [
         `Rows: ${summary.rowCount}, Columns: ${summary.columnCount}`,
         "",
-        ...summary.columns.map(
-          (c) => `  ${c.name}: ${c.type}, ${c.nullCount} nulls, ${c.uniqueCount} unique`
-        ),
+        ...summary.columns.map((c) => `  ${c.name}: ${c.type}, ${c.nullCount} nulls, ${c.uniqueCount} unique`),
       ];
 
       if (stats.length > 0) {

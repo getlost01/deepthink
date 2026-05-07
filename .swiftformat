@@ -1,0 +1,47 @@
+--swiftversion 6.0
+--exclude .build, DeepThink/Preview Content
+
+# Indentation
+--indent 4
+--tabwidth 4
+--indentcase false
+
+# Line length
+--maxwidth 160
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+
+# Trailing items
+--stripunusedargs closure-only
+--commas inline
+--semicolons inline
+
+# Spacing
+--operatorfunc spaced
+--nospaceoperators ..<,...
+--ranges no-space
+
+# Imports
+--importgrouping testable-bottom
+
+# Enabled rules
+--enable blankLinesBetweenImports
+--enable blankLineAfterImports
+--enable consistentSwitchCaseSpacing
+--enable docComments
+--enable emptyExtensions
+--enable enumNamespaces
+--enable genericExtensions
+--enable noExplicitOwnership
+--enable redundantProperty
+--enable sortDeclarations
+--enable wrapEnumCases
+--enable wrapSwitchCases
+
+# Disabled rules (noisy for SwiftUI)
+--disable sortedSwitchCases
+--disable sortedImports
+--disable trailingClosures
+--disable unusedArguments
+--disable wrapAttributes

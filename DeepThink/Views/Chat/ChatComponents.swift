@@ -68,7 +68,7 @@ struct WelcomePrompts: View {
         ("Help me write a design doc", "pencil.and.outline"),
         ("Analyze my project progress", "chart.bar"),
         ("Search my knowledge base", "brain"),
-        ("Break down a complex task", "list.bullet.indent"),
+        ("Break down a complex task", "list.bullet.indent")
     ]
 
     private var greeting: String {
@@ -197,8 +197,8 @@ struct ChatContentView: View {
 
     private var isRichMarkdown: Bool {
         content.contains("```") || content.contains("| ") || content.contains("# ") ||
-        content.contains("## ") || content.contains("- [") || content.contains("1. ") ||
-        content.contains("> ") || content.contains("**")
+            content.contains("## ") || content.contains("- [") || content.contains("1. ") ||
+            content.contains("> ") || content.contains("**")
     }
 
     var body: some View {

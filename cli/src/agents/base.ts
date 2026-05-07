@@ -1,6 +1,6 @@
 import { query } from "../core/llm";
 import { saveIntegrationData } from "../tools/knowledge";
-import { buildMemoryContext, appendObservation } from "./memory";
+import { appendObservation, buildMemoryContext } from "./memory";
 
 interface LogEntry {
   agent: string;

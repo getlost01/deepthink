@@ -15,7 +15,7 @@ enum EditorMode: String, CaseIterable {
 struct MarkdownEditorWithToggle: View {
     @Binding var text: String
     var placeholder: String = "Start writing..."
-    var onSave: (() -> Void)? = nil
+    var onSave: (() -> Void)?
 
     @State private var mode: EditorMode = .rich
     @State private var lastSavedText: String = ""

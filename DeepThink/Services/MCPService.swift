@@ -22,10 +22,8 @@ final class MCPService {
         isCLIInstalled = fm.isExecutableFile(atPath: Self.cliInstallPath)
         isMCPInstalled = fm.isExecutableFile(atPath: Self.mcpInstallPath)
 
-        if isCLIInstalled { fetchVersion(path: Self.cliInstallPath) { self.cliVersion = $0 } }
-        else { cliVersion = nil }
-        if isMCPInstalled { fetchVersion(path: Self.mcpInstallPath) { self.mcpVersion = $0 } }
-        else { mcpVersion = nil }
+        if isCLIInstalled { fetchVersion(path: Self.cliInstallPath) { self.cliVersion = $0 } } else { cliVersion = nil }
+        if isMCPInstalled { fetchVersion(path: Self.mcpInstallPath) { self.mcpVersion = $0 } } else { mcpVersion = nil }
 
         let claudePath = ClaudeService.shared.claudePath
         guard !claudePath.isEmpty else {
@@ -103,7 +101,8 @@ final class MCPService {
         config["mcpServers"] = mcpServers
 
         guard let data = try? JSONSerialization.data(withJSONObject: config, options: .prettyPrinted),
-              let json = String(data: data, encoding: .utf8) else {
+              let json = String(data: data, encoding: .utf8)
+        else {
             return "{}"
         }
         return json
@@ -153,7 +152,12 @@ final class MCPService {
         }
     }
 
-    func streamQueryWithMCP(prompt: String, servers: [MCPServer], systemPrompt: String? = nil, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+    func streamQueryWithMCP(
+        prompt: String,
+        servers: [MCPServer],
+        systemPrompt: String? = nil,
+        onToken: @escaping @Sendable (String) -> Void
+    ) async throws -> String {
         let enabledServers = servers.filter(\.isEnabled)
 
         guard !enabledServers.isEmpty else {
@@ -185,7 +189,12 @@ final class MCPService {
         }
     }
 
-    private func runClaudeWithMCPStreaming(prompt: String, configPath: String, systemPrompt: String?, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
+    private func runClaudeWithMCPStreaming(
+        prompt: String,
+        configPath: String,
+        systemPrompt: String?,
+        onToken: @escaping @Sendable (String) -> Void
+    ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
@@ -198,7 +207,19 @@ final class MCPService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = StorageService.shared.baseURL
 
-                var args = ["-p", prompt, "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID, "--mcp-config", configPath]
+                var args = [
+                    "-p",
+                    prompt,
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    "--no-session-persistence",
+                    "--dangerously-skip-permissions",
+                    "--model",
+                    ClaudeService.shared.fullModelID,
+                    "--mcp-config",
+                    configPath
+                ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -222,7 +243,7 @@ final class MCPService {
                     let handle = outPipe.fileHandleForReading
                     var buffer = Data()
 
-                    while process.isRunning || handle.availableData.count > 0 {
+                    while process.isRunning || !handle.availableData.isEmpty {
                         let chunk = handle.availableData
                         if chunk.isEmpty { break }
                         buffer.append(chunk)
@@ -234,14 +255,16 @@ final class MCPService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+                            {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String {
+                                              let text = delta["text"] as? String
+                                    {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -269,7 +292,15 @@ final class MCPService {
                                         ClaudeService.shared.lastTokenUsage = tu
                                         ClaudeService.shared.sessionInputTokens += tu.inputTokens
                                         ClaudeService.shared.sessionOutputTokens += tu.outputTokens
-                                        ClaudeService.shared.recordUsage(queries: 1, cost: cost ?? 0, durationMs: tu.durationMs, inputTokens: tu.inputTokens, outputTokens: tu.outputTokens, cacheReadTokens: tu.cacheReadTokens, cacheCreationTokens: tu.cacheCreationTokens)
+                                        ClaudeService.shared.recordUsage(
+                                            queries: 1,
+                                            cost: cost ?? 0,
+                                            durationMs: tu.durationMs,
+                                            inputTokens: tu.inputTokens,
+                                            outputTokens: tu.outputTokens,
+                                            cacheReadTokens: tu.cacheReadTokens,
+                                            cacheCreationTokens: tu.cacheCreationTokens
+                                        )
                                     }
                                 }
                             }
@@ -278,7 +309,7 @@ final class MCPService {
 
                     process.waitUntilExit()
 
-                    if process.terminationStatus != 0 && fullText.isEmpty {
+                    if process.terminationStatus != 0, fullText.isEmpty {
                         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
                         continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
@@ -305,7 +336,18 @@ final class MCPService {
                 process.executableURL = URL(fileURLWithPath: claudePath)
                 process.currentDirectoryURL = StorageService.shared.baseURL
 
-                var args = ["-p", prompt, "--output-format", "json", "--no-session-persistence", "--dangerously-skip-permissions", "--model", ClaudeService.shared.fullModelID, "--mcp-config", configPath]
+                var args = [
+                    "-p",
+                    prompt,
+                    "--output-format",
+                    "json",
+                    "--no-session-persistence",
+                    "--dangerously-skip-permissions",
+                    "--model",
+                    ClaudeService.shared.fullModelID,
+                    "--mcp-config",
+                    configPath
+                ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
                 }
@@ -337,7 +379,8 @@ final class MCPService {
                     let output = String(data: outData, encoding: .utf8) ?? ""
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(ClaudeService.CLIResponse.self, from: jsonData),
-                       let result = response.result {
+                       let result = response.result
+                    {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         DispatchQueue.main.async {
@@ -365,13 +408,14 @@ final class MCPService {
         let configPaths = [
             "\(NSHomeDirectory())/.claude.json",
             "\(NSHomeDirectory())/.claude/claude_desktop_config.json",
-            "\(NSHomeDirectory())/Library/Application Support/Claude/claude_desktop_config.json",
+            "\(NSHomeDirectory())/Library/Application Support/Claude/claude_desktop_config.json"
         ]
 
         for path in configPaths {
             guard let data = FileManager.default.contents(atPath: path),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let servers = json["mcpServers"] as? [String: Any] else {
+                  let servers = json["mcpServers"] as? [String: Any]
+            else {
                 continue
             }
 
@@ -410,6 +454,6 @@ final class MCPService {
         ("Slack", "npx", "-y @modelcontextprotocol/server-slack", "Communication", "Send and read Slack messages"),
         ("Google Drive", "npx", "-y @modelcontextprotocol/server-gdrive", "Files", "Access Google Drive files and folders"),
         ("Linear", "npx", "-y mcp-linear", "Project Management", "Manage Linear issues and projects"),
-        ("Sentry", "npx", "-y @modelcontextprotocol/server-sentry", "Dev", "Query Sentry error tracking data"),
+        ("Sentry", "npx", "-y @modelcontextprotocol/server-sentry", "Dev", "Query Sentry error tracking data")
     ]
 }

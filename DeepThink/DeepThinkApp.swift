@@ -311,7 +311,7 @@ struct DeepThinkApp: App {
             },
             Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {
                 appState.navigate(to: .settings)
-            },
+            }
         ])
     }
 
@@ -383,7 +383,7 @@ struct DeepThinkApp: App {
                     ("Filesystem", "npx", "-y @modelcontextprotocol/server-filesystem ~/Documents ~/Desktop", "Files",
                      "Read and search local files — import documents, notes, and data from your filesystem"),
                     ("Memory", "npx", "-y @modelcontextprotocol/server-memory", "Knowledge",
-                     "Persistent memory for AI — remembers context across conversations"),
+                     "Persistent memory for AI — remembers context across conversations")
                 ]
 
                 for (name, command, args, category, desc) in defaults {
@@ -471,7 +471,7 @@ struct DeepThinkApp: App {
         } else {
             let devCandidates = [
                 Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/out/" + installName },
-                Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/" + installName },
+                Bundle.main.bundlePath.components(separatedBy: "/DeepThink.app").first.map { $0 + "/cli/" + installName }
             ].compactMap { $0 }
             sourcePath = devCandidates.first { fm.isExecutableFile(atPath: $0) }
         }

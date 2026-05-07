@@ -1,5 +1,5 @@
-import { Agent } from "./base";
 import { writeFile } from "../tools/file";
+import { Agent } from "./base";
 
 export class Writer extends Agent {
   name = "writer";

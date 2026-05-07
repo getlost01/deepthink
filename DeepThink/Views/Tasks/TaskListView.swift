@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TaskListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -41,7 +41,7 @@ struct TaskListView: View {
                 return due <= weekFromNow && due >= Date() && task.status != .done && task.status != .cancelled
             }
         case .overdue:
-            tasks = tasks.filter { $0.isOverdue }
+            tasks = tasks.filter(\.isOverdue)
         }
 
         if !debouncedSearch.isEmpty {
@@ -98,7 +98,7 @@ struct TaskListView: View {
                 .frame(width: 28)
                 .pointerOnHover()
 
-                DSAddButton() {
+                DSAddButton {
                     createTask()
                 }
                 .help("New Task (⌘T)")
@@ -154,7 +154,7 @@ struct TaskListView: View {
             }
 
             if !filteredTasks.isEmpty {
-                let done = filteredTasks.filter { $0.status == .done }.count
+                let done = filteredTasks.count(where: { $0.status == .done })
                 let total = filteredTasks.count
                 let progress = Double(done) / Double(total)
                 HStack(spacing: DS.Spacing.sm) {
@@ -264,7 +264,7 @@ struct TaskListView: View {
     }
 
     private func moveSelection(_ direction: Int) {
-        let allItems = groupedTasks.flatMap { $0.1 }
+        let allItems = groupedTasks.flatMap(\.1)
         guard !allItems.isEmpty else { return }
         if let current = appState.selectedTaskID,
            let idx = allItems.firstIndex(where: { $0.id == current }) {

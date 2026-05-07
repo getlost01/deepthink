@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 struct BackupSnapshot: Codable, Identifiable, Equatable {
     var id: UUID
@@ -45,8 +45,8 @@ final class BackupService {
 
     func applyPendingRestoreIfNeeded() {
         guard let folderName = try? String(contentsOf: pendingRestoreURL, encoding: .utf8)
-                .trimmingCharacters(in: .whitespacesAndNewlines),
-              !folderName.isEmpty
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !folderName.isEmpty
         else { return }
 
         let srcDir = snapshotsDir.appendingPathComponent(folderName)
@@ -106,7 +106,9 @@ final class BackupService {
                 let limit = UserDefaults.standard.object(forKey: "backupMaxKeep") as? Int ?? 10
                 let autoSnaps = self.snapshots.filter { !$0.isManual }
                 let excess = Array(autoSnaps.dropFirst(limit))
-                for s in excess { self.snapshots.removeAll { $0.id == s.id } }
+                for s in excess {
+                    self.snapshots.removeAll { $0.id == s.id }
+                }
                 self.saveManifest()
                 return excess.map { self.snapshotsDir.appendingPathComponent($0.folderName) }
             }
@@ -166,7 +168,7 @@ final class BackupService {
             (".claude", ["cache"]),
             ("knowledge", []),
             ("memory", []),
-            ("workspace", []),
+            ("workspace", [])
         ]
 
         for entry in subdirs {

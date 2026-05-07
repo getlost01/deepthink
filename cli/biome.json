@@ -3,7 +3,8 @@
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
-		"useIgnoreFile": true
+		"useIgnoreFile": true,
+		"root": ".."
 	},
 	"files": {
 		"includes": ["src/**", "!!**/node_modules", "!!**/out", "!!**/dist"]
@@ -19,11 +20,13 @@
 		"rules": {
 			"recommended": true,
 			"suspicious": {
-				"noExplicitAny": "warn",
-				"noConsole": "off"
+				"noExplicitAny": "off",
+				"noConsole": "off",
+				"useIterableCallbackReturn": "off",
+				"noNonNullAssertedOptionalChain": "warn"
 			},
 			"style": {
-				"noNonNullAssertion": "warn"
+				"noNonNullAssertion": "off"
 			}
 		}
 	},

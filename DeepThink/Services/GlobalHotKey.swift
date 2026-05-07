@@ -1,5 +1,5 @@
-import Carbon
 import AppKit
+import Carbon
 import SwiftData
 
 final class GlobalHotKey {
@@ -13,14 +13,14 @@ final class GlobalHotKey {
         self.container = container
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
+        InstallEventHandler(GetApplicationEventTarget(), { _, _, _ -> OSStatus in
             GlobalHotKey.shared.handleHotKey()
             return noErr
         }, 1, &eventType, nil, nil)
 
         // Option+Space: modifier 0x0800 = optionKey, keyCode 49 = Space
         var hotKeyID = EventHotKeyID(signature: OSType(0x4454_484B), id: 1) // "DTHK"
-        let modifiers: UInt32 = UInt32(optionKey)
+        let modifiers = UInt32(optionKey)
         RegisterEventHotKey(UInt32(49), modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
     }
 

@@ -113,12 +113,7 @@ enum DS {
 
 struct DSPageHeader<Trailing: View>: View {
     let title: String
-    @ViewBuilder let trailing: () -> Trailing
-
-    init(title: String, @ViewBuilder trailing: @escaping () -> Trailing) {
-        self.title = title
-        self.trailing = trailing
-    }
+    @ViewBuilder @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -138,7 +133,7 @@ struct DSPageHeader<Trailing: View>: View {
 extension DSPageHeader where Trailing == EmptyView {
     init(title: String) {
         self.title = title
-        self.trailing = { EmptyView() }
+        trailing = { EmptyView() }
     }
 }
 
@@ -163,8 +158,8 @@ struct DSCard<Content: View>: View {
 
 struct DSSectionHeader: View {
     let title: String
-    var count: Int? = nil
-    var action: (() -> Void)? = nil
+    var count: Int?
+    var action: (() -> Void)?
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
@@ -213,7 +208,7 @@ struct DSToolbarBar<Content: View>: View {
 
 struct DSTabButton: View {
     let title: String
-    var icon: String? = nil
+    var icon: String?
     let isSelected: Bool
     let action: () -> Void
     @State private var isHovered = false
@@ -288,7 +283,7 @@ struct DSSearchField: View {
     @Binding var text: String
     var placeholder: String = "Search..."
     var icon: String = "magnifyingglass"
-    var onSubmit: (() -> Void)? = nil
+    var onSubmit: (() -> Void)?
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -349,9 +344,9 @@ struct DSActionButton: View {
 struct DSEmptyState: View {
     let icon: String
     let title: String
-    var subtitle: String? = nil
-    var hint: String? = nil
-    var action: (() -> Void)? = nil
+    var subtitle: String?
+    var hint: String?
+    var action: (() -> Void)?
     var actionTitle: String = "Get Started"
 
     var body: some View {
@@ -439,7 +434,7 @@ struct DSHelpButton: View {
 struct DSRow<Leading: View, Trailing: View>: View {
     @ViewBuilder let leading: () -> Leading
     let title: String
-    var subtitle: String? = nil
+    var subtitle: String?
     @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
@@ -473,7 +468,7 @@ struct DSToolbarButton: View {
     let icon: String
     var color: Color = DS.Colors.textTertiary
     var size: CGFloat = DS.IconSize.md
-    var label: String? = nil
+    var label: String?
     let action: () -> Void
     @State private var isHovered = false
 
@@ -507,13 +502,16 @@ struct DSArchiveButton: View {
                 .font(.system(size: DS.IconSize.sm, weight: .medium))
                 .foregroundStyle(isOn ? DS.Colors.accent : (isHovered ? DS.Colors.accent : DS.Colors.textSecondary))
                 .frame(width: 28, height: 28)
-                .background(isOn ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fill), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(
+                    isOn ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fill),
+                    in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                )
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.sm)
                         .strokeBorder(isOn ? DS.Colors.accent.opacity(0.4) : (isHovered ? DS.Colors.borderHover : DS.Colors.border), lineWidth: 1)
                 )
                 .overlay(alignment: .topTrailing) {
-                    if count > 0 {
+                    if !isEmpty {
                         Text(count > 99 ? "99+" : "\(count)")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
@@ -667,7 +665,7 @@ struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
 // MARK: - Divider with label
 
 struct DSSectionDivider: View {
-    var label: String? = nil
+    var label: String?
 
     var body: some View {
         if let label {
@@ -729,7 +727,7 @@ struct DSSectionBanner: View {
 
 struct DSFieldLabel: View {
     let label: String
-    var hint: String? = nil
+    var hint: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
@@ -761,8 +759,7 @@ extension View {
     }
 
     func dsPage() -> some View {
-        self
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -771,8 +768,7 @@ extension View {
     }
 
     func dsInputField() -> some View {
-        self
-            .padding(.horizontal, DS.Spacing.lg)
+        padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
             .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
@@ -782,8 +778,7 @@ extension View {
     }
 
     func dsBordered() -> some View {
-        self
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border))
     }
 
@@ -792,12 +787,11 @@ extension View {
     }
 
     func dsListPanel() -> some View {
-        self
-            .frame(width: DS.Layout.panelWidth)
+        frame(width: DS.Layout.panelWidth)
     }
 
     func pointerOnHover() -> some View {
-        self.onHover { hovering in
+        onHover { hovering in
             if hovering {
                 NSCursor.pointingHand.push()
             } else {
@@ -865,7 +859,9 @@ struct PlainPointerButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == PlainPointerButtonStyle {
-    static var plainPointer: PlainPointerButtonStyle { PlainPointerButtonStyle() }
+    static var plainPointer: PlainPointerButtonStyle {
+        PlainPointerButtonStyle()
+    }
 }
 
 struct DSPrimaryButtonStyle: ButtonStyle {
@@ -921,11 +917,15 @@ struct DSSecondaryButtonStyle: ButtonStyle {
 }
 
 extension ButtonStyle where Self == DSPrimaryButtonStyle {
-    static var dsPrimary: DSPrimaryButtonStyle { DSPrimaryButtonStyle() }
+    static var dsPrimary: DSPrimaryButtonStyle {
+        DSPrimaryButtonStyle()
+    }
 }
 
 extension ButtonStyle where Self == DSSecondaryButtonStyle {
-    static var dsSecondary: DSSecondaryButtonStyle { DSSecondaryButtonStyle() }
+    static var dsSecondary: DSSecondaryButtonStyle {
+        DSSecondaryButtonStyle()
+    }
 }
 
 // MARK: - Calendar Picker
@@ -933,7 +933,7 @@ extension ButtonStyle where Self == DSSecondaryButtonStyle {
 struct DSCalendarPicker: View {
     @Binding var selectedDate: Date?
     @Binding var isPresented: Bool
-    @State private var displayMonth: Date = Date()
+    @State private var displayMonth: Date = .init()
 
     private let calendar = Calendar.current
     private let weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
@@ -1024,15 +1024,15 @@ struct DSCalendarPicker: View {
                                 .fontWeight(isToday ? .bold : .regular)
                                 .foregroundStyle(
                                     isSelected ? DS.Colors.onAccent :
-                                    isPast ? DS.Colors.textTertiary :
-                                    isToday ? DS.Colors.accent :
-                                    DS.Colors.textPrimary
+                                        isPast ? DS.Colors.textTertiary :
+                                        isToday ? DS.Colors.accent :
+                                        DS.Colors.textPrimary
                                 )
                                 .frame(width: 28, height: 28)
                                 .background(
                                     isSelected ? DS.Colors.accent :
-                                    isToday ? DS.Colors.accentFill :
-                                    .clear,
+                                        isToday ? DS.Colors.accentFill :
+                                        .clear,
                                     in: Circle()
                                 )
                         }
@@ -1094,7 +1094,7 @@ import WebKit
 struct RichMarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isReadOnly: Bool = false
-    var onContentSettled: (() -> Void)? = nil
+    var onContentSettled: (() -> Void)?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1138,7 +1138,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         }
 
         func pushIfReady() {
-            guard isReady, let webView = webView else { return }
+            guard isReady, let webView else { return }
             if let text = pendingText, text != lastPushed, !isReceiving {
                 lastPushed = text
                 let escaped = text
@@ -1175,5 +1175,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
 }
 
 struct RichEditorToolbar: View {
-    var body: some View { EmptyView() }
+    var body: some View {
+        EmptyView()
+    }
 }

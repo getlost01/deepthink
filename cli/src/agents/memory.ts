@@ -1,5 +1,5 @@
-import { join } from "path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 const MEMORY_DIR = join(DEEPTHINK_ROOT, "data", "agent-memory");
@@ -32,7 +32,11 @@ export function loadMemory(agentId: string): AgentMemory {
   mkdirSync(MEMORY_DIR, { recursive: true });
   const path = memPath(agentId);
   if (!existsSync(path)) return empty(agentId);
-  try { return JSON.parse(readFileSync(path, "utf-8")); } catch { return empty(agentId); }
+  try {
+    return JSON.parse(readFileSync(path, "utf-8"));
+  } catch {
+    return empty(agentId);
+  }
 }
 
 export function saveMemory(memory: AgentMemory): void {
@@ -62,10 +66,7 @@ export function setFact(agentId: string, key: string, value: string): void {
 
 export function buildMemoryContext(agentId: string): string {
   const mem = loadMemory(agentId);
-  const hasContent =
-    mem.observations.length > 0 ||
-    mem.corrections.length > 0 ||
-    Object.keys(mem.facts).length > 0;
+  const hasContent = mem.observations.length > 0 || mem.corrections.length > 0 || Object.keys(mem.facts).length > 0;
   if (!hasContent) return "";
 
   const lines: string[] = ["## Agent Memory\n"];
@@ -89,14 +90,16 @@ export function buildMemoryContext(agentId: string): string {
 
 export function listAllMemories(): { agentId: string; interactions: number; updated: string }[] {
   mkdirSync(MEMORY_DIR, { recursive: true });
-  const { readdirSync } = require("fs");
+  const { readdirSync } = require("node:fs");
   return readdirSync(MEMORY_DIR)
     .filter((f: string) => f.endsWith(".json"))
     .map((f: string) => {
       try {
         const m: AgentMemory = JSON.parse(readFileSync(join(MEMORY_DIR, f), "utf-8"));
         return { agentId: m.agentId, interactions: m.interactionCount, updated: m.updated };
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     })
     .filter(Boolean);
 }

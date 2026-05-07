@@ -1,5 +1,5 @@
-import { Agent } from "./base";
 import { WORKSPACE_TOOL_NAMES } from "../tools/workspace";
+import { Agent } from "./base";
 
 interface PlanStep {
   step: number;
@@ -8,7 +8,15 @@ interface PlanStep {
   details: string;
 }
 
-const BASE_TOOLS = ["write_file", "read_file", "search_web", "search_local", "analyze_file", "save_knowledge", "search_knowledge"];
+const BASE_TOOLS = [
+  "write_file",
+  "read_file",
+  "search_web",
+  "search_local",
+  "analyze_file",
+  "save_knowledge",
+  "search_knowledge",
+];
 const ALL_TOOLS = [...BASE_TOOLS, ...WORKSPACE_TOOL_NAMES];
 
 export class Planner extends Agent {
@@ -18,8 +26,10 @@ export class Planner extends Agent {
     'Output a JSON array of step objects with "step" (int), "action" (str), ' +
     '"tool" (str or null), and "details" (str — for workspace tools, use JSON object string with params). ' +
     "Only output valid JSON.\n\n" +
-    "Available tools: " + ALL_TOOLS.join(", ") + "\n\n" +
-    "Workspace tools accept JSON details, e.g. {\"title\": \"...\", \"status\": \"To Do\", \"priority\": \"High\"}";
+    "Available tools: " +
+    ALL_TOOLS.join(", ") +
+    "\n\n" +
+    'Workspace tools accept JSON details, e.g. {"title": "...", "status": "To Do", "priority": "High"}';
 
   async plan(task: string, context = ""): Promise<PlanStep[]> {
     let prompt = `Task: ${task}`;

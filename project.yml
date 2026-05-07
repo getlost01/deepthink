@@ -31,6 +31,13 @@ targets:
       - package: SwiftTerm
     preBuildScripts:
       - script: |
+          if which swiftformat > /dev/null; then
+            swiftformat "${SRCROOT}/DeepThink" --config "${SRCROOT}/.swiftformat"
+          else
+            echo "warning: SwiftFormat not installed — run 'brew install swiftformat'"
+          fi
+        name: SwiftFormat
+      - script: |
           if which swiftlint > /dev/null; then
             swiftlint lint --config "${SRCROOT}/.swiftlint.yml"
           else

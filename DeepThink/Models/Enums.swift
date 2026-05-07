@@ -14,7 +14,9 @@ enum SidebarSection: String, Identifiable {
     case contextGraph = "Context Graph"
     case settings = "Settings"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     static var topSections: [SidebarSection] {
         [.recent]
@@ -90,7 +92,9 @@ enum AgentConfigTab: String, CaseIterable, Identifiable {
     case skills = "Skills"
     case rules = "Rules"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {
@@ -106,7 +110,9 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
     case notes = "Notes"
     case tasks = "Tasks"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {
@@ -117,7 +123,6 @@ enum WorkspaceTab: String, CaseIterable, Identifiable {
     }
 }
 
-
 // MARK: - Tasks
 
 enum TaskStatus: String, Codable, CaseIterable, Identifiable {
@@ -127,7 +132,9 @@ enum TaskStatus: String, Codable, CaseIterable, Identifiable {
     case done = "Done"
     case cancelled = "Cancelled"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {
@@ -167,7 +174,9 @@ enum TaskPriority: String, Codable, CaseIterable, Identifiable {
     case high = "High"
     case urgent = "Urgent"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {

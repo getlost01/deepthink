@@ -1,10 +1,10 @@
+import { WORKSPACE_TOOL_MAP, WORKSPACE_TOOLS } from "../tools/workspace";
 import { Agent } from "./base";
-import { WORKSPACE_TOOLS, WORKSPACE_TOOL_MAP } from "../tools/workspace";
 
 function buildSystemPrompt(): string {
   const today = new Date().toISOString().slice(0, 10);
-  const toolDocs = WORKSPACE_TOOLS.map((t) =>
-    `### ${t.name}\n${t.description}\nInput: ${JSON.stringify(t.inputSchema, null, 2)}`
+  const toolDocs = WORKSPACE_TOOLS.map(
+    (t) => `### ${t.name}\n${t.description}\nInput: ${JSON.stringify(t.inputSchema, null, 2)}`
   ).join("\n\n");
 
   return `You are a workspace management agent for DeepThink. You manage tasks, notes, and projects.
@@ -38,7 +38,10 @@ interface ToolAction {
 }
 
 function parseActions(response: string): ToolAction[] {
-  const cleaned = response.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+  const cleaned = response
+    .replace(/```json?\n?/g, "")
+    .replace(/```/g, "")
+    .trim();
   const start = cleaned.indexOf("[");
   const end = cleaned.lastIndexOf("]") + 1;
   if (start === -1 || end === 0) {
@@ -53,7 +56,7 @@ export class WorkspaceAgent extends Agent {
   systemPrompt = buildSystemPrompt();
 
   async handle(request: string): Promise<string> {
-    const summary = WORKSPACE_TOOL_MAP["workspace_summary"].execute({});
+    const summary = WORKSPACE_TOOL_MAP.workspace_summary.execute({});
     const prompt = `Current workspace state:\n${JSON.stringify(summary, null, 2)}\n\nUser request: ${request}`;
 
     const response = await this.think(prompt);

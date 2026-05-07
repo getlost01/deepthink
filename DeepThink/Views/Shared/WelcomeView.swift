@@ -18,7 +18,7 @@ struct WelcomeView: View {
             features: [
                 Feature(icon: "folder", title: "Projects", description: "Group related work together"),
                 Feature(icon: "doc.text", title: "Notes", description: "Capture ideas, plans, and meeting notes"),
-                Feature(icon: "checklist", title: "Tasks", description: "Track what needs to get done"),
+                Feature(icon: "checklist", title: "Tasks", description: "Track what needs to get done")
             ]
         ),
         WelcomeStep(
@@ -28,7 +28,7 @@ struct WelcomeView: View {
             features: [
                 Feature(icon: "globe", title: "Save web pages", description: "Grab content from any URL"),
                 Feature(icon: "doc.on.clipboard", title: "Paste anything", description: "Quick-save from your clipboard"),
-                Feature(icon: "folder.badge.plus", title: "Import files", description: "Bring in documents and folders"),
+                Feature(icon: "folder.badge.plus", title: "Import files", description: "Bring in documents and folders")
             ]
         ),
         WelcomeStep(
@@ -38,9 +38,9 @@ struct WelcomeView: View {
             features: [
                 Feature(icon: "person.2.circle", title: "AI Assistants", description: "Specialized helpers for different tasks"),
                 Feature(icon: "sparkles", title: "Automations", description: "Reusable AI actions you can run anytime"),
-                Feature(icon: "puzzlepiece.extension", title: "Connections", description: "Give AI access to external tools"),
+                Feature(icon: "puzzlepiece.extension", title: "Connections", description: "Give AI access to external tools")
             ]
-        ),
+        )
     ]
 
     var body: some View {

@@ -39,13 +39,18 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
   },
   {
     name: "knowledge_save_project",
-    description: "Save knowledge to a project. Types: 'context' (general info), 'decision' (decisions log), 'artifact' (timestamped artifact).",
+    description:
+      "Save knowledge to a project. Types: 'context' (general info), 'decision' (decisions log), 'artifact' (timestamped artifact).",
     inputSchema: {
       type: "object",
       properties: {
         project: { type: "string", description: "Project name" },
         content: { type: "string", description: "Knowledge content (markdown)" },
-        type: { type: "string", enum: ["context", "decision", "artifact"], description: "Knowledge type (default: context)" },
+        type: {
+          type: "string",
+          enum: ["context", "decision", "artifact"],
+          description: "Knowledge type (default: context)",
+        },
       },
       required: ["project", "content"],
     },
@@ -103,7 +108,10 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
         source: { type: "string", description: "Source name (e.g. 'slack', 'github', 'web')" },
         channel: { type: "string", description: "Channel/category name" },
         content: { type: "string", description: "Content to capture (markdown)" },
-        title: { type: "string", description: "Descriptive title for this entry (auto-derived from content if omitted)" },
+        title: {
+          type: "string",
+          description: "Descriptive title for this entry (auto-derived from content if omitted)",
+        },
         tags: { type: "array", items: { type: "string" }, description: "Optional tags for categorisation" },
         metadata: {
           type: "object",
@@ -152,6 +160,4 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
   },
 ];
 
-export const KNOWLEDGE_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(
-  KNOWLEDGE_TOOLS.map((t) => [t.name, t])
-);
+export const KNOWLEDGE_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(KNOWLEDGE_TOOLS.map((t) => [t.name, t]));

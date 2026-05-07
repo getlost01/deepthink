@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ProjectListView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,7 +13,7 @@ struct ProjectListView: View {
     @State private var showDeleteConfirm = false
 
     private var projects: [Project] {
-        var result = showArchived ? allProjects.filter { $0.isArchived } : allProjects.filter { !$0.isArchived }
+        var result = showArchived ? allProjects.filter(\.isArchived) : allProjects.filter { !$0.isArchived }
         if !debouncedSearch.isEmpty {
             let lowered = debouncedSearch.lowercased()
             result = result.filter { $0.name.lowercased().contains(lowered) || $0.summary.lowercased().contains(lowered) }
@@ -28,9 +28,9 @@ struct ProjectListView: View {
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search projects...")
 
-                DSArchiveButton(isOn: showArchived, count: allProjects.filter { $0.isArchived }.count) { showArchived.toggle() }
+                DSArchiveButton(isOn: showArchived, count: allProjects.count(where: { $0.isArchived })) { showArchived.toggle() }
 
-                DSAddButton() {
+                DSAddButton {
                     createProject()
                 }
                 .help("New Project (⇧⌘N)")
@@ -175,7 +175,7 @@ private struct ProjectCard: View {
             Spacer()
 
             HStack(spacing: DS.Spacing.sm) {
-                let noteCount = project.isArchived ? project.notes.count : project.notes.filter { !$0.isArchived }.count
+                let noteCount = project.isArchived ? project.notes.count : project.notes.count(where: { !$0.isArchived })
                 let taskCount = project.isArchived ? project.tasks.count : project.openTaskCount
                 if noteCount > 0 {
                     HStack(spacing: DS.Spacing.xxs) {

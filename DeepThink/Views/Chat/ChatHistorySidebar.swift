@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ChatHistorySidebar: View {
     let conversations: [Conversation]
@@ -7,12 +7,12 @@ struct ChatHistorySidebar: View {
     let onSelect: (Conversation) -> Void
     let onDelete: (Conversation) -> Void
     let onNewChat: () -> Void
-    var onClose: (() -> Void)? = nil
+    var onClose: (() -> Void)?
     @State private var searchText = ""
     @State private var hoveredID: UUID?
 
     private var filtered: [Conversation] {
-        let convs = conversations.prefix(100).map { $0 }
+        let convs = conversations.prefix(100).map(\.self)
         if searchText.isEmpty { return convs }
         let q = searchText.lowercased()
         return convs.filter { $0.title.lowercased().contains(q) }
@@ -21,7 +21,9 @@ struct ChatHistorySidebar: View {
     private struct Section: Identifiable {
         let title: String
         let items: [Conversation]
-        var id: String { title }
+        var id: String {
+            title
+        }
     }
 
     private var sections: [Section] {

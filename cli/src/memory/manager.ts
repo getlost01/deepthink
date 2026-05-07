@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { join } from "path";
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { MEMORY_DIR } from "../config";
 
 interface MemoryEntry {
@@ -60,16 +60,14 @@ export class MemoryManager {
 
   search(query?: string, layer?: "short" | "long", limit = 10): MemoryEntry[] {
     const layers: ("short" | "long")[] = layer ? [layer] : ["short", "long"];
-    let results: MemoryEntry[] = [];
+    const results: MemoryEntry[] = [];
 
     for (const l of layers) {
       let entries = this.load(l);
       if (query) {
         const q = query.toLowerCase();
         entries = entries.filter(
-          (e) =>
-            e.content.toLowerCase().includes(q) ||
-            e.tags.some((t) => t.toLowerCase().includes(q))
+          (e) => e.content.toLowerCase().includes(q) || e.tags.some((t) => t.toLowerCase().includes(q))
         );
       }
       results.push(...entries);

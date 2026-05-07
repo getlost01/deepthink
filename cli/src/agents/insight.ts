@@ -1,15 +1,19 @@
-import { Agent } from "./base";
-import * as db from "../core/db";
-import { unifiedSearch } from "../core/context-engine";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
+import { unifiedSearch } from "../core/context-engine";
+import * as db from "../core/db";
+import { Agent } from "./base";
 
 const INSIGHTS_PATH = join(DEEPTHINK_ROOT, "data", "insights.json");
 
 export type InsightType =
-  | "overdue_tasks" | "stale_tasks" | "stale_project"
-  | "blocked_tasks" | "task_cluster" | "high_priority_stale";
+  | "overdue_tasks"
+  | "stale_tasks"
+  | "stale_project"
+  | "blocked_tasks"
+  | "task_cluster"
+  | "high_priority_stale";
 
 export interface Insight {
   id: string;
@@ -24,7 +28,11 @@ export interface Insight {
 
 function loadInsights(): Insight[] {
   if (!existsSync(INSIGHTS_PATH)) return [];
-  try { return JSON.parse(readFileSync(INSIGHTS_PATH, "utf-8")); } catch { return []; }
+  try {
+    return JSON.parse(readFileSync(INSIGHTS_PATH, "utf-8"));
+  } catch {
+    return [];
+  }
 }
 
 function saveInsights(insights: Insight[]): void {
@@ -44,7 +52,7 @@ export class InsightAgent extends Agent {
     const insights: Insight[] = [];
     const now = new Date().toISOString();
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const _todayStr = today.toISOString().slice(0, 10);
 
     const tasks = db.listTasks({ excludeArchived: true });
     const projects = db.listProjects().filter((p) => !p.isArchived);
@@ -59,8 +67,11 @@ export class InsightAgent extends Agent {
         type: "overdue_tasks",
         severity: "action",
         title: `${overdue.length} overdue task${overdue.length > 1 ? "s" : ""}`,
-        description: overdue.slice(0, 3).map((t) => `"${t.title}"`).join(", ") +
-          (overdue.length > 3 ? ` and ${overdue.length - 3} more` : ""),
+        description:
+          overdue
+            .slice(0, 3)
+            .map((t) => `"${t.title}"`)
+            .join(", ") + (overdue.length > 3 ? ` and ${overdue.length - 3} more` : ""),
         suggestedAction: "Reschedule or close overdue tasks",
         relatedRefs: overdue.map((t) => String(t.pk)),
         generatedAt: now,
@@ -69,8 +80,11 @@ export class InsightAgent extends Agent {
 
     // 2. High-priority stale
     const hpStale = tasks.filter(
-      (t) => (t.priority === "High" || t.priority === "Urgent") &&
-        t.status !== "Done" && t.status !== "Cancelled" && daysSince(t.modifiedAt) > 7
+      (t) =>
+        (t.priority === "High" || t.priority === "Urgent") &&
+        t.status !== "Done" &&
+        t.status !== "Cancelled" &&
+        daysSince(t.modifiedAt) > 7
     );
     if (hpStale.length > 0) {
       insights.push({
@@ -78,7 +92,10 @@ export class InsightAgent extends Agent {
         type: "high_priority_stale",
         severity: "warning",
         title: `${hpStale.length} high-priority task${hpStale.length > 1 ? "s" : ""} untouched 7+ days`,
-        description: hpStale.slice(0, 3).map((t) => `"${t.title}"`).join(", "),
+        description: hpStale
+          .slice(0, 3)
+          .map((t) => `"${t.title}"`)
+          .join(", "),
         suggestedAction: "Update status or reduce priority",
         relatedRefs: hpStale.map((t) => String(t.pk)),
         generatedAt: now,
@@ -93,7 +110,10 @@ export class InsightAgent extends Agent {
         type: "blocked_tasks",
         severity: "warning",
         title: `${stuck.length} "In Progress" task${stuck.length > 1 ? "s" : ""} stuck 5+ days`,
-        description: stuck.slice(0, 3).map((t) => `"${t.title}"`).join(", "),
+        description: stuck
+          .slice(0, 3)
+          .map((t) => `"${t.title}"`)
+          .join(", "),
         suggestedAction: "Mark blocked, reassign, or update status",
         relatedRefs: stuck.map((t) => String(t.pk)),
         generatedAt: now,
@@ -107,7 +127,8 @@ export class InsightAgent extends Agent {
       const projNotes = notes.filter((n) => n.projectPk === proj.pk);
       const items = [...projTasks, ...projNotes];
       const lastActivity = items.reduce<Date | null>(
-        (acc, i) => (!acc || i.modifiedAt > acc ? i.modifiedAt : acc), null
+        (acc, i) => (!acc || i.modifiedAt > acc ? i.modifiedAt : acc),
+        null
       );
       if (!lastActivity || daysSince(lastActivity) > 21) {
         const open = projTasks.filter((t) => t.status !== "Done" && t.status !== "Cancelled");
@@ -127,9 +148,7 @@ export class InsightAgent extends Agent {
     }
 
     // 5. AI: unassigned task cluster
-    const unassigned = tasks.filter(
-      (t) => !t.projectPk && t.status !== "Done" && t.status !== "Cancelled"
-    );
+    const unassigned = tasks.filter((t) => !t.projectPk && t.status !== "Done" && t.status !== "Cancelled");
     if (unassigned.length >= 5) {
       const clusterInsight = await this.detectCluster(unassigned);
       if (clusterInsight) insights.push({ ...clusterInsight, id: `cluster-${crypto.randomUUID()}`, generatedAt: now });
@@ -139,18 +158,32 @@ export class InsightAgent extends Agent {
     return insights;
   }
 
-  listInsights(): Insight[] { return loadInsights(); }
-  clearInsights(): void { saveInsights([]); }
+  listInsights(): Insight[] {
+    return loadInsights();
+  }
+  clearInsights(): void {
+    saveInsights([]);
+  }
 
   private async detectCluster(tasks: db.TaskRow[]): Promise<Omit<Insight, "id" | "generatedAt"> | null> {
-    const list = tasks.slice(0, 20).map((t) => `- ${t.title}`).join("\n");
-    const knCtx = unifiedSearch(tasks.slice(0, 5).map((t) => t.title).join(" "), { maxItems: 3, types: ["knowledge", "note"] });
-    const knowledgeStr = knCtx.length > 0 ? `\nRelated knowledge/notes: ${knCtx.map((r) => `"${r.title}"`).join(", ")}` : "";
+    const list = tasks
+      .slice(0, 20)
+      .map((t) => `- ${t.title}`)
+      .join("\n");
+    const knCtx = unifiedSearch(
+      tasks
+        .slice(0, 5)
+        .map((t) => t.title)
+        .join(" "),
+      { maxItems: 3, types: ["knowledge", "note"] }
+    );
+    const knowledgeStr =
+      knCtx.length > 0 ? `\nRelated knowledge/notes: ${knCtx.map((r) => `"${r.title}"`).join(", ")}` : "";
     try {
       const res = await this.think(
         `These ${tasks.length} tasks have no project:\n${list}${knowledgeStr}\n\n` +
-        `Do they cluster into a theme suggesting a new project? ` +
-        `Respond ONLY with JSON: {"cluster": bool, "theme": "...", "suggestion": "..."}`
+          `Do they cluster into a theme suggesting a new project? ` +
+          `Respond ONLY with JSON: {"cluster": bool, "theme": "...", "suggestion": "..."}`
       );
       const j = JSON.parse(res.slice(res.indexOf("{"), res.lastIndexOf("}") + 1));
       if (!j.cluster) return null;
@@ -162,6 +195,8 @@ export class InsightAgent extends Agent {
         suggestedAction: j.suggestion,
         relatedRefs: tasks.map((t) => String(t.pk)),
       };
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   }
 }

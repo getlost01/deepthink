@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
-import { join } from "path";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 const DATA_DIR = join(DEEPTHINK_ROOT, "data");
@@ -76,10 +76,19 @@ const upsertSQL = `
 
 export function upsertChunk(chunk: VectorChunk): void {
   const db = getDB();
-  db.run(upsertSQL,
-    chunk.id, chunk.entryId, chunk.entryType, chunk.title, chunk.content,
-    JSON.stringify(chunk.tags), chunk.source, chunk.importedAt.getTime() / 1000,
-    chunk.chunkIndex, chunk.totalChunks, chunk.contentHash,
+  db.run(
+    upsertSQL,
+    chunk.id,
+    chunk.entryId,
+    chunk.entryType,
+    chunk.title,
+    chunk.content,
+    JSON.stringify(chunk.tags),
+    chunk.source,
+    chunk.importedAt.getTime() / 1000,
+    chunk.chunkIndex,
+    chunk.totalChunks,
+    chunk.contentHash,
     chunk.embedding ? Buffer.from(chunk.embedding.buffer) : null
   );
 }
@@ -90,9 +99,17 @@ export function upsertChunks(chunks: VectorChunk[]): void {
   const tx = db.transaction(() => {
     for (const chunk of chunks) {
       stmt.run(
-        chunk.id, chunk.entryId, chunk.entryType, chunk.title, chunk.content,
-        JSON.stringify(chunk.tags), chunk.source, chunk.importedAt.getTime() / 1000,
-        chunk.chunkIndex, chunk.totalChunks, chunk.contentHash,
+        chunk.id,
+        chunk.entryId,
+        chunk.entryType,
+        chunk.title,
+        chunk.content,
+        JSON.stringify(chunk.tags),
+        chunk.source,
+        chunk.importedAt.getTime() / 1000,
+        chunk.chunkIndex,
+        chunk.totalChunks,
+        chunk.contentHash,
         chunk.embedding ? Buffer.from(chunk.embedding.buffer) : null
       );
     }
@@ -110,7 +127,7 @@ export function deleteChunksByType(entryType: string): void {
 
 export function pruneStaleEntries(validIds: Set<string>, entryType: string): void {
   const existing = allEntryIds(entryType);
-  const stale = existing.filter(id => !validIds.has(id));
+  const stale = existing.filter((id) => !validIds.has(id));
   if (stale.length === 0) return;
 
   const db = getDB();
@@ -141,17 +158,20 @@ export function allChunks(opts?: { entryType?: string; source?: string; scope?: 
     conditions.push("source = ?");
     params.push(opts.source);
   }
-  if (conditions.length > 0) sql += " WHERE " + conditions.join(" AND ");
+  if (conditions.length > 0) sql += ` WHERE ${conditions.join(" AND ")}`;
 
-  const rows = getDB().query(sql).all(...params) as any[];
+  const rows = getDB()
+    .query(sql)
+    .all(...params) as any[];
   let results = rows.map(parseRow);
 
   if (opts?.scope?.length) {
-    results = results.filter(chunk =>
-      opts.scope!.some(s =>
-        chunk.source.toLowerCase().includes(s.toLowerCase()) ||
-        chunk.tags.some(t => t.toLowerCase() === s.toLowerCase()) ||
-        chunk.title.toLowerCase().includes(s.toLowerCase())
+    results = results.filter((chunk) =>
+      opts.scope?.some(
+        (s) =>
+          chunk.source.toLowerCase().includes(s.toLowerCase()) ||
+          chunk.tags.some((t) => t.toLowerCase() === s.toLowerCase()) ||
+          chunk.title.toLowerCase().includes(s.toLowerCase())
       )
     );
   }
@@ -159,7 +179,10 @@ export function allChunks(opts?: { entryType?: string; source?: string; scope?: 
   return results;
 }
 
-export function chunksWithEmbeddings(opts?: { entryType?: string; scope?: string[] }): { chunk: VectorChunk; embedding: number[] }[] {
+export function chunksWithEmbeddings(opts?: {
+  entryType?: string;
+  scope?: string[];
+}): { chunk: VectorChunk; embedding: number[] }[] {
   let sql = "SELECT * FROM chunks WHERE embedding IS NOT NULL";
   const params: any[] = [];
 
@@ -168,19 +191,24 @@ export function chunksWithEmbeddings(opts?: { entryType?: string; scope?: string
     params.push(opts.entryType);
   }
 
-  const rows = getDB().query(sql).all(...params) as any[];
-  let results = rows.map(row => {
-    const chunk = parseRow(row);
-    const embedding = chunk.embedding ? Array.from(chunk.embedding).map(Number) : [];
-    return { chunk, embedding };
-  }).filter(r => r.embedding.length > 0);
+  const rows = getDB()
+    .query(sql)
+    .all(...params) as any[];
+  let results = rows
+    .map((row) => {
+      const chunk = parseRow(row);
+      const embedding = chunk.embedding ? Array.from(chunk.embedding).map(Number) : [];
+      return { chunk, embedding };
+    })
+    .filter((r) => r.embedding.length > 0);
 
   if (opts?.scope?.length) {
     results = results.filter(({ chunk }) =>
-      opts.scope!.some(s =>
-        chunk.source.toLowerCase().includes(s.toLowerCase()) ||
-        chunk.tags.some(t => t.toLowerCase() === s.toLowerCase()) ||
-        chunk.title.toLowerCase().includes(s.toLowerCase())
+      opts.scope?.some(
+        (s) =>
+          chunk.source.toLowerCase().includes(s.toLowerCase()) ||
+          chunk.tags.some((t) => t.toLowerCase() === s.toLowerCase()) ||
+          chunk.title.toLowerCase().includes(s.toLowerCase())
       )
     );
   }
@@ -208,12 +236,14 @@ export function embeddedCount(): number {
 
 function allEntryIds(entryType: string): string[] {
   const rows = getDB().query("SELECT DISTINCT entry_id FROM chunks WHERE entry_type = ?").all(entryType) as any[];
-  return rows.map(r => r.entry_id);
+  return rows.map((r) => r.entry_id);
 }
 
 function parseRow(row: any): VectorChunk {
   let tags: string[] = [];
-  try { tags = JSON.parse(row.tags); } catch {}
+  try {
+    tags = JSON.parse(row.tags);
+  } catch {}
 
   let embedding: Float32Array | null = null;
   if (row.embedding) {
@@ -263,11 +293,22 @@ export function semanticChunk(
 ): VectorChunk[] {
   const sentences = splitSentences(text);
   if (sentences.length === 0) {
-    return [{
-      id: `${entryId}:0`, entryId, entryType, title, content: text,
-      tags, source, importedAt, chunkIndex: 0, totalChunks: 1,
-      contentHash: hash, embedding: null,
-    }];
+    return [
+      {
+        id: `${entryId}:0`,
+        entryId,
+        entryType,
+        title,
+        content: text,
+        tags,
+        source,
+        importedAt,
+        chunkIndex: 0,
+        totalChunks: 1,
+        contentHash: hash,
+        embedding: null,
+      },
+    ];
   }
 
   const groups: string[][] = [];
@@ -296,18 +337,27 @@ export function semanticChunk(
   const totalChunks = groups.length;
   return groups.map((group, index) => ({
     id: `${entryId}:${index}`,
-    entryId, entryType, title,
+    entryId,
+    entryType,
+    title,
     content: group.join(" "),
-    tags, source, importedAt,
-    chunkIndex: index, totalChunks,
-    contentHash: hash, embedding: null,
+    tags,
+    source,
+    importedAt,
+    chunkIndex: index,
+    totalChunks,
+    contentHash: hash,
+    embedding: null,
   }));
 }
 
 function splitSentences(text: string): string[] {
   const sentences = text.match(/[^.!?\n]+[.!?\n]+|[^.!?\n]+$/g);
   if (!sentences) {
-    return text.split("\n").map(s => s.trim()).filter(Boolean);
+    return text
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
-  return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  return sentences.map((s) => s.trim()).filter((s) => s.length > 0);
 }

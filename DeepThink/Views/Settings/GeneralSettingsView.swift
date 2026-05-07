@@ -112,7 +112,9 @@ private struct BackupSettingsSection: View {
             Button("Cancel", role: .cancel) { pendingRestore = nil }
         } message: {
             if let s = pendingRestore {
-                Text("Your current workspace will be replaced with the snapshot from \(s.date.formatted(date: .abbreviated, time: .shortened)). The app will quit to apply the restore.")
+                Text(
+                    "Your current workspace will be replaced with the snapshot from \(s.date.formatted(date: .abbreviated, time: .shortened)). The app will quit to apply the restore."
+                )
             }
         }
     }
@@ -149,7 +151,7 @@ private struct BackupSettingsSection: View {
                     ("brain", "Knowledge"),
                     ("memorychip", "Memory"),
                     ("sparkles", "Skills & Rules"),
-                    ("person.2.circle", "Agents"),
+                    ("person.2.circle", "Agents")
                 ], id: \.0) { icon, label in
                     HStack(spacing: 3) {
                         Image(systemName: icon)
@@ -241,7 +243,6 @@ private struct BackupSettingsSection: View {
     }
 
     // MARK: Max Keep Stepper
-
 
     private var maxKeepStepper: some View {
         HStack(spacing: DS.Spacing.sm) {

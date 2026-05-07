@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { query } from "../core/llm";
 
 interface ColumnStats {
@@ -35,7 +35,7 @@ export function summarizeData(filepath: string): DataSummary {
     const nonEmpty = values.filter((v) => v !== "");
     const unique = new Set(nonEmpty);
 
-    const isNumeric = nonEmpty.length > 0 && nonEmpty.every((v) => !isNaN(Number(v)));
+    const isNumeric = nonEmpty.length > 0 && nonEmpty.every((v) => !Number.isNaN(Number(v)));
 
     return {
       name,
@@ -67,7 +67,7 @@ export function computeNumericStats(
   const values = rows
     .slice(1)
     .map((r) => Number(r[colIdx]))
-    .filter((n) => !isNaN(n))
+    .filter((n) => !Number.isNaN(n))
     .sort((a, b) => a - b);
 
   if (values.length === 0) return null;

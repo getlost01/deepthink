@@ -7,7 +7,9 @@ struct AgentListView: View {
     @State private var showTemplates = false
     @State private var searchText = ""
 
-    private var agentService: AgentFileService { AgentFileService.shared }
+    private var agentService: AgentFileService {
+        AgentFileService.shared
+    }
 
     private var filteredAgents: [AgentFile] {
         if searchText.isEmpty { return agentService.agents }
@@ -22,7 +24,7 @@ struct AgentListView: View {
             VStack(spacing: 0) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search assistants...")
-                    DSAddButton() {
+                    DSAddButton {
                         createNewAgent()
                     }
                 }
@@ -182,7 +184,7 @@ struct AgentTemplate: Identifiable {
             icon: "calendar",
             description: "Reviews your week's activity and helps plan the next one with priorities and goals.",
             systemPrompt: "You are a weekly review assistant. Help the user reflect and plan:\n1. Summarize what was accomplished this week\n2. Identify what's still in progress or blocked\n3. Review upcoming deadlines and commitments\n4. Suggest 3 priorities for next week\n5. Note any knowledge gaps or research needed"
-        ),
+        )
     ]
 }
 
@@ -279,8 +281,8 @@ private struct AgentRow: View {
     let agent: AgentFile
     let isSelected: Bool
     let action: () -> Void
-    var onChat: (() -> Void)? = nil
-    var onDelete: (() -> Void)? = nil
+    var onChat: (() -> Void)?
+    var onDelete: (() -> Void)?
     @State private var isHovered = false
 
     var body: some View {
@@ -381,7 +383,6 @@ private struct AgentDetailEditor: View {
         .onChange(of: agent.id) { loadAgent() }
     }
 
-    @ViewBuilder
     private var editorToolbar: some View {
         HStack(spacing: DS.Spacing.md) {
             Button(action: onChat) {
@@ -427,7 +428,6 @@ private struct AgentDetailEditor: View {
         .background(DS.Colors.surfaceElevated)
     }
 
-    @ViewBuilder
     private var editorFields: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.md) {
@@ -486,7 +486,6 @@ private struct AgentDetailEditor: View {
         }
     }
 
-    @ViewBuilder
     private var iconPickerPopover: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: DS.Spacing.xs), count: 5), spacing: DS.Spacing.xs) {
             ForEach(icons, id: \.self) { ic in

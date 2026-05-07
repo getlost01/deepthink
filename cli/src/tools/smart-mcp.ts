@@ -1,4 +1,4 @@
-import { retrieveContext, retrieveContextHybrid, workspaceContext, unifiedSearch } from "../core/context-engine";
+import { retrieveContextHybrid, unifiedSearch, workspaceContext } from "../core/context-engine";
 import * as db from "../core/db";
 import * as knowledge from "./knowledge";
 
@@ -12,19 +12,60 @@ export interface MCPTool {
 // ── Intent Classification ──
 
 const FULL_DATA_SIGNALS = [
-  "edit", "update", "modify", "change", "delete", "remove",
-  "create", "add", "new", "set", "assign", "move",
-  "export", "dump", "backup", "migrate", "full", "all", "complete", "entire",
-  "detail", "details", "specific", "exact",
+  "edit",
+  "update",
+  "modify",
+  "change",
+  "delete",
+  "remove",
+  "create",
+  "add",
+  "new",
+  "set",
+  "assign",
+  "move",
+  "export",
+  "dump",
+  "backup",
+  "migrate",
+  "full",
+  "all",
+  "complete",
+  "entire",
+  "detail",
+  "details",
+  "specific",
+  "exact",
 ];
 
 const SUMMARY_SIGNALS = [
-  "what", "how", "why", "when", "where", "who",
-  "summary", "summarize", "overview", "brief", "context",
-  "status", "progress", "recent", "latest",
-  "help", "explain", "understand", "describe",
-  "find", "search", "look", "check",
-  "plan", "suggest", "recommend", "advise",
+  "what",
+  "how",
+  "why",
+  "when",
+  "where",
+  "who",
+  "summary",
+  "summarize",
+  "overview",
+  "brief",
+  "context",
+  "status",
+  "progress",
+  "recent",
+  "latest",
+  "help",
+  "explain",
+  "understand",
+  "describe",
+  "find",
+  "search",
+  "look",
+  "check",
+  "plan",
+  "suggest",
+  "recommend",
+  "advise",
 ];
 
 function classifyIntent(query: string): "summary" | "full" | "auto" {
@@ -52,7 +93,8 @@ export const SMART_TOOLS: MCPTool[] = [
         mode: {
           type: "string",
           enum: ["auto", "summary", "full"],
-          description: "Override auto-detection: 'summary' for context/understanding, 'full' for mutations/exports. Default: 'auto' (recommended)",
+          description:
+            "Override auto-detection: 'summary' for context/understanding, 'full' for mutations/exports. Default: 'auto' (recommended)",
         },
         maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000)" },
       },
@@ -104,7 +146,10 @@ export const SMART_TOOLS: MCPTool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "What you're looking for" },
-        maxTokens: { type: "number", description: "Token budget (default: 4000). Controls how much context is returned." },
+        maxTokens: {
+          type: "number",
+          description: "Token budget (default: 4000). Controls how much context is returned.",
+        },
         projectScope: { type: "string", description: "Boost results from this project" },
         agentScope: {
           type: "array",
@@ -209,6 +254,4 @@ export const SMART_TOOLS: MCPTool[] = [
   },
 ];
 
-export const SMART_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(
-  SMART_TOOLS.map((t) => [t.name, t])
-);
+export const SMART_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(SMART_TOOLS.map((t) => [t.name, t]));

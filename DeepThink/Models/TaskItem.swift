@@ -25,8 +25,7 @@ final class TaskItem {
         get { TaskStatus(rawValue: statusRaw) ?? .todo }
         set {
             statusRaw = newValue.rawValue
-            if newValue == .done { completedAt = Date() }
-            else { completedAt = nil }
+            if newValue == .done { completedAt = Date() } else { completedAt = nil }
         }
     }
 
@@ -36,13 +35,13 @@ final class TaskItem {
     }
 
     init(title: String, detail: String = "", status: TaskStatus = .todo, priority: TaskPriority = .none) {
-        self.id = UUID()
+        id = UUID()
         self.title = title
         self.detail = detail
-        self.statusRaw = status.rawValue
-        self.priorityRaw = priority.rawValue
-        self.createdAt = Date()
-        self.modifiedAt = Date()
+        statusRaw = status.rawValue
+        priorityRaw = priority.rawValue
+        createdAt = Date()
+        modifiedAt = Date()
     }
 
     var isOverdue: Bool {

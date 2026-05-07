@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UserNotifications
 
 struct ReminderListView: View {
@@ -26,11 +26,11 @@ struct ReminderListView: View {
         case .active:
             items = items.filter { !$0.isCompleted }
         case .upcoming:
-            items = items.filter { $0.isPending }
+            items = items.filter(\.isPending)
         case .overdue:
-            items = items.filter { $0.isOverdue }
+            items = items.filter(\.isOverdue)
         case .completed:
-            items = items.filter { $0.isCompleted }
+            items = items.filter(\.isCompleted)
         case .all:
             break
         }
@@ -83,12 +83,11 @@ struct ReminderListView: View {
         }
     }
 
-    @ViewBuilder
     private var listPane: some View {
         VStack(spacing: 0) {
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search reminders...")
-                DSAddButton() {
+                DSAddButton {
                     createReminder()
                 }
                 .help("New Reminder")

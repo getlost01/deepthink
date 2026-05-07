@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ToolsHubView: View {
     @Environment(\.modelContext) private var modelContext
@@ -263,15 +263,15 @@ private struct ToolCard: View {
 
     private func iconFor(_ category: String) -> String {
         switch category {
-        case "Search": return "magnifyingglass"
-        case "Files": return "folder"
-        case "Data": return "cylinder"
-        case "Dev": return "chevron.left.forwardslash.chevron.right"
-        case "Web": return "globe"
-        case "Knowledge": return "brain"
-        case "Communication": return "message"
-        case "Project Management": return "list.bullet.rectangle"
-        default: return "wrench"
+        case "Search": "magnifyingglass"
+        case "Files": "folder"
+        case "Data": "cylinder"
+        case "Dev": "chevron.left.forwardslash.chevron.right"
+        case "Web": "globe"
+        case "Knowledge": "brain"
+        case "Communication": "message"
+        case "Project Management": "list.bullet.rectangle"
+        default: "wrench"
         }
     }
 }
@@ -374,7 +374,6 @@ private struct AddServerSheet: View {
         inputMode == .json ? (!jsonText.isEmpty && jsonError == nil) : (!name.isEmpty && !command.isEmpty)
     }
 
-    @ViewBuilder
     private var formContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             DSLabeledTextField(label: "Name *", text: $name, placeholder: "My MCP Server")
@@ -434,7 +433,6 @@ private struct AddServerSheet: View {
         }
     }
 
-    @ViewBuilder
     private var jsonContent: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text("Paste MCP server JSON configuration")
@@ -491,9 +489,7 @@ private struct AddServerSheet: View {
         guard let data = jsonText.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
 
-        let serverArgs: String
-        if let arr = obj["args"] as? [String] { serverArgs = arr.joined(separator: " ") }
-        else { serverArgs = obj["args"] as? String ?? "" }
+        let serverArgs: String = if let arr = obj["args"] as? [String] { arr.joined(separator: " ") } else { obj["args"] as? String ?? "" }
 
         var envString = ""
         if let env = obj["env"] as? [String: String] {
@@ -527,7 +523,9 @@ private struct PresetServersSheet: View {
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
-    private var isLiveSearch: Bool { !searchText.isEmpty }
+    private var isLiveSearch: Bool {
+        !searchText.isEmpty
+    }
 
     private var filteredPackages: [MCPPackage] {
         if isLiveSearch { return liveResults }
@@ -610,7 +608,7 @@ private struct PresetServersSheet: View {
 
             Divider()
 
-            if (catalog.packages.isEmpty && !catalog.isLoading && !isLiveSearch) {
+            if catalog.packages.isEmpty, !catalog.isLoading, !isLiveSearch {
                 DSEmptyState(
                     icon: "puzzlepiece.extension",
                     title: "No Catalog Data",
@@ -618,7 +616,7 @@ private struct PresetServersSheet: View {
                     action: { Task { await catalog.fetchCatalog() } },
                     actionTitle: "Fetch Catalog"
                 )
-            } else if isSearching && liveResults.isEmpty {
+            } else if isSearching, liveResults.isEmpty {
                 VStack {
                     Spacer()
                     ProgressView("Searching...")
@@ -653,7 +651,7 @@ private struct PresetServersSheet: View {
                             }
                         }
 
-                        if isLiveSearch && hasMore {
+                        if isLiveSearch, hasMore {
                             Button {
                                 Task { await loadMore() }
                             } label: {

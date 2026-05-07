@@ -1,10 +1,13 @@
-import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from "fs";
-import { join } from "path";
-import { KNOWLEDGE_DIRS, KNOWLEDGE_DIR } from "../config";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { query } from "../core/llm";
 
 function slugify(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  return s
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 }
 
 function timestamp(): string {
@@ -14,7 +17,10 @@ function timestamp(): string {
 function smartTitle(content: string): string {
   const lines = content.split("\n");
   for (const line of lines) {
-    const clean = line.trim().replace(/^#+\s*/, "").replace(/^[-*>]+\s*/, "");
+    const clean = line
+      .trim()
+      .replace(/^#+\s*/, "")
+      .replace(/^[-*>]+\s*/, "");
     if (clean.length <= 3) continue;
     if (clean.length <= 80) return clean;
     const truncated = clean.slice(0, 80);
@@ -26,7 +32,11 @@ function smartTitle(content: string): string {
 
 // MARK: - Project Knowledge
 
-export function saveProjectKnowledge(project: string, content: string, type: "context" | "decision" | "artifact" = "context"): string {
+export function saveProjectKnowledge(
+  project: string,
+  content: string,
+  type: "context" | "decision" | "artifact" = "context"
+): string {
   const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
   mkdirSync(projectDir, { recursive: true });
 
@@ -70,13 +80,24 @@ export function listProjects(): string[] {
   const dir = KNOWLEDGE_DIRS.projects;
   if (!existsSync(dir)) return [];
   return readdirSync(dir).filter((f) => {
-    try { return readdirSync(join(dir, f)).length > 0; } catch { return false; }
+    try {
+      return readdirSync(join(dir, f)).length > 0;
+    } catch {
+      return false;
+    }
   });
 }
 
 // MARK: - Integration Data
 
-export function saveIntegrationData(source: string, channel: string, content: string, metadata: Record<string, string> = {}, title?: string, tags?: string[]): string {
+export function saveIntegrationData(
+  source: string,
+  channel: string,
+  content: string,
+  metadata: Record<string, string> = {},
+  title?: string,
+  tags?: string[]
+): string {
   const channelDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
   mkdirSync(channelDir, { recursive: true });
 
@@ -85,10 +106,18 @@ export function saveIntegrationData(source: string, channel: string, content: st
   const filename = `${slugify(resolvedTitle).slice(0, 50)}-${ts}.md`;
   const filepath = join(channelDir, filename);
 
-  let frontmatter: Record<string, string> = { title: resolvedTitle, source, channel, captured_at: new Date().toISOString(), ...metadata };
+  const frontmatter: Record<string, string> = {
+    title: resolvedTitle,
+    source,
+    channel,
+    captured_at: new Date().toISOString(),
+    ...metadata,
+  };
   if (tags && tags.length > 0) frontmatter.tags = `[${tags.join(", ")}]`;
 
-  const meta = Object.entries(frontmatter).map(([k, v]) => `${k}: ${v}`).join("\n");
+  const meta = Object.entries(frontmatter)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join("\n");
   const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
@@ -96,21 +125,30 @@ export function saveIntegrationData(source: string, channel: string, content: st
   return filepath;
 }
 
-export function loadIntegrationData(source: string, channel?: string, limit = 20): { source: string; channel: string; file: string; content: string }[] {
+export function loadIntegrationData(
+  source: string,
+  channel?: string,
+  limit = 20
+): { source: string; channel: string; file: string; content: string }[] {
   const sourceDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase());
   if (!existsSync(sourceDir)) return [];
 
   const results: { source: string; channel: string; file: string; content: string }[] = [];
   const channels = channel
     ? [slugify(channel)]
-    : readdirSync(sourceDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
+    : readdirSync(sourceDir, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name);
 
   for (const ch of channels) {
     if (results.length >= limit) break;
     const chDir = join(sourceDir, ch);
     if (!existsSync(chDir)) continue;
     try {
-      const files = readdirSync(chDir).filter((f) => f.endsWith(".md")).sort().reverse();
+      const files = readdirSync(chDir)
+        .filter((f) => f.endsWith(".md"))
+        .sort()
+        .reverse();
       for (const f of files) {
         if (results.length >= limit) break;
         results.push({
@@ -152,7 +190,8 @@ export async function compressKnowledge(source: string, channel: string): Promis
 
   const combined = entries.map((e) => e.content).join("\n\n---\n\n");
   const charLimit = 32000;
-  if (combined.length > charLimit) console.warn(`[compress] Truncating ${combined.length} chars to ${charLimit} for ${source}/${channel}`);
+  if (combined.length > charLimit)
+    console.warn(`[compress] Truncating ${combined.length} chars to ${charLimit} for ${source}/${channel}`);
   const compressed = await query(
     `Compress this knowledge into dense, structured bullet points. Keep all facts, dates, names, decisions. Remove filler:\n\n${combined.slice(0, charLimit)}`,
     "You compress information. Output structured markdown bullets. Preserve all key data."
@@ -165,7 +204,9 @@ export async function compressKnowledge(source: string, channel: string): Promis
 
   const chDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
   for (const entry of entries) {
-    try { unlinkSync(join(chDir, entry.file)); } catch {}
+    try {
+      unlinkSync(join(chDir, entry.file));
+    } catch {}
   }
 
   return archiveFile;
@@ -182,14 +223,21 @@ export async function archiveProject(project: string): Promise<string> {
   if (k.artifacts.length > 0) {
     const artDir = join(KNOWLEDGE_DIRS.projects, slugify(project), "artifacts");
     const artContents = k.artifacts
-      .map((f) => { try { return readFileSync(join(artDir, f), "utf-8"); } catch { return ""; } })
+      .map((f) => {
+        try {
+          return readFileSync(join(artDir, f), "utf-8");
+        } catch {
+          return "";
+        }
+      })
       .filter(Boolean);
     if (artContents.length > 0) parts.push(`## Artifacts\n${artContents.join("\n\n---\n\n")}`);
   }
 
   const combined = parts.join("\n\n");
   const charLimit = 32000;
-  if (combined.length > charLimit) console.warn(`[archive] Truncating ${combined.length} chars to ${charLimit} for project ${project}`);
+  if (combined.length > charLimit)
+    console.warn(`[archive] Truncating ${combined.length} chars to ${charLimit} for project ${project}`);
   const compressed = await query(
     `Compress this project knowledge into dense, structured summary. Keep all key decisions, facts, dates:\n\n${combined.slice(0, charLimit)}`,
     "You compress project knowledge. Output structured markdown. Preserve all key data."
@@ -208,7 +256,9 @@ function updateIndex(project?: string): void {
   const indexFile = join(KNOWLEDGE_DIR, "index.json");
   let index: any = {};
   if (existsSync(indexFile)) {
-    try { index = JSON.parse(readFileSync(indexFile, "utf-8")); } catch {}
+    try {
+      index = JSON.parse(readFileSync(indexFile, "utf-8"));
+    } catch {}
   }
 
   index.version = index.version ?? 1;
@@ -226,7 +276,11 @@ function updateIndex(project?: string): void {
   writeFileSync(indexFile, JSON.stringify(index, null, 2), "utf-8");
 }
 
-export function searchIntegrationData(query: string, source?: string, limit = 20): { source: string; channel: string; file: string; content: string }[] {
+export function searchIntegrationData(
+  query: string,
+  source?: string,
+  limit = 20
+): { source: string; channel: string; file: string; content: string }[] {
   const sources = source ? [source] : listIntegrations().map((i) => i.source);
   const results: { source: string; channel: string; file: string; content: string }[] = [];
   const q = query.toLowerCase();

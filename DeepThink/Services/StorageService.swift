@@ -12,35 +12,97 @@ final class StorageService {
 
     // MARK: - Core Data
 
-    var dataURL: URL { baseURL.appendingPathComponent("data") }
-    var storeURL: URL { dataURL.appendingPathComponent("deepthink.store") }
+    var dataURL: URL {
+        baseURL.appendingPathComponent("data")
+    }
+
+    var storeURL: URL {
+        dataURL.appendingPathComponent("deepthink.store")
+    }
 
     // MARK: - .claude (single source of truth for CLI + app)
 
-    var claudeDir: URL { baseURL.appendingPathComponent(".claude") }
-    var commandsURL: URL { claudeDir.appendingPathComponent("commands") }
-    var rulesConfigURL: URL { claudeDir.appendingPathComponent("rules") }
-    var claudeSettingsFile: URL { claudeDir.appendingPathComponent("settings.json") }
-    var claudeCacheURL: URL { claudeDir.appendingPathComponent("cache") }
-    var agentsURL: URL { claudeDir.appendingPathComponent("agents") }
+    var claudeDir: URL {
+        baseURL.appendingPathComponent(".claude")
+    }
 
-    var skillsConfigURL: URL { commandsURL }
-    var mcpTempConfigFile: URL { claudeCacheURL.appendingPathComponent("mcp-active.json") }
-    var mcpServerConfigFile: URL { claudeCacheURL.appendingPathComponent("servers.json") }
+    var commandsURL: URL {
+        claudeDir.appendingPathComponent("commands")
+    }
+
+    var rulesConfigURL: URL {
+        claudeDir.appendingPathComponent("rules")
+    }
+
+    var claudeSettingsFile: URL {
+        claudeDir.appendingPathComponent("settings.json")
+    }
+
+    var claudeCacheURL: URL {
+        claudeDir.appendingPathComponent("cache")
+    }
+
+    var agentsURL: URL {
+        claudeDir.appendingPathComponent("agents")
+    }
+
+    var skillsConfigURL: URL {
+        commandsURL
+    }
+
+    var mcpTempConfigFile: URL {
+        claudeCacheURL.appendingPathComponent("mcp-active.json")
+    }
+
+    var mcpServerConfigFile: URL {
+        claudeCacheURL.appendingPathComponent("servers.json")
+    }
 
     // MARK: - Knowledge Base
 
-    var knowledgeURL: URL { baseURL.appendingPathComponent("knowledge") }
-    var knowledgeProjectsURL: URL { knowledgeURL.appendingPathComponent("projects") }
-    var knowledgeIntegrationsURL: URL { knowledgeURL.appendingPathComponent("integrations") }
-    var knowledgeArchiveURL: URL { knowledgeURL.appendingPathComponent("archive") }
-    var knowledgeIndexFile: URL { knowledgeURL.appendingPathComponent("index.json") }
-    var knowledgeWebURL: URL { knowledgeURL.appendingPathComponent("web") }
-    var knowledgeClipboardURL: URL { knowledgeURL.appendingPathComponent("clipboard") }
-    var knowledgeScriptsURL: URL { knowledgeURL.appendingPathComponent("scripts") }
-    var knowledgeFoldersURL: URL { knowledgeURL.appendingPathComponent("folders") }
-    var knowledgeImportsURL: URL { knowledgeURL.appendingPathComponent("imports") }
-    var knowledgeManualURL: URL { knowledgeURL.appendingPathComponent("manual") }
+    var knowledgeURL: URL {
+        baseURL.appendingPathComponent("knowledge")
+    }
+
+    var knowledgeProjectsURL: URL {
+        knowledgeURL.appendingPathComponent("projects")
+    }
+
+    var knowledgeIntegrationsURL: URL {
+        knowledgeURL.appendingPathComponent("integrations")
+    }
+
+    var knowledgeArchiveURL: URL {
+        knowledgeURL.appendingPathComponent("archive")
+    }
+
+    var knowledgeIndexFile: URL {
+        knowledgeURL.appendingPathComponent("index.json")
+    }
+
+    var knowledgeWebURL: URL {
+        knowledgeURL.appendingPathComponent("web")
+    }
+
+    var knowledgeClipboardURL: URL {
+        knowledgeURL.appendingPathComponent("clipboard")
+    }
+
+    var knowledgeScriptsURL: URL {
+        knowledgeURL.appendingPathComponent("scripts")
+    }
+
+    var knowledgeFoldersURL: URL {
+        knowledgeURL.appendingPathComponent("folders")
+    }
+
+    var knowledgeImportsURL: URL {
+        knowledgeURL.appendingPathComponent("imports")
+    }
+
+    var knowledgeManualURL: URL {
+        knowledgeURL.appendingPathComponent("manual")
+    }
 
     func knowledgeProjectURL(name: String) -> URL {
         knowledgeProjectsURL.appendingPathComponent(name.slugified)
@@ -59,24 +121,57 @@ final class StorageService {
 
     // MARK: - Memory
 
-    var memoryURL: URL { baseURL.appendingPathComponent("memory") }
+    var memoryURL: URL {
+        baseURL.appendingPathComponent("memory")
+    }
 
     // MARK: - Sandbox
 
-    var sandboxURL: URL { baseURL.appendingPathComponent("sandbox") }
-    var sandboxDocsURL: URL { sandboxURL.appendingPathComponent("docs") }
-    var sandboxOutputsURL: URL { sandboxURL.appendingPathComponent("outputs") }
-    var sandboxAnalysisURL: URL { sandboxURL.appendingPathComponent("analysis") }
-    var sandboxInsightsURL: URL { sandboxURL.appendingPathComponent("insights") }
+    var sandboxURL: URL {
+        baseURL.appendingPathComponent("sandbox")
+    }
+
+    var sandboxDocsURL: URL {
+        sandboxURL.appendingPathComponent("docs")
+    }
+
+    var sandboxOutputsURL: URL {
+        sandboxURL.appendingPathComponent("outputs")
+    }
+
+    var sandboxAnalysisURL: URL {
+        sandboxURL.appendingPathComponent("analysis")
+    }
+
+    var sandboxInsightsURL: URL {
+        sandboxURL.appendingPathComponent("insights")
+    }
 
     // MARK: - Tools & Logs & Workspace
 
-    var toolsURL: URL { baseURL.appendingPathComponent("tools") }
-    var logsURL: URL { baseURL.appendingPathComponent("logs") }
-    var terminalLogsURL: URL { logsURL.appendingPathComponent("terminal") }
-    var workspaceURL: URL { baseURL.appendingPathComponent("workspace") }
-    var notesExportURL: URL { workspaceURL.appendingPathComponent("notes") }
-    var projectsExportURL: URL { workspaceURL.appendingPathComponent("exports") }
+    var toolsURL: URL {
+        baseURL.appendingPathComponent("tools")
+    }
+
+    var logsURL: URL {
+        baseURL.appendingPathComponent("logs")
+    }
+
+    var terminalLogsURL: URL {
+        logsURL.appendingPathComponent("terminal")
+    }
+
+    var workspaceURL: URL {
+        baseURL.appendingPathComponent("workspace")
+    }
+
+    var notesExportURL: URL {
+        workspaceURL.appendingPathComponent("notes")
+    }
+
+    var projectsExportURL: URL {
+        workspaceURL.appendingPathComponent("exports")
+    }
 
     // MARK: - Setup
 
@@ -96,7 +191,7 @@ final class StorageService {
             sandboxURL, sandboxDocsURL, sandboxOutputsURL, sandboxAnalysisURL, sandboxInsightsURL,
             // Tools, Logs, Workspace
             toolsURL, logsURL, terminalLogsURL,
-            workspaceURL, notesExportURL, projectsExportURL,
+            workspaceURL, notesExportURL, projectsExportURL
         ]
 
         for url in dirs {
