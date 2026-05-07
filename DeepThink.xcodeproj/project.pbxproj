@@ -58,6 +58,7 @@
 		7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */; };
 		AA11BB22CC33DD44EE55FF66 /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF67 /* GeneralSettingsView.swift */; };
 		AA11BB22CC33DD44EE55FF68 /* ArchiveService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */; };
+		84325179A9924F84AD30426C /* BackupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3728734C808B408086B6F282 /* BackupService.swift */; };
 		81D50A098EF35CD8F47578C3 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F1A0F50C47FEEFD23BB385 /* ChatBubble.swift */; };
 		85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */; };
 		866353BCAA3F9EF09DF6E835 /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24730C11D122CF0AEB59686 /* AgentListView.swift */; };
@@ -166,6 +167,7 @@
 		7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF67 /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
 		AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArchiveService.swift; sourceTree = "<group>"; };
+		3728734C808B408086B6F282 /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		7E1BAEE7E4B74ECC4FD56366 /* ReminderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderDetailView.swift; sourceTree = "<group>"; };
 		7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CollectorScheduler.swift; sourceTree = "<group>"; };
 		7EA735EA8B612913B7083EA8 /* KnowledgeGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeGraphView.swift; sourceTree = "<group>"; };
@@ -351,6 +353,7 @@
 			isa = PBXGroup;
 			children = (
 				AA11BB22CC33DD44EE55FF69 /* ArchiveService.swift */,
+				3728734C808B408086B6F282 /* BackupService.swift */,
 				AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
@@ -695,6 +698,7 @@
 				2E47277475F632844BA34247 /* ChatMarkdownView.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,
 				AA11BB22CC33DD44EE55FF68 /* ArchiveService.swift in Sources */,
+				84325179A9924F84AD30426C /* BackupService.swift in Sources */,
 				7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */,
 				FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */,
 				5CD76ED30916874BA82DA5AB /* CommandPaletteState.swift in Sources */,

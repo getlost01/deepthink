@@ -64,6 +64,8 @@ struct DeepThinkApp: App {
     private let notificationDelegate = NotificationDelegate()
 
     var sharedModelContainer: ModelContainer = {
+        // Apply any staged restore BEFORE SwiftData opens the store file
+        BackupService.shared.applyPendingRestoreIfNeeded()
         StorageService.shared.ensureDirectoryStructure()
 
         let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self, Reminder.self, UsageSession.self])
@@ -108,6 +110,7 @@ struct DeepThinkApp: App {
                     CollectorScheduler.shared.start(container: sharedModelContainer)
                     ClaudeService.shared.start(container: sharedModelContainer)
                     ArchiveService.shared.start(container: sharedModelContainer)
+                    BackupService.shared.start()
 
                     // Register global hotkey for Quick Capture (Option+Space)
                     GlobalHotKey.shared.register(container: sharedModelContainer)
