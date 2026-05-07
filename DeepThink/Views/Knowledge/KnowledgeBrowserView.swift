@@ -264,13 +264,12 @@ private struct EntryRow: View {
     var body: some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: DS.Spacing.md) {
-                Image(systemName: entry.sourceIcon)
-                    .font(.system(size: DS.IconSize.xs, weight: .medium))
-                    .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
-                    .frame(width: 28, height: 28)
-                    .background(isSelected ? DS.Colors.accentFill : DS.Colors.fillSecondary, in: Circle())
-                    .overlay(Circle().strokeBorder(isSelected ? DS.Colors.accent.opacity(0.2) : DS.Colors.border, lineWidth: 1))
-                    .padding(.top, 1)
+                DSIconBadge(
+                    icon: entry.sourceIcon,
+                    color: isSelected ? DS.Colors.accent : DS.Colors.textSecondary,
+                    background: isSelected ? DS.Colors.accentFill : DS.Colors.fillSecondary
+                )
+                .padding(.top, 1)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     HStack {

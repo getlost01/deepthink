@@ -52,10 +52,18 @@ struct AgentListView: View {
                             ForEach(filteredAgents) { agent in
                                 AgentRow(
                                     agent: agent,
-                                    isSelected: selectedAgent?.id == agent.id
-                                ) {
-                                    selectedAgent = agent
-                                }
+                                    isSelected: selectedAgent?.id == agent.id,
+                                    action: { selectedAgent = agent },
+                                    onChat: {
+                                        selectedAgent = agent
+                                        appState.selectedAgentPath = agent.filePath.path
+                                        appState.selectedSection = .aiAssistant
+                                    },
+                                    onDelete: {
+                                        selectedAgent = agent
+                                        showDeleteConfirm = true
+                                    }
+                                )
                                 if agent.id != filteredAgents.last?.id {
                                     Divider()
                                 }
@@ -271,19 +279,18 @@ private struct AgentRow: View {
     let agent: AgentFile
     let isSelected: Bool
     let action: () -> Void
+    var onChat: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
-                        .frame(width: 28, height: 28)
-                    Image(systemName: agent.icon)
-                        .font(.system(size: DS.IconSize.sm, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                }
+                DSIconBadge(
+                    icon: agent.icon,
+                    color: isSelected ? DS.Colors.accent : DS.Colors.textTertiary,
+                    background: isSelected ? DS.Colors.accentFill : DS.Colors.fill
+                )
 
                 HStack(spacing: DS.Spacing.xs) {
                     Text(agent.name)
@@ -319,6 +326,15 @@ private struct AgentRow: View {
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .contextMenu {
+            if let onChat {
+                Button { onChat() } label: { Label("Chat", systemImage: "bubble.left.fill") }
+            }
+            if !agent.isBuiltIn, let onDelete {
+                Divider()
+                Button(role: .destructive) { onDelete() } label: { Label("Delete", systemImage: "trash") }
+            }
+        }
     }
 }
 
@@ -449,27 +465,24 @@ private struct AgentDetailEditor: View {
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
 
-            Divider().padding(.horizontal, DS.Spacing.lg)
-
-            HStack(spacing: DS.Spacing.sm) {
-                DSFieldLabel(label: "Knowledge")
-                Spacer()
-            }
-            .padding(.horizontal, DS.Spacing.lg)
-            .padding(.top, DS.Spacing.sm)
-
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "book")
                     .font(.system(size: DS.IconSize.xs))
                     .foregroundStyle(DS.Colors.textTertiary)
-                TextField("e.g. Swift, macOS, UI design", text: $knowledgeScope)
-                    .textFieldStyle(.plain)
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .onChange(of: knowledgeScope) { scheduleSave() }
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text("Knowledge")
+                        .font(DS.Font.small)
+                        .fontWeight(.medium)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    TextField("e.g. Swift, macOS, UI design", text: $knowledgeScope)
+                        .textFieldStyle(.plain)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .onChange(of: knowledgeScope) { scheduleSave() }
+                }
             }
             .padding(.horizontal, DS.Spacing.lg)
-            .padding(.bottom, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
         }
     }
 

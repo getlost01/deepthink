@@ -252,6 +252,7 @@ struct DSTabButton: View {
 struct DSIconBadge: View {
     let icon: String
     var color: Color = DS.Colors.textSecondary
+    var background: Color = DS.Colors.fill
     var size: CGFloat = 28
 
     var body: some View {
@@ -259,7 +260,8 @@ struct DSIconBadge: View {
             .font(.system(size: size * 0.45, weight: .medium))
             .foregroundStyle(color)
             .frame(width: size, height: size)
-            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(background, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
     }
 }
 
@@ -481,7 +483,8 @@ struct DSToolbarButton: View {
                 .font(.system(size: size, weight: .medium))
                 .foregroundStyle(isHovered ? DS.Colors.textPrimary : color)
                 .frame(width: 28, height: 28)
-                .background(isHovered ? DS.Colors.fillSecondary : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }

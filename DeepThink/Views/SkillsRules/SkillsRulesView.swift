@@ -4,7 +4,6 @@ import SwiftUI
 
 struct SkillsListView: View {
     @State private var selectedSkill: SkillFile?
-    @State private var showRunSheet = false
     @State private var skillToRun: SkillFile?
     @State private var showDeleteConfirm = false
     @State private var searchText = ""
@@ -52,9 +51,16 @@ struct SkillsListView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(filteredSkills) { skill in
-                                SkillRow(skill: skill, isSelected: selectedSkill?.id == skill.id) {
-                                    selectedSkill = skill
-                                }
+                                SkillRow(
+                                    skill: skill,
+                                    isSelected: selectedSkill?.id == skill.id,
+                                    action: { selectedSkill = skill },
+                                    onRun: { skillToRun = skill },
+                                    onDelete: {
+                                        selectedSkill = skill
+                                        showDeleteConfirm = true
+                                    }
+                                )
                                 if skill.id != filteredSkills.last?.id {
                                     Divider()
                                 }
@@ -67,7 +73,6 @@ struct SkillsListView: View {
             if let skill = selectedSkill {
                 SkillInlineEditor(skill: skill) {
                     skillToRun = skill
-                    showRunSheet = true
                 } onDelete: {
                     showDeleteConfirm = true
                 }
@@ -80,10 +85,8 @@ struct SkillsListView: View {
             }
         }
         .onAppear { skillService.reload() }
-        .sheet(isPresented: $showRunSheet) {
-            if let skill = skillToRun {
-                SkillRunSheet(skill: skill)
-            }
+        .sheet(item: $skillToRun) { skill in
+            SkillRunSheet(skill: skill)
         }
         .confirmationDialog("Delete Skill?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
@@ -162,9 +165,15 @@ struct RulesListView: View {
                     ScrollView {
                         LazyVStack(spacing: 0) {
                             ForEach(filteredRules) { rule in
-                                RuleRow(rule: rule, isSelected: selectedRule?.id == rule.id) {
-                                    selectedRule = rule
-                                }
+                                RuleRow(
+                                    rule: rule,
+                                    isSelected: selectedRule?.id == rule.id,
+                                    action: { selectedRule = rule },
+                                    onDelete: {
+                                        selectedRule = rule
+                                        showDeleteConfirm = true
+                                    }
+                                )
                                 if rule.id != filteredRules.last?.id {
                                     Divider()
                                 }
@@ -220,19 +229,18 @@ private struct SkillRow: View {
     let skill: SkillFile
     let isSelected: Bool
     let action: () -> Void
+    var onRun: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
-                        .frame(width: 28, height: 28)
-                    Image(systemName: skill.icon)
-                        .font(.system(size: DS.IconSize.sm, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                }
+                DSIconBadge(
+                    icon: skill.icon,
+                    color: isSelected ? DS.Colors.accent : DS.Colors.textTertiary,
+                    background: isSelected ? DS.Colors.accentFill : DS.Colors.fill
+                )
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(skill.name)
@@ -264,6 +272,27 @@ private struct SkillRow: View {
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .contextMenu {
+            if let onRun {
+                Button { onRun() } label: { Label("Run", systemImage: "play.fill") }
+            }
+            Button {
+                SkillFileService.shared.togglePin(skill: skill)
+            } label: {
+                Label(skill.isPinned ? "Unpin" : "Pin to Sidebar", systemImage: skill.isPinned ? "pin.slash" : "pin")
+            }
+            Button {
+                SkillFileService.shared.create(
+                    name: "\(skill.name) Copy", category: skill.category,
+                    icon: skill.icon, systemPrompt: skill.systemPrompt,
+                    promptTemplate: skill.promptTemplate
+                )
+            } label: { Label("Duplicate", systemImage: "plus.square.on.square") }
+            if !skill.isBuiltIn, let onDelete {
+                Divider()
+                Button(role: .destructive) { onDelete() } label: { Label("Delete", systemImage: "trash") }
+            }
+        }
     }
 }
 
@@ -273,19 +302,17 @@ private struct RuleRow: View {
     let rule: RuleFile
     let isSelected: Bool
     let action: () -> Void
+    var onDelete: (() -> Void)? = nil
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: DS.Spacing.md) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(isSelected ? DS.Colors.accentFill : DS.Colors.fill)
-                        .frame(width: 28, height: 28)
-                    Image(systemName: rule.icon)
-                        .font(.system(size: DS.IconSize.sm, weight: .medium))
-                        .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                }
+                DSIconBadge(
+                    icon: rule.icon,
+                    color: isSelected ? DS.Colors.accent : DS.Colors.textTertiary,
+                    background: isSelected ? DS.Colors.accentFill : DS.Colors.fill
+                )
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(rule.name)
@@ -331,6 +358,23 @@ private struct RuleRow: View {
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
+        .contextMenu {
+            Button {
+                let updated = RuleFile(
+                    name: rule.name, trigger: rule.trigger, icon: rule.icon,
+                    category: rule.category, instruction: rule.instruction,
+                    filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
+                    isDisabled: !rule.isDisabled
+                )
+                RuleFileService.shared.save(rule: updated)
+            } label: {
+                Label(rule.isDisabled ? "Enable" : "Disable", systemImage: rule.isDisabled ? "checkmark.circle" : "pause.circle")
+            }
+            if !rule.isBuiltIn, let onDelete {
+                Divider()
+                Button(role: .destructive) { onDelete() } label: { Label("Delete", systemImage: "trash") }
+            }
+        }
     }
 }
 
@@ -346,11 +390,13 @@ private struct SkillInlineEditor: View {
     @State private var category: String = ""
     @State private var systemPrompt: String = ""
     @State private var promptTemplate: String = ""
+    @State private var command: String = ""
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
+    @State private var duplicated = false
 
-    private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis"]
+    private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis", "Knowledge", "Research", "Finance", "Design", "Data"]
 
     private let icons = [
         "sparkles", "wand.and.stars", "text.bubble", "doc.text",
@@ -370,6 +416,7 @@ private struct SkillInlineEditor: View {
                         .foregroundStyle(DS.Colors.accent)
                         .frame(width: 28, height: 28)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                 }
                 .buttonStyle(.plainPointer)
                 .popover(isPresented: $showIconPicker, arrowEdge: .bottom) {
@@ -399,79 +446,104 @@ private struct SkillInlineEditor: View {
 
                 Spacer()
 
-                Picker("", selection: $category) {
-                    ForEach(categories, id: \.self) { Text($0).tag($0) }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 130)
-                .pointerOnHover()
-                .onChange(of: category) { scheduleSave() }
-
-                Text("/\(skill.commandName)")
-                    .font(DS.Font.monoSmall)
-                    .font(DS.Font.mono)
-                    .foregroundStyle(DS.Colors.textTertiary)
-
-                DSToolbarButton(
-                    icon: skill.isPinned ? "pin.fill" : "pin",
-                    color: skill.isPinned ? DS.Colors.warning : DS.Colors.textSecondary,
-                    size: DS.IconSize.sm
-                ) {
-                    SkillFileService.shared.togglePin(skill: skill)
-                }
-                .help(skill.isPinned ? "Unpin from sidebar" : "Pin to sidebar")
-
-                Button(action: onRun) {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: DS.IconSize.xs))
-                        Text("Run")
-                            .font(DS.Font.small)
-                            .fontWeight(.medium)
+                HStack(spacing: DS.Spacing.xs) {
+                    DSToolbarButton(
+                        icon: skill.isPinned ? "pin.fill" : "pin",
+                        color: skill.isPinned ? DS.Colors.warning : DS.Colors.textSecondary,
+                        size: DS.IconSize.sm
+                    ) {
+                        SkillFileService.shared.togglePin(skill: skill)
                     }
-                    .foregroundStyle(DS.Colors.onAccent)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.xs + 2)
-                    .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                }
-                .buttonStyle(.plainPointer)
+                    .help(skill.isPinned ? "Unpin from sidebar" : "Pin to sidebar")
 
-                DSToolbarButton(icon: "doc.on.doc", color: DS.Colors.textSecondary, size: DS.IconSize.sm) {
-                    onDuplicate()
-                }
-                .help("Duplicate skill")
-
-                if !skill.isBuiltIn {
-                    DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
-                        onDelete()
+                    DSToolbarButton(
+                        icon: duplicated ? "checkmark" : "plus.square.on.square",
+                        color: duplicated ? DS.Colors.success : DS.Colors.textSecondary,
+                        size: DS.IconSize.sm
+                    ) {
+                        onDuplicate()
+                        duplicated = true
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.5))
+                            await MainActor.run { duplicated = false }
+                        }
                     }
+                    .help("Duplicate skill")
+                    .animation(DS.Animation.quick, value: duplicated)
+
+                    if !skill.isBuiltIn {
+                        DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm) {
+                            onDelete()
+                        }
+                    }
+
+                    Divider().frame(height: 16)
+
+                    Picker("", selection: $category) {
+                        ForEach(categories, id: \.self) { Text($0).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .frame(width: 110)
+                    .pointerOnHover()
+                    .onChange(of: category) { scheduleSave() }
+
+                    Button(action: onRun) {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: DS.IconSize.xs))
+                            Text("Run")
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                        }
+                        .foregroundStyle(DS.Colors.onAccent)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
                 }
             }
-            .padding(DS.Spacing.lg)
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
             .background(DS.Colors.surfaceElevated)
 
             Divider()
 
             VStack(alignment: .leading, spacing: 0) {
-                DSFieldLabel(label: "Background Instructions", hint: "Hidden context the AI reads before responding")
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.top, DS.Spacing.md)
-                    .padding(.bottom, DS.Spacing.xs)
+                HStack(alignment: .firstTextBaseline) {
+                    DSFieldLabel(label: "Background Instructions", hint: "Hidden context the AI reads before responding")
+                    Spacer()
+                    HStack(spacing: 2) {
+                        Text("/")
+                            .font(DS.Font.monoSmall)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        TextField(skill.commandName, text: $command)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.monoSmall)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .lineLimit(1)
+                            .frame(maxWidth: 130)
+                            .onChange(of: command) { scheduleSave() }
+                    }
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.top, DS.Spacing.md)
+                .padding(.bottom, DS.Spacing.xs)
 
-                Divider().padding(.horizontal, DS.Spacing.lg)
+                Divider()
 
                 TextEditor(text: $systemPrompt)
                     .font(DS.Font.monoSmall)
                     .scrollContentBackground(.hidden)
                     .frame(height: 80)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
                     .onChange(of: systemPrompt) { scheduleSave() }
 
-                Divider().padding(.horizontal, DS.Spacing.lg)
+                Divider()
 
-                DSFieldLabel(label: "Prompt Template", hint: "Use {{input}} as placeholder for user input")
-                    .padding(.horizontal, DS.Spacing.lg)
+                DSFieldLabel(label: "Prompt Template", hint: "Optional — use {{input}} as placeholder for user input")
+                    .padding(.horizontal, DS.Spacing.md)
                     .padding(.top, DS.Spacing.md)
                     .padding(.bottom, DS.Spacing.xs)
 
@@ -494,6 +566,7 @@ private struct SkillInlineEditor: View {
         category = skill.category
         systemPrompt = skill.systemPrompt
         promptTemplate = skill.promptTemplate
+        command = skill.command
         hasLoaded = true
     }
 
@@ -512,7 +585,8 @@ private struct SkillInlineEditor: View {
         let updated = SkillFile(
             name: name, trigger: skill.trigger, icon: icon, model: skill.model,
             category: category, systemPrompt: systemPrompt, promptTemplate: promptTemplate,
-            filePath: skill.filePath, isBuiltIn: skill.isBuiltIn, isPinned: skill.isPinned
+            filePath: skill.filePath, isBuiltIn: skill.isBuiltIn, isPinned: skill.isPinned,
+            command: command
         )
         SkillFileService.shared.save(skill: updated)
     }
@@ -544,7 +618,7 @@ private struct RuleInlineEditor: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
 
-    private let categories = ["General", "Productivity", "Development", "Writing", "Communication"]
+    private let categories = ["General", "Writing", "Productivity", "Development", "Communication", "Organization", "Analysis", "Knowledge", "Research", "Finance", "Design", "Data"]
 
     private let icons = [
         "bolt", "bolt.circle", "exclamationmark.triangle", "checkmark.shield",
@@ -564,6 +638,7 @@ private struct RuleInlineEditor: View {
                         .foregroundStyle(DS.Colors.accent)
                         .frame(width: 28, height: 28)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                 }
                 .buttonStyle(.plainPointer)
                 .popover(isPresented: $showIconPicker, arrowEdge: .bottom) {
@@ -680,61 +755,110 @@ struct SkillRunSheet: View {
     @State private var input = ""
     @State private var result: String?
     @State private var isRunning = false
+    @State private var copied = false
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DS.Spacing.md) {
-                Image(systemName: skill.icon)
-                    .foregroundStyle(DS.Colors.accent)
-                Text("Run: \(skill.name)")
+            HStack(spacing: DS.Spacing.sm) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        .fill(DS.Colors.accentFill)
+                        .frame(width: 28, height: 28)
+                    Image(systemName: skill.icon)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                }
+                Text(skill.name)
                     .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
                 Spacer()
-                Button("Close") { dismiss() }
-                    .font(DS.Font.body).buttonStyle(.plainPointer)
-                    .foregroundStyle(DS.Colors.textSecondary)
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(width: 24, height: 24)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
             }
-            .padding(DS.Spacing.lg)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
             .background(DS.Colors.surfaceElevated)
 
             Divider()
 
             ScrollView {
-                VStack(spacing: DS.Spacing.xl) {
-                    DSLabeledTextEditor(label: "Input", text: $input, minHeight: 100)
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    DSLabeledTextEditor(label: "Input", text: $input, minHeight: 90)
 
                     Button {
                         Task { await run() }
                     } label: {
                         HStack(spacing: DS.Spacing.sm) {
-                            if isRunning { ProgressView().controlSize(.small).tint(DS.Colors.onAccent) }
-                            Text(isRunning ? "Running..." : "Run")
+                            if isRunning {
+                                ProgressView().controlSize(.small).tint(DS.Colors.onAccent)
+                            } else {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: DS.IconSize.xs))
+                            }
+                            Text(isRunning ? "Running..." : "Run Skill")
                                 .font(DS.Font.body).fontWeight(.semibold)
                         }
                         .foregroundStyle(DS.Colors.onAccent)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, DS.Spacing.md)
-                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .padding(.vertical, DS.Spacing.sm + 2)
+                        .background(
+                            (isRunning || input.isEmpty) ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent,
+                            in: RoundedRectangle(cornerRadius: DS.Radius.md)
+                        )
                     }
                     .buttonStyle(.plainPointer)
                     .disabled(isRunning || input.isEmpty)
 
                     if let result {
-                        DSCard {
-                            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                            HStack {
                                 Text("Result")
-                                    .font(DS.Font.heading)
-                                Text(result)
-                                    .font(DS.Font.body)
-                                    .textSelection(.enabled)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .font(DS.Font.small)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                                Spacer()
+                                Button {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(result, forType: .string)
+                                    copied = true
+                                    Task {
+                                        try? await Task.sleep(for: .seconds(1.5))
+                                        await MainActor.run { copied = false }
+                                    }
+                                } label: {
+                                    HStack(spacing: DS.Spacing.xxs) {
+                                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                                            .font(.system(size: DS.IconSize.xs))
+                                        Text(copied ? "Copied" : "Copy")
+                                            .font(DS.Font.small)
+                                    }
+                                    .foregroundStyle(copied ? DS.Colors.success : DS.Colors.textSecondary)
+                                }
+                                .buttonStyle(.plainPointer)
+                                .animation(DS.Animation.quick, value: copied)
                             }
+
+                            ChatMarkdownView(markdown: result)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .padding(DS.Spacing.md)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
                     }
                 }
-                .padding(DS.Spacing.xl)
+                .padding(DS.Spacing.lg)
             }
         }
-        .frame(width: 520, height: 520)
+        .frame(width: 540, height: 580)
+        .background(DS.Colors.surface)
     }
 
     @MainActor

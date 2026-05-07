@@ -13,11 +13,13 @@ struct SkillFile: Identifiable, Hashable {
     var isBuiltIn: Bool
     var isPinned: Bool = false
     var knowledgeScope: [String] = []
+    var command: String = ""
 
     var filename: String { filePath.lastPathComponent }
 
     var commandName: String {
-        name.lowercased()
+        if !command.isEmpty { return command }
+        return name.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
     }

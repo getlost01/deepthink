@@ -137,6 +137,16 @@ final class RuleFileService {
              "When working with meeting notes:\n1. Extract action items as a checklist with owners\n2. Highlight key decisions in bold\n3. Note unresolved questions separately\n4. Add a one-line summary at the top"),
             ("Source Attribution", "content:web", "globe", "Knowledge",
              "When capturing content from external sources:\n- Always include the source URL\n- Note the date of capture\n- Distinguish between direct quotes and paraphrased content\n- Flag if the source may become outdated quickly"),
+            ("Date-Stamp Decisions", "always", "calendar.badge.clock", "Knowledge Quality",
+             "When capturing any decision, assumption, or conclusion — always include the date it was made.\nFormat: \"(decided YYYY-MM-DD)\" appended inline.\nApply to: knowledge entries, notes about architecture/design/process, any \"we decided to...\" statement.\nThis prevents stale decisions from being treated as current guidance."),
+            ("Tasks Require Project", "always", "folder.badge.plus", "Workspace Hygiene",
+             "Every new task must be assigned to a project.\nIf the user hasn't specified one, ask \"Which project does this belong to?\" before creating.\nDo not create orphan tasks — unassigned tasks become invisible in project views and rot.\nException: tasks explicitly labeled as personal/admin with no project context."),
+            ("Summarize Before Archive", "always", "archivebox", "Knowledge Quality",
+             "Before archiving a project or note, generate a 3-bullet outcome summary covering:\n1. What was accomplished\n2. Key decisions made (with dates if known)\n3. Any unresolved items or follow-ups\nSave this summary as a knowledge entry tagged with the item's name so archived work stays searchable."),
+            ("Surface Related Context", "always", "link.circle", "Knowledge Discovery",
+             "When a note is opened or created, search the knowledge base for related entries.\nIf 2+ related items are found, surface them as \"Related:\" context.\nHelps prevent duplicate research and connects ideas across the knowledge base."),
+            ("Auto-Escalate Overdue", "always", "exclamationmark.triangle", "Task Management",
+             "Any task with a dueDate in the past and status not Done/Cancelled should be flagged.\nEscalate priority one level (Low→Medium→High→Urgent) and note \"Auto-escalated: overdue as of YYYY-MM-DD\".\nNotify the user of escalations so nothing silently rots."),
         ]
 
         for (name, trigger, icon, category, instruction) in defaults {

@@ -172,11 +172,7 @@ private struct ToolCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.md) {
-                Image(systemName: iconFor(server.category))
-                    .font(.system(size: DS.IconSize.md, weight: .medium))
-                    .foregroundStyle(DS.Colors.accent)
-                    .frame(width: 28, height: 28)
-                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                DSIconBadge(icon: iconFor(server.category), color: DS.Colors.accent, background: DS.Colors.accentFill)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(server.name)
@@ -227,12 +223,7 @@ private struct ToolCard: View {
                     .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.accentFill, in: Capsule())
                 } else {
-                    Button(role: .destructive, action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(DS.Font.small)
-                    }
-                    .buttonStyle(.plainPointer)
-                    .foregroundStyle(DS.Colors.danger.opacity(0.5))
+                    DSToolbarButton(icon: "trash", color: DS.Colors.danger, size: DS.IconSize.sm, action: onDelete)
                 }
             }
         }
