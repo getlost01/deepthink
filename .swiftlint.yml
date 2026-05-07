@@ -1,0 +1,38 @@
+included:
+  - DeepThink
+
+excluded:
+  - DeepThink/Preview Content
+  - .build
+
+disabled_rules:
+  - trailing_whitespace       # noisy in SwiftUI multiline strings
+  - todo                      # TODOs are fine during development
+  - file_length               # SwiftUI views can be long
+  - type_body_length          # service classes are large
+  - function_body_length      # body builders and view builders
+  - cyclomatic_complexity     # SwiftUI switch/if chains
+  - identifier_name           # short vars like id, pk, x are fine
+
+opt_in_rules:
+  - empty_count
+  - empty_string
+  - first_where
+  - force_unwrapping
+  - private_outlet
+  - sorted_imports
+
+line_length:
+  warning: 160
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+type_name:
+  min_length: 2
+
+nesting:
+  type_level: 3
+
+force_cast: warning
+force_try: warning

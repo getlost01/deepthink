@@ -2,6 +2,7 @@
   "name": "deepthink-cli",
   "version": "1.0.0",
   "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
     "@types/bun": "latest",
     "typescript": "^5.7.0"
   },
@@ -10,7 +11,11 @@
     "build": "mkdir -p out && bun build src/index.ts --compile --outfile out/deepthink",
     "build:mcp": "mkdir -p out && bun build src/mcp-server.ts --compile --outfile out/deepthink-mcp",
     "build:all": "mkdir -p out && bun build src/index.ts --compile --outfile out/deepthink && bun build src/mcp-server.ts --compile --outfile out/deepthink-mcp",
-    "build:universal": "mkdir -p out && bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile out/deepthink-arm64 && bun build src/index.ts --compile --target=bun-darwin-x64 --outfile out/deepthink-x64"
+    "build:universal": "mkdir -p out && bun build src/index.ts --compile --target=bun-darwin-arm64 --outfile out/deepthink-arm64 && bun build src/index.ts --compile --target=bun-darwin-x64 --outfile out/deepthink-x64",
+    "lint": "biome lint src/",
+    "format": "biome format --write src/",
+    "check": "biome check src/",
+    "typecheck": "tsc --noEmit"
   },
   "type": "module",
   "dependencies": {

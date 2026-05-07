@@ -29,8 +29,8 @@ cli/deepthink-arm64
 cli/deepthink-x64
 cli/dist/
 
-# DeepThink runtime data
-~/deepthink/
+# DeepThink runtime data (lives in ~/DeepThink/, outside repo)
+*.db
 
 # Editor bundle (source - bundled output is in Resources)
 editor-bundle/node_modules/

@@ -66,7 +66,7 @@ Three-layer system prevents redundant entries:
 Basic substring matching across title, content, and tags. Used for the search bar in Knowledge Browser.
 
 ### Smart Retrieval (RAG)
-BM25 + semantic hybrid search via `ContextEngine.retrieveContextHybrid()`. Used for AI chat context injection. See [RAG Pipeline](rag-pipeline.md).
+BM25 + semantic hybrid search via `ContextEngine.retrieveContextHybrid()`. Used for AI chat context injection. See [RAG Pipeline](../rag-pipeline.md).
 
 ## Bucket Management
 

@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    swift-lint:
+      glob: "DeepThink/**/*.swift"
+      run: |
+        if which swiftlint > /dev/null; then
+          swiftlint lint --fix --config .swiftlint.yml {staged_files}
+        else
+          echo "warning: SwiftLint not installed — run 'brew install swiftlint'"
+        fi
+
+    ts-check:
+      glob: "cli/src/**/*.ts"
+      run: cd cli && bunx biome check --write src/ && git add cli/src/
