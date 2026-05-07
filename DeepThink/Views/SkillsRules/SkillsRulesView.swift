@@ -550,9 +550,9 @@ private struct SkillInlineEditor: View {
                 MarkdownEditorWithToggle(
                     text: $promptTemplate,
                     placeholder: "Write what the skill should do with {{input}}...",
-                    onSave: { saveSkill() },
-                    autoSaveInterval: 10
+                    onSave: { saveSkill() }
                 )
+                .id(skill.id)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -706,9 +706,9 @@ private struct RuleInlineEditor: View {
             MarkdownEditorWithToggle(
                 text: $instruction,
                 placeholder: "Write the instruction for Claude when this rule triggers...",
-                onSave: { saveRule() },
-                autoSaveInterval: 10
+                onSave: { saveRule() }
             )
+            .id(rule.id)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadRule() }

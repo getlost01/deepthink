@@ -57,6 +57,28 @@ struct TaskBoardView: View {
 
                 Spacer()
 
+                if status == .done && !tasks.isEmpty {
+                    Button {
+                        withAnimation(DS.Animation.standard) {
+                            for task in tasks {
+                                task.isArchived = true
+                                task.manuallyArchived = true
+                                for subtask in task.subtasks { subtask.isArchived = true }
+                            }
+                            try? modelContext.save()
+                        }
+                    } label: {
+                        Text("Archive All")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, 3)
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+
                 Button {
                     let task = TaskItem(title: "")
                     task.status = status

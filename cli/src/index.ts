@@ -164,9 +164,12 @@ async function cmdKnowledge() {
 
   if (sub === "capture") {
     const source = args[2], channel = args[3], content = args[4];
-    if (!source || !channel || !content) err("usage: deepthink knowledge capture <source> <channel> <content>");
-    const path = knowledgeTools.saveIntegrationData(source, channel, content);
-    if (json) { p(JSON.stringify({ source, channel, path })); return; }
+    if (!source || !channel || !content) err("usage: deepthink knowledge capture <source> <channel> <content> [--title t] [--tags t1,t2]");
+    const title = flagVal("--title");
+    const tagsRaw = flagVal("--tags");
+    const tags = tagsRaw ? tagsRaw.split(",").map((t) => t.trim()).filter(Boolean) : undefined;
+    const path = knowledgeTools.saveIntegrationData(source, channel, content, {}, title, tags);
+    if (json) { p(JSON.stringify({ source, channel, title, path })); return; }
     ok(`${source}/${channel}: ${path}`);
     return;
   }

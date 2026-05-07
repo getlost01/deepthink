@@ -69,13 +69,9 @@ actor ArchiveActor {
 @Observable
 final class ArchiveService {
     static let shared = ArchiveService()
-    private var timer: Timer?
 
     func start(container: ModelContainer) {
         Task { await run(container: container) }
-        timer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
-            Task { await self?.run(container: container) }
-        }
     }
 
     func triggerRun(container: ModelContainer) {

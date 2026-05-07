@@ -16,10 +16,8 @@ struct MarkdownEditorWithToggle: View {
     @Binding var text: String
     var placeholder: String = "Start writing..."
     var onSave: (() -> Void)? = nil
-    var autoSaveInterval: TimeInterval = 3
 
     @State private var mode: EditorMode = .rich
-    @State private var autoSaveTask: Task<Void, Never>?
     @State private var lastSavedText: String = ""
     @State private var isDirty = false
 
@@ -53,23 +51,31 @@ struct MarkdownEditorWithToggle: View {
                 Spacer()
 
                 if onSave != nil {
-                    HStack(spacing: DS.Spacing.xs) {
+                    HStack(spacing: DS.Spacing.sm) {
                         if isDirty {
-                            Circle()
-                                .fill(DS.Colors.warning)
-                                .frame(width: 6, height: 6)
-                            Text("Unsaved")
-                                .font(DS.Font.small)
-                                .foregroundStyle(DS.Colors.textTertiary)
+                            HStack(spacing: DS.Spacing.xs) {
+                                Circle()
+                                    .fill(DS.Colors.warning)
+                                    .frame(width: 6, height: 6)
+                                Text("Unsaved")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            Button("Save") { performSave() }
+                                .keyboardShortcut("s", modifiers: .command)
+                                .buttonStyle(.dsSecondary)
                         } else {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: DS.IconSize.xs))
-                                .foregroundStyle(DS.Colors.success)
-                            Text("Synced")
-                                .font(DS.Font.small)
-                                .foregroundStyle(DS.Colors.textTertiary)
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.success)
+                                Text("Saved")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
                         }
                     }
+                    .animation(DS.Animation.quick, value: isDirty)
                 }
             }
             .padding(.horizontal, DS.Spacing.md)
@@ -80,9 +86,12 @@ struct MarkdownEditorWithToggle: View {
 
             switch mode {
             case .rich:
-                RichMarkdownEditor(text: $text)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                RichMarkdownEditor(text: $text, onContentSettled: {
+                    lastSavedText = text
+                    isDirty = false
+                })
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
             case .raw:
                 RawMarkdownEditor(text: $text, placeholder: placeholder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -92,21 +101,10 @@ struct MarkdownEditorWithToggle: View {
         .clipped()
         .onChange(of: text) {
             isDirty = text != lastSavedText
-            scheduleAutoSave()
         }
         .onAppear { lastSavedText = text }
         .onDisappear {
-            autoSaveTask?.cancel()
             if isDirty { performSave() }
-        }
-    }
-
-    private func scheduleAutoSave() {
-        autoSaveTask?.cancel()
-        autoSaveTask = Task {
-            try? await Task.sleep(for: .seconds(autoSaveInterval))
-            guard !Task.isCancelled else { return }
-            await MainActor.run { performSave() }
         }
     }
 

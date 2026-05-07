@@ -126,7 +126,20 @@ final class KnowledgeExtractionService {
                 systemPrompt: "Extract knowledge from conversations as concise structured markdown. Keep every specific detail (names, numbers, code, paths) but cut filler words and redundancy. Dense and scannable, not verbose."
             )
 
-            let entryTitle = title ?? "Chat: \(messages.first { $0.role == .user }?.content.prefix(50) ?? "Conversation") — \(Date().formatted(date: .abbreviated, time: .shortened))"
+            let entryTitle: String
+            if let title {
+                entryTitle = title
+            } else {
+                let raw = messages.first { $0.role == .user }?.content ?? "Conversation"
+                let snippet: String
+                if raw.count <= 60 {
+                    snippet = raw
+                } else {
+                    let truncated = String(raw.prefix(60))
+                    snippet = truncated.lastIndex(of: " ").map { String(truncated[..<$0]) } ?? truncated
+                }
+                entryTitle = "Chat: \(snippet) — \(Date().formatted(date: .abbreviated, time: .omitted))"
+            }
 
             KnowledgeService.shared.createEntry(
                 title: String(entryTitle.prefix(100)),

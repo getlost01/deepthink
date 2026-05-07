@@ -11,6 +11,19 @@ function timestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "").slice(0, 15);
 }
 
+function smartTitle(content: string): string {
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const clean = line.trim().replace(/^#+\s*/, "").replace(/^[-*>]+\s*/, "");
+    if (clean.length <= 3) continue;
+    if (clean.length <= 80) return clean;
+    const truncated = clean.slice(0, 80);
+    const lastSpace = truncated.lastIndexOf(" ");
+    return lastSpace > 0 ? truncated.slice(0, lastSpace) : truncated;
+  }
+  return "";
+}
+
 // MARK: - Project Knowledge
 
 export function saveProjectKnowledge(project: string, content: string, type: "context" | "decision" | "artifact" = "context"): string {
@@ -63,19 +76,20 @@ export function listProjects(): string[] {
 
 // MARK: - Integration Data
 
-export function saveIntegrationData(source: string, channel: string, content: string, metadata: Record<string, string> = {}): string {
+export function saveIntegrationData(source: string, channel: string, content: string, metadata: Record<string, string> = {}, title?: string, tags?: string[]): string {
   const channelDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
   mkdirSync(channelDir, { recursive: true });
 
-  const filename = `${timestamp()}.md`;
+  const resolvedTitle = title || smartTitle(content) || `${source}/${channel}`;
+  const ts = timestamp();
+  const filename = `${slugify(resolvedTitle).slice(0, 50)}-${ts}.md`;
   const filepath = join(channelDir, filename);
 
-  let fullContent = "";
-  if (Object.keys(metadata).length > 0) {
-    const meta = Object.entries(metadata).map(([k, v]) => `- **${k}**: ${v}`).join("\n");
-    fullContent = `---\n${meta}\n---\n\n`;
-  }
-  fullContent += content;
+  let frontmatter: Record<string, string> = { title: resolvedTitle, source, channel, captured_at: new Date().toISOString(), ...metadata };
+  if (tags && tags.length > 0) frontmatter.tags = `[${tags.join(", ")}]`;
+
+  const meta = Object.entries(frontmatter).map(([k, v]) => `${k}: ${v}`).join("\n");
+  const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
   return filepath;

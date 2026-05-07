@@ -377,6 +377,7 @@ struct KnowledgeDetailView: View {
     @State private var editableTitle: String
     @State private var isEditingTitle = false
     @State private var hasLoaded = false
+    @State private var activeEntry: KnowledgeEntry
 
     private var liveTags: [String] {
         KnowledgeService.shared.entries.first(where: { $0.id == entry.id })?.tags ?? entry.tags
@@ -387,6 +388,7 @@ struct KnowledgeDetailView: View {
         self.onDelete = onDelete
         self._editableContent = State(initialValue: entry.content)
         self._editableTitle = State(initialValue: entry.title)
+        self._activeEntry = State(initialValue: entry)
     }
     @State private var showCopied = false
     @State private var showLinkedPopover = false
@@ -573,36 +575,57 @@ struct KnowledgeDetailView: View {
             MarkdownEditorWithToggle(
                 text: $editableContent,
                 placeholder: "Write knowledge entry content...",
-                onSave: { saveEntry() },
-                autoSaveInterval: 3
+                onSave: { commitTitleEdit(); saveEntry() }
             )
+            .id(activeEntry.id)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .onAppear { editableContent = entry.content; editableTitle = entry.title; hasLoaded = true }
-        .onChange(of: entry.id) { editableContent = entry.content; editableTitle = entry.title; showCopied = false; isEditingTitle = false }
+        .onAppear {
+            activeEntry = entry
+            editableContent = entry.content
+            editableTitle = entry.title
+            hasLoaded = true
+        }
+        .onChange(of: entry.id) { _, _ in
+            commitTitleEdit()
+            saveEntry()
+            activeEntry = entry
+            editableContent = entry.content
+            editableTitle = entry.title
+            isEditingTitle = false
+            showCopied = false
+        }
         .onDisappear { commitTitleEdit(); saveEntry() }
     }
 
     private func saveEntry() {
-        guard hasLoaded else { return }
+        guard hasLoaded, editableContent != activeEntry.content else { return }
+        let filePath = activeEntry.filePath
         let (frontmatter, _) = KnowledgeService.shared.parseFrontmatter(
-            (try? String(contentsOf: entry.filePath, encoding: .utf8)) ?? ""
+            (try? String(contentsOf: filePath, encoding: .utf8)) ?? ""
         )
         var md = "---\n"
         for (key, value) in frontmatter { md += "\(key): \(value)\n" }
         md += "---\n\n\(editableContent)"
-        try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
+        try? md.write(to: filePath, atomically: true, encoding: .utf8)
+        KnowledgeService.shared.reload()
+        if let fresh = KnowledgeService.shared.entries.first(where: { $0.id == activeEntry.id }) {
+            activeEntry = fresh
+        }
     }
 
     private func commitTitleEdit() {
         guard isEditingTitle else { return }
         isEditingTitle = false
         let trimmed = editableTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, trimmed != entry.title else {
-            editableTitle = entry.title
+        guard !trimmed.isEmpty, trimmed != activeEntry.title else {
+            editableTitle = activeEntry.title
             return
         }
-        KnowledgeService.shared.renameEntry(entry, title: trimmed)
+        KnowledgeService.shared.renameEntry(activeEntry, title: trimmed)
+        if let fresh = KnowledgeService.shared.entries.first(where: { $0.id == activeEntry.id }) {
+            activeEntry = fresh
+        }
     }
 
     private func autoTagEntry() {

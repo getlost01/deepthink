@@ -1094,6 +1094,7 @@ import WebKit
 struct RichMarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isReadOnly: Bool = false
+    var onContentSettled: (() -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1130,6 +1131,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         private var isReceiving = false
         private var lastPushed: String?
         private var lastReadOnly: Bool?
+        private var hasSettled = false
 
         init(_ parent: RichMarkdownEditor) {
             self.parent = parent
@@ -1155,6 +1157,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "editorReady" {
                 isReady = true
+                hasSettled = false
                 pendingText = parent.text
                 pushIfReady()
             } else if message.name == "contentChanged", let md = message.body as? String {
@@ -1162,6 +1165,10 @@ struct RichMarkdownEditor: NSViewRepresentable {
                 lastPushed = md
                 parent.text = md
                 isReceiving = false
+                if !hasSettled {
+                    hasSettled = true
+                    DispatchQueue.main.async { self.parent.onContentSettled?() }
+                }
             }
         }
     }

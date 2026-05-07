@@ -84,6 +84,24 @@ final class DataCollectorService {
         return filtered.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private func smartTitle(from content: String, fallback: String) -> String {
+        let lines = content.components(separatedBy: "\n")
+        for line in lines {
+            let clean = line
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "^#+\\s*", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "^[-*>]+\\s*", with: "", options: .regularExpression)
+            guard clean.count > 3 else { continue }
+            if clean.count <= 80 { return clean }
+            let truncated = String(clean.prefix(80))
+            if let lastSpace = truncated.lastIndex(of: " ") {
+                return String(truncated[..<lastSpace])
+            }
+            return truncated
+        }
+        return fallback
+    }
+
     private func extractTitle(from html: String) -> String? {
         guard let range = html.range(of: "<title>(.+?)</title>", options: .regularExpression) else { return nil }
         var title = String(html[range])
@@ -99,7 +117,7 @@ final class DataCollectorService {
         let pb = NSPasteboard.general
         guard let content = pb.string(forType: .string), !content.isEmpty else { return false }
 
-        let entryTitle = title ?? "Clipboard \(Date().formatted(date: .abbreviated, time: .shortened))"
+        let entryTitle = title ?? smartTitle(from: content, fallback: "Clipboard — \(Date().formatted(date: .abbreviated, time: .omitted))")
         KnowledgeService.shared.createEntry(
             title: entryTitle,
             content: content,
@@ -164,9 +182,10 @@ final class DataCollectorService {
                     }
 
                     DispatchQueue.main.async {
+                        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
                         KnowledgeService.shared.createEntry(
-                            title: "Script Output \(Date().formatted(date: .abbreviated, time: .shortened))",
-                            content: "```\n\(output.trimmingCharacters(in: .whitespacesAndNewlines))\n```",
+                            title: self.smartTitle(from: trimmed, fallback: "Script Output — \(Date().formatted(date: .abbreviated, time: .omitted))"),
+                            content: "```\n\(trimmed)\n```",
                             source: "script",
                             tags: ["script"]
                         )

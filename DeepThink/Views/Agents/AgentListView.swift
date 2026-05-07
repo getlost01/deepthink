@@ -372,9 +372,9 @@ private struct AgentDetailEditor: View {
             MarkdownEditorWithToggle(
                 text: $editablePrompt,
                 placeholder: "Write instructions for how this assistant should behave...",
-                onSave: { saveAgent() },
-                autoSaveInterval: 10
+                onSave: { saveAgent() }
             )
+            .id(agent.id)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadAgent() }

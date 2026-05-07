@@ -103,6 +103,8 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
         source: { type: "string", description: "Source name (e.g. 'slack', 'github', 'web')" },
         channel: { type: "string", description: "Channel/category name" },
         content: { type: "string", description: "Content to capture (markdown)" },
+        title: { type: "string", description: "Descriptive title for this entry (auto-derived from content if omitted)" },
+        tags: { type: "array", items: { type: "string" }, description: "Optional tags for categorisation" },
         metadata: {
           type: "object",
           description: "Optional key-value metadata",
@@ -112,8 +114,8 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
       required: ["source", "channel", "content"],
     },
     execute: (p) => {
-      const path = knowledge.saveIntegrationData(p.source, p.channel, p.content, p.metadata ?? {});
-      return { source: p.source, channel: p.channel, path };
+      const path = knowledge.saveIntegrationData(p.source, p.channel, p.content, p.metadata ?? {}, p.title, p.tags);
+      return { source: p.source, channel: p.channel, title: p.title, path };
     },
   },
 
