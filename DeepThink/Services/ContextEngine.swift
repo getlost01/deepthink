@@ -140,6 +140,7 @@ final class ContextEngine {
             if charBudget - partSize < 0 { break }
 
             contextParts.append(ContextPart(
+                id: item.chunk.entryID,
                 title: item.chunk.title,
                 content: compressed,
                 tags: item.chunk.tags,
@@ -199,6 +200,7 @@ final class ContextEngine {
                 let partSize = existing.content.count + title.count + 20
                 if charBudget - partSize < 0 { break }
                 contextParts.append(ContextPart(
+                    id: existing.id,
                     title: existing.title,
                     content: existing.content,
                     tags: existing.tags,
@@ -212,6 +214,7 @@ final class ContextEngine {
                 let partSize = compressed.count + title.count + 20
                 if charBudget - partSize < 0 { break }
                 contextParts.append(ContextPart(
+                    id: chunk.entryID,
                     title: chunk.title,
                     content: compressed,
                     tags: chunk.tags,
@@ -402,6 +405,7 @@ final class ContextEngine {
 // MARK: - Models
 
 struct ContextPart {
+    let id: String
     let title: String
     let content: String
     let tags: [String]

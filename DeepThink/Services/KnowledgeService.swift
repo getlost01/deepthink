@@ -224,6 +224,7 @@ final class KnowledgeService {
         for (key, value) in updated where !orderedKeys.contains(key) { md += "\(key): \(value)\n" }
         md += "---\n\n\(body)"
 
+        guard !fm.fileExists(atPath: destURL.path) else { return }
         try? md.write(to: destURL, atomically: true, encoding: .utf8)
         try? fm.removeItem(at: entry.filePath)
         reload()
@@ -251,6 +252,10 @@ final class KnowledgeService {
         try? fm.removeItem(at: entry.filePath)
         entries.removeAll { $0.id == entry.id }
         EmbeddingService.shared.removeEntry(entry.id)
+        let snapshot = entries
+        ContextEngine.shared.indexQueue.async {
+            ContextEngine.shared.rebuildIndex(with: snapshot)
+        }
     }
 
     // MARK: - Search
@@ -276,10 +281,10 @@ final class KnowledgeService {
         guard !query.isEmpty else { return [] }
 
         let bundle = ContextEngine.shared.retrieveContext(for: query, maxTokens: maxResults * 800)
-        let matchedIDs = Set(bundle.parts.map(\.title))
+        let matchedIDs = Set(bundle.parts.map(\.id))
 
         return entries
-            .filter { matchedIDs.contains($0.title) }
+            .filter { matchedIDs.contains($0.id) }
             .prefix(maxResults)
             .map { $0 }
     }

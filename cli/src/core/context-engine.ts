@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
-import { join } from "path";
+import { join, relative } from "path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { semanticSearch, indexEntry, type IndexableEntry } from "./embedding-service";
 import {
@@ -111,7 +111,7 @@ function loadAllEntries(): IndexedEntry[] {
           const importedAt = isNaN(parsed.getTime()) ? new Date() : parsed;
 
           entries.push({
-            id: `${source}/${item.name}`,
+            id: relative(KNOWLEDGE_DIR, join(dir, item.name)),
             title: meta.title ?? item.name.replace(".md", ""),
             content: body,
             tags,

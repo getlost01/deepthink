@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, appendFileSync, readdirSync, existsSync, mkdirSync, unlinkSync } from "fs";
 import { join } from "path";
 import { KNOWLEDGE_DIRS, KNOWLEDGE_DIR } from "../config";
 import { query } from "../core/llm";
@@ -32,7 +32,7 @@ export function saveProjectKnowledge(project: string, content: string, type: "co
 
   let filename: string;
   if (type === "context") filename = "context.md";
-  else if (type === "decision") filename = "decisions.json";
+  else if (type === "decision") filename = "decisions.md";
   else {
     const artDir = join(projectDir, "artifacts");
     mkdirSync(artDir, { recursive: true });
@@ -56,7 +56,7 @@ export function loadProjectKnowledge(project: string): { context: string; decisi
   const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
 
   const contextFile = join(projectDir, "context.md");
-  const decisionsFile = join(projectDir, "decisions.json");
+  const decisionsFile = join(projectDir, "decisions.md");
   const artifactsDir = join(projectDir, "artifacts");
 
   const context = existsSync(contextFile) ? readFileSync(contextFile, "utf-8") : "";
@@ -92,6 +92,7 @@ export function saveIntegrationData(source: string, channel: string, content: st
   const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
+  updateIndex();
   return filepath;
 }
 
@@ -100,14 +101,18 @@ export function loadIntegrationData(source: string, channel?: string, limit = 20
   if (!existsSync(sourceDir)) return [];
 
   const results: { source: string; channel: string; file: string; content: string }[] = [];
-  const channels = channel ? [slugify(channel)] : readdirSync(sourceDir);
+  const channels = channel
+    ? [slugify(channel)]
+    : readdirSync(sourceDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name);
 
   for (const ch of channels) {
+    if (results.length >= limit) break;
     const chDir = join(sourceDir, ch);
     if (!existsSync(chDir)) continue;
     try {
       const files = readdirSync(chDir).filter((f) => f.endsWith(".md")).sort().reverse();
-      for (const f of files.slice(0, limit)) {
+      for (const f of files) {
+        if (results.length >= limit) break;
         results.push({
           source,
           channel: ch,
@@ -118,21 +123,25 @@ export function loadIntegrationData(source: string, channel?: string, limit = 20
     } catch {}
   }
 
-  return results.sort((a, b) => b.file.localeCompare(a.file)).slice(0, limit);
+  return results.sort((a, b) => b.file.localeCompare(a.file));
 }
 
 export function listIntegrations(): { source: string; channels: string[] }[] {
   const dir = KNOWLEDGE_DIRS.integrations;
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).map((source) => {
-    const sourceDir = join(dir, source);
-    try {
-      const channels = readdirSync(sourceDir);
-      return { source, channels };
-    } catch {
-      return { source, channels: [] };
-    }
-  });
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => {
+      const sourceDir = join(dir, d.name);
+      try {
+        const channels = readdirSync(sourceDir, { withFileTypes: true })
+          .filter((c) => c.isDirectory())
+          .map((c) => c.name);
+        return { source: d.name, channels };
+      } catch {
+        return { source: d.name, channels: [] };
+      }
+    });
 }
 
 // MARK: - Archive & Compress
@@ -142,26 +151,51 @@ export async function compressKnowledge(source: string, channel: string): Promis
   if (entries.length === 0) return "No entries to compress.";
 
   const combined = entries.map((e) => e.content).join("\n\n---\n\n");
+  const charLimit = 32000;
+  if (combined.length > charLimit) console.warn(`[compress] Truncating ${combined.length} chars to ${charLimit} for ${source}/${channel}`);
   const compressed = await query(
-    `Compress this knowledge into dense, structured bullet points. Keep all facts, dates, names, decisions. Remove filler:\n\n${combined.slice(0, 8000)}`,
+    `Compress this knowledge into dense, structured bullet points. Keep all facts, dates, names, decisions. Remove filler:\n\n${combined.slice(0, charLimit)}`,
     "You compress information. Output structured markdown bullets. Preserve all key data."
   );
 
+  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
   const archiveFile = join(KNOWLEDGE_DIRS.archive, `${source}_${slugify(channel)}_${timestamp()}.md`);
   const content = `# Compressed: ${source}/${channel}\nEntries: ${entries.length} | ${new Date().toISOString()}\n\n${compressed}`;
   writeFileSync(archiveFile, content, "utf-8");
+
+  const chDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
+  for (const entry of entries) {
+    try { unlinkSync(join(chDir, entry.file)); } catch {}
+  }
+
   return archiveFile;
 }
 
 export async function archiveProject(project: string): Promise<string> {
-  const knowledge = loadProjectKnowledge(project);
-  if (!knowledge.context) return "No context to archive.";
+  const k = loadProjectKnowledge(project);
+  const hasContent = k.context || k.decisions || k.artifacts.length > 0;
+  if (!hasContent) return "No content to archive.";
 
+  const parts: string[] = [];
+  if (k.context) parts.push(`## Context\n${k.context}`);
+  if (k.decisions) parts.push(`## Decisions\n${k.decisions}`);
+  if (k.artifacts.length > 0) {
+    const artDir = join(KNOWLEDGE_DIRS.projects, slugify(project), "artifacts");
+    const artContents = k.artifacts
+      .map((f) => { try { return readFileSync(join(artDir, f), "utf-8"); } catch { return ""; } })
+      .filter(Boolean);
+    if (artContents.length > 0) parts.push(`## Artifacts\n${artContents.join("\n\n---\n\n")}`);
+  }
+
+  const combined = parts.join("\n\n");
+  const charLimit = 32000;
+  if (combined.length > charLimit) console.warn(`[archive] Truncating ${combined.length} chars to ${charLimit} for project ${project}`);
   const compressed = await query(
-    `Compress this project knowledge into dense, structured summary. Keep all key decisions, facts, dates:\n\n${knowledge.context.slice(0, 8000)}`,
+    `Compress this project knowledge into dense, structured summary. Keep all key decisions, facts, dates:\n\n${combined.slice(0, charLimit)}`,
     "You compress project knowledge. Output structured markdown. Preserve all key data."
   );
 
+  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
   const archiveFile = join(KNOWLEDGE_DIRS.archive, `${slugify(project)}_${timestamp()}.md`);
   const content = `# Archived: ${project}\n${new Date().toISOString()}\n\n${compressed}`;
   writeFileSync(archiveFile, content, "utf-8");

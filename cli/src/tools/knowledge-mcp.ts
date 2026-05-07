@@ -119,6 +119,37 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
     },
   },
 
+  {
+    name: "knowledge_compress",
+    description: "Compress an integration channel's entries into a dense archive and delete the originals.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", description: "Integration source (e.g. 'slack')" },
+        channel: { type: "string", description: "Channel name" },
+      },
+      required: ["source", "channel"],
+    },
+    execute: async (p) => {
+      const path = await knowledge.compressKnowledge(p.source, p.channel);
+      return { source: p.source, channel: p.channel, path };
+    },
+  },
+  {
+    name: "knowledge_archive_project",
+    description: "Archive a project's knowledge (context, decisions, artifacts) into a compressed summary file.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: { type: "string", description: "Project name" },
+      },
+      required: ["project"],
+    },
+    execute: async (p) => {
+      const path = await knowledge.archiveProject(p.project);
+      return { project: p.project, path };
+    },
+  },
 ];
 
 export const KNOWLEDGE_TOOL_MAP: Record<string, MCPTool> = Object.fromEntries(
