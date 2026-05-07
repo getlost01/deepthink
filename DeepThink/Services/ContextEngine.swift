@@ -244,6 +244,49 @@ final class ContextEngine {
         return result
     }
 
+    // MARK: - Similarity Graph
+
+    func similarityEdges(threshold: Double = 0.15) -> [(String, String, Double)] {
+        let entries = Array(documentTerms)
+        let n = Double(documentCount)
+
+        func tfidfVec(_ tf: [String: Double]) -> [String: Double] {
+            tf.reduce(into: [String: Double]()) { result, kv in
+                let df = Double(documentFrequency[kv.key] ?? 1)
+                result[kv.key] = kv.value * log((n + 1) / (df + 1))
+            }
+        }
+
+        func magnitude(_ vec: [String: Double]) -> Double {
+            sqrt(vec.values.reduce(0) { $0 + $1 * $1 })
+        }
+
+        var edges: [(String, String, Double)] = []
+        let vecs = entries.map { (id: $0.0, vec: tfidfVec($0.1)) }
+
+        for i in 0..<vecs.count {
+            let a = vecs[i]
+            let magA = magnitude(a.vec)
+            guard magA > 0 else { continue }
+
+            for j in (i + 1)..<vecs.count {
+                let b = vecs[j]
+                let magB = magnitude(b.vec)
+                guard magB > 0 else { continue }
+
+                var dot = 0.0
+                for (term, valA) in a.vec {
+                    if let valB = b.vec[term] { dot += valA * valB }
+                }
+                let sim = dot / (magA * magB)
+                if sim >= threshold {
+                    edges.append((a.id, b.id, sim))
+                }
+            }
+        }
+        return edges
+    }
+
     // MARK: - Deduplication
 
     func isDuplicate(content: String) -> Bool {

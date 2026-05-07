@@ -90,6 +90,8 @@ struct ContentRouter: View {
                 IntegrationsView()
             case .terminal:
                 DeepThinkTerminalView()
+            case .contextGraph:
+                ContextGraphView()
             case .settings:
                 SettingsView()
             case nil:

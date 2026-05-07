@@ -11,6 +11,7 @@ enum SidebarSection: String, Identifiable {
     case reminders = "Reminders"
     case integrations = "Integration"
     case terminal = "Terminal"
+    case contextGraph = "Context Graph"
     case settings = "Settings"
 
     var id: String { rawValue }
@@ -20,7 +21,7 @@ enum SidebarSection: String, Identifiable {
     }
 
     static var mainSections: [SidebarSection] {
-        [.workspace, .knowledge, .aiAssistant, .reminders]
+        [.workspace, .knowledge, .contextGraph, .aiAssistant, .reminders]
     }
 
     static var toolSections: [SidebarSection] {
@@ -36,6 +37,7 @@ enum SidebarSection: String, Identifiable {
         case .reminders: "bell"
         case .integrations: "puzzlepiece.extension"
         case .terminal: "terminal"
+        case .contextGraph: "point.3.connected.trianglepath.dotted"
         case .settings: "gear"
         }
     }
@@ -49,6 +51,7 @@ enum SidebarSection: String, Identifiable {
         case .reminders: "Set reminders with optional times"
         case .integrations: "Add tools and services for AI to use"
         case .terminal: "Built-in terminal sessions"
+        case .contextGraph: "Semantic similarity graph of your knowledge"
         case .settings: "Choose AI model and preferences"
         }
     }
@@ -62,6 +65,7 @@ enum SidebarSection: String, Identifiable {
         case .reminders: "Things to remember, with optional time alerts"
         case .integrations: "Connect tools and services to make AI more powerful"
         case .terminal: "Run commands and scripts"
+        case .contextGraph: "Visualize how your knowledge connects semantically"
         case .settings: "Model selection and usage"
         }
     }
@@ -75,6 +79,7 @@ enum SidebarSection: String, Identifiable {
         case .reminders: "Keep track of things you need to remember. Optionally set a date and time to get notified."
         case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
         case .terminal: "A built-in command line for running scripts and system commands."
+        case .contextGraph: "See which knowledge entries are semantically related. Nodes are entries, edges are similarity. Search to highlight relevant clusters."
         case .settings: "Choose which AI model to use and track your usage."
         }
     }
