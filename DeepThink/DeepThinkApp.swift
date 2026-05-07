@@ -108,6 +108,7 @@ struct DeepThinkApp: App {
                     KnowledgeService.shared.reload()
                     indexWorkspaceItems(container: sharedModelContainer)
                     CollectorScheduler.shared.start(container: sharedModelContainer)
+                    TaskNotificationService.shared.start(container: sharedModelContainer)
                     ClaudeService.shared.start(container: sharedModelContainer)
                     ArchiveService.shared.start(container: sharedModelContainer)
                     BackupService.shared.start()
@@ -449,6 +450,10 @@ struct DeepThinkApp: App {
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         try? process.run()
+        let timeout = DispatchTime.now() + .seconds(10)
+        DispatchQueue.global().asyncAfter(deadline: timeout) {
+            if process.isRunning { process.terminate() }
+        }
         process.waitUntilExit()
 
         if process.terminationStatus == 0 {

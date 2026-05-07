@@ -51,6 +51,9 @@ deepthink ask "What tasks need attention?" --recall --project MyProject
 # Run multi-step tasks with AI agents
 deepthink run "Analyze the codebase and create a migration plan" --project MyProject
 
+# ReAct agent — multi-tool reasoning loop
+deepthink react "Find all overdue tasks and draft a summary note"
+
 # Natural language workspace management
 deepthink workspace "create a high-priority task for API migration due Friday"
 
@@ -72,6 +75,18 @@ deepthink knowledge list
 deepthink knowledge search "auth middleware" --source slack --limit 10
 deepthink knowledge save MyProject "Decided to use JWT tokens" --type decision
 deepthink knowledge load MyProject
+
+# Proactive insights (overdue, stale, blocked tasks)
+deepthink insight scan
+deepthink insight list
+
+# Research pipeline (web + local knowledge synthesis)
+deepthink research "gRPC vs REST tradeoffs" --deep --project MyProject
+
+# Scheduled background jobs
+deepthink schedule run          # run due jobs
+deepthink schedule run --force  # force all jobs now
+deepthink schedule status       # show last run + next due
 
 # Search & Analysis
 deepthink search "React server components"        # web search
@@ -95,6 +110,12 @@ deepthink analyze data.csv --question "What are the trends?"
 | **Terminal** | Built-in terminal with multi-session tracking and AI output analysis |
 | **Command Palette** | `Cmd+K` quick access to all commands, navigation, and skills |
 | **Reminders** | Todo-style reminders with optional timed notifications |
+| **Task Notifications** | macOS notifications for due and overdue tasks at 9am daily |
+| **Proactive Insights** | AI scans workspace every 4h — flags overdue, stale, blocked tasks and project inactivity |
+| **Agent Memory** | Per-agent persistent memory (observations, corrections, facts) across CLI sessions |
+| **ReAct Agent** | Multi-tool reasoning loop — reads/writes workspace, searches web, saves to knowledge |
+| **Research Pipeline** | Multi-step research: generates questions, searches web + local knowledge, synthesizes findings |
+| **Scheduler** | Background jobs: daily brief (20h), stale task scan (weekly), insight scan (4h) |
 
 ## Feature Documentation
 
@@ -267,7 +288,10 @@ All data in `~/DeepThink/`:
 DeepThink/
 ├── data/
 │   ├── deepthink.store          # SwiftData SQLite (notes, tasks, projects, conversations)
-│   └── vectors.db               # Chunks + embeddings (Float32 BLOB), shared by app and CLI
+│   ├── vectors.db               # Chunks + embeddings (Float32 BLOB), shared by app and CLI
+│   ├── insights.json            # Saved proactive insights (InsightAgent output)
+│   ├── schedule-state.json      # Scheduler last-run timestamps
+│   └── agent-memory/            # Per-agent persistent memory (observations, corrections, facts)
 ├── knowledge/                   # Knowledge base (markdown + YAML frontmatter)
 │   ├── general/                 # Default bucket
 │   ├── folders/                 # User-created buckets
@@ -301,9 +325,10 @@ Skills, rules, and agents live in `~/DeepThink/.claude/` (auto-created by the ap
 
 | Data | Location | Persistence |
 |------|----------|-------------|
-| BM25/TF-IDF index | RAM | Rebuilt on each `retrieveContext()` call — fast, no disk |
+| BM25/TF-IDF index | RAM | Cached across calls; rebuilt only when knowledge content changes (version-gated) |
 | Chunks + embeddings | `data/vectors.db` | SQLite WAL, Float32 BLOB, shared by app and CLI |
-| Content hashes | `data/vectors.db` (`content_hash` column) | Per-chunk, skips unchanged entries |
+| Content hashes | RAM + `data/vectors.db` | Process-level cache avoids redundant DB queries; persisted per-chunk for restart recovery |
+| Knowledge entries | RAM (30s TTL) | Disk re-read at most once per 30 seconds |
 | Conversation summaries | RAM | Regenerated as needed |
 | Dedup fingerprints | RAM | Rebuilt with index |
 

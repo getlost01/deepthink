@@ -67,7 +67,7 @@ final class ContextEngine {
         let queryTerms = tokenize(query)
         guard !queryTerms.isEmpty else { return ContextBundle.empty }
 
-        let chunks = store.allChunks(scope: agentScope)
+        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope)
         guard !chunks.isEmpty else { return ContextBundle.empty }
 
         let queryTF = computeTF(queryTerms)
@@ -135,7 +135,7 @@ final class ContextEngine {
         var contextParts: [ContextPart] = []
 
         for item in selectedChunks {
-            let compressed = compressChunk(item.chunk.content, budget: min(800, charBudget))
+            let compressed = extractRelevantWindow(item.chunk.content, queryTerms: querySet, maxLen: min(800, charBudget))
             let partSize = compressed.count + item.chunk.title.count + 20
             if charBudget - partSize < 0 { break }
 
@@ -169,35 +169,34 @@ final class ContextEngine {
             return retrieveContext(for: query, maxTokens: maxTokens, projectScope: projectScope, agentScope: agentScope)
         }
 
-        let chunks = store.allChunks(scope: agentScope)
+        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope)
+        var chunkByEntryID: [String: VectorChunk] = [:]
+        for c in chunks { if chunkByEntryID[c.entryID] == nil { chunkByEntryID[c.entryID] = c } }
 
         let k = 60.0
         var fusedScores: [String: Double] = [:]
-        var titleToChunk: [String: VectorChunk] = [:]
+        var bm25PartByEntryID: [String: ContextPart] = [:]
 
         for (rank, part) in bm25Bundle.parts.enumerated() {
             let rrf = 1.0 / (k + Double(rank + 1))
-            fusedScores[part.title, default: 0] += rrf
+            fusedScores[part.id, default: 0] += rrf
+            if bm25PartByEntryID[part.id] == nil { bm25PartByEntryID[part.id] = part }
         }
 
         for (rank, result) in semanticResults.enumerated() {
-            if let chunk = chunks.first(where: { $0.entryID == result.entryID }) {
-                let rrf = 1.0 / (k + Double(rank + 1))
-                fusedScores[chunk.title, default: 0] += rrf
-                if titleToChunk[chunk.title] == nil {
-                    titleToChunk[chunk.title] = chunk
-                }
-            }
+            let rrf = 1.0 / (k + Double(rank + 1))
+            fusedScores[result.entryID, default: 0] += rrf
         }
 
         let sorted = fusedScores.sorted { $0.value > $1.value }
+        let queryTerms = Set(tokenize(query))
 
         var charBudget = maxTokens * 4
         var contextParts: [ContextPart] = []
 
-        for (title, score) in sorted {
-            if let existing = bm25Bundle.parts.first(where: { $0.title == title }) {
-                let partSize = existing.content.count + title.count + 20
+        for (entryID, score) in sorted {
+            if let existing = bm25PartByEntryID[entryID] {
+                let partSize = existing.content.count + existing.title.count + 20
                 if charBudget - partSize < 0 { break }
                 contextParts.append(ContextPart(
                     id: existing.id,
@@ -209,9 +208,9 @@ final class ContextEngine {
                     chunkInfo: existing.chunkInfo
                 ))
                 charBudget -= partSize
-            } else if let chunk = titleToChunk[title] {
-                let compressed = compressChunk(chunk.content, budget: min(800, charBudget))
-                let partSize = compressed.count + title.count + 20
+            } else if let chunk = chunkByEntryID[entryID] {
+                let compressed = extractRelevantWindow(chunk.content, queryTerms: queryTerms, maxLen: min(800, charBudget))
+                let partSize = compressed.count + chunk.title.count + 20
                 if charBudget - partSize < 0 { break }
                 contextParts.append(ContextPart(
                     id: chunk.entryID,
@@ -347,6 +346,24 @@ final class ContextEngine {
 
     // MARK: - Private Helpers
 
+    private func stem(_ word: String) -> String {
+        var w = word
+        if w.count > 4 && w.hasSuffix("sses") { return String(w.dropLast(2)) }
+        if w.count > 4 && w.hasSuffix("ies")  { return String(w.dropLast(2)) }
+        if w.count > 2 && w.hasSuffix("s") && !w.hasSuffix("ss") { w = String(w.dropLast()) }
+        if w.count > 6 && w.hasSuffix("ational") { return String(w.dropLast(7)) + "ate" }
+        if w.count > 5 && w.hasSuffix("ation")   { return String(w.dropLast(5)) + "ate" }
+        if w.count > 4 && w.hasSuffix("ness") { return String(w.dropLast(4)) }
+        if w.count > 4 && w.hasSuffix("ment") { return String(w.dropLast(4)) }
+        if w.count > 4 && w.hasSuffix("ting") { return String(w.dropLast(3)) }
+        if w.count > 3 && w.hasSuffix("ing")  { return String(w.dropLast(3)) }
+        if w.count > 3 && w.hasSuffix("ely")  { return String(w.dropLast(3)) }
+        if w.count > 2 && w.hasSuffix("ed")   { return String(w.dropLast(2)) }
+        if w.count > 2 && w.hasSuffix("er")   { return String(w.dropLast(2)) }
+        if w.count > 2 && w.hasSuffix("ly")   { return String(w.dropLast(2)) }
+        return w
+    }
+
     private func tokenize(_ text: String) -> [String] {
         let stopWords: Set<String> = ["the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
             "have", "has", "had", "do", "does", "did", "will", "would", "could", "should",
@@ -363,6 +380,7 @@ final class ContextEngine {
         return text.lowercased()
             .components(separatedBy: CharacterSet.alphanumerics.inverted)
             .filter { $0.count > 2 && !stopWords.contains($0) }
+            .map { stem($0) }
     }
 
     private func computeTF(_ terms: [String]) -> [String: Double] {
@@ -377,14 +395,33 @@ final class ContextEngine {
         return freq
     }
 
-    private func compressChunk(_ content: String, budget: Int) -> String {
-        if content.count <= budget { return content }
+    private func extractRelevantWindow(_ content: String, queryTerms: Set<String>, maxLen: Int) -> String {
+        if content.count <= maxLen { return content }
 
-        let truncated = String(content.prefix(budget))
-        if let lastSentence = truncated.lastIndex(where: { $0 == "." || $0 == "\n" }) {
-            return String(truncated[...lastSentence])
+        let words = content.split(separator: " ", omittingEmptySubsequences: true).map(String.init)
+        let windowSize = max(1, maxLen / 5)
+
+        if words.count <= windowSize { return String(content.prefix(maxLen)) }
+
+        let hits = words.map { w -> Int in
+            let t = stem(w.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).joined())
+            return queryTerms.contains(t) ? 1 : 0
         }
-        return truncated + "..."
+
+        var windowScore = hits.prefix(windowSize).reduce(0, +)
+        var bestStart = 0
+        var bestScore = windowScore
+
+        for i in 1...(words.count - windowSize) {
+            windowScore += hits[i + windowSize - 1] - hits[i - 1]
+            if windowScore > bestScore {
+                bestScore = windowScore
+                bestStart = i
+            }
+        }
+
+        let selected = words[bestStart..<min(bestStart + windowSize, words.count)].joined(separator: " ")
+        return selected.count > maxLen ? String(selected.prefix(maxLen)) : selected
     }
 
     private func fingerprint(_ text: String) -> UInt64 {

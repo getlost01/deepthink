@@ -1,14 +1,13 @@
 import { readFileSync, readdirSync, existsSync } from "fs";
 import { join, relative } from "path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
-import { semanticSearch, indexEntry, type IndexableEntry } from "./embedding-service";
+import { semanticSearch, type SemanticResult } from "./embedding-service";
 import {
   type VectorChunk,
   allChunks,
   simpleHash,
   semanticChunk,
   upsertChunks,
-  deleteChunksForEntry,
   contentHash as getContentHash,
   pruneStaleEntries,
 } from "./vector-store";
@@ -25,7 +24,7 @@ export interface IndexedEntry {
 }
 
 export interface ContextResult {
-  parts: { title: string; content: string; tags: string[]; source: string; score: number; chunk?: string }[];
+  parts: { entryId: string; title: string; content: string; tags: string[]; source: string; score: number; chunk?: string }[];
   totalTokensEstimate: number;
   entriesScanned: number;
   entriesReturned: number;
@@ -52,6 +51,26 @@ const STOPWORDS = new Set([
   "itself", "they", "them", "their", "theirs", "themselves",
 ]);
 
+// ── Stemmer ──
+
+function stem(word: string): string {
+  if (word.length > 4 && word.endsWith("sses")) return word.slice(0, -2);
+  if (word.length > 4 && word.endsWith("ies")) return word.slice(0, -2);
+  if (word.length > 3 && word.endsWith("ss")) return word;
+  if (word.length > 2 && word.endsWith("s") && !word.endsWith("ss")) return word.slice(0, -1);
+  if (word.length > 6 && word.endsWith("ational")) return word.slice(0, -7) + "ate";
+  if (word.length > 5 && word.endsWith("ation")) return word.slice(0, -5) + "ate";
+  if (word.length > 4 && word.endsWith("ness")) return word.slice(0, -4);
+  if (word.length > 4 && word.endsWith("ment")) return word.slice(0, -4);
+  if (word.length > 4 && word.endsWith("ting")) return word.slice(0, -3);
+  if (word.length > 3 && word.endsWith("ing")) return word.slice(0, -3);
+  if (word.length > 3 && word.endsWith("ely")) return word.slice(0, -3);
+  if (word.length > 2 && word.endsWith("ed")) return word.slice(0, -2);
+  if (word.length > 2 && word.endsWith("er")) return word.slice(0, -2);
+  if (word.length > 2 && word.endsWith("ly")) return word.slice(0, -2);
+  return word;
+}
+
 // ── Tokenizer ──
 
 function tokenize(text: string): string[] {
@@ -59,7 +78,8 @@ function tokenize(text: string): string[] {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .split(/\s+/)
-    .filter((t) => t.length > 1 && !STOPWORDS.has(t));
+    .filter((t) => t.length > 1 && !STOPWORDS.has(t))
+    .map(stem);
 }
 
 function computeTF(tokens: string[]): Record<string, number> {
@@ -68,6 +88,37 @@ function computeTF(tokens: string[]): Record<string, number> {
   const max = Math.max(...Object.values(tf), 1);
   for (const t in tf) tf[t] /= max;
   return tf;
+}
+
+// ── Relevance Window Extraction ──
+
+function extractRelevantWindow(content: string, queryTerms: Set<string>, maxLen: number): string {
+  if (content.length <= maxLen) return content;
+
+  const words = content.split(/\s+/);
+  const windowSize = Math.floor(maxLen / 5);
+
+  if (words.length <= windowSize) return content.slice(0, maxLen);
+
+  const hits = words.map((w) => {
+    const t = stem(w.toLowerCase().replace(/[^a-z0-9]/g, ""));
+    return queryTerms.has(t) ? 1 : 0;
+  });
+
+  let windowScore = hits.slice(0, windowSize).reduce((a: number, b) => a + b, 0);
+  let bestStart = 0;
+  let bestScore = windowScore;
+
+  for (let i = 1; i <= words.length - windowSize; i++) {
+    windowScore += hits[i + windowSize - 1] - hits[i - 1];
+    if (windowScore > bestScore) {
+      bestScore = windowScore;
+      bestStart = i;
+    }
+  }
+
+  const selected = words.slice(bestStart, bestStart + windowSize).join(" ");
+  return selected.length > maxLen ? selected.slice(0, maxLen) : selected;
 }
 
 // ── Frontmatter Parser ──
@@ -137,44 +188,39 @@ function loadAllEntries(): IndexedEntry[] {
   return entries;
 }
 
-// ── Ensure VectorStore is populated ──
+// ── Caches ──
 
-function ensureIndexed(entries: IndexedEntry[]): void {
-  for (const entry of entries) {
-    const hash = simpleHash(entry.content);
-    const existing = getContentHash(entry.id);
-    if (existing !== null && existing === hash) continue;
+const _hashCache = new Map<string, number>();
 
-    const chunks = semanticChunk(
-      entry.content, entry.id, "knowledge", entry.title,
-      entry.tags, entry.source, entry.importedAt, hash
-    );
-    upsertChunks(chunks);
-  }
-  const validIds = new Set(entries.map(e => e.id));
-  pruneStaleEntries(validIds, "knowledge");
+// Version bumped whenever ensureIndexed writes new chunks — signals TF-IDF rebuild needed
+let _indexVersion = 0;
+
+// Entries cache: 30s TTL (knowledge files change infrequently)
+let _entriesCache: { entries: IndexedEntry[]; ts: number } | null = null;
+
+interface TFIDFCache {
+  version: number;
+  entryCount: number;
+  docFreq: Record<string, number>;
+  docTerms: Map<string, Record<string, number>>;
+}
+let _tfidfCache: TFIDFCache | null = null;
+
+function loadAllEntriesCached(): IndexedEntry[] {
+  const now = Date.now();
+  if (_entriesCache && now - _entriesCache.ts < 30_000) return _entriesCache.entries;
+  const entries = loadAllEntries();
+  _entriesCache = { entries, ts: now };
+  return entries;
 }
 
-// ── BM25 Retrieval ──
+function getTFIDF(entries: IndexedEntry[]): TFIDFCache {
+  if (_tfidfCache && _tfidfCache.version === _indexVersion && _tfidfCache.entryCount === entries.length) {
+    return _tfidfCache;
+  }
 
-export function retrieveContext(
-  query: string,
-  opts: { maxTokens?: number; projectScope?: string; agentScope?: string[]; topK?: number } = {}
-): ContextResult {
-  const maxTokens = opts.maxTokens ?? 4000;
-  const topK = opts.topK ?? 10;
-
-  const entries = loadAllEntries();
-  if (entries.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: 0, entriesReturned: 0 };
-
-  ensureIndexed(entries);
-
-  const queryTerms = tokenize(query);
-  if (queryTerms.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
-
-  // Build TF-IDF index
   const docFreq: Record<string, number> = {};
-  const docTerms: Map<string, Record<string, number>> = new Map();
+  const docTerms = new Map<string, Record<string, number>>();
 
   for (const entry of entries) {
     const allText = `${entry.title} ${entry.tags.join(" ")} ${entry.content}`;
@@ -186,15 +232,112 @@ export function retrieveContext(
     }
   }
 
-  // Get chunks from VectorStore
-  const chunks = allChunks({ scope: opts.agentScope });
+  _tfidfCache = { version: _indexVersion, entryCount: entries.length, docFreq, docTerms };
+  return _tfidfCache;
+}
 
-  const docCount = entries.length;
+// ── Ensure VectorStore is populated ──
+
+function ensureIndexed(entries: IndexedEntry[]): void {
+  for (const entry of entries) {
+    const hash = simpleHash(entry.content);
+    const cached = _hashCache.get(entry.id);
+    if (cached === hash) continue;
+
+    const existing = getContentHash(entry.id);
+    if (existing !== null && existing === hash) {
+      _hashCache.set(entry.id, hash);
+      continue;
+    }
+
+    const chunks = semanticChunk(
+      entry.content, entry.id, "knowledge", entry.title,
+      entry.tags, entry.source, entry.importedAt, hash
+    );
+    upsertChunks(chunks);
+    _hashCache.set(entry.id, hash);
+    _indexVersion++;
+    _tfidfCache = null; // invalidate on write
+  }
+  const validIds = new Set(entries.map(e => e.id));
+  pruneStaleEntries(validIds, "knowledge");
+}
+
+// ── Workspace indexing into vector store ──
+
+import * as db from "./db";
+
+function ensureWorkspaceIndexed(tasks: db.TaskRow[], notes: db.NoteRow[]): void {
+  for (const task of tasks) {
+    const content = `${task.title}\n${task.detail}`;
+    const hash = simpleHash(content);
+    const entryId = `task:${task.pk}`;
+    const cached = _hashCache.get(entryId);
+    if (cached === hash) continue;
+
+    const existing = getContentHash(entryId);
+    if (existing !== null && existing === hash) {
+      _hashCache.set(entryId, hash);
+      continue;
+    }
+
+    const chunks = semanticChunk(content, entryId, "workspace", task.title, [], "workspace", task.modifiedAt, hash);
+    upsertChunks(chunks);
+    _hashCache.set(entryId, hash);
+  }
+
+  for (const note of notes) {
+    const content = `${note.title}\n${note.content}`;
+    const hash = simpleHash(content);
+    const entryId = `note:${note.pk}`;
+    const cached = _hashCache.get(entryId);
+    if (cached === hash) continue;
+
+    const existing = getContentHash(entryId);
+    if (existing !== null && existing === hash) {
+      _hashCache.set(entryId, hash);
+      continue;
+    }
+
+    const chunks = semanticChunk(content, entryId, "workspace", note.title, [], "workspace", note.modifiedAt, hash);
+    upsertChunks(chunks);
+    _hashCache.set(entryId, hash);
+  }
+
+  const validIds = new Set([
+    ...tasks.map((t) => `task:${t.pk}`),
+    ...notes.map((n) => `note:${n.pk}`),
+  ]);
+  pruneStaleEntries(validIds, "workspace");
+}
+
+// ── BM25 Retrieval ──
+
+export function retrieveContext(
+  query: string,
+  opts: { maxTokens?: number; projectScope?: string; agentScope?: string[]; topK?: number } = {}
+): ContextResult {
+  const maxTokens = opts.maxTokens ?? 4000;
+  const topK = opts.topK ?? 10;
+
+  const entries = loadAllEntriesCached();
+  if (entries.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: 0, entriesReturned: 0 };
+
+  ensureIndexed(entries);
+
+  const queryTerms = tokenize(query);
+  if (queryTerms.length === 0) return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
+
+  const queryTermSet = new Set(queryTerms);
+  const { docFreq, docTerms, entryCount: docCount } = getTFIDF(entries);
+
+  // Only score knowledge chunks — workspace chunks have no docTerms entry and would be skipped anyway
+  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge" });
+
   const avgDocLen = chunks.reduce((s, c) => s + c.content.length, 0) / Math.max(chunks.length, 1);
   const k1 = 1.5;
   const b = 0.75;
   const queryTF = computeTF(queryTerms);
-  const querySet = new Set(queryTerms);
 
   const scored: { chunk: VectorChunk; score: number }[] = [];
 
@@ -214,11 +357,11 @@ export function retrieveContext(
     }
 
     const titleTerms = new Set(tokenize(chunk.title));
-    const titleOverlap = [...titleTerms].filter((t) => querySet.has(t)).length;
+    const titleOverlap = [...titleTerms].filter((t) => queryTermSet.has(t)).length;
     if (titleOverlap > 0) score *= 1 + titleOverlap * 0.5;
 
     const tagTerms = new Set(chunk.tags.flatMap((t) => tokenize(t)));
-    const tagOverlap = [...tagTerms].filter((t) => querySet.has(t)).length;
+    const tagOverlap = [...tagTerms].filter((t) => queryTermSet.has(t)).length;
     if (tagOverlap > 0) score *= 1 + tagOverlap * 0.3;
 
     const daysSince = (Date.now() - chunk.importedAt.getTime()) / 86400000;
@@ -255,11 +398,12 @@ export function retrieveContext(
   const parts: ContextResult["parts"] = [];
 
   for (const item of selected) {
-    const compressed = item.chunk.content.slice(0, Math.min(800, charBudget));
+    const compressed = extractRelevantWindow(item.chunk.content, queryTermSet, Math.min(800, charBudget));
     const partSize = compressed.length + item.chunk.title.length + 20;
     if (charBudget - partSize < 0) break;
 
     parts.push({
+      entryId: item.chunk.entryId,
       title: item.chunk.title,
       content: compressed,
       tags: item.chunk.tags,
@@ -283,28 +427,32 @@ export function retrieveContext(
 
 export function retrieveContextHybrid(
   query: string,
-  opts: { maxTokens?: number; projectScope?: string; agentScope?: string[]; topK?: number } = {}
+  opts: { maxTokens?: number; projectScope?: string; agentScope?: string[]; topK?: number } = {},
+  precomputedSemantic?: SemanticResult[]
 ): ContextResult {
   const maxTokens = opts.maxTokens ?? 4000;
   const topK = opts.topK ?? 10;
 
   const bm25 = retrieveContext(query, { ...opts, maxTokens: maxTokens * 2 });
-  const semantic = semanticSearch(query, 20, opts.agentScope);
+  const semantic = precomputedSemantic ?? semanticSearch(query, 20, opts.agentScope);
 
   if (semantic.length === 0) {
     return retrieveContext(query, opts);
   }
 
-  const entries = loadAllEntries();
+  const entries = loadAllEntriesCached();
   const entryMap = new Map(entries.map((e) => [e.id, e]));
-  const chunks = allChunks({ scope: opts.agentScope });
+  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge" });
+  const chunkByEntryId = new Map<string, VectorChunk>();
+  for (const c of chunks) {
+    if (!chunkByEntryId.has(c.entryId)) chunkByEntryId.set(c.entryId, c);
+  }
 
-  function resolveEntry(embeddingID: string): IndexedEntry | undefined {
-    const direct = entryMap.get(embeddingID);
-    if (direct) return direct;
-    for (const [id, entry] of entryMap) {
+  function resolveEntryId(embeddingID: string): string | undefined {
+    if (entryMap.has(embeddingID)) return embeddingID;
+    for (const id of entryMap.keys()) {
       if (embeddingID.endsWith("/" + id) || embeddingID.endsWith("/" + id.split("/").pop())) {
-        return entry;
+        return id;
       }
     }
     return undefined;
@@ -312,46 +460,43 @@ export function retrieveContextHybrid(
 
   const K = 60;
   const fusedScores = new Map<string, number>();
-  const titleToChunk = new Map<string, VectorChunk>();
+  const bm25PartByEntryId = new Map<string, ContextResult["parts"][number]>();
 
   for (let rank = 0; rank < bm25.parts.length; rank++) {
-    const title = bm25.parts[rank].title;
-    fusedScores.set(title, (fusedScores.get(title) ?? 0) + 1 / (K + rank + 1));
+    const part = bm25.parts[rank];
+    fusedScores.set(part.entryId, (fusedScores.get(part.entryId) ?? 0) + 1 / (K + rank + 1));
+    if (!bm25PartByEntryId.has(part.entryId)) bm25PartByEntryId.set(part.entryId, part);
   }
 
   for (let rank = 0; rank < semantic.length; rank++) {
-    const entry = resolveEntry(semantic[rank].entryID);
-    if (!entry) continue;
-    const title = entry.title;
-    fusedScores.set(title, (fusedScores.get(title) ?? 0) + 1 / (K + rank + 1));
-    if (!titleToChunk.has(title)) {
-      const chunk = chunks.find(c => c.entryId === entry.id);
-      if (chunk) titleToChunk.set(title, chunk);
-    }
+    const entryId = resolveEntryId(semantic[rank].entryID) ?? semantic[rank].entryID;
+    fusedScores.set(entryId, (fusedScores.get(entryId) ?? 0) + 1 / (K + rank + 1));
   }
 
   const sorted = [...fusedScores.entries()].sort((a, b) => b[1] - a[1]);
 
+  const queryTermSet = new Set(tokenize(query));
   let charBudget = maxTokens * 4;
   const parts: ContextResult["parts"] = [];
 
-  for (const [title, score] of sorted) {
+  for (const [entryId, score] of sorted) {
     if (parts.length >= topK) break;
 
-    const existing = bm25.parts.find((p) => p.title === title);
+    const existing = bm25PartByEntryId.get(entryId);
     if (existing) {
-      const partSize = existing.content.length + title.length + 20;
+      const partSize = existing.content.length + existing.title.length + 20;
       if (charBudget - partSize < 0) break;
       parts.push({ ...existing, score: Math.round(score * 10000) / 10000 });
       charBudget -= partSize;
     } else {
-      const chunk = titleToChunk.get(title);
+      const chunk = chunkByEntryId.get(entryId);
       if (!chunk) continue;
-      const content = chunk.content.slice(0, Math.min(800, charBudget));
-      const partSize = content.length + title.length + 20;
+      const content = extractRelevantWindow(chunk.content, queryTermSet, Math.min(800, charBudget));
+      const partSize = content.length + chunk.title.length + 20;
       if (charBudget - partSize < 0) break;
       parts.push({
-        title,
+        entryId,
+        title: chunk.title,
         content,
         tags: chunk.tags,
         source: chunk.source,
@@ -371,9 +516,11 @@ export function retrieveContextHybrid(
 
 // ── Workspace Smart Context ──
 
-import * as db from "./db";
-
-export function workspaceContext(query: string, maxItems = 5): {
+export function workspaceContext(
+  query: string,
+  maxItems = 5,
+  preloaded?: { tasks: db.TaskRow[]; notes: db.NoteRow[]; reminders: ReturnType<typeof db.listReminders>; semantic: SemanticResult[] }
+): {
   tasks: { pk: number; title: string; status: string; priority: string; score: number; isArchived?: boolean }[];
   notes: { pk: number; title: string; project: string | null; score: number; isArchived?: boolean }[];
   reminders: { pk: number; title: string; reminderDate: Date | null; score: number }[];
@@ -381,9 +528,9 @@ export function workspaceContext(query: string, maxItems = 5): {
 } {
   const queryTerms = new Set(tokenize(query));
   if (queryTerms.size === 0) {
-    const tasks = db.listTasks({ excludeArchived: true }).slice(0, maxItems);
-    const notes = db.listNotes({ excludeArchived: true }).slice(0, maxItems);
-    const reminders = db.listReminders({ completed: false }).slice(0, maxItems);
+    const tasks = (preloaded?.tasks ?? db.listTasks({ excludeArchived: true })).slice(0, maxItems);
+    const notes = (preloaded?.notes ?? db.listNotes({ excludeArchived: true })).slice(0, maxItems);
+    const reminders = (preloaded?.reminders ?? db.listReminders({ completed: false })).slice(0, maxItems);
     return {
       tasks: tasks.map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: 0 })),
       notes: notes.map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: 0 })),
@@ -392,33 +539,142 @@ export function workspaceContext(query: string, maxItems = 5): {
     };
   }
 
+  const tasks = preloaded?.tasks ?? db.listTasks();
+  const notes = preloaded?.notes ?? db.listNotes();
+  const reminders = preloaded?.reminders ?? db.listReminders({ completed: false });
+
+  // Index workspace items if not pre-indexed by caller
+  if (!preloaded) ensureWorkspaceIndexed(tasks, notes);
+
   function scoreText(text: string): number {
     const terms = tokenize(text);
     const overlap = terms.filter((t) => queryTerms.has(t)).length;
     return overlap / Math.max(queryTerms.size, 1);
   }
 
-  const tasks = db.listTasks()
-    .map((t) => ({ ...t, score: scoreText(`${t.title} ${t.detail}`) * (t.isArchived ? 0.2 : 1) }))
-    .sort((a, b) => b.score - a.score || b.modifiedAt.getTime() - a.modifiedAt.getTime())
-    .slice(0, maxItems)
-    .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: Math.round(t.score * 100) / 100, ...(t.isArchived ? { isArchived: true } : {}) }));
+  const K = 60;
+  const semResults = preloaded?.semantic ?? semanticSearch(query, 60);
+  const semRankMap = new Map<string, number>();
+  semResults.forEach((r, rank) => semRankMap.set(r.entryID, rank));
 
-  const notes = db.listNotes()
-    .map((n) => ({ ...n, score: scoreText(`${n.title} ${n.content}`) * (n.isArchived ? 0.2 : 1) }))
-    .sort((a, b) => b.score - a.score || b.modifiedAt.getTime() - a.modifiedAt.getTime())
-    .slice(0, maxItems)
-    .map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: Math.round(n.score * 100) / 100, ...(n.isArchived ? { isArchived: true } : {}) }));
+  function rrfScore(bm25Rank: number, entryKey: string): number {
+    const semRank = semRankMap.get(entryKey) ?? 1000;
+    return 1 / (K + bm25Rank + 1) + 1 / (K + semRank + 1);
+  }
 
-  const reminders = db.listReminders({ completed: false })
-    .map((r) => ({ ...r, score: scoreText(`${r.title} ${r.notes}`) }))
-    .sort((a, b) => b.score - a.score || b.modifiedAt.getTime() - a.modifiedAt.getTime())
-    .slice(0, maxItems)
-    .map((r) => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate, score: Math.round(r.score * 100) / 100 }));
+  const tasksBM25 = tasks
+    .map((t) => ({ ...t, bm25: scoreText(`${t.title} ${t.detail}`) * (t.isArchived ? 0.2 : 1) }))
+    .sort((a, b) => b.bm25 - a.bm25 || b.modifiedAt.getTime() - a.modifiedAt.getTime());
 
-  const totalChars = [...tasks, ...notes, ...reminders].reduce(
+  const notesBM25 = notes
+    .map((n) => ({ ...n, bm25: scoreText(`${n.title} ${n.content}`) * (n.isArchived ? 0.2 : 1) }))
+    .sort((a, b) => b.bm25 - a.bm25 || b.modifiedAt.getTime() - a.modifiedAt.getTime());
+
+  const remindersBM25 = reminders
+    .map((r) => ({ ...r, bm25: scoreText(`${r.title} ${r.notes}`) }))
+    .sort((a, b) => b.bm25 - a.bm25 || b.modifiedAt.getTime() - a.modifiedAt.getTime());
+
+  const scoredTasks = tasksBM25
+    .map((t, rank) => ({ ...t, score: rrfScore(rank, `task:${t.pk}`) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxItems)
+    .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority, score: Math.round(t.score * 10000) / 10000, ...(t.isArchived ? { isArchived: true } : {}) }));
+
+  const scoredNotes = notesBM25
+    .map((n, rank) => ({ ...n, score: rrfScore(rank, `note:${n.pk}`) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxItems)
+    .map((n) => ({ pk: n.pk, title: n.title, project: n.projectName, score: Math.round(n.score * 10000) / 10000, ...(n.isArchived ? { isArchived: true } : {}) }));
+
+  const scoredReminders = remindersBM25
+    .map((r, rank) => ({ ...r, score: rrfScore(rank, `reminder:${r.pk}`) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, maxItems)
+    .map((r) => ({ pk: r.pk, title: r.title, reminderDate: r.reminderDate, score: Math.round(r.score * 10000) / 10000 }));
+
+  const totalChars = [...scoredTasks, ...scoredNotes, ...scoredReminders].reduce(
     (s, item) => s + JSON.stringify(item).length, 0
   );
 
-  return { tasks, notes, reminders, totalTokensEstimate: Math.round(totalChars / 4) };
+  return { tasks: scoredTasks, notes: scoredNotes, reminders: scoredReminders, totalTokensEstimate: Math.round(totalChars / 4) };
+}
+
+// ── Unified Search (workspace + knowledge, BM25 + semantic, RRF-fused) ──
+
+export interface UnifiedResult {
+  type: "task" | "note" | "reminder" | "knowledge";
+  pk?: number;
+  title: string;
+  content: string;
+  project?: string | null;
+  status?: string;
+  priority?: string;
+  tags?: string[];
+  source?: string;
+  score: number;
+}
+
+export function unifiedSearch(
+  query: string,
+  opts: { maxItems?: number; types?: Array<"task" | "note" | "reminder" | "knowledge"> } = {}
+): UnifiedResult[] {
+  const maxItems = opts.maxItems ?? 10;
+  const types = opts.types ?? ["task", "note", "reminder", "knowledge"];
+  const K = 60;
+
+  // Load workspace data once
+  const tasks = db.listTasks();
+  const notes = db.listNotes();
+  const reminders = db.listReminders({ completed: false });
+
+  // Index workspace items once, then run semantic search once for all consumers
+  ensureWorkspaceIndexed(tasks, notes);
+  const semantic = semanticSearch(query, 60);
+
+  const scoreMap = new Map<string, number>();
+  const resultMap = new Map<string, UnifiedResult>();
+
+  const ws = workspaceContext(query, 20, { tasks, notes, reminders, semantic });
+
+  if (types.includes("task")) {
+    ws.tasks.forEach((t, rank) => {
+      const key = `task:${t.pk}`;
+      scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
+      if (!resultMap.has(key)) resultMap.set(key, { type: "task", pk: t.pk, title: t.title, content: "", status: t.status, priority: t.priority, score: 0 });
+    });
+  }
+
+  if (types.includes("note")) {
+    ws.notes.forEach((n, rank) => {
+      const key = `note:${n.pk}`;
+      scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
+      if (!resultMap.has(key)) resultMap.set(key, { type: "note", pk: n.pk, title: n.title, content: "", project: n.project, score: 0 });
+    });
+  }
+
+  if (types.includes("reminder")) {
+    ws.reminders.forEach((r, rank) => {
+      const key = `reminder:${r.pk}`;
+      scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
+      if (!resultMap.has(key)) resultMap.set(key, { type: "reminder", pk: r.pk, title: r.title, content: "", score: 0 });
+    });
+  }
+
+  if (types.includes("knowledge")) {
+    // Pass pre-computed semantic (trimmed to top 20) to avoid a second search
+    const kn = retrieveContextHybrid(query, { topK: 20 }, semantic.slice(0, 20));
+    kn.parts.forEach((p, rank) => {
+      const key = `knowledge:${p.entryId}`;
+      scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
+      if (!resultMap.has(key)) resultMap.set(key, { type: "knowledge", title: p.title, content: p.content, tags: p.tags, source: p.source, score: 0 });
+    });
+  }
+
+  return [...scoreMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxItems)
+    .flatMap(([key, score]) => {
+      const result = resultMap.get(key);
+      return result ? [{ ...result, score: Math.round(score * 10000) / 10000 }] : [];
+    });
 }

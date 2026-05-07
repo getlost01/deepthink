@@ -1,4 +1,4 @@
-import { retrieveContext, retrieveContextHybrid, workspaceContext } from "../core/context-engine";
+import { retrieveContext, retrieveContextHybrid, workspaceContext, unifiedSearch } from "../core/context-engine";
 import * as db from "../core/db";
 import * as knowledge from "./knowledge";
 
@@ -82,28 +82,14 @@ export const SMART_TOOLS: MCPTool[] = [
         };
       }
 
-      // Summary mode — hybrid retrieval (BM25 + semantic)
-      const knowledgeContext = retrieveContextHybrid(p.query, {
-        maxTokens: p.maxTokens ?? 4000,
-      });
-      const workspace = workspaceContext(p.query, 5);
+      // Summary mode — unified search (BM25 + semantic, all types, RRF-fused)
+      const unified = unifiedSearch(p.query, { maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10 });
 
       return {
         mode: "summary",
         intent: classifyIntent(p.query),
-        knowledge: {
-          relevantEntries: knowledgeContext.parts,
-          scanned: knowledgeContext.entriesScanned,
-          returned: knowledgeContext.entriesReturned,
-          tokensUsed: knowledgeContext.totalTokensEstimate,
-        },
-        workspace: {
-          tasks: workspace.tasks,
-          notes: workspace.notes,
-          reminders: workspace.reminders,
-          tokensUsed: workspace.totalTokensEstimate,
-        },
-        totalTokensEstimate: knowledgeContext.totalTokensEstimate + workspace.totalTokensEstimate,
+        results: unified,
+        totalResults: unified.length,
         tip: "Need full data? Call again with mode='full' or use specific workspace_list_* / knowledge_load_* tools.",
       };
     },
@@ -154,6 +140,30 @@ export const SMART_TOOLS: MCPTool[] = [
     },
     execute: (p) => {
       return workspaceContext(p.query, p.maxItems ?? 5);
+    },
+  },
+
+  // ── Unified Search ──
+  {
+    name: "unified_search",
+    description:
+      "Single ranked list across ALL data types: tasks, notes, reminders, and knowledge — BM25 + semantic vector search, RRF-fused. Use when you need the most relevant items regardless of type. Each result includes type, pk (for workspace items), title, content, and score.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "What you're looking for" },
+        maxItems: { type: "number", description: "Max results (default: 10)" },
+        types: {
+          type: "array",
+          items: { type: "string", enum: ["task", "note", "reminder", "knowledge"] },
+          description: "Filter to specific types (default: all types)",
+        },
+      },
+      required: ["query"],
+    },
+    execute: (p) => {
+      const results = unifiedSearch(p.query, { maxItems: p.maxItems ?? 10, types: p.types });
+      return { results, count: results.length };
     },
   },
 

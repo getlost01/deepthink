@@ -1,5 +1,6 @@
 import { query } from "../core/llm";
 import { saveIntegrationData } from "../tools/knowledge";
+import { buildMemoryContext, appendObservation } from "./memory";
 
 interface LogEntry {
   agent: string;
@@ -14,8 +15,11 @@ export abstract class Agent {
   log: LogEntry[] = [];
 
   async think(prompt: string): Promise<string> {
-    const response = await query(prompt, this.systemPrompt);
+    const memCtx = buildMemoryContext(this.name);
+    const sys = memCtx ? `${this.systemPrompt}\n\n${memCtx}` : this.systemPrompt;
+    const response = await query(prompt, sys);
     this.record(prompt, response);
+    appendObservation(this.name, `${prompt.slice(0, 80)} → ${response.slice(0, 120)}`);
     return response;
   }
 
@@ -26,6 +30,6 @@ export abstract class Agent {
       promptPreview: prompt.slice(0, 100),
       responsePreview: response.slice(0, 200),
     });
-    saveIntegrationData("agent", this.name, response.slice(0, 300), { type: "agent-output" });
+    saveIntegrationData("agent", this.name, response, { type: "agent-output" });
   }
 }

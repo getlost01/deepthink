@@ -82,13 +82,14 @@ Long entries split into sentence-boundary chunks:
 
 ### BM25/TF-IDF Index (`ContextEngine`)
 
-Built in RAM on each retrieval call — fast, no disk overhead:
+Cached in RAM; rebuilt only when knowledge content changes (version-gated, not per-query):
 
-- **Tokenization**: lowercase, remove 150+ stop words, filter tokens >2 chars
+- **Tokenization**: lowercase, remove 150+ stop words, filter tokens >2 chars, apply suffix stemmer (`-ing`, `-ed`, `-tion`, `-ness`, `-ment`, `-ly`, plurals) — "running" and "runs" both match "run"
 - **Term Frequency (TF)**: normalized frequency per document
 - **Inverse Document Frequency (IDF)**: `log((N - df + 0.5) / (df + 0.5) + 1)`
 - **BM25 Scoring**: `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization
-- Scores are computed against chunks from VectorStore, not raw files
+- Scores only `knowledge` chunks — workspace chunks excluded from BM25 (scored separately via workspace context)
+- **Relevance window**: sliding window selects the highest query-term density region of each chunk (not naive front-truncation)
 
 ### Semantic Embeddings (`EmbeddingService`)
 
@@ -186,7 +187,7 @@ Manual extraction also available via "Save to Knowledge" button in chat toolbar.
 
 | Data | Location | Persistence |
 |------|----------|-------------|
-| BM25 index (TF-IDF terms) | RAM | Rebuilt on each `retrieveContext()` call — fast, no disk |
+| BM25 index (TF-IDF terms) | RAM | Cached; rebuilt only when `_indexVersion` increments (content write detected) |
 | Chunks + embeddings | `data/vectors.db` | SQLite WAL, persisted, incremental updates |
 | Content hashes | `data/vectors.db` (`content_hash` column) | Persisted, tracks what's already embedded |
 | Knowledge entries | `knowledge/**/*.md` | Markdown + YAML frontmatter |

@@ -4,15 +4,12 @@ struct GeneralSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
-
-                // MARK: Backup
                 BackupSettingsSection()
             }
             .padding(DS.Spacing.xl)
         }
         .dsPage()
     }
-
 }
 
 // MARK: - Backup Settings Section

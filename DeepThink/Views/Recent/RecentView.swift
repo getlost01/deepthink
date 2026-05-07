@@ -10,6 +10,8 @@ struct RecentView: View {
     @Query(filter: #Predicate<Reminder> { !$0.isCompleted }) private var reminders: [Reminder]
 
     @State private var thisWeekVisibleCount = 20
+    @State private var insightsRefreshID = UUID()
+    @State private var showDailyBrief = false
 
     private var knowledge: KnowledgeService { KnowledgeService.shared }
 
@@ -114,13 +116,35 @@ struct RecentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 // Header
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text(greeting)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(DS.Colors.textPrimary)
-                    Text(summaryLine)
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.textSecondary)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text(greeting)
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(summaryLine)
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+                    Spacer()
+                    Button {
+                        showDailyBrief = true
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "sun.horizon")
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                            Text("Daily Brief")
+                                .font(DS.Font.small)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(DS.Colors.accent)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(DS.Colors.accentFill, in: Capsule())
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+                .sheet(isPresented: $showDailyBrief) {
+                    DailyBriefModal(refreshID: $insightsRefreshID)
                 }
 
                 // Quick stats
@@ -407,6 +431,433 @@ extension RecentItemKind {
         case .note: DS.Colors.purple
         case .task: DS.Colors.amber
         case .knowledge: DS.Colors.teal
+        }
+    }
+}
+
+// MARK: - Agents Section
+
+private struct ScheduleStateAgents: Codable {
+    var lastRun: [String: String]
+}
+
+private struct AgentsSection: View {
+    var refreshID: UUID
+    var onRan: () -> Void
+
+    private let agents: [(id: String, name: String, icon: String, hours: Int, knowledgeKey: String)] = [
+        ("daily-brief",  "Daily Brief",        "sun.horizon",                 20,  "daily-brief"),
+        ("stale-tasks",  "Stale Task Scan",     "clock.badge.exclamationmark", 168, "stale-task"),
+        ("insight-scan", "Proactive Insights",  "sparkles",                    4,   "insight"),
+    ]
+
+
+    @State private var lastRun: [String: String] = [:]
+    @State private var outputs: [String: String] = [:]
+    @State private var runningAll = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+            // Header row
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "cpu.fill")
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                    .foregroundStyle(DS.Colors.accent)
+                Text("AI Agents")
+                    .font(DS.Font.small)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Spacer()
+                if runningAll {
+                    ProgressView().scaleEffect(0.65)
+                } else {
+                    Button("Run All") { runAll() }
+                        .buttonStyle(.dsSecondary)
+                }
+            }
+
+            // Agent cards row
+            HStack(spacing: DS.Spacing.sm) {
+                ForEach(agents, id: \.id) { agent in
+                    agentPill(agent)
+                }
+            }
+
+            // Per-agent output cards
+            ForEach(agents, id: \.id) { agent in
+                if let output = outputs[agent.id], !output.isEmpty {
+                    AgentOutputCard(name: agent.name, icon: agent.icon, content: output)
+                }
+            }
+        }
+        .onAppear { loadState() }
+        .onChange(of: refreshID) { loadState() }
+    }
+
+    private func agentPill(_ agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) -> some View {
+        HStack(spacing: DS.Spacing.xs) {
+            Image(systemName: agent.icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(DS.Colors.accent)
+                .frame(width: 22, height: 22)
+                .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(agent.name)
+                    .font(DS.Font.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text(dueLabel(for: agent))
+                    .font(DS.Font.micro)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+            Spacer()
+            Menu {
+                Button {
+                    guard !runningAll else { return }
+                    runSingle(agent)
+                } label: {
+                    Label("Run Now", systemImage: "arrow.clockwise")
+                }
+                if outputs[agent.id] != nil {
+                    Button(role: .destructive) {
+                        outputs[agent.id] = nil
+                    } label: {
+                        Label("Clear Output", systemImage: "trash")
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .frame(width: 20, height: 20)
+                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .disabled(runningAll)
+        }
+        .padding(.horizontal, DS.Spacing.sm)
+        .padding(.vertical, DS.Spacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
+    private func dueLabel(for agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) -> String {
+        guard let lastStr = lastRun[agent.id],
+              let date = Self.isoFormatter.date(from: lastStr) else { return "never" }
+        let elapsed = Date().timeIntervalSince(date) / 3600
+        let remaining = Double(agent.hours) - elapsed
+        if remaining <= 0 { return "due" }
+        return remaining < 1 ? "< 1h" : "\(Int(remaining.rounded(.up)))h"
+    }
+
+    private func runAll() {
+        runningAll = true
+        Task {
+            await DeepThinkCLIService.shared.run(["schedule", "run", "--force"])
+            await MainActor.run {
+                runningAll = false
+                loadState()
+                onRan()
+            }
+        }
+    }
+
+    private func runSingle(_ agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) {
+        runningAll = true
+        Task {
+            await DeepThinkCLIService.shared.run(["schedule", "run", "--agent", agent.id, "--force"])
+            await MainActor.run {
+                runningAll = false
+                loadState()
+                onRan()
+            }
+        }
+    }
+
+    private func loadState() {
+        let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
+        if let data = try? Data(contentsOf: url),
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
+            lastRun = state.lastRun
+        }
+        loadOutputs()
+    }
+
+    private func loadOutputs() {
+        let base = StorageService.shared.baseURL.appendingPathComponent("knowledge/integrations/agent")
+        for agent in agents {
+            let dir = base.appendingPathComponent(agent.knowledgeKey)
+            guard let files = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: [.contentModificationDateKey],
+                options: .skipsHiddenFiles
+            ) else { continue }
+            let latest = files
+                .filter { $0.pathExtension == "md" }
+                .max {
+                    let a = (try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                    let b = (try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                    return a < b
+                }
+            guard let file = latest,
+                  let raw = try? String(contentsOf: file, encoding: .utf8) else { continue }
+            let body = stripFrontmatter(raw)
+            outputs[agent.id] = extractReadable(body)
+        }
+    }
+
+    private func stripFrontmatter(_ text: String) -> String {
+        var lines = text.components(separatedBy: "\n")
+        if lines.first?.trimmingCharacters(in: .whitespaces) == "---" {
+            lines.removeFirst()
+            if let end = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "---" }) {
+                lines.removeSubrange(...end)
+            }
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func extractReadable(_ text: String) -> String {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // If content is a JSON object, extract "suggestion" or "result" field
+        if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let s = json["suggestion"] as? String { return s }
+            if let s = json["result"] as? String { return s }
+            if let s = json["message"] as? String { return s }
+            return ""
+        }
+        // If wrapped in ```json ... ```, extract the inner JSON
+        if trimmed.hasPrefix("```") {
+            let inner = trimmed
+                .components(separatedBy: "\n")
+                .dropFirst().dropLast()
+                .joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                if let s = json["suggestion"] as? String { return s }
+                if let s = json["result"] as? String { return s }
+                return ""
+            }
+        }
+        return trimmed
+    }
+}
+
+private struct AgentOutputCard: View {
+    let name: String
+    let icon: String
+    let content: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: icon)
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                    .foregroundStyle(DS.Colors.accent)
+                    .frame(width: 24, height: 24)
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                Text(name)
+                    .font(DS.Font.small)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Spacer()
+            }
+            ChatMarkdownView(markdown: content)
+        }
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+    }
+}
+
+// MARK: - Daily Brief Modal
+
+private struct DailyBriefModal: View {
+    @Binding var refreshID: UUID
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Title bar
+            HStack {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "sun.horizon.fill")
+                        .font(.system(size: DS.IconSize.sm, weight: .semibold))
+                        .foregroundStyle(Color(hue: 0.08, saturation: 0.85, brightness: 0.98))
+                    Text("Daily Brief")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textPrimary)
+                }
+                Spacer()
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 28, height: 28)
+                        .background(DS.Colors.fillSecondary, in: Circle())
+                }
+                .buttonStyle(.plainPointer)
+            }
+            .padding(.horizontal, DS.Spacing.xl)
+            .padding(.vertical, DS.Spacing.md)
+
+            Divider()
+
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+                    AgentsSection(refreshID: refreshID, onRan: { refreshID = UUID() })
+
+                    Divider()
+
+                    InsightsStrip(refreshID: refreshID, onRan: { refreshID = UUID() })
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.lg)
+            }
+        }
+        .frame(minWidth: 660, idealWidth: 720, minHeight: 560)
+        .background(DS.Colors.surfaceElevated)
+    }
+}
+
+// MARK: - Insights Strip
+
+private struct InsightEntry: Codable, Identifiable {
+    let id: String
+    let severity: String
+    let title: String
+    let description: String
+    let suggestedAction: String?
+}
+
+private struct InsightsStrip: View {
+    var refreshID: UUID
+    var onRan: () -> Void
+
+    @State private var insights: [InsightEntry] = []
+    @State private var isExpanded = true
+    @State private var isScanning = false
+
+    var body: some View {
+        if insights.isEmpty && !isScanning { EmptyView() } else {
+            VStack(spacing: 0) {
+                // Header row
+                Button {
+                    withAnimation(DS.Animation.standard) { isExpanded.toggle() }
+                } label: {
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                            .foregroundStyle(DS.Colors.accent)
+                        Text("AI Insights")
+                            .font(DS.Font.small)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        if !insights.isEmpty {
+                            Text("\(insights.count)")
+                                .font(DS.Font.micro)
+                                .padding(.horizontal, 5).padding(.vertical, 2)
+                                .background(DS.Colors.fillSecondary, in: Capsule())
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        Spacer()
+                        if isScanning {
+                            ProgressView().scaleEffect(0.6)
+                        } else {
+                            Button("Scan Now") { runScan() }
+                                .buttonStyle(.dsSecondary)
+                        }
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                }
+                .buttonStyle(.plainPointer)
+
+                if isExpanded && !insights.isEmpty {
+                    Divider()
+                    ForEach(Array(insights.enumerated()), id: \.element.id) { idx, insight in
+                        if idx > 0 { Divider().padding(.leading, 40) }
+                        insightRow(insight)
+                    }
+                }
+            }
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+            .animation(DS.Animation.standard, value: isExpanded)
+            .onAppear { loadInsights() }
+            .onChange(of: refreshID) { loadInsights() }
+        }
+    }
+
+    private func insightRow(_ insight: InsightEntry) -> some View {
+        HStack(alignment: .top, spacing: DS.Spacing.sm) {
+            Image(systemName: severityIcon(insight.severity))
+                .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                .foregroundStyle(severityColor(insight.severity))
+                .frame(width: 20, height: 20)
+                .background(severityColor(insight.severity).opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(insight.title)
+                    .font(DS.Font.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                if let action = insight.suggestedAction {
+                    Text(action)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm)
+    }
+
+    private func severityIcon(_ s: String) -> String {
+        switch s {
+        case "action": return "exclamationmark.circle.fill"
+        case "warning": return "exclamationmark.triangle.fill"
+        default: return "info.circle.fill"
+        }
+    }
+
+    private func severityColor(_ s: String) -> Color {
+        switch s {
+        case "action": return DS.Colors.danger
+        case "warning": return .orange
+        default: return DS.Colors.accent
+        }
+    }
+
+    private func loadInsights() {
+        let url = StorageService.shared.dataURL.appendingPathComponent("insights.json")
+        guard let data = try? Data(contentsOf: url) else { insights = []; return }
+        insights = (try? JSONDecoder().decode([InsightEntry].self, from: data)) ?? []
+    }
+
+    private func runScan() {
+        isScanning = true
+        Task {
+            await DeepThinkCLIService.shared.run(["insight", "scan"])
+            await MainActor.run {
+                isScanning = false
+                loadInsights()
+                onRan()
+            }
         }
     }
 }

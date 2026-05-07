@@ -10,8 +10,8 @@ import * as fileTools from "./tools/file";
 import * as search from "./tools/search";
 import * as knowledgeTools from "./tools/knowledge";
 import * as db from "./core/db";
-import { retrieveContext, retrieveContextHybrid, workspaceContext } from "./core/context-engine";
-import { semanticSearch, embeddingStats } from "./core/embedding-service";
+import { retrieveContext, retrieveContextHybrid, workspaceContext, unifiedSearch } from "./core/context-engine";
+import { semanticSearch, embeddingStats, indexEntry } from "./core/embedding-service";
 
 initSandbox();
 
@@ -51,7 +51,7 @@ async function cmdAsk() {
   if (file) context = fileTools.readFile(file);
 
   if (flag("--recall")) {
-    const kr = retrieveContext(question, { maxTokens: 3000 });
+    const kr = retrieveContextHybrid(question, { maxTokens: 3000 });
     if (kr.parts.length > 0) {
       context += `\n\nKnowledge:\n${kr.parts.map((p) => `## ${p.title}\n${p.content}`).join("\n\n")}`;
     }
@@ -429,6 +429,7 @@ function cmdTask() {
       dueDate: flagVal("--due") ?? undefined,
       project: flagVal("--project") ?? undefined,
     });
+    indexEntry({ id: `task:${pk}`, type: "task", title, content: flagVal("--detail") ?? "", tags: [], source: "task", importedAt: new Date() });
     ok(`task #${pk}: ${title}`);
     return;
   }
@@ -465,6 +466,8 @@ function cmdTask() {
     const detail = flagVal("--detail"); if (detail) fields.detail = detail;
     const project = flagVal("--project"); if (project) fields.project = project;
     db.updateTask(t!.pk, fields);
+    const updatedTask = db.getTask(t!.pk.toString());
+    if (updatedTask) indexEntry({ id: `task:${updatedTask.pk}`, type: "task", title: updatedTask.title, content: updatedTask.detail, tags: [], source: "task", importedAt: updatedTask.modifiedAt });
     ok(`task #${t!.pk} updated`);
     return;
   }
@@ -516,6 +519,7 @@ function cmdNote() {
       pinned: flag("--pinned"),
       project: flagVal("--project") ?? undefined,
     });
+    indexEntry({ id: `note:${pk}`, type: "note", title, content: flagVal("--content") ?? "", tags: [], source: "note", importedAt: new Date() });
     ok(`note #${pk}: ${title}`);
     return;
   }
@@ -546,6 +550,8 @@ function cmdNote() {
     if (flag("--unpinned")) fields.pinned = false;
     const project = flagVal("--project"); if (project) fields.project = project;
     db.updateNote(n!.pk, fields);
+    const updatedNote = db.getNote(n!.pk.toString());
+    if (updatedNote) indexEntry({ id: `note:${updatedNote.pk}`, type: "note", title: updatedNote.title, content: updatedNote.content, tags: [], source: "note", importedAt: updatedNote.modifiedAt });
     ok(`note #${n!.pk} updated`);
     return;
   }
@@ -583,6 +589,7 @@ function cmdProject() {
       summary: flagVal("--summary") ?? undefined,
       color: flagVal("--color") ?? undefined,
     });
+    indexEntry({ id: `project:${pk}`, type: "project", title: name, content: flagVal("--summary") ?? "", tags: [], source: "project", importedAt: new Date() });
     ok(`project #${pk}: ${name}`);
     return;
   }
@@ -615,6 +622,8 @@ function cmdProject() {
     if (flag("--archive")) fields.archived = true;
     if (flag("--unarchive")) fields.archived = false;
     db.updateProject(pr!.pk, fields);
+    const updatedProj = db.getProject(pr!.pk.toString());
+    if (updatedProj) indexEntry({ id: `project:${updatedProj.pk}`, type: "project", title: updatedProj.name, content: updatedProj.summary, tags: [], source: "project", importedAt: updatedProj.modifiedAt });
     ok(`project #${pr!.pk} updated`);
     return;
   }
@@ -630,6 +639,87 @@ function cmdProject() {
   }
 
   err(`unknown: deepthink project ${sub}`);
+}
+
+// ── deepthink react ──
+
+async function cmdReact() {
+  const { ReactAgent } = await import("./agents/react");
+  const goal = args.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+  if (!goal) err("usage: deepthink react <goal>");
+  const agent = new ReactAgent();
+  const { steps, result } = await agent.run(goal);
+  for (const s of steps) {
+    p(`  [${s.action}] ${s.thought.slice(0, 80)}`);
+    if (s.error) p(`    ✗ ${s.observation}`);
+  }
+  p(`\n✓ ${result}`);
+}
+
+// ── deepthink insight ──
+
+async function cmdInsight() {
+  const { InsightAgent } = await import("./agents/insight");
+  const agent = new InsightAgent();
+  if (!sub || sub === "scan") {
+    p("Scanning workspace...");
+    const insights = await agent.scan();
+    if (insights.length === 0) { ok("No insights — workspace looks healthy"); return; }
+    for (const i of insights) {
+      const icon = i.severity === "action" ? "⚡" : i.severity === "warning" ? "⚠" : "ℹ";
+      p(`\n${icon} ${i.title}`);
+      p(`  ${i.description}`);
+      if (i.suggestedAction) p(`  → ${i.suggestedAction}`);
+    }
+    return;
+  }
+  if (sub === "list") {
+    const insights = agent.listInsights();
+    if (insights.length === 0) { p("No saved insights. Run: deepthink insight scan"); return; }
+    for (const i of insights) p(`[${i.severity}] ${i.title} — ${i.description}`);
+    return;
+  }
+  if (sub === "clear") { agent.clearInsights(); ok("Insights cleared"); return; }
+  err(`unknown: deepthink insight ${sub}`);
+}
+
+// ── deepthink research ──
+
+async function cmdResearch() {
+  const { ResearchPipeline } = await import("./agents/research");
+  const topic = args.slice(1).filter((a) => !a.startsWith("--")).join(" ");
+  if (!topic) err("usage: deepthink research <topic> [--deep] [--project name]");
+  const depth = flag("--deep") ? "deep" : "quick";
+  const project = flagVal("--project");
+  const pipeline = new ResearchPipeline();
+  const result = await pipeline.run(topic, { depth, project, saveToKnowledge: true });
+  p(`\n## Synthesis\n${result.synthesis}`);
+  if (result.savedTo) ok(`Saved to: ${result.savedTo}`);
+}
+
+// ── deepthink schedule ──
+
+async function cmdSchedule() {
+  const { runScheduledJobs, scheduleStatus } = await import("./agents/scheduler");
+  if (!sub || sub === "run") {
+    const force = flag("--force");
+    p(`Running scheduled jobs${force ? " (forced)" : ""}...`);
+    const results = await runScheduledJobs({ force });
+    for (const r of results) {
+      if (!r.ran) { p(`  [skip] ${r.job}`); continue; }
+      if (r.error) p(`  [✗] ${r.job}: ${r.error}`);
+      else p(`  [✓] ${r.job}: ${r.result}`);
+    }
+    return;
+  }
+  if (sub === "status") {
+    const status = scheduleStatus();
+    for (const [id, s] of Object.entries(status)) {
+      p(`  ${id}: last=${s.lastRun ? s.lastRun.slice(0, 16) : "never"}, next=${s.nextDueIn}`);
+    }
+    return;
+  }
+  err(`unknown: deepthink schedule ${sub}`);
 }
 
 // ── deepthink workspace ──
@@ -765,6 +855,10 @@ const dispatch: Record<string, () => Promise<void> | void> = {
   project: cmdProject,
   workspace: cmdWorkspace,
   ws: cmdWorkspace,
+  react: cmdReact,
+  insight: cmdInsight,
+  research: cmdResearch,
+  schedule: cmdSchedule,
   search: cmdSearch,
   analyze: cmdAnalyze,
   docs: cmdDocs,

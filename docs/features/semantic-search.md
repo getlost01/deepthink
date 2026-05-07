@@ -41,13 +41,13 @@ Sort by score, return top K
 
 ### Hybrid Fusion
 
-Semantic results are merged with BM25 results using Reciprocal Rank Fusion:
+Semantic results are merged with BM25 results using Reciprocal Rank Fusion, keyed by `entryId` (not title — prevents false merges when entries share titles):
 
 ```
 fused_score = 1/(60 + bm25_rank) + 1/(60 + semantic_rank)
 ```
 
-An entry found by only one method still surfaces. An entry found by both ranks higher.
+An entry found by only one method still surfaces. An entry found by both ranks higher. In `unifiedSearch`, semantic search runs once and is shared across workspace and knowledge retrieval to avoid duplicate embedding lookups.
 
 ## What Gets Indexed
 
@@ -56,9 +56,8 @@ VectorStore indexes all content types, not just knowledge entries:
 | Entry Type | Source | `entry_type` value |
 |------------|--------|-------------------|
 | Knowledge base entries | `~/DeepThink/knowledge/**/*.md` | `knowledge` |
-| Notes | SwiftData | `note` |
-| Tasks | SwiftData | `task` |
-| Reminders | SwiftData | `reminder` |
+| Tasks + Notes (CLI) | SwiftData (read by CLI) | `workspace` — indexed by CLI for semantic retrieval in `workspaceContext` / `unifiedSearch` |
+| Tasks + Notes (app) | SwiftData | Indexed via `EmbeddingService.indexWorkspaceItems()` |
 
 ## Incremental Indexing
 

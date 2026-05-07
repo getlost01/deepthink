@@ -5,7 +5,7 @@ export async function summarizeMemories(memories: { content: string }[], maxItem
 
   const text = memories
     .slice(0, maxItems)
-    .map((m) => m.content.slice(0, 300))
+    .map((m) => m.content)
     .join("\n");
 
   return query(

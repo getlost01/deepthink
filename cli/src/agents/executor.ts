@@ -52,13 +52,13 @@ export class Executor extends Agent {
       if (toolName && toolName in TOOL_MAP) {
         try {
           const result = await this.runTool(toolName, step.details);
-          results.push({ step: step.step, status: "done", result: String(result).slice(0, 500) });
+          results.push({ step: step.step, status: "done", result: String(result) });
         } catch (e: any) {
           results.push({ step: step.step, status: "error", result: e.message ?? String(e) });
         }
       } else {
         const response = await this.think(`Execute: ${step.action}\nDetails: ${step.details}`);
-        results.push({ step: step.step, status: "done", result: response.slice(0, 500) });
+        results.push({ step: step.step, status: "done", result: response });
       }
     }
 

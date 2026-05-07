@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import AppKit
+import PDFKit
 
 @Observable
 final class DataCollectorService {
@@ -127,7 +128,23 @@ final class DataCollectorService {
         return true
     }
 
+    // MARK: - PDF Import
+
+    func extractTextFromPDF(at url: URL) -> String? {
+        guard let doc = PDFDocument(url: url) else { return nil }
+        var pages: [String] = []
+        for i in 0..<doc.pageCount {
+            if let page = doc.page(at: i), let text = page.string, !text.isEmpty {
+                pages.append(text)
+            }
+        }
+        let full = pages.joined(separator: "\n\n")
+        return full.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : full
+    }
+
     // MARK: - Folder Import
+
+    private static let allImportExtensions: Set<String> = ["md", "markdown", "txt", "pdf"]
 
     func importFolder(at path: String, folder: String? = nil) -> Int {
         let folderURL = URL(fileURLWithPath: path)
@@ -141,16 +158,25 @@ final class DataCollectorService {
         guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return 0 }
 
         while let fileURL = enumerator.nextObject() as? URL {
-            guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" || fileURL.pathExtension == "txt" else { continue }
+            guard Self.allImportExtensions.contains(fileURL.pathExtension) else { continue }
 
-            let stem = fileURL.deletingPathExtension().lastPathComponent
-            let ext = fileURL.pathExtension
-            let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
-            let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
-
-            if !fm.fileExists(atPath: destURL.path) {
-                try? fm.copyItem(at: fileURL, to: destURL)
-                count += 1
+            if fileURL.pathExtension == "pdf" {
+                let title = fileURL.deletingPathExtension().lastPathComponent
+                if let text = extractTextFromPDF(at: fileURL) {
+                    _ = KnowledgeService.shared.createEntryIfNotDuplicate(
+                        title: title, content: text, source: "pdf", tags: ["pdf", folderName.lowercased()]
+                    )
+                    count += 1
+                }
+            } else {
+                let stem = fileURL.deletingPathExtension().lastPathComponent
+                let ext = fileURL.pathExtension
+                let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+                let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
+                if !fm.fileExists(atPath: destURL.path) {
+                    try? fm.copyItem(at: fileURL, to: destURL)
+                    count += 1
+                }
             }
         }
 
@@ -201,6 +227,14 @@ final class DataCollectorService {
     // MARK: - Import File
 
     func importFile(at url: URL, folder: String = "General") -> Bool {
+        if url.pathExtension.lowercased() == "pdf" {
+            guard let text = extractTextFromPDF(at: url) else { return false }
+            let title = url.deletingPathExtension().lastPathComponent
+            return KnowledgeService.shared.createEntryIfNotDuplicate(
+                title: title, content: text, source: "pdf", tags: ["pdf"]
+            )
+        }
+
         let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
@@ -326,20 +360,34 @@ final class DataCollectorService {
         guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) else { return 0 }
 
         while let fileURL = enumerator.nextObject() as? URL {
-            guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" || fileURL.pathExtension == "txt" else { continue }
+            guard Self.allImportExtensions.contains(fileURL.pathExtension) else { continue }
 
-            let stem = fileURL.deletingPathExtension().lastPathComponent
-            let ext = fileURL.pathExtension
-            let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
-            let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
-
-            let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
-            let destDate = (try? destURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
-
-            if !fm.fileExists(atPath: destURL.path) || sourceDate > destDate {
-                try? fm.removeItem(at: destURL)
-                try? fm.copyItem(at: fileURL, to: destURL)
-                count += 1
+            if fileURL.pathExtension == "pdf" {
+                let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+                let title = fileURL.deletingPathExtension().lastPathComponent
+                let sentinelURL = destDir.appendingPathComponent("\(title)-\(String(abs(fileURL.path.hashValue), radix: 36).prefix(6)).pdf.imported")
+                let sentinelDate = (try? sentinelURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+                if !fm.fileExists(atPath: sentinelURL.path) || sourceDate > sentinelDate {
+                    if let text = extractTextFromPDF(at: fileURL) {
+                        _ = KnowledgeService.shared.createEntryIfNotDuplicate(
+                            title: title, content: text, source: "pdf", tags: ["pdf", folderName.lowercased()]
+                        )
+                        try? "".write(to: sentinelURL, atomically: true, encoding: .utf8)
+                        count += 1
+                    }
+                }
+            } else {
+                let stem = fileURL.deletingPathExtension().lastPathComponent
+                let ext = fileURL.pathExtension
+                let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+                let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
+                let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+                let destDate = (try? destURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+                if !fm.fileExists(atPath: destURL.path) || sourceDate > destDate {
+                    try? fm.removeItem(at: destURL)
+                    try? fm.copyItem(at: fileURL, to: destURL)
+                    count += 1
+                }
             }
         }
 

@@ -50,6 +50,7 @@ Services/
 ├── StorageService.swift          # Directory structure, paths, logging
 ├── MCPCatalogService.swift       # npm registry browser for MCP servers
 ├── VersioningService.swift       # Note version history
+├── TaskNotificationService.swift # macOS UNUserNotification for due/overdue tasks (9am daily)
 └── DeepThinkCLIService.swift     # CLI binary installation
 ```
 
@@ -130,15 +131,16 @@ User Query
 
 ### TF-IDF Indexing (ContextEngine)
 
-Built in RAM on each retrieval call, scoring chunks from `VectorStore`:
+Cached in RAM; rebuilt only when knowledge content changes (version-gated):
 
-1. **Tokenization** — lowercase, strip stop words (150+), filter tokens >2 chars
+1. **Tokenization** — lowercase, strip stop words (150+), filter tokens >2 chars, apply suffix stemmer (`-ing`, `-ed`, `-tion`, `-ness`, `-ment`, `-ly`, plurals)
 2. **Term Frequency (TF)** — normalized frequency per document
 3. **Inverse Document Frequency (IDF)** — `log((N - df + 0.5) / (df + 0.5) + 1)`
-4. **BM25 Scoring** — `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization
+4. **BM25 Scoring** — `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization; knowledge chunks only (`entry_type = "knowledge"`)
 5. **Boosting** — title match (1.5x), tag match (1.3x), recency (exp decay over 90 days), project scope (1.5x)
-6. **Chunking** — `SemanticChunker`: max 500 chars, sentence-boundary split, last-sentence overlap
-7. **Dedup** — hash fingerprinting + Jaccard similarity (threshold 0.75)
+6. **Relevance window** — sliding window finds highest query-term density region instead of naive front-truncation
+7. **Chunking** — `SemanticChunker`: max 500 chars, sentence-boundary split, last-sentence overlap
+8. **Dedup** — hash fingerprinting + Jaccard similarity (threshold 0.75)
 
 ### Vector Storage (VectorStore)
 
@@ -146,7 +148,7 @@ SQLite database at `~/DeepThink/data/vectors.db` (WAL mode):
 - Single `chunks` table: id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding (Float32 BLOB)
 - Indexes: entry_id, entry_type, source, content_hash
 - Shared between Swift app and CLI — both read/write the same file
-- Entry types: `knowledge`, `note`, `task`, `reminder`
+- Entry types: `knowledge` (knowledge base), `workspace` (tasks + notes indexed by CLI for semantic retrieval)
 - Replaces old `embeddings.json` + `embedding_hashes.json`
 
 ### Token Budget Management
@@ -300,16 +302,95 @@ The app includes its own MCP server (`deepthink-mcp`) with 45 tools:
 
 ```
 cli/src/
-├── index.ts           # CLI entry point (commands: ask, run, context, knowledge, task, note, project, workspace, search, analyze, docs)
-├── mcp-server.ts      # MCP server (workspace tools for Claude)
+├── index.ts           # CLI entry (ask, run, react, insight, research, schedule, context, knowledge, task, note, project, workspace, search, analyze, docs)
+├── mcp-server.ts      # MCP server (45-tool workspace access for Claude/Cursor/etc)
 ├── config.ts          # Paths, settings
-├── core/              # Shared utilities
-├── agents/            # Agent loading and prompt building
-├── memory/            # Persistent memory management
-└── tools/             # Tool implementations
+├── core/              # context-engine, db, embedding-service, vector-store, llm, sandbox
+├── agents/
+│   ├── base.ts        # Agent base class — think(), memory integration, output logging
+│   ├── memory.ts      # Per-agent persistent memory (observations, corrections, facts) at data/agent-memory/
+│   ├── scheduler.ts   # Job scheduler — daily-brief (20h), stale-tasks (7d), insight-scan (4h)
+│   ├── daily-brief.ts # DailyBriefAgent — workspace snapshot → pinned "Daily Brief" note
+│   ├── insight.ts     # InsightAgent — scans overdue/stale/blocked/cluster patterns → data/insights.json
+│   ├── stale-task.ts  # StaleTaskAgent — 14+ day stale task triage report
+│   ├── react.ts       # ReactAgent — THOUGHT/ACTION/PARAMS ReAct loop with 12+ tools, max 12 steps
+│   ├── research.ts    # ResearchPipeline — generates Qs, searches web+local, synthesizes, saves
+│   ├── planner.ts     # Planner — multi-step task decomposition
+│   ├── executor.ts    # Executor — runs planner steps
+│   ├── writer.ts      # Writer — structured doc generation
+│   ├── analyst.ts     # Analyst — data/CSV analysis
+│   └── workspace.ts   # WorkspaceAgent — NL workspace mutations
+└── tools/             # workspace, knowledge, search, file, smart-mcp implementations
 ```
 
 Built with Bun, compiled to standalone binaries. Shares the same data directory (`~/DeepThink/`) with the app.
+
+## Agent System (CLI)
+
+### Agent Base Class (`base.ts`)
+
+All agents extend `Agent`. `think(prompt)` prepends per-agent persistent memory to the system prompt, calls Claude, then appends the interaction as an observation to memory.
+
+```
+agent.think(prompt)
+    ↓
+buildMemoryContext(agentId) → prepend to systemPrompt
+    ↓
+query(prompt, systemPrompt) → Claude response
+    ↓
+appendObservation(agentId, preview)   # persists to data/agent-memory/<id>.json
+saveIntegrationData("agent", id, ...)  # logs output to knowledge integrations
+```
+
+### Agent Memory (`memory.ts`)
+
+Stored at `~/DeepThink/data/agent-memory/<agentId>.json`:
+
+| Field | Capacity | Purpose |
+|-------|----------|---------|
+| `observations` | last 20 | Recent prompt→response previews |
+| `corrections` | last 10 | User-provided corrections injected into system prompt |
+| `facts` | unlimited (key-value) | Named facts the agent should remember |
+
+### Scheduled Jobs (`scheduler.ts`)
+
+State at `~/DeepThink/data/schedule-state.json`. Jobs run via `deepthink schedule run` or triggered from the app's General Settings → AI Agents panel.
+
+| Job | Agent | Interval | Output |
+|-----|-------|----------|--------|
+| `daily-brief` | `DailyBriefAgent` | Every 20h | Pinned "Daily Brief" note |
+| `stale-tasks` | `StaleTaskAgent` | Every 7 days | Triage report note |
+| `insight-scan` | `InsightAgent` | Every 4h | `data/insights.json` |
+
+### Insight Types (`InsightAgent`)
+
+| Type | Trigger | Severity |
+|------|---------|----------|
+| `overdue_tasks` | Any task past due date | action |
+| `high_priority_stale` | High/Urgent task not updated in 7+ days | warning |
+| `blocked_tasks` | "In Progress" task stuck 5+ days | warning |
+| `stale_project` | Project inactive 21+ days with open tasks | info |
+| `task_cluster` | 5+ unassigned tasks — AI detects project theme | info |
+
+### ReAct Agent (`react.ts`)
+
+THOUGHT / ACTION / PARAMS loop up to 12 steps. Available tools: all workspace CRUD, `knowledge_search`, `unified_search`, `knowledge_save`, `read_file`, `write_file`, `search_web`.
+
+### Research Pipeline (`research.ts`)
+
+1. Generate N research questions (Planner)
+2. For each question: hybrid search local knowledge + web search
+3. Extract key findings per question (Agent)
+4. Synthesize across all questions (Writer)
+5. Save structured note + optionally save to knowledge base
+
+## Additional Data Storage
+
+| Data | Location | Persistence |
+|------|----------|-------------|
+| Proactive insights | `data/insights.json` | Written by InsightAgent each scan |
+| Scheduler state | `data/schedule-state.json` | Last-run timestamps per job |
+| Agent memory | `data/agent-memory/<id>.json` | Per-agent observations/corrections/facts |
 
 ## Design System
 

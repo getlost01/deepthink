@@ -261,6 +261,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
     execute: (p) => {
       const pk = db.createProject(p.name, { summary: p.summary, color: p.color });
+      indexEntry({ id: `project:${pk}`, type: "project", title: p.name, content: p.summary ?? "", tags: [], source: "project", importedAt: new Date() });
       return { pk, name: p.name };
     },
   },
@@ -284,6 +285,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       if (pr.isArchived && !("archived" in p)) throw new Error(`project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`);
       const { ref, ...fields } = p;
       db.updateProject(pr.pk, fields);
+      const updated2 = db.getProject(pr.pk.toString());
+      if (updated2) indexEntry({ id: `project:${pr.pk}`, type: "project", title: updated2.name, content: updated2.summary, tags: [], source: "project", importedAt: updated2.modifiedAt });
       return { pk: pr.pk, updated: Object.keys(fields) };
     },
   },
