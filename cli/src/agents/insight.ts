@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 import { unifiedSearch } from "../core/context-engine";
 import * as db from "../core/db";
+import { saveIntegrationData } from "../tools/knowledge";
 import { Agent } from "./base";
 
 const INSIGHTS_PATH = join(DEEPTHINK_ROOT, "data", "insights.json");
@@ -155,6 +156,18 @@ export class InsightAgent extends Agent {
     }
 
     saveInsights(insights);
+
+    const summary =
+      insights.length === 0
+        ? "No insights generated. Workspace looks healthy. ✓"
+        : insights
+            .map(
+              (i) =>
+                `**[${i.severity}] ${i.title}**\n${i.description}${i.suggestedAction ? `\n→ ${i.suggestedAction}` : ""}`
+            )
+            .join("\n\n");
+    saveIntegrationData("agent", this.name, summary, { type: "agent-output" }, undefined, undefined, "latest.md");
+
     return insights;
   }
 

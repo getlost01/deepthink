@@ -536,6 +536,7 @@ private struct AgentsSection: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
+            .pointerOnHover()
             .disabled(runningAll)
         }
         .padding(.horizontal, DS.Spacing.sm)

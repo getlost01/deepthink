@@ -35,7 +35,7 @@ struct TaskListView: View {
                 return cal.isDateInToday(due) && task.status != .done && task.status != .cancelled
             }
         case .upcoming:
-            let weekFromNow = cal.date(byAdding: .day, value: 7, to: Date())!
+            let weekFromNow = cal.date(byAdding: .day, value: 7, to: Date()) ?? Date.distantFuture
             tasks = tasks.filter { task in
                 guard let due = task.dueDate else { return false }
                 return due <= weekFromNow && due >= Date() && task.status != .done && task.status != .cancelled
@@ -95,6 +95,7 @@ struct TaskListView: View {
                         )
                 }
                 .menuStyle(.borderlessButton)
+                .pointerOnHover()
                 .frame(width: 28)
                 .pointerOnHover()
 
@@ -267,7 +268,8 @@ struct TaskListView: View {
         let allItems = groupedTasks.flatMap(\.1)
         guard !allItems.isEmpty else { return }
         if let current = appState.selectedTaskID,
-           let idx = allItems.firstIndex(where: { $0.id == current }) {
+           let idx = allItems.firstIndex(where: { $0.id == current })
+        {
             let next = min(max(idx + direction, 0), allItems.count - 1)
             appState.selectedTaskID = allItems[next].id
         } else {

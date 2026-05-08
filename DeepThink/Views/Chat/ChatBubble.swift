@@ -307,7 +307,7 @@ struct ChatBubble: View {
 
                     if kind == .noCredits {
                         Button {
-                            NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/billing")!)
+                            if let url = URL(string: "https://console.anthropic.com/settings/billing") { NSWorkspace.shared.open(url) }
                         } label: {
                             HStack(spacing: DS.Spacing.xs) {
                                 Image(systemName: "creditcard")
@@ -326,7 +326,7 @@ struct ChatBubble: View {
 
                     if kind == .rateLimited {
                         Button {
-                            NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/limits")!)
+                            if let url = URL(string: "https://console.anthropic.com/settings/limits") { NSWorkspace.shared.open(url) }
                         } label: {
                             HStack(spacing: DS.Spacing.xs) {
                                 Image(systemName: "gauge.with.needle")

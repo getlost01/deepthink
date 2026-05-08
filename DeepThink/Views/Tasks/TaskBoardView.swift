@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct TaskBoardView: View {
     @Environment(\.modelContext) private var modelContext
@@ -50,20 +50,22 @@ struct TaskBoardView: View {
                     Text("\(totalPoints)pt")
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
+                        .padding(.horizontal, DS.Spacing.xs)
+                        .padding(.vertical, DS.Spacing.xxs)
                         .background(DS.Colors.fill, in: Capsule())
                 }
 
                 Spacer()
 
-                if status == .done && !tasks.isEmpty {
+                if status == .done, !tasks.isEmpty {
                     Button {
                         withAnimation(DS.Animation.standard) {
                             for task in tasks {
                                 task.isArchived = true
                                 task.manuallyArchived = true
-                                for subtask in task.subtasks { subtask.isArchived = true }
+                                for subtask in task.subtasks {
+                                    subtask.isArchived = true
+                                }
                             }
                             try? modelContext.save()
                         }
@@ -72,7 +74,7 @@ struct TaskBoardView: View {
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
                             .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, 3)
+                            .padding(.vertical, DS.Spacing.xs)
                             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                             .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                     }
@@ -108,7 +110,7 @@ struct TaskBoardView: View {
             }
             .frame(maxHeight: .infinity)
             .overlay {
-                if isDropTarget && !tasks.isEmpty {
+                if isDropTarget, !tasks.isEmpty {
                     RoundedRectangle(cornerRadius: DS.Radius.md)
                         .strokeBorder(status.color.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                         .allowsHitTesting(false)
@@ -139,7 +141,6 @@ struct TaskBoardView: View {
         tasks.first { $0.id == id }
     }
 
-    @ViewBuilder
     private func emptyColumnPlaceholder(isDropTarget: Bool) -> some View {
         RoundedRectangle(cornerRadius: DS.Radius.md)
             .strokeBorder(
@@ -216,7 +217,7 @@ struct TaskBoardView: View {
                     }
 
                     if !task.subtasks.isEmpty {
-                        let done = task.subtasks.filter { $0.status == .done }.count
+                        let done = task.subtasks.count(where: { $0.status == .done })
                         HStack(spacing: 3) {
                             Image(systemName: "checklist")
                                 .font(.system(size: DS.IconSize.xs))
@@ -285,5 +286,4 @@ struct TaskBoardView: View {
             }
         }
     }
-
 }

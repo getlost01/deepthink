@@ -1,5 +1,5 @@
-import Foundation
 import CryptoKit
+import Foundation
 
 @Observable
 final class KnowledgeService {
@@ -33,11 +33,13 @@ final class KnowledgeService {
     }
 
     private func scanDirectory(_ url: URL) -> [KnowledgeEntry] {
-        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .creationDateKey], options: [.skipsHiddenFiles]) else { return [] }
+        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .creationDateKey], options: [.skipsHiddenFiles])
+        else { return [] }
 
         var results: [KnowledgeEntry] = []
         while let fileURL = enumerator.nextObject() as? URL {
             guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" else { continue }
+            if fileURL.path.contains("/integrations/agent/") { continue }
             if let entry = parseEntry(at: fileURL) {
                 results.append(entry)
             }
@@ -56,7 +58,10 @@ final class KnowledgeService {
 
         let (frontmatter, body) = parseFrontmatter(text)
 
-        let title = frontmatter["title"] ?? url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ").replacingOccurrences(of: "-", with: " ")
+        let title = frontmatter["title"] ?? url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "_", with: " ").replacingOccurrences(
+            of: "-",
+            with: " "
+        )
         let source = frontmatter["source"] ?? inferSource(from: url)
 
         var tags: [String] = []
@@ -68,11 +73,10 @@ final class KnowledgeService {
                 .filter { !$0.isEmpty }
         }
 
-        let importedAt: Date
-        if let dateStr = frontmatter["imported_at"] ?? frontmatter["synced_at"] ?? frontmatter["created_at"] {
-            importedAt = ISO8601DateFormatter().date(from: dateStr) ?? createdAt
+        let importedAt: Date = if let dateStr = frontmatter["imported_at"] ?? frontmatter["synced_at"] ?? frontmatter["created_at"] {
+            ISO8601DateFormatter().date(from: dateStr) ?? createdAt
         } else {
-            importedAt = createdAt
+            createdAt
         }
 
         let bucket = frontmatter["bucket"] ?? frontmatter["folder"] ?? inferBucket(from: url)
@@ -221,7 +225,9 @@ final class KnowledgeService {
         for key in orderedKeys {
             if let value = updated[key] { md += "\(key): \(value)\n" }
         }
-        for (key, value) in updated where !orderedKeys.contains(key) { md += "\(key): \(value)\n" }
+        for (key, value) in updated where !orderedKeys.contains(key) {
+            md += "\(key): \(value)\n"
+        }
         md += "---\n\n\(body)"
 
         guard !fm.fileExists(atPath: destURL.path) else { return }
@@ -242,7 +248,9 @@ final class KnowledgeService {
         for key in orderedKeys {
             if let value = updated[key] { md += "\(key): \(value)\n" }
         }
-        for (key, value) in updated where !orderedKeys.contains(key) { md += "\(key): \(value)\n" }
+        for (key, value) in updated where !orderedKeys.contains(key) {
+            md += "\(key): \(value)\n"
+        }
         md += "---\n\n\(body)"
         try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
         reload()
@@ -265,8 +273,8 @@ final class KnowledgeService {
         let q = query.lowercased()
         return entries.filter {
             $0.title.lowercased().contains(q) ||
-            $0.content.lowercased().contains(q) ||
-            $0.tags.contains { $0.lowercased().contains(q) }
+                $0.content.lowercased().contains(q) ||
+                $0.tags.contains { $0.lowercased().contains(q) }
         }
     }
 
@@ -286,7 +294,7 @@ final class KnowledgeService {
         return entries
             .filter { matchedIDs.contains($0.id) }
             .prefix(maxResults)
-            .map { $0 }
+            .map(\.self)
     }
 
     func ragContext(for query: String, maxTokens: Int = 4000, projectScope: String? = nil, agentScope: [String]? = nil) -> String? {

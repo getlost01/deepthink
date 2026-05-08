@@ -393,7 +393,6 @@ final class ClaudeService {
                     "--output-format",
                     "json",
                     "--no-session-persistence",
-                    "--dangerously-skip-permissions",
                     "--model",
                     ClaudeService.shared.fullModelID
                 ]
@@ -528,7 +527,6 @@ final class ClaudeService {
                     "stream-json",
                     "--verbose",
                     "--no-session-persistence",
-                    "--dangerously-skip-permissions",
                     "--model",
                     modelID
                 ]

@@ -16,6 +16,13 @@ final class MCPCatalogService {
         "mcp-server-"
     ]
 
+    private static let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 60
+        return URLSession(configuration: config)
+    }()
+
     private init() {
         loadCache()
     }
@@ -51,7 +58,7 @@ final class MCPCatalogService {
         guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=100") else { return [] }
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            let (data, response) = try await Self.session.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
 
             let result = try JSONDecoder().decode(NPMSearchResult.self, from: data)
@@ -121,7 +128,7 @@ final class MCPCatalogService {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=30&from=\(from)") else { return [] }
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            let (data, response) = try await Self.session.data(from: url)
             guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
             let result = try JSONDecoder().decode(NPMSearchResult.self, from: data)
             return result.objects.compactMap { obj -> MCPPackage? in

@@ -40,9 +40,9 @@ final class DeepThinkCLIService {
 
     private init() {
         let candidates = DeepThinkPaths.cliBinaryCandidates
-        self.binaryPath = candidates.first {
+        binaryPath = candidates.first {
             FileManager.default.isExecutableFile(atPath: $0)
-        } ?? candidates.last!
+        } ?? candidates.last ?? ""
     }
 
     var isAvailable: Bool {

@@ -1,7 +1,7 @@
-import Foundation
-import SwiftData
 import AppKit
+import Foundation
 import PDFKit
+import SwiftData
 
 @Observable
 final class DataCollectorService {
@@ -42,7 +42,8 @@ final class DataCollectorService {
     }
 
     private func extractTextFromHTML(_ html: String) -> String {
-        var text = html
+        // Cap input before regex to prevent catastrophic backtracking on huge pages
+        var text = html.count > 500_000 ? String(html.prefix(500_000)) : html
         // Drop entire head block
         text = text.replacingOccurrences(of: "<head[^>]*>[\\s\\S]*?</head>", with: "", options: .regularExpression)
         // Drop boilerplate structural blocks
@@ -79,7 +80,7 @@ final class DataCollectorService {
         let filtered = lines.filter { line in
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             guard trimmed.count > 2 else { return false }
-            let alphanumCount = trimmed.unicodeScalars.filter { CharacterSet.alphanumerics.contains($0) }.count
+            let alphanumCount = trimmed.unicodeScalars.count(where: { CharacterSet.alphanumerics.contains($0) })
             return alphanumCount > 0
         }
         return filtered.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
@@ -187,7 +188,7 @@ final class DataCollectorService {
     // MARK: - Script Runner
 
     func runScript(command: String) async -> Bool {
-        return await withCheckedContinuation { continuation in
+        await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: "/bin/zsh")
@@ -314,7 +315,11 @@ final class DataCollectorService {
             let itemXML = String(xml[range])
 
             let title = extractXMLTag("title", from: itemXML) ?? "Untitled"
-            let description = extractXMLTag("description", from: itemXML) ?? extractXMLTag("content", from: itemXML) ?? extractXMLTag("summary", from: itemXML) ?? ""
+            let description = extractXMLTag("description", from: itemXML) ?? extractXMLTag("content", from: itemXML) ?? extractXMLTag(
+                "summary",
+                from: itemXML
+            ) ??
+                ""
             let link = extractXMLTag("link", from: itemXML) ?? extractXMLAttribute("href", tag: "link", from: itemXML)
 
             let cleanContent = extractTextFromHTML(description)
@@ -357,7 +362,8 @@ final class DataCollectorService {
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
         var count = 0
-        guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]) else { return 0 }
+        guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles])
+        else { return 0 }
 
         while let fileURL = enumerator.nextObject() as? URL {
             guard Self.allImportExtensions.contains(fileURL.pathExtension) else { continue }

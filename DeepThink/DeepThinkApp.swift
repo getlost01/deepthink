@@ -78,7 +78,19 @@ struct DeepThinkApp: App {
         do {
             return try ModelContainer(for: schema, configurations: [config])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            let alert = NSAlert()
+            alert.messageText = "Workspace Data Error"
+            alert.informativeText = "DeepThink could not open your workspace:\n\n\(error.localizedDescription)\n\nResetting will delete your local data (backups are preserved)."
+            alert.addButton(withTitle: "Reset Workspace")
+            alert.addButton(withTitle: "Quit")
+            alert.alertStyle = .critical
+            if alert.runModal() == .alertFirstButtonReturn {
+                try? FileManager.default.removeItem(at: StorageService.shared.storeURL)
+                if let recovered = try? ModelContainer(for: schema, configurations: [config]) {
+                    return recovered
+                }
+            }
+            exit(1)
         }
     }()
 

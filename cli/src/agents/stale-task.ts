@@ -1,9 +1,11 @@
 import { unifiedSearch } from "../core/context-engine";
 import * as db from "../core/db";
+import { saveIntegrationData } from "../tools/knowledge";
 import { Agent } from "./base";
 
 export class StaleTaskAgent extends Agent {
   name = "stale-task";
+  saveOutput = true;
   systemPrompt = "You analyze stale tasks and produce short, actionable triage reports.";
 
   async scan(staleDays = 14): Promise<{ count: number; report: string }> {
@@ -16,7 +18,11 @@ export class StaleTaskAgent extends Agent {
         (now.getTime() - t.modifiedAt.getTime()) / 86_400_000 > staleDays
     );
 
-    if (stale.length === 0) return { count: 0, report: `No tasks stale for ${staleDays}+ days. ✓` };
+    if (stale.length === 0) {
+      const report = `No tasks stale for ${staleDays}+ days. ✓`;
+      saveIntegrationData("agent", this.name, report, { type: "agent-output" }, undefined, undefined, "latest.md");
+      return { count: 0, report };
+    }
 
     const byProject: Record<string, typeof stale> = {};
     for (const t of stale) {

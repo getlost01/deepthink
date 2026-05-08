@@ -65,7 +65,7 @@ struct ClaudeSettingsView: View {
             Spacer()
 
             Button {
-                NSWorkspace.shared.open(URL(string: "https://claude.ai/code")!)
+                if let url = URL(string: "https://claude.ai/code") { NSWorkspace.shared.open(url) }
             } label: {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "arrow.down.circle.fill")
@@ -119,7 +119,7 @@ struct ClaudeSettingsView: View {
             Spacer()
 
             Button {
-                NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/limits")!)
+                if let url = URL(string: "https://console.anthropic.com/settings/limits") { NSWorkspace.shared.open(url) }
             } label: {
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "gauge.with.needle")
@@ -168,7 +168,7 @@ struct ClaudeSettingsView: View {
 
             VStack(spacing: DS.Spacing.xs) {
                 Button {
-                    NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/billing")!)
+                    if let url = URL(string: "https://console.anthropic.com/settings/billing") { NSWorkspace.shared.open(url) }
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "plus.circle.fill")
@@ -185,7 +185,7 @@ struct ClaudeSettingsView: View {
                 .buttonStyle(.plainPointer)
 
                 Button {
-                    NSWorkspace.shared.open(URL(string: "https://console.anthropic.com/settings/plans")!)
+                    if let url = URL(string: "https://console.anthropic.com/settings/plans") { NSWorkspace.shared.open(url) }
                 } label: {
                     Text("View Plans")
                         .font(DS.Font.small)
@@ -594,7 +594,7 @@ struct ClaudeSettingsView: View {
                     Spacer()
 
                     Button {
-                        NSWorkspace.shared.open(URL(string: "https://docs.anthropic.com/en/docs/about-claude/pricing")!)
+                        if let url = URL(string: "https://docs.anthropic.com/en/docs/about-claude/pricing") { NSWorkspace.shared.open(url) }
                     } label: {
                         HStack(spacing: 3) {
                             Image(systemName: "arrow.up.right.square")

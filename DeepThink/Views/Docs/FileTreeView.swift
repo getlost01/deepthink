@@ -7,8 +7,13 @@ struct FileNode: Identifiable, Hashable {
     let isDirectory: Bool
     var children: [FileNode]?
 
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    static func == (lhs: FileNode, rhs: FileNode) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+
+    static func == (lhs: FileNode, rhs: FileNode) -> Bool {
+        lhs.id == rhs.id
+    }
 }
 
 struct FileTreeView: View {
@@ -28,6 +33,7 @@ struct FileTreeView: View {
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .menuStyle(.borderlessButton)
+                .pointerOnHover()
                 .frame(width: 28)
             }
 
@@ -123,8 +129,13 @@ private struct FileNodeRow: View {
     @Binding var selectedPath: String?
     @Binding var expandedPaths: Set<String>
 
-    private var isExpanded: Bool { expandedPaths.contains(node.path) }
-    private var isSelected: Bool { selectedPath == node.path }
+    private var isExpanded: Bool {
+        expandedPaths.contains(node.path)
+    }
+
+    private var isSelected: Bool {
+        selectedPath == node.path
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -166,7 +177,7 @@ private struct FileNodeRow: View {
             }
             .buttonStyle(.plainPointer)
 
-            if node.isDirectory && isExpanded, let children = node.children {
+            if node.isDirectory, isExpanded, let children = node.children {
                 ForEach(children) { child in
                     FileNodeRow(
                         node: child,
@@ -183,15 +194,28 @@ private struct FileNodeRow: View {
         if node.isDirectory { return "folder.fill" }
         let ext = (node.name as NSString).pathExtension.lowercased()
         switch ext {
-        case "md", "markdown": return "doc.richtext"
+        case "md",
+             "markdown": return "doc.richtext"
         case "swift": return "swift"
-        case "ts", "tsx", "js", "jsx": return "chevron.left.forwardslash.chevron.right"
+        case "ts",
+             "tsx",
+             "js",
+             "jsx": return "chevron.left.forwardslash.chevron.right"
         case "py": return "chevron.left.forwardslash.chevron.right"
-        case "json", "yaml", "yml", "toml": return "gearshape"
-        case "html", "css": return "globe"
+        case "json",
+             "yaml",
+             "yml",
+             "toml": return "gearshape"
+        case "html",
+             "css": return "globe"
         case "pdf": return "doc.fill"
-        case "png", "jpg", "jpeg", "gif", "svg": return "photo"
-        case "txt", "log": return "doc.text"
+        case "png",
+             "jpg",
+             "jpeg",
+             "gif",
+             "svg": return "photo"
+        case "txt",
+             "log": return "doc.text"
         default: return "doc"
         }
     }
@@ -200,11 +224,18 @@ private struct FileNodeRow: View {
         if node.isDirectory { return DS.Colors.accent }
         let ext = (node.name as NSString).pathExtension.lowercased()
         switch ext {
-        case "md", "markdown": return DS.Colors.info
+        case "md",
+             "markdown": return DS.Colors.info
         case "swift": return DS.Colors.amber
-        case "ts", "tsx", "js", "jsx": return DS.Colors.gold
+        case "ts",
+             "tsx",
+             "js",
+             "jsx": return DS.Colors.gold
         case "py": return DS.Colors.success
-        case "json", "yaml", "yml", "toml": return DS.Colors.slate
+        case "json",
+             "yaml",
+             "yml",
+             "toml": return DS.Colors.slate
         case "pdf": return DS.Colors.danger
         default: return DS.Colors.textTertiary
         }

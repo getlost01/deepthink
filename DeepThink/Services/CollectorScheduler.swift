@@ -13,6 +13,8 @@ final class CollectorScheduler {
 
     private init() {}
 
+    deinit { stop() }
+
     func start(container: ModelContainer) {
         self.container = container
         isRunning = true

@@ -513,7 +513,7 @@ struct DSArchiveButton: View {
                         .strokeBorder(isOn ? DS.Colors.accent.opacity(0.4) : (isHovered ? DS.Colors.borderHover : DS.Colors.border), lineWidth: 1)
                 )
                 .overlay(alignment: .topTrailing) {
-                    if count > 0 {
+                    if !isEmpty {
                         Text(count > 99 ? "99+" : "\(count)")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
@@ -961,8 +961,8 @@ struct DSCalendarPicker: View {
         VStack(spacing: DS.Spacing.md) {
             HStack(spacing: DS.Spacing.sm) {
                 quickButton("Today", date: Date())
-                quickButton("Tomorrow", date: calendar.date(byAdding: .day, value: 1, to: Date())!)
-                quickButton("+1w", date: calendar.date(byAdding: .weekOfYear, value: 1, to: Date())!)
+                quickButton("Tomorrow", date: calendar.date(byAdding: .day, value: 1, to: Date()) ?? Date())
+                quickButton("+1w", date: calendar.date(byAdding: .weekOfYear, value: 1, to: Date()) ?? Date())
             }
 
             Divider()
@@ -970,7 +970,7 @@ struct DSCalendarPicker: View {
             HStack {
                 Button {
                     withAnimation(DS.Animation.quick) {
-                        displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth)!
+                        displayMonth = calendar.date(byAdding: .month, value: -1, to: displayMonth) ?? displayMonth
                     }
                 } label: {
                     Image(systemName: "chevron.left")
@@ -990,7 +990,7 @@ struct DSCalendarPicker: View {
 
                 Button {
                     withAnimation(DS.Animation.quick) {
-                        displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth)!
+                        displayMonth = calendar.date(byAdding: .month, value: 1, to: displayMonth) ?? displayMonth
                     }
                 } label: {
                     Image(systemName: "chevron.right")

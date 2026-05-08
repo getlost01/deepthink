@@ -284,7 +284,7 @@ final class MCPService {
                     "stream-json",
                     "--verbose",
                     "--no-session-persistence",
-                    "--dangerously-skip-permissions",
+                    "--allowedTools", "mcp__deepthink__*",
                     "--model",
                     ClaudeService.shared.fullModelID,
                     "--mcp-config",
@@ -310,11 +310,17 @@ final class MCPService {
                 do {
                     try process.run()
 
+                    // Kill process if it hangs beyond 120 s
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeoutWork)
+                    defer { timeoutWork.cancel() }
+
                     let handle = outPipe.fileHandleForReading
                     var buffer = Data()
 
-                    while process.isRunning || !handle.availableData.isEmpty {
-                        let chunk = handle.availableData
+                    // Blocking read — blocks until data arrives or pipe closes (process exit)
+                    while true {
+                        let chunk = (try? handle.read(upToCount: 65536)) ?? Data()
                         if chunk.isEmpty { break }
                         buffer.append(chunk)
 
@@ -345,7 +351,7 @@ final class MCPService {
                                     let cost = obj["total_cost_usd"] as? Double
                                     let duration = obj["duration_ms"] as? Double
                                     let usageDict = obj["usage"] as? [String: Any]
-                                    DispatchQueue.main.sync {
+                                    DispatchQueue.main.async {
                                         ClaudeService.shared.totalQueries += 1
                                         if let cost {
                                             ClaudeService.shared.totalCostUSD += cost
@@ -412,7 +418,7 @@ final class MCPService {
                     "--output-format",
                     "json",
                     "--no-session-persistence",
-                    "--dangerously-skip-permissions",
+                    "--allowedTools", "mcp__deepthink__*",
                     "--model",
                     ClaudeService.shared.fullModelID,
                     "--mcp-config",

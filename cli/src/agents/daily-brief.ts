@@ -4,6 +4,7 @@ import { Agent } from "./base";
 
 export class DailyBriefAgent extends Agent {
   name = "daily-brief";
+  saveOutput = true;
   systemPrompt =
     "You write concise daily briefings for a developer. Markdown format. " +
     "Direct and actionable. One-line summary first, then Today's Focus, Overdue (if any), Quick Wins. No fluff.";
@@ -52,7 +53,10 @@ export class DailyBriefAgent extends Agent {
       `Overdue (${overdue.length}): ${
         overdue
           .slice(0, 3)
-          .map((t) => `"${t.title}" (${Math.floor((today.getTime() - t.dueDate?.getTime()) / 86_400_000)}d late)`)
+          .map(
+            (t) =>
+              `"${t.title}" (${Math.floor((today.getTime() - (t.dueDate?.getTime() ?? today.getTime())) / 86_400_000)}d late)`
+          )
           .join(", ") || "none"
       }`,
       `In Progress (${inProgress.length}): ${

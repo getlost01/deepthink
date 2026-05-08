@@ -118,11 +118,11 @@ export function upsertChunks(chunks: VectorChunk[]): void {
 }
 
 export function deleteChunksForEntry(entryId: string): void {
-  getDB().run("DELETE FROM chunks WHERE entry_id = ?", entryId);
+  getDB().run("DELETE FROM chunks WHERE entry_id = ?", [entryId]);
 }
 
 export function deleteChunksByType(entryType: string): void {
-  getDB().run("DELETE FROM chunks WHERE entry_type = ?", entryType);
+  getDB().run("DELETE FROM chunks WHERE entry_type = ?", [entryType]);
 }
 
 export function pruneStaleEntries(validIds: Set<string>, entryType: string): void {

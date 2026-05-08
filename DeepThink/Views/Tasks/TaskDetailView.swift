@@ -291,6 +291,11 @@ struct TaskDetailView: View {
             CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
         }
         .onAppear { scheduleScanDeadLinks() }
+        .onChange(of: task.id) {
+            newSubtaskTitle = ""
+            deadLinkUUIDs = []
+            hasDeadLinks = false
+        }
     }
 
     private func scheduleScanDeadLinks() {

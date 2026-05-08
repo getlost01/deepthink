@@ -22,7 +22,7 @@ const sub = args[1];
 
 const p = (t: string) => console.log(t);
 const ok = (t: string) => console.log(`✓ ${t}`);
-const err = (t: string) => {
+const err = (t: string): never => {
   console.error(`✗ ${t}`);
   process.exit(1);
 };

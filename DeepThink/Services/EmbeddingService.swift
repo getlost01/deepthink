@@ -14,7 +14,7 @@ final class EmbeddingService {
     private let embedQueue = DispatchQueue(label: "com.deepthink.embedding.nlp")
 
     private init() {
-        self.nlEmbedding = NLEmbedding.sentenceEmbedding(for: .english)
+        nlEmbedding = NLEmbedding.sentenceEmbedding(for: .english)
         indexedCount = store.embeddedCount()
     }
 
@@ -30,16 +30,17 @@ final class EmbeddingService {
     // MARK: - Knowledge Indexing
 
     func indexEntries(_ entries: [KnowledgeEntry]) {
-        isIndexing = true
+        DispatchQueue.main.async { self.isIndexing = true }
         defer {
-            isIndexing = false
-            indexedCount = store.embeddedCount()
+            let count = store.embeddedCount()
+            DispatchQueue.main.async { self.isIndexing = false; self.indexedCount = count }
         }
 
         let total = entries.count
         for (i, entry) in entries.enumerated() {
             indexSingleEntry(entry)
-            progress = Double(i + 1) / Double(total)
+            let p = Double(i + 1) / Double(total)
+            DispatchQueue.main.async { self.progress = p }
         }
 
         store.pruneStaleEntries(
@@ -129,10 +130,10 @@ final class EmbeddingService {
     }
 
     func indexWorkspaceItems(_ items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)]) {
-        isIndexing = true
+        DispatchQueue.main.async { self.isIndexing = true }
         defer {
-            isIndexing = false
-            indexedCount = store.embeddedCount()
+            let count = store.embeddedCount()
+            DispatchQueue.main.async { self.isIndexing = false; self.indexedCount = count }
         }
 
         let total = items.count
@@ -141,7 +142,8 @@ final class EmbeddingService {
                 id: item.id, type: item.type, title: item.title,
                 content: item.content, tags: item.tags, modifiedAt: item.modifiedAt
             )
-            progress = Double(i + 1) / Double(total)
+            let p = Double(i + 1) / Double(total)
+            DispatchQueue.main.async { self.progress = p }
         }
     }
 
@@ -156,7 +158,7 @@ final class EmbeddingService {
 
         for (chunk, embedding) in entries {
             let similarity = cosineSimilarity(queryVector, embedding)
-            if similarity > 0.3 && !seen.contains(chunk.entryID) {
+            if similarity > 0.3, !seen.contains(chunk.entryID) {
                 results.append((chunk.entryID, similarity))
                 seen.insert(chunk.entryID)
             }
@@ -165,7 +167,7 @@ final class EmbeddingService {
         return results
             .sorted { $0.score > $1.score }
             .prefix(topK)
-            .map { $0 }
+            .map(\.self)
     }
 
     // MARK: - Stats
@@ -235,7 +237,7 @@ enum SemanticChunker {
         var currentLen = 0
 
         for sentence in sentences {
-            if currentLen + sentence.count > maxChunkSize && !current.isEmpty {
+            if currentLen + sentence.count > maxChunkSize, !current.isEmpty {
                 groups.append(current)
                 // Overlap: keep last sentence
                 let last = current.last ?? ""
@@ -274,7 +276,7 @@ enum SemanticChunker {
                 sentences.append(s)
             }
         }
-        if sentences.isEmpty && !text.isEmpty {
+        if sentences.isEmpty, !text.isEmpty {
             return text.components(separatedBy: "\n")
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty }

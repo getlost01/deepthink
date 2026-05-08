@@ -205,7 +205,12 @@ struct NoteEditorView: View {
             appState.currentNoteTitle = nil
             appState.currentNoteTags = []
         }
-        .onChange(of: note.id) { publishNoteContext() }
+        .onChange(of: note.id) {
+            publishNoteContext()
+            deadLinkUUIDs = []
+            hasDeadLinks = false
+            cachedLinkPreviews = [:]
+        }
     }
 
     private func scheduleScanDeadLinks() {
@@ -266,7 +271,7 @@ struct NoteEditorView: View {
         for r in allReminders {
             map["deepthink://reminder/\(r.id.uuidString)"] = [
                 "title": r.title.isEmpty ? "Untitled" : r.title,
-                "subtitle": r.reminderDate.map { $0.shortFormatted } ?? "",
+                "subtitle": r.reminderDate.map(\.shortFormatted) ?? "",
                 "snippet": String(r.notes.prefix(120))
             ]
         }

@@ -32,7 +32,7 @@ struct ChatHistorySidebar: View {
         let grouped = Dictionary(grouping: filtered) { (conv: Conversation) -> String in
             if cal.isDateInToday(conv.updatedAt) { return "Today" }
             if cal.isDateInYesterday(conv.updatedAt) { return "Yesterday" }
-            if conv.updatedAt > cal.date(byAdding: .day, value: -7, to: now)! { return "This Week" }
+            if conv.updatedAt > (cal.date(byAdding: .day, value: -7, to: now) ?? now) { return "This Week" }
             return "Older"
         }
         return ["Today", "Yesterday", "This Week", "Older"]

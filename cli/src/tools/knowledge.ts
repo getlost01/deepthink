@@ -96,14 +96,15 @@ export function saveIntegrationData(
   content: string,
   metadata: Record<string, string> = {},
   title?: string,
-  tags?: string[]
+  tags?: string[],
+  overwriteFilename?: string
 ): string {
   const channelDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
   mkdirSync(channelDir, { recursive: true });
 
   const resolvedTitle = title || smartTitle(content) || `${source}/${channel}`;
   const ts = timestamp();
-  const filename = `${slugify(resolvedTitle).slice(0, 50)}-${ts}.md`;
+  const filename = overwriteFilename ?? `${slugify(resolvedTitle).slice(0, 50)}-${ts}.md`;
   const filepath = join(channelDir, filename);
 
   const frontmatter: Record<string, string> = {

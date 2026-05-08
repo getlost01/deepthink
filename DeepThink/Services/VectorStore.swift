@@ -30,7 +30,8 @@ final class VectorStore {
         }
         exec("PRAGMA journal_mode=WAL")
         exec("PRAGMA synchronous=NORMAL")
-        exec("PRAGMA cache_size=-8000") // 8MB cache
+        exec("PRAGMA cache_size=-8000")
+        exec("PRAGMA busy_timeout=5000")
     }
 
     private func createTables() {
@@ -251,8 +252,8 @@ final class VectorStore {
             if let scope, !scope.isEmpty {
                 let matches = scope.contains { s in
                     chunk.source.localizedCaseInsensitiveContains(s) ||
-                    chunk.tags.contains(s) ||
-                    chunk.title.localizedCaseInsensitiveContains(s)
+                        chunk.tags.contains(s) ||
+                        chunk.title.localizedCaseInsensitiveContains(s)
                 }
                 if !matches { continue }
             }
@@ -274,7 +275,9 @@ final class VectorStore {
             params.append(entryType)
         }
 
-        let sql = "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding FROM chunks WHERE " + conditions.joined(separator: " AND ")
+        let sql =
+            "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding FROM chunks WHERE " +
+            conditions.joined(separator: " AND ")
 
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
@@ -293,8 +296,8 @@ final class VectorStore {
             if let scope, !scope.isEmpty {
                 let matches = scope.contains { s in
                     chunk.source.localizedCaseInsensitiveContains(s) ||
-                    chunk.tags.contains(s) ||
-                    chunk.title.localizedCaseInsensitiveContains(s)
+                        chunk.tags.contains(s) ||
+                        chunk.title.localizedCaseInsensitiveContains(s)
                 }
                 if !matches { continue }
             }
@@ -305,23 +308,25 @@ final class VectorStore {
     }
 
     func chunkCount(entryType: String? = nil) -> Int {
-        var sql = "SELECT COUNT(*) FROM chunks"
-        if let entryType { sql += " WHERE entry_type = '\(entryType)'" }
-
+        let sql = entryType != nil
+            ? "SELECT COUNT(*) FROM chunks WHERE entry_type = ?"
+            : "SELECT COUNT(*) FROM chunks"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
         defer { sqlite3_finalize(stmt) }
+        if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
         guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
         return Int(sqlite3_column_int(stmt, 0))
     }
 
     func entryCount(entryType: String? = nil) -> Int {
-        var sql = "SELECT COUNT(DISTINCT entry_id) FROM chunks"
-        if let entryType { sql += " WHERE entry_type = '\(entryType)'" }
-
+        let sql = entryType != nil
+            ? "SELECT COUNT(DISTINCT entry_id) FROM chunks WHERE entry_type = ?"
+            : "SELECT COUNT(DISTINCT entry_id) FROM chunks"
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
         defer { sqlite3_finalize(stmt) }
+        if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
         guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
         return Int(sqlite3_column_int(stmt, 0))
     }

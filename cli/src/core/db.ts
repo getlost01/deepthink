@@ -338,7 +338,7 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
 
 export function deleteTask(pk: number): void {
   const db = getWriteDB();
-  db.query("DELETE FROM Z_6TASKS WHERE Z_7TASKS = ?").run(pk);
+  db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(pk);
   db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
 }
 
@@ -477,7 +477,7 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
 
 export function deleteNote(pk: number): void {
   const db = getWriteDB();
-  db.query("DELETE FROM Z_2TAGS WHERE Z_2NOTES = ?").run(pk);
+  db.query("DELETE FROM Z_5TAGS WHERE Z_5NOTES = ?").run(pk);
   db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
 }
 

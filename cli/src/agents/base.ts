@@ -32,7 +32,7 @@ export abstract class Agent {
       responsePreview: response.slice(0, 200),
     });
     if (this.saveOutput) {
-      saveIntegrationData("agent", this.name, response, { type: "agent-output" });
+      saveIntegrationData("agent", this.name, response, { type: "agent-output" }, undefined, undefined, "latest.md");
     }
   }
 }

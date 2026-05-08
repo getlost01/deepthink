@@ -1,6 +1,6 @@
 import Foundation
-import UserNotifications
 import SwiftData
+import UserNotifications
 
 @Observable
 final class TaskNotificationService {
@@ -30,7 +30,7 @@ final class TaskNotificationService {
 
         let center = UNUserNotificationCenter.current()
         let today = Calendar.current.startOfDay(for: Date())
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) else { return }
         let todayStr = String(ISO8601DateFormatter().string(from: today).prefix(10))
         let notifiedKey = "notifiedTaskDay"
         let alreadyNotifiedToday = UserDefaults.standard.string(forKey: notifiedKey) == todayStr
