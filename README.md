@@ -1,5 +1,10 @@
 # DeepThink
 
+[![CI](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml/badge.svg)](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml?query=branch%3Amain)
+[![Latest release](https://img.shields.io/github/v/release/aagam-headout/deepthink?logo=github)](https://github.com/aagam-headout/deepthink/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-7cb342)](LICENSE)
+[![Contributing](https://img.shields.io/badge/contributing-CONTRIBUTING-0366d6)](CONTRIBUTING.md)
+
 A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge base — combined with Claude AI that has full context of everything you're working on. All data stays on your machine.
 
 > **Download:** [Latest Release →](https://github.com/aagam-headout/deepthink/releases/latest) — zip of the app (unsigned); first open: **Right-click → Open** · macOS 14+
