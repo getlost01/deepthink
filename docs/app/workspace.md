@@ -54,7 +54,15 @@ Rich markdown notes with backlinks, versioning, and AI integration.
 **Backlinks (Wiki-Links):**
 - Type `[[Note Name]]` to link notes
 - `BacklinkService` parses links and creates `NoteLink` edges
-- Bidirectional — see which notes link to the current note
+- Bidirectional — backlinks panel at the bottom of the editor shows all notes that link here
+- Click a backlink to navigate directly to that note
+
+**Deep Links:**
+- Insert typed links to any task, note, reminder, project, or knowledge entry via the toolbar
+- Links render as clickable chips in the editor; clicking navigates to the target item
+- Link previews (title, status, snippet) appear on hover
+- Dead link detection: broken links to deleted items trigger a warning banner with a "Fix" button that removes them from content
+- `deepthink://type/UUID` URL scheme; also handled in project descriptions and task/reminder editors
 
 **Version History:**
 - Auto-saves version snapshots via `VersioningService`
@@ -115,11 +123,17 @@ Each status has an associated color and icon.
 
 `isOverdue` = due date < now AND status != done/cancelled. Overdue tasks highlighted in UI.
 
+### Features
+
+**Rich Markdown Editor:**
+- Same Tiptap-based editor as notes, with deep link insertion and dead link detection
+- Backlink panel shows notes that link to this task via `deepthink://task/UUID`
+
 ### Views
 
 - **Task List** — sortable by status, priority, due date
 - **Task Board** — kanban columns (Backlog, Todo, In Progress, Done)
-- **Task Detail** — edit all fields, manage subtasks
+- **Task Detail** — edit all fields, manage subtasks, rich markdown detail with deep links
 - **Task Inspector** — sidebar with metadata and project assignment
 
 ## Navigation
@@ -145,9 +159,12 @@ Inside a project:
 | `Models/Project.swift` | Project SwiftData model |
 | `Models/NoteLink.swift` | Backlink edges |
 | `Models/NoteVersion.swift` | Version snapshots |
-| `Services/BacklinkService.swift` | Wiki-link parsing |
+| `Services/BacklinkService.swift` | Wiki-link parsing + deep link backlink queries |
+| `Services/DeadLinkScanner.swift` | Scans content for broken `deepthink://` links |
 | `Services/VersioningService.swift` | Auto-versioning |
+| `Views/Shared/SharedViews.swift` | `DeepLinkPickerSheet` — insert links to any item |
+| `Views/Shared/DesignSystem.swift` | `RichMarkdownEditor` — deep link click/insert/preview/dead-link wiring |
 | `Views/Workspace/WorkspaceView.swift` | Tab container |
-| `Views/Projects/ProjectDetailView.swift` | Project detail |
+| `Views/Projects/ProjectDetailView.swift` | Project detail with markdown-preview description |
 | `Views/Tasks/TaskBoardView.swift` | Kanban board |
-| `Views/Notes/NoteEditorView.swift` | Markdown editor |
+| `Views/Notes/NoteEditorView.swift` | Markdown editor with backlinks panel and dead link detection |

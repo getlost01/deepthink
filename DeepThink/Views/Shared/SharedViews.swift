@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct StoryPointsBadge: View {
@@ -78,5 +79,283 @@ struct FlowLayout: Layout {
         }
 
         return (positions, CGSize(width: maxX, height: y + rowHeight))
+    }
+}
+
+// MARK: - Deep Link Picker Sheet
+
+struct DeepLinkPickerSheet: View {
+    let type: String
+    let onSelect: (String, URL) -> Void
+    let onDismiss: () -> Void
+
+    @Query private var tasks: [TaskItem]
+    @Query private var notes: [Note]
+    @Query private var reminders: [Reminder]
+    @Query private var projects: [Project]
+    @State private var search = ""
+    @FocusState private var searchFocused: Bool
+
+    private var knowledgeEntries: [KnowledgeEntry] { KnowledgeService.shared.entries }
+
+    private var filteredTasks: [TaskItem] {
+        tasks.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }
+            .sorted { (!$0.isArchived && $1.isArchived) || ($0.isArchived == $1.isArchived && $0.modifiedAt > $1.modifiedAt) }
+    }
+    private var filteredNotes: [Note] {
+        notes.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }
+            .sorted { (!$0.isArchived && $1.isArchived) || ($0.isArchived == $1.isArchived && $0.modifiedAt > $1.modifiedAt) }
+    }
+    private var filteredReminders: [Reminder] {
+        reminders.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+    private var filteredKnowledge: [KnowledgeEntry] {
+        knowledgeEntries.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }
+            .sorted { $0.importedAt > $1.importedAt }
+    }
+    private var filteredProjects: [Project] {
+        projects.filter { search.isEmpty || $0.name.localizedCaseInsensitiveContains(search) }
+            .sorted { (!$0.isArchived && $1.isArchived) || ($0.isArchived == $1.isArchived && $0.modifiedAt > $1.modifiedAt) }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header
+            HStack(spacing: DS.Spacing.md) {
+                Image(systemName: linkIcon)
+                    .font(.system(size: DS.IconSize.md, weight: .medium))
+                    .foregroundStyle(DS.Colors.accent)
+                    .frame(width: 32, height: 32)
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Link \(linkLabel)")
+                        .font(DS.Font.heading)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Text("Select a \(linkLabel.lowercased()) to insert")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+
+                Spacer()
+
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 24, height: 24)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .buttonStyle(.plainPointer)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .background(DS.Colors.surfaceElevated)
+
+            Divider()
+
+            // Search
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                TextField("Search \(linkLabel.lowercased())s...", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.body)
+                    .focused($searchFocused)
+                if !search.isEmpty {
+                    Button { search = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .transition(.opacity)
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm + 2)
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .animation(DS.Animation.quick, value: search.isEmpty)
+
+            Divider()
+
+            // Count badge
+            if !linkItems.isEmpty {
+                HStack {
+                    Text("\(linkItems.count) \(linkLabel.lowercased())\(linkItems.count == 1 ? "" : "s")")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Spacer()
+                }
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.top, DS.Spacing.sm)
+                .padding(.bottom, DS.Spacing.xs)
+            }
+
+            if linkItems.isEmpty {
+                VStack(spacing: DS.Spacing.md) {
+                    Image(systemName: linkIcon)
+                        .font(.system(size: 28, weight: .light))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    VStack(spacing: DS.Spacing.xs) {
+                        Text(search.isEmpty ? "No \(linkLabel.lowercased())s yet" : "No results for \"\(search)\"")
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        if !search.isEmpty {
+                            Button { search = "" } label: {
+                                Text("Clear search")
+                                    .font(DS.Font.caption)
+                                    .foregroundStyle(DS.Colors.accent)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(linkItems, id: \.0) { (_, title, subtitle, url, isArchived) in
+                            DeepLinkPickerRow(title: title, subtitle: subtitle, url: url, icon: linkIcon, isArchived: isArchived, onSelect: onSelect)
+                        }
+                    }
+                    .padding(.bottom, DS.Spacing.sm)
+                }
+            }
+        }
+        .frame(width: 420, height: 480)
+        .background(DS.Colors.surface)
+        .onAppear { searchFocused = true }
+    }
+
+    private func knowledgeURL(for entry: KnowledgeEntry) -> URL {
+        var comps = URLComponents()
+        comps.scheme = "deepthink"
+        comps.host = "knowledge"
+        comps.queryItems = [URLQueryItem(name: "id", value: entry.id)]
+        return comps.url ?? URL(string: "deepthink://knowledge")!
+    }
+
+    private var linkItems: [(String, String, String, URL, Bool)] {
+        switch type {
+        case "task":
+            return filteredTasks.map { ($0.id.uuidString, $0.title, $0.status.rawValue, URL(string: "deepthink://task/\($0.id.uuidString)")!, $0.isArchived) }
+        case "note":
+            return filteredNotes.map { ($0.id.uuidString, $0.title, $0.modifiedAt.relativeFormatted, URL(string: "deepthink://note/\($0.id.uuidString)")!, $0.isArchived) }
+        case "reminder":
+            return filteredReminders.map { r in
+                let subtitle = r.reminderDate.map { $0.shortFormatted } ?? (r.isCompleted ? "Completed" : "No date")
+                return (r.id.uuidString, r.title, subtitle, URL(string: "deepthink://reminder/\(r.id.uuidString)")!, false)
+            }
+        case "project":
+            return filteredProjects.map { ($0.id.uuidString, $0.name, "\($0.tasks.filter { !$0.isArchived }.count) tasks", URL(string: "deepthink://project/\($0.id.uuidString)")!, $0.isArchived) }
+        case "knowledge":
+            return filteredKnowledge.map { ($0.id, $0.title, $0.source, knowledgeURL(for: $0), false) }
+        default:
+            return []
+        }
+    }
+
+    private var linkLabel: String {
+        switch type {
+        case "task":      "Task"
+        case "note":      "Note"
+        case "reminder":  "Reminder"
+        case "project":   "Project"
+        case "knowledge": "Knowledge"
+        default:          "Item"
+        }
+    }
+
+    private var linkIcon: String {
+        switch type {
+        case "task":      "checkmark.circle"
+        case "note":      "doc.text"
+        case "reminder":  "bell"
+        case "project":   "folder"
+        case "knowledge": "brain"
+        default:          "link"
+        }
+    }
+}
+
+private struct DeepLinkPickerRow: View {
+    let title: String
+    let subtitle: String
+    let url: URL
+    let icon: String
+    let isArchived: Bool
+    let onSelect: (String, URL) -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button { onSelect(title, url) } label: {
+            HStack(spacing: DS.Spacing.md) {
+                // Icon badge with optional archive overlay
+                ZStack(alignment: .bottomTrailing) {
+                    Image(systemName: icon)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(isArchived ? DS.Colors.textTertiary : (isHovered ? DS.Colors.accent : DS.Colors.textSecondary))
+                        .frame(width: 32, height: 32)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+
+                    if isArchived {
+                        Image(systemName: "archivebox.fill")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(2)
+                            .background(DS.Colors.textTertiary, in: RoundedRectangle(cornerRadius: 3))
+                            .offset(x: 4, y: 4)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text(title.isEmpty ? "Untitled" : title)
+                        .font(DS.Font.body)
+                        .foregroundStyle(isArchived ? DS.Colors.textTertiary : DS.Colors.textPrimary)
+                        .lineLimit(1)
+                    HStack(spacing: DS.Spacing.xs) {
+                        if isArchived {
+                            Text("Archived")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        if !subtitle.isEmpty {
+                            if isArchived {
+                                Text("·")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            Text(subtitle)
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Image(systemName: isHovered ? "plus.circle.fill" : "plus.circle")
+                    .font(.system(size: DS.IconSize.md))
+                    .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textTertiary.opacity(0.4))
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }

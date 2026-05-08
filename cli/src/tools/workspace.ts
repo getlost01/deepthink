@@ -490,6 +490,140 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     },
   },
 
+  // ── Deeplink ──
+  {
+    name: "workspace_resolve_deeplink",
+    description:
+      "Resolve any deepthink:// URL to its full content. Use this when you encounter a deepthink:// link in a note or task and want to read the referenced item. Supports task, note, project, and reminder URLs.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: {
+          type: "string",
+          description: "A deepthink:// URL, e.g. deepthink://task/UUID-WITH-DASHES or deepthink://note/UUID",
+        },
+      },
+      required: ["url"],
+    },
+    execute: (p) => {
+      const url: string = p.url;
+      const match = url.match(/^deepthink:\/\/([^/?]+)\/?([^?]*)?(\?.*)?$/);
+      if (!match) throw new Error(`Invalid deepthink:// URL: ${url}`);
+
+      const type = match[1];
+      const rawUUID = match[2] ?? "";
+      const queryString = match[3] ?? "";
+
+      if (type === "knowledge") {
+        const params = new URLSearchParams(queryString.replace(/^\?/, ""));
+        const id = params.get("id") ?? rawUUID;
+        return {
+          type: "knowledge",
+          entryId: id,
+          note: "Use knowledge_search tool to find this entry's content",
+        };
+      }
+
+      const normalizedUUID = rawUUID.replace(/-/g, "").toUpperCase();
+
+      if (type === "task") {
+        const found = db.listTasks({ excludeArchived: false }).find((t) => t.id === normalizedUUID);
+        if (!found) throw new Error(`task not found for URL: ${url}`);
+        if (found.isArchived) return { ...found, _warning: "This task is archived" };
+        return found;
+      }
+      if (type === "note") {
+        const found = db.listNotes({ excludeArchived: false }).find((n) => n.id === normalizedUUID);
+        if (!found) throw new Error(`note not found for URL: ${url}`);
+        if (found.isArchived) return { ...found, _warning: "This note is archived" };
+        return found;
+      }
+      if (type === "project") {
+        const found = db.listProjects().find((p) => p.id === normalizedUUID);
+        if (!found) throw new Error(`project not found for URL: ${url}`);
+        return found;
+      }
+      if (type === "reminder") {
+        const found = db.listReminders({}).find((r) => r.id === normalizedUUID);
+        if (!found) throw new Error(`reminder not found for URL: ${url}`);
+        return found;
+      }
+
+      throw new Error(`Unsupported deepthink:// type "${type}" in URL: ${url}`);
+    },
+  },
+
+  // ── Batch Deeplink ──
+  {
+    name: "workspace_resolve_deeplinks",
+    description:
+      "Resolve multiple deepthink:// URLs at once. Returns a map of URL → resolved item (or error message). More efficient than calling workspace_resolve_deeplink in a loop.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        urls: {
+          type: "array",
+          items: { type: "string" },
+          description: "Array of deepthink:// URLs to resolve",
+        },
+      },
+      required: ["urls"],
+    },
+    execute: (p) => {
+      const urls: string[] = p.urls;
+      const results: Record<string, unknown> = {};
+      for (const url of urls) {
+        try {
+          const match = url.match(/^deepthink:\/\/([^/?]+)\/?([^?]*)?(\?.*)?$/);
+          if (!match) {
+            results[url] = { error: `Invalid deepthink:// URL: ${url}` };
+            continue;
+          }
+
+          const type = match[1];
+          const rawUUID = match[2] ?? "";
+          const queryString = match[3] ?? "";
+
+          if (type === "knowledge") {
+            const params = new URLSearchParams(queryString.replace(/^\?/, ""));
+            const id = params.get("id") ?? rawUUID;
+            results[url] = { type: "knowledge", entryId: id, note: "Use knowledge_search to find content" };
+            continue;
+          }
+
+          const normalizedUUID = rawUUID.replace(/-/g, "").toUpperCase();
+
+          if (type === "task") {
+            const found = db.listTasks({ excludeArchived: false }).find((t) => t.id === normalizedUUID);
+            results[url] = found
+              ? found.isArchived
+                ? { ...found, _warning: "This task is archived" }
+                : found
+              : { error: `task not found: ${url}` };
+          } else if (type === "note") {
+            const found = db.listNotes({ excludeArchived: false }).find((n) => n.id === normalizedUUID);
+            results[url] = found
+              ? found.isArchived
+                ? { ...found, _warning: "This note is archived" }
+                : found
+              : { error: `note not found: ${url}` };
+          } else if (type === "project") {
+            const found = db.listProjects().find((p) => p.id === normalizedUUID);
+            results[url] = found ?? { error: `project not found: ${url}` };
+          } else if (type === "reminder") {
+            const found = db.listReminders({}).find((r) => r.id === normalizedUUID);
+            results[url] = found ?? { error: `reminder not found: ${url}` };
+          } else {
+            results[url] = { error: `Unsupported type "${type}"` };
+          }
+        } catch (e: any) {
+          results[url] = { error: e.message };
+        }
+      }
+      return results;
+    },
+  },
+
   // ── Summary ──
   {
     name: "workspace_summary",

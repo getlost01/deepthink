@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ProjectDetailView: View {
     @Environment(AppState.self) private var appState
@@ -72,6 +72,7 @@ struct ProjectDetailView: View {
     private let minPaneRatio: CGFloat = 0.2
     @State private var showArchivedTasks = false
     @State private var showArchivedNotes = false
+    @State private var descriptionPreview = false
 
     @ViewBuilder
     private var projectOverview: some View {
@@ -89,12 +90,49 @@ struct ProjectDetailView: View {
                         .disabled(project.isArchived)
                 }
 
-                TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(3)
-                    .disabled(project.isArchived)
+                HStack(alignment: .top, spacing: DS.Spacing.xs) {
+                    if descriptionPreview {
+                        Group {
+                            if let attributed = try? AttributedString(
+                                markdown: project.summary,
+                                options: .init(interpretedSyntax: .full)
+                            ) {
+                                Text(attributed)
+                            } else {
+                                Text(project.summary)
+                            }
+                        }
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .environment(\.openURL, OpenURLAction { url in
+                            if url.scheme == "deepthink" {
+                                appState.handleDeepLink(url)
+                                return .handled
+                            }
+                            return .systemAction
+                        })
+                    } else {
+                        TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .lineLimit(3)
+                            .disabled(project.isArchived)
+                    }
+
+                    if !project.summary.isEmpty || descriptionPreview {
+                        Button {
+                            withAnimation(DS.Animation.quick) { descriptionPreview.toggle() }
+                        } label: {
+                            Image(systemName: descriptionPreview ? "pencil" : "eye")
+                                .font(.system(size: DS.IconSize.xs))
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        .buttonStyle(.plainPointer)
+                        .help(descriptionPreview ? "Edit description" : "Preview links")
+                    }
+                }
 
                 if !project.tasks.isEmpty {
                     let total = project.tasks.count
@@ -205,6 +243,7 @@ struct ProjectDetailView: View {
         .onChange(of: project.id) {
             showArchivedTasks = project.isArchived
             showArchivedNotes = project.isArchived
+            descriptionPreview = false
         }
         .onDisappear { appState.currentProjectName = nil }
     }

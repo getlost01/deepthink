@@ -81,8 +81,8 @@ final class SkillFileService {
         isExecuting = true
         defer { isExecuting = false }
 
-        let resolved = interpolate(skill.promptTemplate, with: context)
-        var system = skill.systemPrompt.isEmpty ? nil : interpolate(skill.systemPrompt, with: context)
+        let resolved = resolveRefs(in: interpolate(skill.promptTemplate, with: context), context: context)
+        var system = skill.systemPrompt.isEmpty ? nil : resolveRefs(in: interpolate(skill.systemPrompt, with: context), context: context)
 
         // Auto-inject relevant knowledge context into skill execution
         let input = context["input"] ?? resolved
@@ -116,6 +116,93 @@ final class SkillFileService {
             let key = String(template[keyRange]).trimmingCharacters(in: .whitespaces)
             let value = context[key] ?? ""
             result = result.replacingCharacters(in: range, with: value)
+        }
+        return result
+    }
+
+    private func levenshtein(_ a: String, _ b: String) -> Int {
+        let a = Array(a), b = Array(b)
+        guard !a.isEmpty && !b.isEmpty else { return max(a.count, b.count) }
+        var dp = Array(0...b.count)
+        for i in 1...a.count {
+            var prev = dp[0]
+            dp[0] = i
+            for j in 1...b.count {
+                let temp = dp[j]
+                dp[j] = a[i-1] == b[j-1] ? prev : 1 + min(prev, min(dp[j], dp[j-1]))
+                prev = temp
+            }
+        }
+        return dp[b.count]
+    }
+
+    private func resolveRefs(in template: String, context: [String: String]) -> String {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"@(note|task|reminder):([^\n@]+)"#,
+            options: .caseInsensitive
+        ) else { return template }
+
+        let nsTemplate = template as NSString
+        let matches = regex.matches(in: template, range: NSRange(location: 0, length: nsTemplate.length))
+        guard !matches.isEmpty else { return template }
+
+        var result = template
+        for match in matches.reversed() {
+            guard let fullRange = Range(match.range, in: template),
+                  let typeRange = Range(match.range(at: 1), in: template),
+                  let titleRange = Range(match.range(at: 2), in: template) else { continue }
+
+            let refType = String(template[typeRange]).lowercased()
+            let refTitle = String(template[titleRange]).trimmingCharacters(in: .whitespaces)
+
+            let replacement: String
+            let indexKey = "\(refType)s_index"
+
+            if let jsonString = context[indexKey],
+               let data = jsonString.data(using: .utf8),
+               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] {
+                let exact = array.first { ($0["title"] ?? "").lowercased() == refTitle.lowercased() }
+                let found: [String: String]?
+                if let e = exact {
+                    found = e
+                } else {
+                    let candidate = array.min { a, b in
+                        levenshtein((a["title"] ?? "").lowercased(), refTitle.lowercased()) <
+                        levenshtein((b["title"] ?? "").lowercased(), refTitle.lowercased())
+                    }
+                    let threshold = max(1, refTitle.count / 5)
+                    if let c = candidate, levenshtein((c["title"] ?? "").lowercased(), refTitle.lowercased()) <= threshold {
+                        found = c
+                    } else {
+                        found = nil
+                    }
+                }
+                let isFuzzy = exact == nil && found != nil
+                if let entry = found {
+                    let actualTitle = entry["title"] ?? refTitle
+                    let labelSuffix = isFuzzy ? " (matched \"\(refTitle)\")" : ""
+                    switch refType {
+                    case "note":
+                        let content = entry["content"] ?? ""
+                        replacement = "[Note: \"\(actualTitle)\"\(labelSuffix)]\n\(content)"
+                    case "task":
+                        let status = entry["status"] ?? ""
+                        let detail = entry["detail"] ?? ""
+                        replacement = "[Task: \"\(actualTitle)\"\(labelSuffix) (\(status))]\n\(detail)"
+                    case "reminder":
+                        let notes = entry["notes"] ?? ""
+                        replacement = "[Reminder: \"\(actualTitle)\"\(labelSuffix)]\n\(notes)"
+                    default:
+                        replacement = "[Ref: \"\(refTitle)\"]"
+                    }
+                } else {
+                    replacement = "@\(refType):\(refTitle) [not found]"
+                }
+            } else {
+                replacement = "@\(refType):\(refTitle) [not found]"
+            }
+
+            result = result.replacingCharacters(in: fullRange, with: replacement)
         }
         return result
     }

@@ -6,7 +6,9 @@ enum DS {
     enum Spacing {
         static let xxs: CGFloat = 2
         static let xs: CGFloat = 4
+        static let xs2: CGFloat = 6
         static let sm: CGFloat = 8
+        static let sm2: CGFloat = 10
         static let md: CGFloat = 12
         static let lg: CGFloat = 16
         static let xl: CGFloat = 24
@@ -113,7 +115,7 @@ enum DS {
 
 struct DSPageHeader<Trailing: View>: View {
     let title: String
-    @ViewBuilder @ViewBuilder let trailing: () -> Trailing
+    @ViewBuilder let trailing: () -> Trailing
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -511,7 +513,7 @@ struct DSArchiveButton: View {
                         .strokeBorder(isOn ? DS.Colors.accent.opacity(0.4) : (isHovered ? DS.Colors.borderHover : DS.Colors.border), lineWidth: 1)
                 )
                 .overlay(alignment: .topTrailing) {
-                    if !isEmpty {
+                    if count > 0 {
                         Text(count > 99 ? "99+" : "\(count)")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
@@ -1091,10 +1093,28 @@ struct DSCalendarPicker: View {
 
 import WebKit
 
+struct DeepLinkInsertRequest: Equatable {
+    let id = UUID()
+    let text: String
+    let url: URL
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 struct RichMarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isReadOnly: Bool = false
     var onContentSettled: (() -> Void)?
+    var onLinkClick: ((URL) -> Void)?
+    var onRequestLinkInsert: ((String) -> Void)?
+    var onWikiLinkClick: ((String) -> Void)?
+    var linkInsertRequest: DeepLinkInsertRequest?
+    var wikiLinks: [String: String] = [:]
+    var linkPreviews: [String: [String: String]] = [:]
+    var deadLinkUUIDs: Set<String> = []
+    var onRequestDeadLinkClean: (() -> Void)?
+    var cleanDeadLinksRequest: UUID?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1104,9 +1124,13 @@ struct RichMarkdownEditor: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "contentChanged")
         config.userContentController.add(context.coordinator, name: "editorReady")
+        config.userContentController.add(context.coordinator, name: "linkClicked")
+        config.userContentController.add(context.coordinator, name: "requestLinkInsert")
+        config.userContentController.add(context.coordinator, name: "wikiLinkClicked")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
+        webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
 
         if let htmlURL = Bundle.main.url(forResource: "editor", withExtension: "html") {
@@ -1117,17 +1141,50 @@ struct RichMarkdownEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.onLinkClick = onLinkClick
+        context.coordinator.onRequestLinkInsert = onRequestLinkInsert
+        context.coordinator.onWikiLinkClick = onWikiLinkClick
         context.coordinator.pendingText = text
         context.coordinator.pendingReadOnly = isReadOnly
         context.coordinator.pushIfReady()
+        if wikiLinks != context.coordinator.lastWikiLinks {
+            context.coordinator.lastWikiLinks = wikiLinks
+            context.coordinator.updateWikiLinks(wikiLinks)
+        }
+        if linkPreviews != context.coordinator.lastLinkPreviews {
+            context.coordinator.lastLinkPreviews = linkPreviews
+            context.coordinator.updateLinkPreviews(linkPreviews)
+        }
+        context.coordinator.onRequestDeadLinkClean = onRequestDeadLinkClean
+        if deadLinkUUIDs != context.coordinator.lastDeadLinkUUIDs {
+            context.coordinator.lastDeadLinkUUIDs = deadLinkUUIDs
+            context.coordinator.updateDeadLinks(deadLinkUUIDs)
+        }
+        if let req = cleanDeadLinksRequest, req != context.coordinator.lastCleanDeadLinksRequest {
+            context.coordinator.lastCleanDeadLinksRequest = req
+            context.coordinator.cleanDeadLinks()
+        }
+        if let req = linkInsertRequest, req != context.coordinator.lastInsertRequest {
+            context.coordinator.lastInsertRequest = req
+            context.coordinator.insertLink(text: req.text, url: req.url)
+        }
     }
 
-    class Coordinator: NSObject, WKScriptMessageHandler {
+    class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: RichMarkdownEditor
+        var onLinkClick: ((URL) -> Void)?
+        var onRequestLinkInsert: ((String) -> Void)?
+        var onWikiLinkClick: ((String) -> Void)?
         weak var webView: WKWebView?
         var isReady = false
         var pendingText: String?
         var pendingReadOnly: Bool = false
+        var lastInsertRequest: DeepLinkInsertRequest?
+        var lastWikiLinks: [String: String] = [:]
+        var lastLinkPreviews: [String: [String: String]] = [:]
+        var onRequestDeadLinkClean: (() -> Void)?
+        var lastDeadLinkUUIDs: Set<String> = []
+        var lastCleanDeadLinksRequest: UUID?
         private var isReceiving = false
         private var lastPushed: String?
         private var lastReadOnly: Bool?
@@ -1154,12 +1211,60 @@ struct RichMarkdownEditor: NSViewRepresentable {
             }
         }
 
+        func insertLink(text: String, url: URL) {
+            guard let data = try? JSONSerialization.data(withJSONObject: [text, url.absoluteString]),
+                  let json = String(data: data, encoding: .utf8) else { return }
+            webView?.evaluateJavaScript("window.insertDeepLink(...\(json))")
+        }
+
+        private func injectLinkInterceptor() {
+            let js = """
+            (function() {
+                if (window.__deepthinkLinkInterceptor) return;
+                window.__deepthinkLinkInterceptor = true;
+                document.addEventListener('click', function(e) {
+                    var a = e.target.closest('a[href]');
+                    if (a && a.href) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.webkit.messageHandlers.linkClicked.postMessage(a.href);
+                    }
+                }, true);
+            })();
+            """
+            webView?.evaluateJavaScript(js)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            if url.scheme == "file" || url.scheme == "about" {
+                decisionHandler(.allow)
+                return
+            }
+            decisionHandler(.cancel)
+            DispatchQueue.main.async {
+                if url.scheme == "deepthink" {
+                    self.onLinkClick?(url)
+                } else {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+        }
+
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             if message.name == "editorReady" {
                 isReady = true
                 hasSettled = false
                 pendingText = parent.text
                 pushIfReady()
+                injectLinkInterceptor()
             } else if message.name == "contentChanged", let md = message.body as? String {
                 isReceiving = true
                 lastPushed = md
@@ -1169,7 +1274,46 @@ struct RichMarkdownEditor: NSViewRepresentable {
                     hasSettled = true
                     DispatchQueue.main.async { self.parent.onContentSettled?() }
                 }
+            } else if message.name == "linkClicked", let urlStr = message.body as? String,
+                      let url = URL(string: urlStr)
+            {
+                DispatchQueue.main.async { self.onLinkClick?(url) }
+            } else if message.name == "requestLinkInsert", let type = message.body as? String {
+                DispatchQueue.main.async { self.onRequestLinkInsert?(type) }
+            } else if message.name == "wikiLinkClicked", let title = message.body as? String {
+                DispatchQueue.main.async { self.onWikiLinkClick?(title) }
             }
+        }
+
+        func updateWikiLinks(_ map: [String: String]) {
+            guard isReady, let webView else { return }
+            if let data = try? JSONSerialization.data(withJSONObject: map),
+               let json = String(data: data, encoding: .utf8)
+            {
+                webView.evaluateJavaScript("window.setWikiLinks(\(json))")
+            }
+        }
+
+        func updateLinkPreviews(_ map: [String: [String: String]]) {
+            guard isReady, let webView else { return }
+            if let data = try? JSONSerialization.data(withJSONObject: map),
+               let json = String(data: data, encoding: .utf8)
+            {
+                webView.evaluateJavaScript("window.setLinkPreviews(\(json))")
+            }
+        }
+
+        func updateDeadLinks(_ uuids: Set<String>) {
+            guard isReady, let webView else { return }
+            if let data = try? JSONSerialization.data(withJSONObject: Array(uuids)),
+               let json = String(data: data, encoding: .utf8)
+            {
+                webView.evaluateJavaScript("window.setDeadLinkUUIDs(\(json))")
+            }
+        }
+
+        func cleanDeadLinks() {
+            webView?.evaluateJavaScript("window.cleanDeadLinks()")
         }
     }
 }

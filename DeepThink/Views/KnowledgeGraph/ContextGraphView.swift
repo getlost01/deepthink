@@ -1,4 +1,12 @@
+import SwiftData
 import SwiftUI
+
+// MARK: - EdgeKind
+
+private enum EdgeKind: Equatable {
+    case semantic
+    case explicit
+}
 
 // MARK: - Node
 
@@ -21,6 +29,7 @@ private struct ContextEdge: Identifiable {
     let fromID: String
     let toID: String
     let weight: Double
+    var kind: EdgeKind = .semantic
 }
 
 // MARK: - Helpers
@@ -48,8 +57,13 @@ private func labelForSource(_ source: String) -> String {
 // MARK: - View
 
 struct ContextGraphView: View {
+    @Query private var noteLinks: [NoteLink]
+    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
+
     @State private var nodes: [ContextNode] = []
     @State private var edges: [ContextEdge] = []
+    @State private var showSemanticEdges = true
+    @State private var showExplicitEdges = true
 
     @State private var selectedNodeID: String?
     @State private var hoveredNodeID: String?
@@ -81,6 +95,8 @@ struct ContextGraphView: View {
     private let damping: CGFloat = 0.85
     private let maxSteps = 400
     private let idealEdgeLength: CGFloat = 160
+    private let idealExplicitEdgeLength: CGFloat = 100
+    private let explicitEdgeColor = Color(hue: 0.45, saturation: 0.65, brightness: 0.75).opacity(1)
 
     private var selectedNeighborIDs: Set<String> {
         guard let sel = selectedNodeID else { return [] }
@@ -105,9 +121,12 @@ struct ContextGraphView: View {
     }
 
     private var displayEdges: [ContextEdge] {
-        guard activeSourceFilter != nil else { return edges }
+        var result = edges
+        if !showSemanticEdges { result = result.filter { $0.kind != .semantic } }
+        if !showExplicitEdges { result = result.filter { $0.kind != .explicit } }
+        guard activeSourceFilter != nil else { return result }
         let ids = Set(displayNodes.map(\.id))
-        return edges.filter { ids.contains($0.fromID) && ids.contains($0.toID) }
+        return result.filter { ids.contains($0.fromID) && ids.contains($0.toID) }
     }
 
     var body: some View {
@@ -320,12 +339,52 @@ struct ContextGraphView: View {
 
                 Spacer()
 
+                // Edge type toggles
+                Divider().frame(height: 14)
+                let semanticCount = edges.count(where: { $0.kind == .semantic })
+                let explicitCount = edges.count(where: { $0.kind == .explicit })
+                Button {
+                    withAnimation(DS.Animation.quick) { showSemanticEdges.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Rectangle().fill(DS.Colors.accent.opacity(0.7)).frame(width: 12, height: 2)
+                        Text("Semantic (\(semanticCount))")
+                            .font(DS.Font.small)
+                            .foregroundStyle(showSemanticEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.vertical, 3)
+                    .background(showSemanticEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
+                    .opacity(showSemanticEdges ? 1 : 0.5)
+                }
+                .buttonStyle(.plainPointer)
+
+                Button {
+                    withAnimation(DS.Animation.quick) { showExplicitEdges.toggle() }
+                } label: {
+                    HStack(spacing: 4) {
+                        Rectangle().fill(explicitEdgeColor).frame(width: 12, height: 2)
+                        Text("Explicit (\(explicitCount))")
+                            .font(DS.Font.small)
+                            .foregroundStyle(showExplicitEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.vertical, 3)
+                    .background(showExplicitEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
+                    .opacity(showExplicitEdges ? 1 : 0.5)
+                }
+                .buttonStyle(.plainPointer)
+
+                Spacer()
+
                 if !queryScores.isEmpty {
                     Text("\(queryScores.count) match\(queryScores.count == 1 ? "" : "es")")
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.accent)
                 } else {
-                    Text("\(nodes.count) nodes · \(edges.count) edges")
+                    Text("\(nodes.count) nodes · \(semanticCount)S \(explicitCount)E edges")
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
@@ -398,6 +457,22 @@ struct ContextGraphView: View {
                     Circle().fill(colorForSource(key)).frame(width: 10, height: 10)
                     Text(label).font(DS.Font.caption).foregroundStyle(DS.Colors.textSecondary)
                 }
+            }
+
+            Divider()
+
+            Text("EDGES")
+                .font(DS.Font.micro)
+                .foregroundStyle(DS.Colors.textTertiary)
+            HStack(spacing: DS.Spacing.sm) {
+                Rectangle()
+                    .fill(LinearGradient(colors: [DS.Colors.accent.opacity(0.5), DS.Colors.accent], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: 22, height: 2)
+                Text("Semantic (TF-IDF similarity)").font(DS.Font.caption).foregroundStyle(DS.Colors.textSecondary)
+            }
+            HStack(spacing: DS.Spacing.sm) {
+                Rectangle().fill(explicitEdgeColor).frame(width: 22, height: 2)
+                Text("Explicit ([[wiki]] links)").font(DS.Font.caption).foregroundStyle(DS.Colors.textSecondary)
             }
 
             Divider()
@@ -537,23 +612,31 @@ struct ContextGraphView: View {
                     path.move(to: s.position)
                     path.addQuadCurve(to: t.position, control: control)
 
-                    let lineWidth = isHighlighted ? 2.5 : CGFloat(0.6 + edge.weight * 2.0)
-                    let strokeStyle = StrokeStyle(lineWidth: lineWidth, lineCap: .round)
-
-                    if isHighlighted {
-                        context.stroke(path, with: .color(DS.Colors.accent.opacity(0.18)), style: StrokeStyle(lineWidth: lineWidth + 6, lineCap: .round))
-                        context.stroke(path, with: .color(DS.Colors.accent.opacity(opacity)), style: strokeStyle)
+                    if edge.kind == .explicit {
+                        let lw: CGFloat = isHighlighted ? 3.0 : 2.0
+                        let op: Double = isHighlighted ? 1.0 : (selectedNodeID != nil && !isHighlighted ? 0.25 : (isQueryHit ? 0.9 : 0.7))
+                        if isHighlighted {
+                            context.stroke(path, with: .color(explicitEdgeColor.opacity(0.22)), style: StrokeStyle(lineWidth: lw + 7, lineCap: .round))
+                        }
+                        context.stroke(path, with: .color(explicitEdgeColor.opacity(op)), style: StrokeStyle(lineWidth: lw, lineCap: .round))
                     } else {
-                        let colorA = colorForSource(s.source)
-                        let colorB = colorForSource(t.source)
-                        context.stroke(
-                            path,
-                            with: .linearGradient(
-                                Gradient(colors: [colorA.opacity(opacity), colorB.opacity(opacity)]),
-                                startPoint: s.position, endPoint: t.position
-                            ),
-                            style: strokeStyle
-                        )
+                        let lineWidth = isHighlighted ? 2.5 : CGFloat(0.6 + edge.weight * 2.0)
+                        let strokeStyle = StrokeStyle(lineWidth: lineWidth, lineCap: .round)
+                        if isHighlighted {
+                            context.stroke(path, with: .color(DS.Colors.accent.opacity(0.18)), style: StrokeStyle(lineWidth: lineWidth + 6, lineCap: .round))
+                            context.stroke(path, with: .color(DS.Colors.accent.opacity(opacity)), style: strokeStyle)
+                        } else {
+                            let colorA = colorForSource(s.source)
+                            let colorB = colorForSource(t.source)
+                            context.stroke(
+                                path,
+                                with: .linearGradient(
+                                    Gradient(colors: [colorA.opacity(opacity), colorB.opacity(opacity)]),
+                                    startPoint: s.position, endPoint: t.position
+                                ),
+                                style: strokeStyle
+                            )
+                        }
                     }
                 }
             }
@@ -816,16 +899,23 @@ struct ContextGraphView: View {
                                 .font(DS.Font.micro)
                                 .foregroundStyle(DS.Colors.textTertiary)
                             ForEach(nodes.filter { neighbors.contains($0.id) }.sorted { lhs, rhs in
+                                let lkind = edges.first(where: { ($0.fromID == node.id && $0.toID == lhs.id) || ($0.toID == node.id && $0.fromID == lhs.id) })?
+                                    .kind ?? .semantic
+                                let rkind = edges.first(where: { ($0.fromID == node.id && $0.toID == rhs.id) || ($0.toID == node.id && $0.fromID == rhs.id) })?
+                                    .kind ?? .semantic
+                                if lkind != rkind { return lkind == .explicit }
                                 let lw = edges.first(where: { ($0.fromID == node.id && $0.toID == lhs.id) || ($0.toID == node.id && $0.fromID == lhs.id) })?
                                     .weight ?? 0
                                 let rw = edges.first(where: { ($0.fromID == node.id && $0.toID == rhs.id) || ($0.toID == node.id && $0.fromID == rhs.id) })?
                                     .weight ?? 0
                                 return lw > rw
                             }.prefix(10)) { n in
-                                let edgeWeight = edges.first(where: {
+                                let connEdge = edges.first(where: {
                                     ($0.fromID == node.id && $0.toID == n.id) ||
                                         ($0.toID == node.id && $0.fromID == n.id)
-                                })?.weight ?? 0
+                                })
+                                let edgeWeight = connEdge?.weight ?? 0
+                                let isExplicit = connEdge?.kind == .explicit
                                 Button {
                                     withAnimation(DS.Animation.quick) { selectedNodeID = n.id }
                                 } label: {
@@ -838,14 +928,27 @@ struct ContextGraphView: View {
                                             .foregroundStyle(DS.Colors.textSecondary)
                                             .lineLimit(1)
                                         Spacer()
-                                        Text(String(format: "%.0f%%", edgeWeight * 100))
-                                            .font(DS.Font.micro)
-                                            .foregroundStyle(DS.Colors.textTertiary)
-                                            .monospacedDigit()
+                                        if isExplicit {
+                                            Image(systemName: "link")
+                                                .font(.system(size: 8, weight: .semibold))
+                                                .foregroundStyle(explicitEdgeColor)
+                                        } else {
+                                            Text(String(format: "%.0f%%", edgeWeight * 100))
+                                                .font(DS.Font.micro)
+                                                .foregroundStyle(DS.Colors.textTertiary)
+                                                .monospacedDigit()
+                                        }
                                     }
                                     .padding(.vertical, 5)
                                     .padding(.horizontal, DS.Spacing.xs)
-                                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                    .background(
+                                        isExplicit ? explicitEdgeColor.opacity(0.08) : DS.Colors.fill,
+                                        in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                    )
+                                    .overlay(
+                                        isExplicit ? RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                            .strokeBorder(explicitEdgeColor.opacity(0.3), lineWidth: 1) : nil
+                                    )
                                 }
                                 .buttonStyle(.plainPointer)
                             }
@@ -897,6 +1000,8 @@ struct ContextGraphView: View {
         isBuilding = true
 
         let knowledgeEntries = KnowledgeService.shared.entries
+        let capturedLinks = noteLinks
+        let capturedNotes = allNotes
         DispatchQueue.global(qos: .userInitiated).async {
             let engine = ContextEngine.shared
             guard !knowledgeEntries.isEmpty else {
@@ -926,8 +1031,50 @@ struct ContextGraphView: View {
                 ))
             }
 
-            let newEdges = rawEdges.enumerated().map { i, e in
+            var newEdges = rawEdges.enumerated().map { i, e in
                 ContextEdge(id: "\(i)", fromID: e.0, toID: e.1, weight: e.2)
+            }
+
+            // Build explicit edges from wiki [[links]] via NoteLink index
+            let entryByTitle: [String: String] = Dictionary(
+                knowledgeEntries.map { ($0.title.lowercased(), $0.id) },
+                uniquingKeysWith: { first, _ in first }
+            )
+            let entryIDByNoteID: [UUID: String] = capturedNotes.reduce(into: [:]) { acc, note in
+                if let id = entryByTitle[note.title.lowercased()] { acc[note.id] = id }
+            }
+
+            var seenExplicit = Set<String>()
+            for link in capturedLinks {
+                guard let fromID = entryIDByNoteID[link.sourceNoteID],
+                      let toID = entryIDByNoteID[link.targetNoteID],
+                      fromID != toID else { continue }
+                let key = ([fromID, toID].sorted()).joined(separator: "|")
+                guard seenExplicit.insert(key).inserted else { continue }
+                let edgeID = "x_\(key)"
+                newEdges.append(ContextEdge(id: edgeID, fromID: fromID, toID: toID, weight: 1.0, kind: .explicit))
+
+                // Ensure both endpoint nodes exist even if below TF-IDF threshold
+                for (nodeID, entryID) in [(fromID, fromID), (toID, toID)] {
+                    if !newNodes.contains(where: { $0.id == nodeID }),
+                       let entry = knowledgeEntries.first(where: { $0.id == entryID }),
+                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID })
+                    {
+                        let angle = Double(idx) / Double(max(knowledgeEntries.count, 1)) * 2 * .pi
+                        let r = spread * CGFloat.random(in: 0.3...1.0)
+                        newNodes.append(ContextNode(
+                            id: entry.id, title: entry.title, source: entry.source,
+                            bucket: entry.bucket, tags: entry.tags,
+                            position: CGPoint(x: center.x + cos(angle) * r, y: center.y + sin(angle) * r),
+                            connectionCount: 0
+                        ))
+                    }
+                }
+            }
+            // Update connection counts for explicit edges
+            for edge in newEdges where edge.kind == .explicit {
+                if let i = newNodes.firstIndex(where: { $0.id == edge.fromID }) { newNodes[i].connectionCount += 1 }
+                if let i = newNodes.firstIndex(where: { $0.id == edge.toID }) { newNodes[i].connectionCount += 1 }
             }
 
             DispatchQueue.main.async {
@@ -980,7 +1127,7 @@ struct ContextGraphView: View {
             let dx = nodes[ti].position.x - nodes[si].position.x
             let dy = nodes[ti].position.y - nodes[si].position.y
             let dist = sqrt(dx * dx + dy * dy)
-            let targetLen = idealEdgeLength * CGFloat(1.0 - edge.weight * 0.4)
+            let targetLen = edge.kind == .explicit ? idealExplicitEdgeLength : idealEdgeLength * CGFloat(1.0 - edge.weight * 0.4)
             let force = attractionStrength * (dist - targetLen)
             let fx = dist > 0 ? force * dx / dist : 0
             let fy = dist > 0 ? force * dy / dist : 0

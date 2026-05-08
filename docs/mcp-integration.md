@@ -165,6 +165,15 @@ Output: project count, task counts by status, note count, knowledge stats, recen
 | `workspace_update_reminder` | Update reminder fields. |
 | `workspace_delete_reminder` | Delete a reminder permanently. |
 
+### Workspace — Deep Links (2 tools)
+
+| Tool | Description |
+|------|-------------|
+| `workspace_resolve_deeplink` | Resolve a single `deepthink://` URL to its full item content. Supports task, note, project, reminder. Returns archived warning if item is archived. |
+| `workspace_resolve_deeplinks` | Resolve multiple `deepthink://` URLs in one call. Returns a map of URL → item (or error). More efficient than looping `workspace_resolve_deeplink`. |
+
+**URL format:** `deepthink://type/UUID-WITH-DASHES` (task, note, project, reminder) or `deepthink://knowledge?id=<id>` (knowledge entries).
+
 ### Workspace — Summary (1 tool)
 
 | Tool | Description |

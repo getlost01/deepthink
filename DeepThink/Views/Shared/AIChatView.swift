@@ -7,6 +7,7 @@ struct AIChatView: View {
     @Query(filter: #Predicate<MCPServer> { $0.isEnabled }) private var activeServers: [MCPServer]
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
+    @Query private var reminders: [Reminder]
     @Query private var projects: [Project]
     @Query(sort: \Conversation.updatedAt, order: .reverse) private var conversations: [Conversation]
 
@@ -610,6 +611,22 @@ struct AIChatView: View {
             context["current_date"] = Date().formatted(date: .complete, time: .omitted)
             context["current_time"] = Date().formatted(date: .omitted, time: .shortened)
             if !appState.currentNoteTags.isEmpty { context["note_tags"] = appState.currentNoteTags.joined(separator: ", ") }
+
+            let notesJSON = notes.filter { !$0.isArchived }.prefix(50).map { ["title": $0.title, "content": String($0.content.prefix(300))] }
+            let tasksJSON = tasks.filter { !$0.isArchived }.prefix(50).map { [
+                "title": $0.title,
+                "status": $0.status.rawValue,
+                "detail": String($0.detail.prefix(200))
+            ] }
+            let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
+            if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
+               let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
+            {
+                context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
+                context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
+                context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
+            }
 
             let result = await skillService.execute(skill: skill, context: context)
             await MainActor.run {

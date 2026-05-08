@@ -15,7 +15,7 @@ Built with SwiftUI + SwiftData (native macOS app) and a Bun/TypeScript CLI. All 
 | **AI Agents** | Custom personas with knowledge scopes, model selection, and skill assignments |
 | **Skills & Rules** | Slash-command skills with template variables, context-aware rules with structured triggers |
 | **Quick Capture** | `Cmd+Shift+D` from any app — floating panel to capture notes, knowledge, or tasks |
-| **MCP Server** | 45-tool MCP server for Claude Code, Cursor, VS Code, and any MCP-compatible client |
+| **MCP Server** | 47-tool MCP server for Claude Code, Cursor, VS Code, and any MCP-compatible client |
 | **Terminal** | Built-in multi-tab terminal with AI output analysis |
 | **Command Palette** | `Cmd+K` quick access to all commands, navigation, and skills |
 | **Obsidian Import** | One-click vault import with wiki-link conversion and dedup |

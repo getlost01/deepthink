@@ -81,12 +81,18 @@ final class BacklinkService {
 
         return KnowledgeService.shared.entries.filter { entry in
             let entryTitleLower = entry.title.lowercased()
-            if note.content.lowercased().contains(entryTitleLower) && entryTitleLower.count > 4 { return true }
-            if entry.content.lowercased().contains(titleLower) && titleLower.count > 4 { return true }
+            if note.content.lowercased().contains(entryTitleLower), entryTitleLower.count > 4 { return true }
+            if entry.content.lowercased().contains(titleLower), titleLower.count > 4 { return true }
             let entryWords = Set(entry.tags.map { $0.lowercased() })
-            if !entryWords.isEmpty && !entryWords.intersection(contentWords).isEmpty { return true }
+            if !entryWords.isEmpty, !entryWords.intersection(contentWords).isEmpty { return true }
             return false
         }
+    }
+
+    func deepLinkBacklinks(forType type: String, id: UUID, in notes: [Note]) -> [Note] {
+        let uuidStr = id.uuidString.lowercased()
+        let pattern = "deepthink://\(type)/\(uuidStr)"
+        return notes.filter { $0.content.range(of: pattern, options: .caseInsensitive) != nil }
     }
 
     func notesLinkedTo(entry: KnowledgeEntry, notes: [Note]) -> [Note] {
@@ -94,14 +100,14 @@ final class BacklinkService {
         let entryTags = Set(entry.tags.map { $0.lowercased() })
 
         return notes.filter { note in
-            if note.content.lowercased().contains(entryTitleLower) && entryTitleLower.count > 4 { return true }
-            if entry.content.lowercased().contains(note.title.lowercased()) && note.title.count > 4 { return true }
+            if note.content.lowercased().contains(entryTitleLower), entryTitleLower.count > 4 { return true }
+            if entry.content.lowercased().contains(note.title.lowercased()), note.title.count > 4 { return true }
             let noteWords = Set(
                 note.content.lowercased()
                     .components(separatedBy: .whitespacesAndNewlines)
                     .filter { $0.count > 3 }
             )
-            if !entryTags.isEmpty && !entryTags.intersection(noteWords).isEmpty { return true }
+            if !entryTags.isEmpty, !entryTags.intersection(noteWords).isEmpty { return true }
             return false
         }
     }

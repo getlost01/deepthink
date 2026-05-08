@@ -17,9 +17,12 @@ struct MarkdownEditorWithToggle: View {
     var placeholder: String = "Start writing..."
     var onSave: (() -> Void)?
 
+    @Environment(AppState.self) private var appState
     @State private var mode: EditorMode = .rich
     @State private var lastSavedText: String = ""
     @State private var isDirty = false
+    @State private var linkPickerType: String?
+    @State private var linkInsertRequest: DeepLinkInsertRequest?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -86,12 +89,26 @@ struct MarkdownEditorWithToggle: View {
 
             switch mode {
             case .rich:
-                RichMarkdownEditor(text: $text, onContentSettled: {
-                    lastSavedText = text
-                    isDirty = false
-                })
+                RichMarkdownEditor(
+                    text: $text,
+                    onContentSettled: {
+                        lastSavedText = text
+                        isDirty = false
+                    },
+                    onLinkClick: { url in appState.handleDeepLink(url) },
+                    onRequestLinkInsert: { type in linkPickerType = type },
+                    linkInsertRequest: linkInsertRequest
+                )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {
+                    if let type = linkPickerType {
+                        DeepLinkPickerSheet(type: type, onSelect: { title, url in
+                            linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
+                            linkPickerType = nil
+                        }, onDismiss: { linkPickerType = nil })
+                    }
+                }
             case .raw:
                 RawMarkdownEditor(text: $text, placeholder: placeholder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

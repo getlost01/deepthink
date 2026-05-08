@@ -3,16 +3,48 @@ import SwiftUI
 
 struct TaskDetailView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
     @Bindable var task: TaskItem
     @Query private var projects: [Project]
+    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasksForScan: [TaskItem]
+    @Query private var allReminders: [Reminder]
     @State private var showCustomPoints = false
     @State private var customPointsText = ""
     @State private var showCalendar = false
     @State private var newSubtaskTitle = ""
+    @State private var linkPickerType: String?
+    @State private var linkInsertRequest: DeepLinkInsertRequest?
     @State private var showSubtasks = true
+    @State private var hasDeadLinks = false
+    @State private var deadLinkUUIDs: Set<String> = []
+    @State private var cleanDeadLinksRequest: UUID?
+    @State private var deadLinkTask: Task<Void, Never>?
+    @State private var showTaskBacklinks = false
+    @State private var hoveredSubtaskID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if hasDeadLinks {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.warning)
+                    Text("Contains broken links to deleted items")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Spacer()
+                    Button("Fix") { cleanDeadLinksRequest = UUID() }
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.warning)
+                        .buttonStyle(.plainPointer)
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.xs)
+                .frame(maxWidth: .infinity)
+                .background(DS.Colors.warning.opacity(0.08))
+            }
+
             if task.isArchived {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "archivebox.fill")
@@ -87,8 +119,8 @@ struct TaskDetailView: View {
                                 .foregroundStyle(task.dueDate == nil ? DS.Colors.textTertiary : dueDateColor)
                         }
                         .font(DS.Font.caption)
-                        .padding(.horizontal, DS.Spacing.sm + 2)
-                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .padding(.horizontal, DS.Spacing.sm2)
+                        .padding(.vertical, DS.Spacing.xs2)
                         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
@@ -184,11 +216,17 @@ struct TaskDetailView: View {
                                         .foregroundStyle(DS.Colors.textTertiary)
                                 }
                                 .buttonStyle(.plainPointer)
-                                .opacity(0.5)
+                                .opacity(hoveredSubtaskID == sub.id ? 1.0 : 0.0)
                             }
                             .padding(.horizontal, DS.Spacing.xl)
-                            .padding(.vertical, DS.Spacing.xs + 1)
-                            .pointerOnHover()
+                            .padding(.vertical, DS.Spacing.xs2)
+                            .background(hoveredSubtaskID == sub.id ? DS.Colors.fill : .clear)
+                            .contentShape(Rectangle())
+                            .onHover { isHovering in
+                                hoveredSubtaskID = isHovering ? sub.id : nil
+                                if isHovering { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                            }
+                            .animation(DS.Animation.quick, value: hoveredSubtaskID)
                         }
 
                         HStack(spacing: DS.Spacing.sm) {
@@ -204,7 +242,7 @@ struct TaskDetailView: View {
                                 }
                         }
                         .padding(.horizontal, DS.Spacing.xl)
-                        .padding(.vertical, DS.Spacing.xs + 1)
+                        .padding(.vertical, DS.Spacing.xs2)
                     }
                 }
 
@@ -214,16 +252,59 @@ struct TaskDetailView: View {
             .disabled(task.isArchived)
 
             // Rich markdown editor (toolbar is built-in)
-            RichMarkdownEditor(text: $task.detail, isReadOnly: task.isArchived)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            RichMarkdownEditor(
+                text: $task.detail,
+                isReadOnly: task.isArchived,
+                onLinkClick: { url in appState.handleDeepLink(url) },
+                onRequestLinkInsert: { type in linkPickerType = type },
+                linkInsertRequest: linkInsertRequest,
+                deadLinkUUIDs: deadLinkUUIDs,
+                onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
+                cleanDeadLinksRequest: cleanDeadLinksRequest
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {
+                if let type = linkPickerType {
+                    DeepLinkPickerSheet(type: type, onSelect: { title, url in
+                        linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
+                        linkPickerType = nil
+                    }, onDismiss: { linkPickerType = nil })
+                }
+            }
+
+            let taskBacklinks = BacklinkService.shared.deepLinkBacklinks(forType: "task", id: task.id, in: allNotes)
+            if !taskBacklinks.isEmpty {
+                Divider()
+                DeepLinkBacklinksPanel(
+                    backlinks: taskBacklinks,
+                    isExpanded: $showTaskBacklinks,
+                    onNavigate: { appState.navigateToNote($0) }
+                )
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: task.title) { task.modifiedAt = Date() }
-        .onChange(of: task.detail) { task.modifiedAt = Date() }
+        .onChange(of: task.detail) { task.modifiedAt = Date(); scheduleScanDeadLinks() }
         .onChange(of: task.statusRaw) { task.modifiedAt = Date() }
         .onChange(of: task.priorityRaw) { task.modifiedAt = Date() }
         .sheet(isPresented: $showCustomPoints) {
             CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
+        }
+        .onAppear { scheduleScanDeadLinks() }
+    }
+
+    private func scheduleScanDeadLinks() {
+        deadLinkTask?.cancel()
+        let content = task.detail
+        let tasks = allTasksForScan, notes = allNotes, reminders = allReminders
+        deadLinkTask = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            let dead = DeadLinkScanner.deadLinkUUIDs(in: content, tasks: tasks, notes: notes, reminders: reminders)
+            await MainActor.run {
+                deadLinkUUIDs = dead
+                hasDeadLinks = !dead.isEmpty
+            }
         }
     }
 
@@ -257,11 +338,74 @@ struct TaskDetailView: View {
                 Text(text)
             }
             .font(DS.Font.caption)
-            .padding(.horizontal, DS.Spacing.sm + 2)
-            .padding(.vertical, DS.Spacing.xs + 2)
+            .padding(.horizontal, DS.Spacing.sm2)
+            .padding(.vertical, DS.Spacing.xs2)
             .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
+    }
+}
+
+// MARK: - Deep Link Backlinks Panel
+
+private struct DeepLinkBacklinksPanel: View {
+    let backlinks: [Note]
+    @Binding var isExpanded: Bool
+    let onNavigate: (UUID) -> Void
+    @State private var isHeaderHovered = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button {
+                withAnimation(DS.Animation.quick) { isExpanded.toggle() }
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text("^[\(backlinks.count) note](inflect: true) references this task")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(isHeaderHovered ? DS.Colors.fill : .clear)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plainPointer)
+            .onHover { isHeaderHovered = $0 }
+            .animation(DS.Animation.quick, value: isHeaderHovered)
+
+            if isExpanded {
+                VStack(spacing: 0) {
+                    ForEach(backlinks) { note in
+                        Button { onNavigate(note.id) } label: {
+                            HStack(spacing: DS.Spacing.sm) {
+                                Image(systemName: "doc.text")
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.accent)
+                                Text(note.title.isEmpty ? "Untitled" : note.title)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textPrimary)
+                                    .lineLimit(1)
+                                Spacer()
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: DS.IconSize.xs))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            .padding(.horizontal, DS.Spacing.xl)
+                            .padding(.vertical, DS.Spacing.sm)
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+                .padding(.bottom, DS.Spacing.sm)
+            }
+        }
     }
 }
 
@@ -278,8 +422,10 @@ private struct CustomPointsSheet: View {
                 .font(DS.Font.heading)
 
             TextField("Enter points", text: $text)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .font(DS.Font.body)
                 .frame(width: 120)
+                .dsInputField()
                 .onSubmit { apply() }
 
             HStack(spacing: DS.Spacing.md) {

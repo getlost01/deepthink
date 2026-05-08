@@ -1,10 +1,21 @@
+import SwiftData
 import SwiftUI
 import UserNotifications
 
 struct ReminderDetailView: View {
+    @Environment(AppState.self) private var appState
     @Bindable var reminder: Reminder
+    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasksForScan: [TaskItem]
+    @Query private var allRemindersForScan: [Reminder]
     @State private var showCalendar = false
     @State private var showTimePicker = false
+    @State private var linkPickerType: String?
+    @State private var linkInsertRequest: DeepLinkInsertRequest?
+    @State private var hasDeadLinks = false
+    @State private var deadLinkUUIDs: Set<String> = []
+    @State private var cleanDeadLinksRequest: UUID?
+    @State private var deadLinkTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -45,8 +56,8 @@ struct ReminderDetailView: View {
                                 .foregroundStyle(reminder.reminderDate == nil ? DS.Colors.textTertiary : dateChipColor)
                         }
                         .font(DS.Font.caption)
-                        .padding(.horizontal, DS.Spacing.sm + 2)
-                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .padding(.horizontal, DS.Spacing.sm2)
+                        .padding(.vertical, DS.Spacing.xs2)
                         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                     .buttonStyle(.plainPointer)
@@ -88,8 +99,8 @@ struct ReminderDetailView: View {
                                     .foregroundStyle(dateChipColor)
                             }
                             .font(DS.Font.caption)
-                            .padding(.horizontal, DS.Spacing.sm + 2)
-                            .padding(.vertical, DS.Spacing.xs + 2)
+                            .padding(.horizontal, DS.Spacing.sm2)
+                            .padding(.vertical, DS.Spacing.xs2)
                             .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                         .buttonStyle(.plainPointer)
@@ -116,8 +127,8 @@ struct ReminderDetailView: View {
                                 .fontWeight(.medium)
                         }
                         .foregroundStyle(DS.Colors.danger)
-                        .padding(.horizontal, DS.Spacing.sm + 2)
-                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .padding(.horizontal, DS.Spacing.sm2)
+                        .padding(.vertical, DS.Spacing.xs2)
                         .background(DS.Colors.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                 }
@@ -128,8 +139,44 @@ struct ReminderDetailView: View {
             Divider()
                 .padding(.top, DS.Spacing.xs)
 
-            RichMarkdownEditor(text: $reminder.notes)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if hasDeadLinks {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: DS.IconSize.xs))
+                        .foregroundStyle(DS.Colors.warning)
+                    Text("Contains broken links to deleted items")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    Spacer()
+                    Button("Fix") { cleanDeadLinksRequest = UUID() }
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.warning)
+                        .buttonStyle(.plainPointer)
+                }
+                .padding(.horizontal, DS.Spacing.xl)
+                .padding(.vertical, DS.Spacing.xs)
+                .frame(maxWidth: .infinity)
+                .background(DS.Colors.warning.opacity(0.08))
+            }
+
+            RichMarkdownEditor(
+                text: $reminder.notes,
+                onLinkClick: { url in appState.handleDeepLink(url) },
+                onRequestLinkInsert: { type in linkPickerType = type },
+                linkInsertRequest: linkInsertRequest,
+                deadLinkUUIDs: deadLinkUUIDs,
+                onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
+                cleanDeadLinksRequest: cleanDeadLinksRequest
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {
+                if let type = linkPickerType {
+                    DeepLinkPickerSheet(type: type, onSelect: { title, url in
+                        linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
+                        linkPickerType = nil
+                    }, onDismiss: { linkPickerType = nil })
+                }
+            }
 
             Divider()
 
@@ -145,12 +192,28 @@ struct ReminderDetailView: View {
             .padding(.vertical, DS.Spacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: reminder.notes) { reminder.modifiedAt = Date() }
+        .onChange(of: reminder.notes) { reminder.modifiedAt = Date(); scheduleScanDeadLinks() }
+        .onAppear { scheduleScanDeadLinks() }
         .onChange(of: showCalendar) {
             if !showCalendar { scheduleNotification(for: reminder) }
         }
         .onChange(of: showTimePicker) {
             if !showTimePicker { scheduleNotification(for: reminder) }
+        }
+    }
+
+    private func scheduleScanDeadLinks() {
+        deadLinkTask?.cancel()
+        let content = reminder.notes
+        let tasks = allTasksForScan, notes = allNotes, reminders = allRemindersForScan
+        deadLinkTask = Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            let dead = DeadLinkScanner.deadLinkUUIDs(in: content, tasks: tasks, notes: notes, reminders: reminders)
+            await MainActor.run {
+                deadLinkUUIDs = dead
+                hasDeadLinks = !dead.isEmpty
+            }
         }
     }
 
@@ -276,9 +339,7 @@ private struct ReminderTimePicker: View {
                 Button("Cancel") {
                     isPresented = false
                 }
-                .buttonStyle(.plainPointer)
-                .foregroundStyle(DS.Colors.textSecondary)
-                .font(DS.Font.caption)
+                .buttonStyle(.dsSecondary)
 
                 Spacer()
 
@@ -286,10 +347,7 @@ private struct ReminderTimePicker: View {
                     date = editingDate
                     isPresented = false
                 }
-                .buttonStyle(.plainPointer)
-                .foregroundStyle(DS.Colors.accent)
-                .font(DS.Font.caption)
-                .fontWeight(.semibold)
+                .buttonStyle(.dsPrimary)
             }
         }
         .padding(DS.Spacing.lg)

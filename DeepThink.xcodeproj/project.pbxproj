@@ -39,6 +39,7 @@
 		4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B44CF060104523F7532E43C /* DeepThinkApp.swift */; };
 		4A07702CB750BA644FF75839 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 385A4FAAC692A38BD53EDF64 /* AppState.swift */; };
 		4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC2A1370697934F16E2AF9D /* BacklinkService.swift */; };
+		4A44D2165BB1380938DDE035 /* DeadLinkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBC3B2480798A45F27F3BG0E /* DeadLinkScanner.swift */; };
 		4C9E5BF9E3D4A5A093E9E96A /* RecentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56F7FB898D9E8C27B95F965A /* RecentView.swift */; };
 		512AFAF30803AD6957E45BA4 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 862B62F3DC17FE15D45C4581 /* TaskDetailView.swift */; };
 		52AF5F01C27FD134F747C7E5 /* KnowledgeBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677B7F9B25D16E6CB30F0AC1 /* KnowledgeBrowserView.swift */; };
@@ -208,6 +209,7 @@
 		D7A4EF57F552986078971D26 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DB17061789F454A1E30D7A79 /* CommandPaletteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandPaletteView.swift; sourceTree = "<group>"; };
 		DBC2A1370697934F16E2AF9D /* BacklinkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BacklinkService.swift; sourceTree = "<group>"; };
+		DBC3B2480798A45F27F3BG0E /* DeadLinkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadLinkScanner.swift; sourceTree = "<group>"; };
 		DC41E7D927C44C80FE488680 /* WorkspaceConformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceConformance.swift; sourceTree = "<group>"; };
 		DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSession.swift; sourceTree = "<group>"; };
 		E24730C11D122CF0AEB59686 /* AgentListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentListView.swift; sourceTree = "<group>"; };
@@ -362,6 +364,7 @@
 				15065D3E39A54A79BBA05D53 /* TaskNotificationService.swift */,
 				AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
+				DBC3B2480798A45F27F3BG0E /* DeadLinkScanner.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
 				7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */,
 				4812F0BAB761C0C2D9EC1324 /* ContextEngine.swift */,
@@ -698,6 +701,7 @@
 				4A07702CB750BA644FF75839 /* AppState.swift in Sources */,
 				9BE035FAA2EB384ECA8ACC03 /* AutomationView.swift in Sources */,
 				4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */,
+				4A44D2165BB1380938DDE035 /* DeadLinkScanner.swift in Sources */,
 				81D50A098EF35CD8F47578C3 /* ChatBubble.swift in Sources */,
 				C46E34B2FFBEC78E725C4F98 /* ChatComponents.swift in Sources */,
 				ADD2B6A0C5CDF057A6C73230 /* ChatHistorySidebar.swift in Sources */,
