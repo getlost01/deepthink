@@ -280,8 +280,7 @@ final class ClaudeService {
 
     private init() {
         if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
-           FileManager.default.isExecutableFile(atPath: saved)
-        {
+           FileManager.default.isExecutableFile(atPath: saved) {
             claudePath = saved
             customCLIPath = saved
         } else {
@@ -357,7 +356,7 @@ final class ClaudeService {
         let cache_creation_input_tokens: Int?
     }
 
-    func query(_ prompt: String, systemPrompt: String? = nil) async throws -> String {
+    func query(_ prompt: String, systemPrompt: String? = nil, model: String? = nil) async throws -> String {
         guard isAvailable else {
             await MainActor.run { lastErrorKind = .notInstalled }
             throw ClaudeError.notInstalled
@@ -366,7 +365,7 @@ final class ClaudeService {
         await MainActor.run { isProcessing = true; lastError = nil; lastErrorKind = nil }
 
         do {
-            let result = try await runCLI(prompt: prompt, systemPrompt: systemPrompt)
+            let result = try await runCLI(prompt: prompt, systemPrompt: systemPrompt, model: model)
             await MainActor.run { isProcessing = false }
             return result
         } catch {
@@ -379,7 +378,7 @@ final class ClaudeService {
         }
     }
 
-    private func runCLI(prompt: String, systemPrompt: String?, extraArgs: [String] = []) async throws -> String {
+    private func runCLI(prompt: String, systemPrompt: String?, model: String? = nil, extraArgs: [String] = []) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [claudePath] in
                 let storage = StorageService.shared
@@ -394,7 +393,7 @@ final class ClaudeService {
                     "json",
                     "--no-session-persistence",
                     "--model",
-                    ClaudeService.shared.fullModelID
+                    model ?? ClaudeService.shared.fullModelID
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -437,8 +436,7 @@ final class ClaudeService {
 
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
-                       let result = response.result
-                    {
+                       let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         let usage = response.usage
@@ -566,16 +564,14 @@ final class ClaudeService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                            {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String
-                                    {
+                                              let text = delta["text"] as? String {
                                         fullText += text
                                         onToken(text)
                                     }

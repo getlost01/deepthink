@@ -622,7 +622,8 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
+            {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -648,18 +649,19 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID)
+        {
             let recent = Array(prior.suffix(4))
-            return "# Conversation summary\n\(summary)\n\n# Recent\n\(compactMessages(recent))"
+            return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }
 
         if total > 4 {
             let older = Array(prior.prefix(total - 4))
             let recent = Array(prior.suffix(4))
-            return "# Earlier\n\(compactMessages(older))\n\n# Recent\n\(formatMessages(recent))"
+            return "<earlier_turns>\n\(compactMessages(older))\n</earlier_turns>\n\n<recent_turns>\n\(formatMessages(recent))\n</recent_turns>"
         }
 
-        return "# Conversation\n\(formatMessages(prior))"
+        return "<conversation>\n\(formatMessages(prior))\n</conversation>"
     }
 
     private func formatMessages(_ messages: [AIMessage]) -> String {
@@ -675,7 +677,7 @@ struct AIChatView: View {
     private func compactMessages(_ messages: [AIMessage]) -> String {
         messages.map { msg in
             let role = msg.role == .user ? "User" : "Assistant"
-            let limit = msg.role == .user ? 200 : 120
+            let limit = msg.role == .user ? 200 : 250
             return "\(role): \(compactText(msg.content, maxLen: limit))"
         }.joined(separator: "\n")
     }
@@ -717,6 +719,22 @@ struct AIChatView: View {
         return Self.workspaceKeywords.contains { lower.contains($0) }
     }
 
+    private static let followUpPhrases = [
+        "why", "how", "what do you mean", "tell me more", "elaborate", "clarify",
+        "explain", "can you", "what about", "and what", "so what", "but why",
+        "what if", "give me an example", "example", "expand", "more detail",
+        "i don't understand", "what's the difference", "compared to", "vs"
+    ]
+
+    private func isFollowUpQuery(_ text: String) -> Bool {
+        guard !appState.chatMessages.isEmpty else { return false }
+        let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.count < 80 {
+            if Self.followUpPhrases.contains(where: { lower.hasPrefix($0) || lower == $0 }) { return true }
+        }
+        return false
+    }
+
     private func ensureWorkspaceServer(in servers: [MCPServer]) -> [MCPServer] {
         if servers.contains(where: { $0.name == "DeepThink Workspace" }) { return servers }
         let wsServer = MCPServer(
@@ -751,13 +769,14 @@ struct AIChatView: View {
         appState.chatProcessingStartTime = Date()
 
         let isWorkspace = isWorkspaceRequest(text)
+        let isFollowUp = isFollowUpQuery(text)
         var servers = useMCP ? Array(activeServers) : []
         if isWorkspace { servers = ensureWorkspaceServer(in: servers) }
 
-        let ctx = smartWorkspaceContext(for: text)
+        let ctx = isFollowUp ? "" : smartWorkspaceContext(for: text)
         let projectScope = notes.first { $0.id == appState.selectedNoteID }?.project?.name
         let agentScope = selectedAgent?.knowledgeScope
-        let ragContext = KnowledgeService.shared.ragContext(for: text, projectScope: projectScope, agentScope: agentScope)
+        let ragContext = isFollowUp ? nil : KnowledgeService.shared.ragContext(for: text, projectScope: projectScope, agentScope: agentScope)
         let conversationHistory = buildConversationHistory(currentMessage: text)
 
         chatTask = Task {
@@ -794,8 +813,10 @@ struct AIChatView: View {
                     AgentFileService.shared.buildSystemPrompt(for: agent, query: text)
                 } else if isWorkspace {
                     "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
+                } else if isFollowUp {
+                    "You are DeepThink AI. The user is asking a follow-up question — use the conversation history above to answer directly and concisely. Do not re-introduce context already established. Use markdown formatting."
                 } else {
-                    "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and helpful. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
+                    "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and direct. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
                 }
 
                 if selectedAgent == nil, let rulesPrompt = activeRulesSystemPrompt() {
@@ -1027,7 +1048,11 @@ struct AIChatView: View {
 
     private func autoTitleConversation(_ conv: Conversation, userMessage: String, assistantMessage: String) async {
         let prompt = "Generate a 3-5 word title for this conversation. Output ONLY the title, nothing else.\n\nUser: \(userMessage.prefix(200))\nAssistant: \(assistantMessage.prefix(300))"
-        if let title = try? await ClaudeService.shared.query(prompt, systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.") {
+        if let title = try? await ClaudeService.shared.query(
+            prompt,
+            systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.",
+            model: "claude-haiku-4-5-20251001"
+        ) {
             let cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\"", with: "")
             if !cleaned.isEmpty, cleaned.count < 60 {
                 await MainActor.run {
@@ -1061,7 +1086,8 @@ struct AIChatView: View {
 
             guard let result = try? await ClaudeService.shared.query(
                 prompt,
-                systemPrompt: "Output exactly 3 short follow-up questions, one per line. Nothing else."
+                systemPrompt: "Output exactly 3 short follow-up questions, one per line. Nothing else.",
+                model: "claude-haiku-4-5-20251001"
             ) else { return }
 
             let suggestions = result
