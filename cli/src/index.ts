@@ -22,10 +22,10 @@ const sub = args[1];
 
 const p = (t: string) => console.log(t);
 const ok = (t: string) => console.log(`✓ ${t}`);
-const err = (t: string): never => {
+function err(t: string): never {
   console.error(`✗ ${t}`);
   process.exit(1);
-};
+}
 const flag = (f: string) => args.includes(f);
 const flagVal = (f: string) => {
   const i = args.indexOf(f);
@@ -555,15 +555,15 @@ function cmdTask() {
     if (!ref) err("usage: deepthink task show <id|name>");
     const t = db.getTask(ref);
     if (!t) err(`task not found: ${ref}`);
-    p(`#${t?.pk}  ${t?.title}`);
-    p(`  status:   ${t?.status}`);
-    p(`  priority: ${t?.priority}`);
-    if (t?.storyPoints) p(`  points:   ${t?.storyPoints}`);
-    if (t?.dueDate) p(`  due:      ${db.formatDate(t.dueDate)}`);
-    if (t?.projectName) p(`  project:  ${t?.projectName}`);
-    if (t?.detail) p(`  detail:   ${t?.detail}`);
-    p(`  created:  ${db.formatDate(t?.createdAt)}`);
-    p(`  modified: ${db.formatDate(t?.modifiedAt)}`);
+    p(`#${t.pk}  ${t.title}`);
+    p(`  status:   ${t.status}`);
+    p(`  priority: ${t.priority}`);
+    if (t.storyPoints) p(`  points:   ${t.storyPoints}`);
+    if (t.dueDate) p(`  due:      ${db.formatDate(t.dueDate)}`);
+    if (t.projectName) p(`  project:  ${t.projectName}`);
+    if (t.detail) p(`  detail:   ${t.detail}`);
+    p(`  created:  ${db.formatDate(t.createdAt)}`);
+    p(`  modified: ${db.formatDate(t.modifiedAt)}`);
     return;
   }
 
@@ -591,8 +591,8 @@ function cmdTask() {
     if (detail) fields.detail = detail;
     const project = flagVal("--project");
     if (project) fields.project = project;
-    db.updateTask(t?.pk, fields);
-    const updatedTask = db.getTask(t?.pk.toString());
+    db.updateTask(t.pk, fields);
+    const updatedTask = db.getTask(t.pk.toString());
     if (updatedTask)
       indexEntry({
         id: `task:${updatedTask.pk}`,
@@ -603,7 +603,7 @@ function cmdTask() {
         source: "task",
         importedAt: updatedTask.modifiedAt,
       });
-    ok(`task #${t?.pk} updated`);
+    ok(`task #${t.pk} updated`);
     return;
   }
 
@@ -612,8 +612,8 @@ function cmdTask() {
     if (!ref) err("usage: deepthink task done <id|name>");
     const t = db.getTask(ref);
     if (!t) err(`task not found: ${ref}`);
-    db.updateTask(t?.pk, { status: "Done" });
-    ok(`task #${t?.pk} done`);
+    db.updateTask(t.pk, { status: "Done" });
+    ok(`task #${t.pk} done`);
     return;
   }
 
@@ -622,8 +622,8 @@ function cmdTask() {
     if (!ref) err("usage: deepthink task delete <id|name>");
     const t = db.getTask(ref);
     if (!t) err(`task not found: ${ref}`);
-    db.deleteTask(t?.pk);
-    ok(`task #${t?.pk} deleted`);
+    db.deleteTask(t.pk);
+    ok(`task #${t.pk} deleted`);
     return;
   }
 
@@ -675,13 +675,13 @@ function cmdNote() {
     if (!ref) err("usage: deepthink note show <id|name>");
     const n = db.getNote(ref);
     if (!n) err(`note not found: ${ref}`);
-    p(`#${n?.pk}  ${n?.title}${n?.isPinned ? " (pinned)" : ""}`);
-    if (n?.projectName) p(`  project:  ${n?.projectName}`);
-    p(`  created:  ${db.formatDate(n?.createdAt)}`);
-    p(`  modified: ${db.formatDate(n?.modifiedAt)}`);
-    if (n?.content) {
+    p(`#${n.pk}  ${n.title}${n.isPinned ? " (pinned)" : ""}`);
+    if (n.projectName) p(`  project:  ${n.projectName}`);
+    p(`  created:  ${db.formatDate(n.createdAt)}`);
+    p(`  modified: ${db.formatDate(n.modifiedAt)}`);
+    if (n.content) {
       p("");
-      p(n?.content);
+      p(n.content);
     }
     return;
   }
@@ -704,8 +704,8 @@ function cmdNote() {
     if (flag("--unpinned")) fields.pinned = false;
     const project = flagVal("--project");
     if (project) fields.project = project;
-    db.updateNote(n?.pk, fields);
-    const updatedNote = db.getNote(n?.pk.toString());
+    db.updateNote(n.pk, fields);
+    const updatedNote = db.getNote(n.pk.toString());
     if (updatedNote)
       indexEntry({
         id: `note:${updatedNote.pk}`,
@@ -716,7 +716,7 @@ function cmdNote() {
         source: "note",
         importedAt: updatedNote.modifiedAt,
       });
-    ok(`note #${n?.pk} updated`);
+    ok(`note #${n.pk} updated`);
     return;
   }
 
@@ -725,8 +725,8 @@ function cmdNote() {
     if (!ref) err("usage: deepthink note delete <id|name>");
     const n = db.getNote(ref);
     if (!n) err(`note not found: ${ref}`);
-    db.deleteNote(n?.pk);
-    ok(`note #${n?.pk} deleted`);
+    db.deleteNote(n.pk);
+    ok(`note #${n.pk} deleted`);
     return;
   }
 
@@ -774,14 +774,14 @@ function cmdProject() {
     if (!ref) err("usage: deepthink project show <id|name>");
     const pr = db.getProject(ref);
     if (!pr) err(`project not found: ${ref}`);
-    p(`#${pr?.pk}  ${pr?.name}`);
-    if (pr?.summary) p(`  summary:  ${pr?.summary}`);
-    p(`  color:    ${pr?.color}`);
-    p(`  tasks:    ${pr?.taskCount}`);
-    p(`  notes:    ${pr?.noteCount}`);
-    p(`  archived: ${pr?.isArchived}`);
-    p(`  created:  ${db.formatDate(pr?.createdAt)}`);
-    p(`  modified: ${db.formatDate(pr?.modifiedAt)}`);
+    p(`#${pr.pk}  ${pr.name}`);
+    if (pr.summary) p(`  summary:  ${pr.summary}`);
+    p(`  color:    ${pr.color}`);
+    p(`  tasks:    ${pr.taskCount}`);
+    p(`  notes:    ${pr.noteCount}`);
+    p(`  archived: ${pr.isArchived}`);
+    p(`  created:  ${db.formatDate(pr.createdAt)}`);
+    p(`  modified: ${db.formatDate(pr.modifiedAt)}`);
     return;
   }
 
@@ -800,8 +800,8 @@ function cmdProject() {
     if (color) fields.color = color;
     if (flag("--archive")) fields.archived = true;
     if (flag("--unarchive")) fields.archived = false;
-    db.updateProject(pr?.pk, fields);
-    const updatedProj = db.getProject(pr?.pk.toString());
+    db.updateProject(pr.pk, fields);
+    const updatedProj = db.getProject(pr.pk.toString());
     if (updatedProj)
       indexEntry({
         id: `project:${updatedProj.pk}`,
@@ -812,7 +812,7 @@ function cmdProject() {
         source: "project",
         importedAt: updatedProj.modifiedAt,
       });
-    ok(`project #${pr?.pk} updated`);
+    ok(`project #${pr.pk} updated`);
     return;
   }
 
@@ -821,8 +821,8 @@ function cmdProject() {
     if (!ref) err("usage: deepthink project delete <id|name>");
     const pr = db.getProject(ref);
     if (!pr) err(`project not found: ${ref}`);
-    db.deleteProject(pr?.pk);
-    ok(`project #${pr?.pk} deleted`);
+    db.deleteProject(pr.pk);
+    ok(`project #${pr.pk} deleted`);
     return;
   }
 

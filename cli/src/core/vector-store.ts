@@ -76,8 +76,7 @@ const upsertSQL = `
 
 export function upsertChunk(chunk: VectorChunk): void {
   const db = getDB();
-  db.run(
-    upsertSQL,
+  db.run(upsertSQL, [
     chunk.id,
     chunk.entryId,
     chunk.entryType,
@@ -89,8 +88,8 @@ export function upsertChunk(chunk: VectorChunk): void {
     chunk.chunkIndex,
     chunk.totalChunks,
     chunk.contentHash,
-    chunk.embedding ? Buffer.from(chunk.embedding.buffer) : null
-  );
+    chunk.embedding ? Buffer.from(chunk.embedding.buffer) : null,
+  ]);
 }
 
 export function upsertChunks(chunks: VectorChunk[]): void {
