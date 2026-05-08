@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
@@ -29,8 +29,12 @@ struct ContentView: View {
 
                 Divider()
 
-                ContentRouter()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 0) {
+                    GlobalHeader()
+                    Divider()
+                    ContentRouter()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
             .overlay {
                 if appState.showCommandPalette {
@@ -40,6 +44,64 @@ struct ContentView: View {
             }
             .transition(.opacity)
         }
+    }
+}
+
+private struct GlobalHeader: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            navButton(icon: "chevron.left", enabled: appState.canGoBack) {
+                appState.navigateBack()
+            }
+            navButton(icon: "chevron.right", enabled: appState.canGoForward) {
+                appState.navigateForward()
+            }
+
+            Button { appState.toggleCommandPalette() } label: {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text("Quick Spotlight Search")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    HStack(spacing: 1) {
+                        Image(systemName: "command")
+                            .font(.system(size: 9, weight: .medium))
+                        Text("K")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.horizontal, DS.Spacing.xs)
+                    .padding(.vertical, 2)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .frame(height: 28)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+            }
+            .buttonStyle(.plainPointer)
+            .keyboardShortcut("k", modifiers: .command)
+
+            Spacer()
+        }
+        .frame(height: DS.Layout.toolbarHeight)
+        .padding(.horizontal, DS.Spacing.lg)
+        .background(DS.Colors.surface)
+    }
+
+    private func navButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        DSToolbarButton(
+            icon: icon,
+            color: enabled ? DS.Colors.textPrimary : DS.Colors.textTertiary,
+            size: DS.IconSize.xs,
+            action: { withAnimation(DS.Animation.standard) { action() } }
+        )
+        .disabled(!enabled)
     }
 }
 
@@ -74,29 +136,17 @@ struct ContentRouter: View {
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        Group {
-            switch appState.selectedSection {
-            case .recent:
-                RecentView()
-            case .workspace:
-                WorkspaceView()
-            case .knowledge:
-                KnowledgeView()
-            case .aiAssistant:
-                AIView()
-            case .reminders:
-                ReminderListView()
-            case .integrations:
-                IntegrationsView()
-            case .terminal:
-                DeepThinkTerminalView()
-            case .contextGraph:
-                ContextGraphView()
-            case .settings:
-                SettingsView()
-            case nil:
-                RecentView()
-            }
+        switch appState.selectedSection {
+        case .recent: RecentView()
+        case .workspace: WorkspaceView()
+        case .knowledge: KnowledgeView()
+        case .aiAssistant: AIView()
+        case .reminders: ReminderListView()
+        case .integrations: IntegrationsView()
+        case .terminal: DeepThinkTerminalView()
+        case .contextGraph: ContextGraphView()
+        case .settings: SettingsView()
+        case nil: RecentView()
         }
     }
 }

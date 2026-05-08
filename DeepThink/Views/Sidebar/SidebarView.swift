@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct SidebarView: View {
     @Environment(AppState.self) private var appState
@@ -34,15 +34,15 @@ struct SidebarView: View {
                         isSelected: appState.selectedSection == section,
                         isExpanded: isExpanded
                     ) {
-                        appState.selectedSection = section
+                        appState.navigate(to: section)
                     }
                 }
             }
             .padding(.horizontal, DS.Spacing.sm)
-            .padding(.top, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm)
 
             Divider()
-                .padding(.vertical, DS.Spacing.xs)
+                .padding(.bottom, DS.Spacing.xs)
 
             VStack(spacing: DS.Spacing.xs) {
                 ForEach(SidebarSection.mainSections) { section in
@@ -51,7 +51,7 @@ struct SidebarView: View {
                         isSelected: appState.selectedSection == section,
                         isExpanded: isExpanded
                     ) {
-                        appState.selectedSection = section
+                        appState.navigate(to: section)
                     }
                 }
             }
@@ -67,7 +67,7 @@ struct SidebarView: View {
                         isSelected: appState.selectedSection == section,
                         isExpanded: isExpanded
                     ) {
-                        appState.selectedSection = section
+                        appState.navigate(to: section)
                     }
                 }
             }
@@ -86,37 +86,6 @@ struct SidebarView: View {
             }
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.vertical, DS.Spacing.sm)
-
-            if isExpanded {
-                Button {
-                    appState.toggleCommandPalette()
-                } label: {
-                    HStack(spacing: DS.Spacing.sm) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "command")
-                                .font(.system(size: DS.IconSize.sm))
-                            Text("K")
-                                .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
-                        }
-                        .foregroundStyle(DS.Colors.textTertiary)
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, 3)
-                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                .strokeBorder(DS.Colors.border, lineWidth: 1)
-                        )
-
-                        Text("Spotlight")
-                            .font(DS.Font.caption)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                        Spacer()
-                    }
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
-                }
-                .buttonStyle(.plainPointer)
-            }
         }
         .frame(width: isExpanded ? DS.Layout.sidebarWidth : 52)
         .background(DS.Colors.surface)
