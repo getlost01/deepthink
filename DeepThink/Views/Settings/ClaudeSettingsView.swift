@@ -402,6 +402,54 @@ struct ClaudeSettingsView: View {
 
             Divider()
 
+            // Global /deepthink skill row
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
+                    .foregroundStyle(DS.Colors.knowledge)
+                    .frame(width: 20)
+                Text("Skill")
+                    .font(DS.Font.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                    .frame(width: 36, alignment: .leading)
+                Text("~/.claude/commands/deepthink.md")
+                    .font(DS.Font.monoSmall)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .lineLimit(1)
+                Spacer()
+                if mcp.isGlobalSkillInstalled {
+                    HStack(spacing: 3) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                        Text("Installed")
+                            .font(DS.Font.small)
+                    }
+                    .foregroundStyle(DS.Colors.success)
+                } else {
+                    Button {
+                        mcp.installGlobalSkill()
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: DS.IconSize.xs))
+                            Text("Install")
+                                .font(DS.Font.small)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(DS.Colors.onAccent)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+
+            Divider()
+
             // Global MCP registration row
             HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "globe")

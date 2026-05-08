@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import CryptoKit
 
 private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     weak var appState: AppState?
@@ -101,6 +102,7 @@ struct DeepThinkApp: App {
                     UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
                     registerCommands()
                     installCLI()
+                    MCPService.shared.installGlobalSkill()
                     installDefaultMCPServers(container: sharedModelContainer)
                     SkillFileService.shared.installDefaultSkills()
                     RuleFileService.shared.installDefaultRules()
@@ -477,6 +479,16 @@ struct DeepThinkApp: App {
         }
 
         guard let source = sourcePath else { return }
+
+        // Quick size check before loading binaries into memory
+        let sourceSize = (try? fm.attributesOfItem(atPath: source)[.size] as? Int) ?? -1
+        let destSize = (try? fm.attributesOfItem(atPath: installPath)[.size] as? Int) ?? -2
+        if sourceSize == destSize {
+            guard let sourceData = try? Data(contentsOf: URL(fileURLWithPath: source)),
+                  let destData = try? Data(contentsOf: URL(fileURLWithPath: installPath)),
+                  SHA256.hash(data: sourceData) != SHA256.hash(data: destData)
+            else { return }
+        }
 
         try? fm.removeItem(atPath: installPath)
         try? fm.copyItem(atPath: source, toPath: installPath)

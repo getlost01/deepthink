@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import SwiftData
 
@@ -13,14 +14,17 @@ final class MCPService {
     var isMCPInstalled = false
     var cliVersion: String?
     var mcpVersion: String?
+    var isGlobalSkillInstalled = false
 
     static let cliInstallPath = DeepThinkPaths.localBin + "/deepthink"
     static let mcpInstallPath = DeepThinkPaths.localBin + "/deepthink-mcp"
+    static let globalSkillPath = "\(NSHomeDirectory())/.claude/commands/deepthink.md"
 
     func checkGlobalMCPStatus() {
         let fm = FileManager.default
         isCLIInstalled = fm.isExecutableFile(atPath: Self.cliInstallPath)
         isMCPInstalled = fm.isExecutableFile(atPath: Self.mcpInstallPath)
+        isGlobalSkillInstalled = fm.fileExists(atPath: Self.globalSkillPath)
 
         if isCLIInstalled { fetchVersion(path: Self.cliInstallPath) { self.cliVersion = $0 } } else { cliVersion = nil }
         if isMCPInstalled { fetchVersion(path: Self.mcpInstallPath) { self.mcpVersion = $0 } } else { mcpVersion = nil }
@@ -68,6 +72,72 @@ final class MCPService {
             let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async { completion(version?.isEmpty == false ? version : nil) }
         }
+    }
+
+    func installGlobalSkill() {
+        DispatchQueue.global(qos: .utility).async {
+            self._installGlobalSkill()
+        }
+    }
+
+    private func _installGlobalSkill() {
+        let fm = FileManager.default
+        let skillURL = URL(fileURLWithPath: Self.globalSkillPath)
+        let commandsDir = skillURL.deletingLastPathComponent()
+        try? fm.createDirectory(at: commandsDir, withIntermediateDirectories: true)
+
+        let content = """
+        ---
+        description: DeepThink universal assistant. Single entry point for all DeepThink knowledge, tasks, notes, projects, and AI reasoning. Use /deepthink for any query, search, capture, summary, or workspace interaction — even when intent is vague.
+        ---
+
+        Route `$ARGUMENTS` to the best `mcp__deepthink__*` tool. When intent is clear, call directly. When ambiguous, call `mcp__deepthink__workspace_context` first to understand current state, then decide.
+
+        ## Route map
+
+        | Intent signals | Action | Tool |
+        |---|---|---|
+        | search / find / look for / do I have / any notes on / retrieve / show me / where is | list | `unified_search` |
+        | save / capture / remember / store / log / keep / write down / record / note this | create | `knowledge_capture` |
+        | context / background / brief me / catch me up / what do I know about | load | `knowledge_context` |
+        | tasks / todos / pending / action items / what's next / backlog / in progress | list | `workspace_list_tasks` |
+        | add task / new task / create task / remind me to do | create | `workspace_create_task` |
+        | notes / my notes / show notes / what did I write | list | `workspace_list_notes` |
+        | new note / create note / add note / jot down | create | `workspace_create_note` |
+        | projects / active projects / project status | list | `workspace_list_projects` |
+        | new project / create project | create | `workspace_create_project` |
+        | reminders / upcoming / what's scheduled | list | `workspace_list_reminders` |
+        | remind me / set reminder / don't forget | create | `workspace_create_reminder` |
+        | summary / overview / digest / status / what's going on / catch me up | summarize | `workspace_summary` |
+        | stats / how much / knowledge size / how many | stats | `knowledge_stats` |
+        | agents / my agents | list | `agent_list` |
+        | rules / my rules | list | `rule_list` |
+        | what / why / how / explain / analyze / compare / suggest / help me think / ideas | reason | `smart_query` |
+
+        ## When intent is unclear
+        1. Call `mcp__deepthink__workspace_context` — get current workspace state
+        2. Re-evaluate which tool fits given that context
+        3. Call `mcp__deepthink__smart_query` with both the user input and context as input
+
+        ## Multi-step
+        Chain calls for compound requests. "Search X then summarize" → `unified_search` → `smart_query` with results.
+
+        ## Output
+        Return tool result directly. No preamble. No tool explanation.
+
+        All tool names are prefixed `mcp__deepthink__` — e.g. `unified_search` → call `mcp__deepthink__unified_search`.
+        """
+
+        let newData = Data(content.utf8)
+        let newHash = SHA256.hash(data: newData).description
+        let existingHash = (try? Data(contentsOf: skillURL)).map { SHA256.hash(data: $0).description }
+
+        if existingHash != newHash {
+            try? newData.write(to: skillURL, options: .atomic)
+        }
+
+        let installed = fm.fileExists(atPath: Self.globalSkillPath)
+        DispatchQueue.main.async { self.isGlobalSkillInstalled = installed }
     }
 
     func registerGlobalMCP() {
