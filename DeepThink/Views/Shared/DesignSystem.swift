@@ -513,7 +513,7 @@ struct DSArchiveButton: View {
                         .strokeBorder(isOn ? DS.Colors.accent.opacity(0.4) : (isHovered ? DS.Colors.borderHover : DS.Colors.border), lineWidth: 1)
                 )
                 .overlay(alignment: .topTrailing) {
-                    if !isEmpty {
+                    if count > 0 {
                         Text(count > 99 ? "99+" : "\(count)")
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(.white)
@@ -1275,7 +1275,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
                     DispatchQueue.main.async { self.parent.onContentSettled?() }
                 }
             } else if message.name == "linkClicked", let urlStr = message.body as? String,
-                      let url = URL(string: urlStr) {
+                      let url = URL(string: urlStr)
+            {
                 DispatchQueue.main.async { self.onLinkClick?(url) }
             } else if message.name == "requestLinkInsert", let type = message.body as? String {
                 DispatchQueue.main.async { self.onRequestLinkInsert?(type) }
@@ -1287,7 +1288,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateWikiLinks(_ map: [String: String]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8) {
+               let json = String(data: data, encoding: .utf8)
+            {
                 webView.evaluateJavaScript("window.setWikiLinks(\(json))")
             }
         }
@@ -1295,7 +1297,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateLinkPreviews(_ map: [String: [String: String]]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8) {
+               let json = String(data: data, encoding: .utf8)
+            {
                 webView.evaluateJavaScript("window.setLinkPreviews(\(json))")
             }
         }
@@ -1303,7 +1306,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateDeadLinks(_ uuids: Set<String>) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: Array(uuids)),
-               let json = String(data: data, encoding: .utf8) {
+               let json = String(data: data, encoding: .utf8)
+            {
                 webView.evaluateJavaScript("window.setDeadLinkUUIDs(\(json))")
             }
         }
