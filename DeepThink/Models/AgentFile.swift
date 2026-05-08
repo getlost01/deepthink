@@ -1,7 +1,10 @@
 import Foundation
 
 struct AgentFile: Identifiable, Hashable {
-    var id: String { filePath.path }
+    var id: String {
+        filePath.path
+    }
+
     var name: String
     var role: String
     var icon: String
@@ -12,7 +15,9 @@ struct AgentFile: Identifiable, Hashable {
     var filePath: URL
     var isBuiltIn: Bool
 
-    var filename: String { filePath.lastPathComponent }
+    var filename: String {
+        filePath.lastPathComponent
+    }
 
     var modelDisplayName: String {
         guard let model else { return "Default" }

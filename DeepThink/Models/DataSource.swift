@@ -25,7 +25,7 @@ final class DataSource {
         icon: String? = nil
     ) {
         self.name = name
-        self.typeRaw = type.rawValue
+        typeRaw = type.rawValue
         self.path = path
         self.url = url
         self.scriptCommand = scriptCommand
@@ -46,7 +46,9 @@ enum DataSourceType: String, CaseIterable, Identifiable, Codable {
     case clipboard
     case rssFeed
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var displayName: String {
         switch self {

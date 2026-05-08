@@ -11,7 +11,7 @@ final class Tag {
     @Relationship(inverse: \TaskItem.tags) var tasks: [TaskItem] = []
 
     init(name: String, color: String = "#808080") {
-        self.id = UUID()
+        id = UUID()
         self.name = name
         self.color = color
     }

@@ -6,7 +6,9 @@ enum IntegrationsTab: String, CaseIterable, Identifiable {
     case skills = "Skills"
     case rules = "Rules"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {

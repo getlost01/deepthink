@@ -15,21 +15,21 @@ final class Project {
     @Relationship(inverse: \TaskItem.project) var tasks: [TaskItem] = []
 
     init(name: String, summary: String = "", color: String = "#007AFF") {
-        self.id = UUID()
+        id = UUID()
         self.name = name
         self.summary = summary
         self.color = color
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-        self.isArchived = false
+        createdAt = Date()
+        modifiedAt = Date()
+        isArchived = false
     }
 
     var openTaskCount: Int {
-        tasks.filter { !$0.isArchived && $0.status != .done && $0.status != .cancelled }.count
+        tasks.count(where: { !$0.isArchived && $0.status != .done && $0.status != .cancelled })
     }
 
     var completedTaskCount: Int {
-        tasks.filter { $0.status == .done }.count
+        tasks.count(where: { $0.status == .done })
     }
 
     var totalStoryPoints: Int {

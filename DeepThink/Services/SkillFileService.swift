@@ -122,14 +122,14 @@ final class SkillFileService {
 
     private func levenshtein(_ a: String, _ b: String) -> Int {
         let a = Array(a), b = Array(b)
-        guard !a.isEmpty && !b.isEmpty else { return max(a.count, b.count) }
+        guard !a.isEmpty, !b.isEmpty else { return max(a.count, b.count) }
         var dp = Array(0...b.count)
         for i in 1...a.count {
             var prev = dp[0]
             dp[0] = i
             for j in 1...b.count {
                 let temp = dp[j]
-                dp[j] = a[i-1] == b[j-1] ? prev : 1 + min(prev, min(dp[j], dp[j-1]))
+                dp[j] = a[i - 1] == b[j - 1] ? prev : 1 + min(prev, min(dp[j], dp[j - 1]))
                 prev = temp
             }
         }
@@ -168,7 +168,7 @@ final class SkillFileService {
                 } else {
                     let candidate = array.min { a, b in
                         levenshtein((a["title"] ?? "").lowercased(), refTitle.lowercased()) <
-                        levenshtein((b["title"] ?? "").lowercased(), refTitle.lowercased())
+                            levenshtein((b["title"] ?? "").lowercased(), refTitle.lowercased())
                     }
                     let threshold = max(1, refTitle.count / 5)
                     if let c = candidate, levenshtein((c["title"] ?? "").lowercased(), refTitle.lowercased()) <= threshold {

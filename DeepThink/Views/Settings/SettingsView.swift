@@ -1,11 +1,13 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case claude = "Claude"
     case general = "General"
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var icon: String {
         switch self {

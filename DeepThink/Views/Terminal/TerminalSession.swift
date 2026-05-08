@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import SwiftTerm
+import SwiftUI
 
 @Observable
 final class TerminalSession: Identifiable {
@@ -14,7 +14,7 @@ final class TerminalSession: Identifiable {
 
     init(title: String, directory: String? = nil) {
         self.title = title
-        self.currentDirectory = directory ?? NSHomeDirectory() + "/deepthink"
+        currentDirectory = directory ?? NSHomeDirectory() + "/deepthink"
     }
 
     func start() {

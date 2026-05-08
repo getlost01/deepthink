@@ -1,7 +1,10 @@
 import Foundation
 
 struct KnowledgeEntry: Identifiable, Hashable {
-    var id: String { filePath.path }
+    var id: String {
+        filePath.path
+    }
+
     var title: String
     var source: String
     var sourceURL: String?
@@ -14,13 +17,15 @@ struct KnowledgeEntry: Identifiable, Hashable {
 
     var sourceIcon: String {
         switch source {
-        case "url", "web": return "globe"
-        case "folder", "import": return "archivebox"
-        case "clipboard": return "doc.on.clipboard"
-        case "script": return "terminal"
-        case "mcp": return "puzzlepiece.extension"
-        case "manual": return "pencil"
-        default: return "doc.text"
+        case "url",
+             "web": "globe"
+        case "folder",
+             "import": "archivebox"
+        case "clipboard": "doc.on.clipboard"
+        case "script": "terminal"
+        case "mcp": "puzzlepiece.extension"
+        case "manual": "pencil"
+        default: "doc.text"
         }
     }
 

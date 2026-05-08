@@ -1,7 +1,10 @@
 import Foundation
 
 struct SkillFile: Identifiable, Hashable {
-    var id: String { filePath.path }
+    var id: String {
+        filePath.path
+    }
+
     var name: String
     var trigger: String
     var icon: String
@@ -15,7 +18,9 @@ struct SkillFile: Identifiable, Hashable {
     var knowledgeScope: [String] = []
     var command: String = ""
 
-    var filename: String { filePath.lastPathComponent }
+    var filename: String {
+        filePath.lastPathComponent
+    }
 
     var commandName: String {
         if !command.isEmpty { return command }
@@ -26,7 +31,10 @@ struct SkillFile: Identifiable, Hashable {
 }
 
 struct RuleFile: Identifiable, Hashable {
-    var id: String { filePath.path }
+    var id: String {
+        filePath.path
+    }
+
     var name: String
     var trigger: String
     var icon: String
@@ -37,5 +45,7 @@ struct RuleFile: Identifiable, Hashable {
     var priority: Int = 0
     var isDisabled: Bool = false
 
-    var filename: String { filePath.lastPathComponent }
+    var filename: String {
+        filePath.lastPathComponent
+    }
 }

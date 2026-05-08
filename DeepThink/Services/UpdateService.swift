@@ -1,6 +1,7 @@
 import Sparkle
 import SwiftUI
 
+@MainActor
 @Observable
 final class UpdateService {
     static let shared = UpdateService()

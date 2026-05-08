@@ -2,7 +2,7 @@
 
 A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge base — combined with Claude AI that has full context of everything you're working on. All data stays on your machine.
 
-> **Download:** [Latest Release →](https://github.com/aagam-headout/deepthink/releases/latest) · macOS 14+ · No account required
+> **Download:** [Latest Release →](https://github.com/aagam-headout/deepthink/releases/latest) — zip of the app (unsigned); first open: **Right-click → Open** · macOS 14+
 
 ---
 
@@ -27,12 +27,13 @@ A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge ba
 
 ## Installing
 
-### Option A — Download the DMG (recommended for most users)
+### Option A — Download from GitHub Releases (zip, unsigned)
 
-1. Download `DeepThink.dmg` from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
-2. Open the DMG and drag DeepThink to Applications
-3. Launch DeepThink — the app installs the CLI and MCP server automatically on first launch
-4. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
+1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
+2. Unzip and drag **DeepThink.app** to Applications
+3. First launch: **Right-click → Open** (macOS may show an unidentified developer warning)
+4. Launch DeepThink — the app installs the CLI and MCP server automatically on first launch
+5. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
 
 That's it. The AI chat is ready.
 
@@ -157,7 +158,7 @@ All data lives in `~/DeepThink/`. No iCloud, no backend.
 
 | Layer | Technology |
 |-------|-----------|
-| App | Swift 6 / SwiftUI / AppKit / macOS 14+ |
+| App | Swift 5 / SwiftUI / AppKit / macOS 14+ |
 | Persistence | SwiftData + SQLite (vectors) |
 | Embeddings | Apple NaturalLanguage framework (`NLEmbedding`) |
 | Terminal | [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) |

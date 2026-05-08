@@ -196,7 +196,7 @@ struct WelcomeView: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                     .tracking(1.2)
             } else {
-                Color.clear.frame(height: DS.Font.caption.size ?? 13)
+                Color.clear.frame(height: 13)
             }
         }
         .padding(.bottom, DS.Spacing.xxl)

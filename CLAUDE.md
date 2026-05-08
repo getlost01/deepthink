@@ -1,7 +1,7 @@
 # DeepThink Development Guide
 
 ## Tech Stack
-- **Language:** Swift 6 / SwiftUI
+- **Language:** Swift 5 / SwiftUI
 - **Platform:** macOS (AppKit + SwiftUI)
 - **Data:** SwiftData for persistence
 - **Terminal:** SwiftTerm for embedded terminal views

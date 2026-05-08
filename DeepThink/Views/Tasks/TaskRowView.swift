@@ -39,7 +39,7 @@ struct TaskRowView: View {
                     HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "list.bullet.indent")
                             .font(.system(size: DS.IconSize.xs))
-                        let done = task.subtasks.filter { $0.status == .done }.count
+                        let done = task.subtasks.count(where: { $0.status == .done })
                         Text("\(done)/\(task.subtasks.count)")
                             .font(DS.Font.small)
                     }

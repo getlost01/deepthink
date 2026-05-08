@@ -73,11 +73,13 @@ struct SlashCommandMenu: View {
         }
     }
 
-    var filteredCount: Int { filtered.count }
+    var filteredCount: Int {
+        filtered.count
+    }
 
     func selectedSkill() -> SkillFile? {
         let f = filtered
-        guard selectedIndex >= 0 && selectedIndex < f.count else { return f.first }
+        guard selectedIndex >= 0, selectedIndex < f.count else { return f.first }
         return f[selectedIndex]
     }
 }

@@ -15,12 +15,12 @@ final class Note {
     var tags: [Tag] = []
 
     init(title: String, content: String = "") {
-        self.id = UUID()
+        id = UUID()
         self.title = title
         self.content = content
-        self.createdAt = Date()
-        self.modifiedAt = Date()
-        self.isPinned = false
+        createdAt = Date()
+        modifiedAt = Date()
+        isPinned = false
     }
 
     var wordCount: Int {

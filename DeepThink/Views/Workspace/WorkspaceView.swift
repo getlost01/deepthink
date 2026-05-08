@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkspaceView: View {
     @Environment(AppState.self) private var appState
@@ -44,7 +44,6 @@ struct WorkspaceView: View {
 
     // MARK: - Projects
 
-    @ViewBuilder
     private var projectsContent: some View {
         ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             ProjectListView()

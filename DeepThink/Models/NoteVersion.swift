@@ -11,11 +11,11 @@ final class NoteVersion {
     var versionNumber: Int = 1
 
     init(note: Note, versionNumber: Int) {
-        self.id = UUID()
-        self.noteID = note.id
-        self.title = note.title
-        self.content = note.content
-        self.createdAt = Date()
+        id = UUID()
+        noteID = note.id
+        title = note.title
+        content = note.content
+        createdAt = Date()
         self.versionNumber = versionNumber
     }
 

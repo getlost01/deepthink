@@ -17,7 +17,9 @@ struct AIMessage: Identifiable {
     }
 
     enum Role {
-        case user, assistant, error
+        case user
+        case assistant
+        case error
     }
 }
 
@@ -29,7 +31,9 @@ struct TokenUsage {
     var costUSD: Double = 0
     var durationMs: Double = 0
 
-    var totalTokens: Int { inputTokens + outputTokens }
+    var totalTokens: Int {
+        inputTokens + outputTokens
+    }
 
     var formattedCost: String {
         costUSD < 0.01 ? String(format: "$%.4f", costUSD) : String(format: "$%.2f", costUSD)

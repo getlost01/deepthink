@@ -167,7 +167,8 @@ struct QuickCaptureView: View {
 
             HStack(spacing: DS.Spacing.sm) {
                 switch captureType {
-                case .note, .task:
+                case .note,
+                     .task:
                     projectChip
                 case .knowledge:
                     bucketChip
@@ -364,12 +365,17 @@ struct QuickCaptureView: View {
 // MARK: - Window Drag Handle
 
 private struct DragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> DragHandleView { DragHandleView() }
+    func makeNSView(context: Context) -> DragHandleView {
+        DragHandleView()
+    }
+
     func updateNSView(_ nsView: DragHandleView, context: Context) {}
 }
 
 private class DragHandleView: NSView {
-    override var mouseDownCanMoveWindow: Bool { true }
+    override var mouseDownCanMoveWindow: Bool {
+        true
+    }
 
     override func mouseDown(with event: NSEvent) {
         window?.performDrag(with: event)

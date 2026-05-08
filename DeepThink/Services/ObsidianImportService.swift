@@ -164,7 +164,8 @@ final class ObsidianImportService {
         options: ImportOptions
     ) throws -> ProcessResult {
         guard let data = fm.contents(atPath: fileURL.path),
-              let text = String(data: data, encoding: .utf8) else {
+              let text = String(data: data, encoding: .utf8)
+        else {
             throw ImportError.unreadable(fileURL.lastPathComponent)
         }
 
@@ -196,8 +197,8 @@ final class ObsidianImportService {
         // Title: from frontmatter or filename
         let title = existingFM["title"]
             ?? fileURL.deletingPathExtension().lastPathComponent
-                .replacingOccurrences(of: "_", with: " ")
-                .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
 
         // Dedup check
         if options.skipDuplicates {
@@ -216,11 +217,10 @@ final class ObsidianImportService {
             relativePath = ""
         }
 
-        let destDir: URL
-        if relativePath.isEmpty {
-            destDir = destBase
+        let destDir: URL = if relativePath.isEmpty {
+            destBase
         } else {
-            destDir = destBase.appendingPathComponent(relativePath)
+            destBase.appendingPathComponent(relativePath)
         }
         try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
 
@@ -349,7 +349,7 @@ final class ObsidianImportService {
             if inCodeBlock { continue }
 
             // Skip headings (# Title)
-            if trimmed.hasPrefix("#") && trimmed.contains(" ") {
+            if trimmed.hasPrefix("#"), trimmed.contains(" ") {
                 // Could be a heading, only extract tags that aren't at the start
                 let afterHeading = trimmed.drop(while: { $0 == "#" || $0 == " " })
                 extractTagsFromLine(String(afterHeading), into: &tags)
@@ -385,7 +385,7 @@ final class ObsidianImportService {
 
         var errorDescription: String? {
             switch self {
-            case .unreadable(let name): return "Could not read file: \(name)"
+            case let .unreadable(name): "Could not read file: \(name)"
             }
         }
     }

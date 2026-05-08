@@ -3,8 +3,13 @@ import SwiftData
 import SwiftUI
 
 final class QuickCapturePanel: NSPanel {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { false }
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        false
+    }
 }
 
 final class TransparentHostingView<Content: View>: NSHostingView<Content> {
@@ -13,7 +18,9 @@ final class TransparentHostingView<Content: View>: NSHostingView<Content> {
         window?.backgroundColor = .clear
     }
 
-    override var isOpaque: Bool { false }
+    override var isOpaque: Bool {
+        false
+    }
 }
 
 final class QuickCaptureWindowController: NSWindowController {
@@ -45,7 +52,10 @@ final class QuickCaptureWindowController: NSWindowController {
         }
     }
 
-    required init?(coder: NSCoder) { fatalError() }
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError()
+    }
 
     func show(with container: ModelContainer, appState: AppState) {
         guard NSApp.isActive else { return }

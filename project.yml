@@ -16,7 +16,7 @@ packages:
 
 settings:
   base:
-    SWIFT_VERSION: "6.0"
+    SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -34,21 +34,6 @@ targets:
       - package: SwiftTerm
       - package: Sparkle
         product: Sparkle
-    preBuildScripts:
-      - script: |
-          if which swiftformat > /dev/null; then
-            swiftformat "${SRCROOT}/DeepThink" --config "${SRCROOT}/.swiftformat"
-          else
-            echo "warning: SwiftFormat not installed — run 'brew install swiftformat'"
-          fi
-        name: SwiftFormat
-      - script: |
-          if which swiftlint > /dev/null; then
-            swiftlint lint --config "${SRCROOT}/.swiftlint.yml"
-          else
-            echo "warning: SwiftLint not installed — run 'brew install swiftlint'"
-          fi
-        name: SwiftLint
     postCompileScripts:
       - script: |
           CLI_SRC="${SRCROOT}/cli/out/deepthink"

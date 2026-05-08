@@ -8,7 +8,9 @@ struct ObsidianImportView: View {
     @State private var fileCount = 0
     @State private var totalSize: Int64 = 0
 
-    private var importService: ObsidianImportService { ObsidianImportService.shared }
+    private var importService: ObsidianImportService {
+        ObsidianImportService.shared
+    }
 
     var body: some View {
         VStack(spacing: 0) {

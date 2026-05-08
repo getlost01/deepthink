@@ -16,12 +16,12 @@ final class Reminder {
     var project: Project?
 
     init(title: String, notes: String = "", reminderDate: Date? = nil) {
-        self.id = UUID()
+        id = UUID()
         self.title = title
         self.notes = notes
         self.reminderDate = reminderDate
-        self.createdAt = Date()
-        self.modifiedAt = Date()
+        createdAt = Date()
+        modifiedAt = Date()
     }
 
     var isOverdue: Bool {

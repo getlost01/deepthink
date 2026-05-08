@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct ProjectInspectorView: View {
     @Environment(AppState.self) private var appState

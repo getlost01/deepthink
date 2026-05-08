@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct WorkspaceOverviewView: View {
     @Environment(AppState.self) private var appState
@@ -9,11 +9,11 @@ struct WorkspaceOverviewView: View {
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
 
     private var recentNotes: [Note] {
-        notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(5).map { $0 }
+        notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(5).map(\.self)
     }
 
     private var overdueTasks: [TaskItem] {
-        tasks.filter { $0.isOverdue }.sorted { ($0.dueDate ?? .distantPast) < ($1.dueDate ?? .distantPast) }
+        tasks.filter(\.isOverdue).sorted { ($0.dueDate ?? .distantPast) < ($1.dueDate ?? .distantPast) }
     }
 
     private var todayTasks: [TaskItem] {
@@ -29,17 +29,17 @@ struct WorkspaceOverviewView: View {
             .filter { $0.status != .done && $0.status != .cancelled && $0.parent == nil }
             .sorted { $0.modifiedAt > $1.modifiedAt }
             .prefix(5)
-            .map { $0 }
+            .map(\.self)
     }
 
     private var inProgressCount: Int {
-        tasks.filter { $0.status == .inProgress }.count
+        tasks.count(where: { $0.status == .inProgress })
     }
 
     private var completionRate: Double {
         let total = tasks.count
         guard total > 0 else { return 0 }
-        return Double(tasks.filter { $0.status == .done }.count) / Double(total)
+        return Double(tasks.count(where: { $0.status == .done })) / Double(total)
     }
 
     var body: some View {
@@ -314,7 +314,6 @@ struct WorkspaceOverviewView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    @ViewBuilder
     private func statCard(icon: String, label: String, count: Int, color: Color) -> some View {
         VStack(spacing: DS.Spacing.sm) {
             Image(systemName: icon)
@@ -406,7 +405,6 @@ struct WorkspaceOverviewView: View {
         .dsClickable()
     }
 
-    @ViewBuilder
     private func emptyCard(icon: String, text: String, hint: String? = nil) -> some View {
         VStack(spacing: DS.Spacing.sm) {
             HStack(spacing: DS.Spacing.md) {

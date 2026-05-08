@@ -236,14 +236,12 @@ struct AIChatView: View {
 
     // MARK: - Messages
 
-    @State private var claude = ClaudeService.shared
-
     private var chatMessages: some View {
         ZStack(alignment: .bottomTrailing) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                        if !claude.isAvailable {
+                        if !ClaudeService.shared.isAvailable {
                             ClaudeNotInstalledView()
                                 .padding(.top, 80)
                         } else if appState.chatMessages.isEmpty, !appState.isChatProcessing {

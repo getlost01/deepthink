@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct NoteVersionsView: View {
     let note: Note
@@ -86,7 +86,10 @@ struct NoteVersionsView: View {
 
                             Divider()
 
-                            if let attributed = try? AttributedString(markdown: version.content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+                            if let attributed = try? AttributedString(
+                                markdown: version.content,
+                                options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
+                            ) {
                                 Text(attributed)
                                     .font(DS.Font.body)
                                     .textSelection(.enabled)

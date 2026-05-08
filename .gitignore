@@ -39,3 +39,6 @@ editor-bundle/package-lock.json
 # Environment
 .env
 .env.*
+
+# Dist
+dist/

@@ -13,8 +13,8 @@ final class UsageSession {
     var durationMs: Double = 0
 
     init() {
-        self.id = UUID()
-        self.startDate = Date()
+        id = UUID()
+        startDate = Date()
     }
 }
 
@@ -32,11 +32,11 @@ final class Conversation {
     @Relationship(deleteRule: .cascade) var messages: [ChatMessage] = []
 
     init(title: String, agentName: String? = nil) {
-        self.id = UUID()
+        id = UUID()
         self.title = title
         self.agentName = agentName
-        self.createdAt = Date()
-        self.updatedAt = Date()
+        createdAt = Date()
+        updatedAt = Date()
     }
 
     var sortedMessages: [ChatMessage] {
@@ -47,7 +47,9 @@ final class Conversation {
         sortedMessages.last
     }
 
-    var messageCount: Int { messages.count }
+    var messageCount: Int {
+        messages.count
+    }
 }
 
 @Model
@@ -66,15 +68,23 @@ final class ChatMessage {
     var conversation: Conversation?
 
     init(role: String, content: String) {
-        self.id = UUID()
+        id = UUID()
         self.role = role
         self.content = content
-        self.timestamp = Date()
+        timestamp = Date()
     }
 
-    var isUser: Bool { role == "user" }
-    var isAssistant: Bool { role == "assistant" }
-    var isError: Bool { role == "error" }
+    var isUser: Bool {
+        role == "user"
+    }
+
+    var isAssistant: Bool {
+        role == "assistant"
+    }
+
+    var isError: Bool {
+        role == "error"
+    }
 
     var tokenUsage: TokenUsage? {
         guard inputTokens > 0 || outputTokens > 0 else { return nil }

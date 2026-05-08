@@ -15,15 +15,15 @@ final class MCPServer {
     var isCore: Bool = false
 
     init(name: String, command: String, args: String = "", envVars: String = "", category: String = "General", description: String = "", isCore: Bool = false) {
-        self.id = UUID()
+        id = UUID()
         self.name = name
         self.command = command
         self.args = args
         self.envVars = envVars
         self.category = category
-        self.serverDescription = description
-        self.isEnabled = true
-        self.addedAt = Date()
+        serverDescription = description
+        isEnabled = true
+        addedAt = Date()
         self.isCore = isCore
     }
 

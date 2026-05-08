@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UniformTypeIdentifiers
 
 struct KnowledgeBrowserView: View {
@@ -17,7 +17,9 @@ struct KnowledgeBrowserView: View {
     @State private var displayedCount = 20
 
     private let pageSize = 20
-    private var knowledge: KnowledgeService { KnowledgeService.shared }
+    private var knowledge: KnowledgeService {
+        KnowledgeService.shared
+    }
 
     private var filteredEntries: [KnowledgeEntry] {
         var results = knowledge.entries
@@ -99,9 +101,9 @@ struct KnowledgeBrowserView: View {
                             Label(bucket, systemImage: "cylinder.split.1x2").tag(bucket as String?)
                         }
                     } label: { EmptyView() }
-                    .pickerStyle(.menu)
-                    .font(DS.Font.caption)
-                    .fixedSize()
+                        .pickerStyle(.menu)
+                        .font(DS.Font.caption)
+                        .fixedSize()
 
                     if bucketFilter != nil {
                         Button {
@@ -131,7 +133,10 @@ struct KnowledgeBrowserView: View {
                     DSEmptyState(
                         icon: "brain",
                         title: knowledge.entries.isEmpty ? "Start Building Your Knowledge" : "No Matches",
-                        subtitle: knowledge.entries.isEmpty ? "Save articles, paste text, import files, or write things down. Everything here becomes context that AI can use to give you better answers." : "Try a different search term or clear the filter.",
+                        subtitle: knowledge.entries
+                            .isEmpty ?
+                            "Save articles, paste text, import files, or write things down. Everything here becomes context that AI can use to give you better answers." :
+                            "Try a different search term or clear the filter.",
                         hint: knowledge.entries.isEmpty ? "Try saving a web article you want to reference later" : nil,
                         action: knowledge.entries.isEmpty ? { showURLSheet = true } : nil,
                         actionTitle: "Save a Web Page"
@@ -401,10 +406,11 @@ struct KnowledgeDetailView: View {
     init(entry: KnowledgeEntry, onDelete: @escaping () -> Void) {
         self.entry = entry
         self.onDelete = onDelete
-        self._editableContent = State(initialValue: entry.content)
-        self._editableTitle = State(initialValue: entry.title)
-        self._activeEntry = State(initialValue: entry)
+        _editableContent = State(initialValue: entry.content)
+        _editableTitle = State(initialValue: entry.title)
+        _activeEntry = State(initialValue: entry)
     }
+
     @State private var showCopied = false
     @State private var showLinkedPopover = false
 
@@ -621,7 +627,9 @@ struct KnowledgeDetailView: View {
             (try? String(contentsOf: filePath, encoding: .utf8)) ?? ""
         )
         var md = "---\n"
-        for (key, value) in frontmatter { md += "\(key): \(value)\n" }
+        for (key, value) in frontmatter {
+            md += "\(key): \(value)\n"
+        }
         md += "---\n\n\(editableContent)"
         try? md.write(to: filePath, atomically: true, encoding: .utf8)
         KnowledgeService.shared.reload()
@@ -732,7 +740,10 @@ struct URLScrapeSheet: View {
                     .foregroundStyle(DS.Colors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
-                    .background(urlText.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .background(
+                        urlText.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        in: RoundedRectangle(cornerRadius: DS.Radius.md)
+                    )
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(urlText.isEmpty || isScraping)
@@ -766,7 +777,9 @@ struct NewKnowledgeSheet: View {
     @State private var tags = ""
     @State private var selectedBucket = "General"
 
-    private var knowledge: KnowledgeService { KnowledgeService.shared }
+    private var knowledge: KnowledgeService {
+        KnowledgeService.shared
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -785,7 +798,10 @@ struct NewKnowledgeSheet: View {
                         .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.sm)
-                        .background(title.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(
+                            title.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                            in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        )
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(title.isEmpty)
@@ -882,7 +898,10 @@ struct ScriptRunSheet: View {
                     .foregroundStyle(DS.Colors.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
-                    .background(command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .background(
+                        command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        in: RoundedRectangle(cornerRadius: DS.Radius.md)
+                    )
                 }
                 .buttonStyle(.plainPointer)
                 .disabled(command.isEmpty || isRunning)

@@ -13,8 +13,13 @@ struct AllNotesView: View {
     @State private var showDeleteConfirm = false
     @State private var showArchived = false
 
-    private var pinnedNotes: [Note] { filteredNotes.filter { $0.isPinned } }
-    private var unpinnedNotes: [Note] { filteredNotes.filter { !$0.isPinned } }
+    private var pinnedNotes: [Note] {
+        filteredNotes.filter(\.isPinned)
+    }
+
+    private var unpinnedNotes: [Note] {
+        filteredNotes.filter { !$0.isPinned }
+    }
 
     private var filteredNotes: [Note] {
         var result = notes.filter { showArchived ? $0.isArchived : !$0.isArchived }
@@ -26,7 +31,7 @@ struct AllNotesView: View {
         if !searchText.isEmpty {
             result = result.filter {
                 $0.title.localizedCaseInsensitiveContains(searchText) ||
-                $0.content.localizedCaseInsensitiveContains(searchText)
+                    $0.content.localizedCaseInsensitiveContains(searchText)
             }
         }
 
@@ -44,7 +49,7 @@ struct AllNotesView: View {
                 VStack(spacing: DS.Spacing.sm) {
                     HStack(spacing: DS.Spacing.sm) {
                         DSSearchField(text: $searchText, placeholder: "Search notes...")
-                        DSArchiveButton(isOn: showArchived, count: notes.filter { $0.isArchived }.count) { showArchived.toggle() }
+                        DSArchiveButton(isOn: showArchived, count: notes.count(where: { $0.isArchived })) { showArchived.toggle() }
                     }
 
                     HStack {
@@ -54,9 +59,9 @@ struct AllNotesView: View {
                                 Text(project.name).tag(project.id as UUID?)
                             }
                         } label: { EmptyView() }
-                        .pickerStyle(.menu)
-                        .font(DS.Font.caption)
-                        .fixedSize()
+                            .pickerStyle(.menu)
+                            .font(DS.Font.caption)
+                            .fixedSize()
 
                         Spacer()
                     }
@@ -69,7 +74,9 @@ struct AllNotesView: View {
                     DSEmptyState(
                         icon: "doc.text",
                         title: "No Notes Yet",
-                        subtitle: searchText.isEmpty ? "Notes are where you capture ideas, meeting summaries, plans, or anything you want to remember." : "No notes match your search.",
+                        subtitle: searchText
+                            .isEmpty ? "Notes are where you capture ideas, meeting summaries, plans, or anything you want to remember." :
+                            "No notes match your search.",
                         hint: searchText.isEmpty ? "Try creating a note for your next meeting or idea" : nil
                     )
                 } else {
@@ -183,7 +190,6 @@ struct AllNotesView: View {
         modelContext.delete(note)
     }
 
-    @ViewBuilder
     private func noteRow(_ note: Note) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             if note.isPinned {

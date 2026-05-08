@@ -90,9 +90,13 @@ final class ArchiveService {
     static func archiveProjectTasks(_ project: Project, context: ModelContext) {
         for task in project.tasks {
             task.isArchived = true
-            for subtask in task.subtasks { subtask.isArchived = true }
+            for subtask in task.subtasks {
+                subtask.isArchived = true
+            }
         }
-        for note in project.notes { note.isArchived = true }
+        for note in project.notes {
+            note.isArchived = true
+        }
         try? context.save()
     }
 
@@ -114,7 +118,9 @@ final class ArchiveService {
                 }
             }
         }
-        for note in project.notes { note.isArchived = false }
+        for note in project.notes {
+            note.isArchived = false
+        }
         try? context.save()
     }
 }

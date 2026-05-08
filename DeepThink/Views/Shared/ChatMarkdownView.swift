@@ -290,7 +290,11 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             }
         }
 
-        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
             if navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url {
                 NSWorkspace.shared.open(url)
                 decisionHandler(.cancel)

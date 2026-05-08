@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 import UserNotifications
 
 private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
@@ -73,7 +73,20 @@ struct DeepThinkApp: App {
         BackupService.shared.applyPendingRestoreIfNeeded()
         StorageService.shared.ensureDirectoryStructure()
 
-        let schema = Schema([Note.self, TaskItem.self, Project.self, Tag.self, NoteVersion.self, NoteLink.self, MCPServer.self, DataSource.self, Conversation.self, ChatMessage.self, Reminder.self, UsageSession.self])
+        let schema = Schema([
+            Note.self,
+            TaskItem.self,
+            Project.self,
+            Tag.self,
+            NoteVersion.self,
+            NoteLink.self,
+            MCPServer.self,
+            DataSource.self,
+            Conversation.self,
+            ChatMessage.self,
+            Reminder.self,
+            UsageSession.self
+        ])
         let config = ModelConfiguration(
             schema: schema,
             url: StorageService.shared.storeURL,
@@ -176,7 +189,6 @@ struct DeepThinkApp: App {
                     NotificationCenter.default.post(name: .createNewReminder, object: nil)
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-
             }
 
             CommandGroup(after: .toolbar) {
@@ -413,12 +425,27 @@ struct DeepThinkApp: App {
                 context.insert(core)
 
                 let defaults: [(String, String, String, String, String)] = [
-                    ("Web Search", "npx", "-y @anthropic-ai/mcp-server-fetch", "Search",
-                     "Fetch and read web pages — capture articles, docs, and research into your knowledge base"),
-                    ("Filesystem", "npx", "-y @modelcontextprotocol/server-filesystem ~/Documents ~/Desktop", "Files",
-                     "Read and search local files — import documents, notes, and data from your filesystem"),
-                    ("Memory", "npx", "-y @modelcontextprotocol/server-memory", "Knowledge",
-                     "Persistent memory for AI — remembers context across conversations")
+                    (
+                        "Web Search",
+                        "npx",
+                        "-y @anthropic-ai/mcp-server-fetch",
+                        "Search",
+                        "Fetch and read web pages — capture articles, docs, and research into your knowledge base"
+                    ),
+                    (
+                        "Filesystem",
+                        "npx",
+                        "-y @modelcontextprotocol/server-filesystem ~/Documents ~/Desktop",
+                        "Files",
+                        "Read and search local files — import documents, notes, and data from your filesystem"
+                    ),
+                    (
+                        "Memory",
+                        "npx",
+                        "-y @modelcontextprotocol/server-memory",
+                        "Knowledge",
+                        "Persistent memory for AI — remembers context across conversations"
+                    )
                 ]
 
                 for (name, command, args, category, desc) in defaults {
@@ -445,7 +472,6 @@ struct DeepThinkApp: App {
             }
         }
     }
-
 }
 
 extension Notification.Name {

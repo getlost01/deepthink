@@ -9,9 +9,9 @@ final class NoteLink {
     var createdAt: Date = Date()
 
     init(sourceNoteID: UUID, targetNoteID: UUID) {
-        self.id = UUID()
+        id = UUID()
         self.sourceNoteID = sourceNoteID
         self.targetNoteID = targetNoteID
-        self.createdAt = Date()
+        createdAt = Date()
     }
 }

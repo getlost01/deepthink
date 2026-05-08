@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct AllTasksView: View {
     @Environment(AppState.self) private var appState
@@ -17,7 +17,8 @@ struct AllTasksView: View {
     @State private var showArchived = false
 
     enum TaskViewMode: String {
-        case list, board
+        case list
+        case board
     }
 
     enum SmartFilter: String, CaseIterable {
@@ -33,7 +34,7 @@ struct AllTasksView: View {
             case .all:
                 break
             case .overdue:
-                result = result.filter { $0.isOverdue }
+                result = result.filter(\.isOverdue)
             }
 
             if let statusFilter {
@@ -48,7 +49,7 @@ struct AllTasksView: View {
         if !searchText.isEmpty {
             result = result.filter {
                 $0.title.localizedCaseInsensitiveContains(searchText) ||
-                $0.detail.localizedCaseInsensitiveContains(searchText)
+                    $0.detail.localizedCaseInsensitiveContains(searchText)
             }
         }
 
@@ -88,7 +89,7 @@ struct AllTasksView: View {
             VStack(spacing: DS.Spacing.sm) {
                 HStack(spacing: DS.Spacing.sm) {
                     DSSearchField(text: $searchText, placeholder: "Search tasks...")
-                    DSArchiveButton(isOn: showArchived, count: tasks.filter { $0.parent == nil && $0.isArchived }.count) { showArchived.toggle() }
+                    DSArchiveButton(isOn: showArchived, count: tasks.count(where: { $0.parent == nil && $0.isArchived })) { showArchived.toggle() }
                     viewModeToggle
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -101,9 +102,9 @@ struct AllTasksView: View {
                                 Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
                             }
                         } label: { EmptyView() }
-                        .pickerStyle(.menu)
-                        .font(DS.Font.caption)
-                        .fixedSize()
+                            .pickerStyle(.menu)
+                            .font(DS.Font.caption)
+                            .fixedSize()
 
                         Picker(selection: $priorityFilter) {
                             Text("All Priorities").tag(nil as TaskPriority?)
@@ -111,9 +112,9 @@ struct AllTasksView: View {
                                 Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
                             }
                         } label: { EmptyView() }
-                        .pickerStyle(.menu)
-                        .font(DS.Font.caption)
-                        .fixedSize()
+                            .pickerStyle(.menu)
+                            .font(DS.Font.caption)
+                            .fixedSize()
                     }
                 }
             }
@@ -214,7 +215,7 @@ struct AllTasksView: View {
                 VStack(spacing: DS.Spacing.sm) {
                     HStack(spacing: DS.Spacing.sm) {
                         DSSearchField(text: $searchText, placeholder: "Search tasks...")
-                        DSArchiveButton(isOn: showArchived, count: tasks.filter { $0.parent == nil && $0.isArchived }.count) { showArchived.toggle() }
+                        DSArchiveButton(isOn: showArchived, count: tasks.count(where: { $0.parent == nil && $0.isArchived })) { showArchived.toggle() }
                         viewModeToggle
                     }
 
@@ -228,9 +229,9 @@ struct AllTasksView: View {
                                     Label(s.rawValue, systemImage: s.icon).tag(s as TaskStatus?)
                                 }
                             } label: { EmptyView() }
-                            .pickerStyle(.menu)
-                            .font(DS.Font.caption)
-                            .fixedSize()
+                                .pickerStyle(.menu)
+                                .font(DS.Font.caption)
+                                .fixedSize()
 
                             Picker(selection: $priorityFilter) {
                                 Text("All Priorities").tag(nil as TaskPriority?)
@@ -238,9 +239,9 @@ struct AllTasksView: View {
                                     Label(p.rawValue, systemImage: p.icon).tag(p as TaskPriority?)
                                 }
                             } label: { EmptyView() }
-                            .pickerStyle(.menu)
-                            .font(DS.Font.caption)
-                            .fixedSize()
+                                .pickerStyle(.menu)
+                                .font(DS.Font.caption)
+                                .fixedSize()
                         }
                     }
                 }
@@ -252,7 +253,9 @@ struct AllTasksView: View {
                     DSEmptyState(
                         icon: "checklist",
                         title: "No Tasks Yet",
-                        subtitle: searchText.isEmpty ? "Tasks help you track what needs to be done. Add priorities and due dates to stay organized." : "No tasks match your filters.",
+                        subtitle: searchText
+                            .isEmpty ? "Tasks help you track what needs to be done. Add priorities and due dates to stay organized." :
+                            "No tasks match your filters.",
                         hint: searchText.isEmpty ? "Start by adding something you need to get done this week" : nil
                     )
                 } else {
@@ -342,7 +345,6 @@ struct AllTasksView: View {
 
     // MARK: - Components
 
-    @ViewBuilder
     private func taskRow(_ task: TaskItem) -> some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: task.status.icon)
@@ -366,13 +368,13 @@ struct AllTasksView: View {
                         Text(project.name)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
-                        if showArchived && project.isArchived {
+                        if showArchived, project.isArchived {
                             DSPill(text: "project archived", color: DS.Colors.textTertiary)
                         }
                     }
 
                     if !task.subtasks.isEmpty {
-                        let done = task.subtasks.filter { $0.status == .done }.count
+                        let done = task.subtasks.count(where: { $0.status == .done })
                         HStack(spacing: DS.Spacing.xxs) {
                             Image(systemName: "checklist")
                                 .font(.system(size: DS.IconSize.xs))

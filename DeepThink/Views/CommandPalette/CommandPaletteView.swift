@@ -53,7 +53,6 @@ struct CommandPaletteView: View {
                         }
                         .buttonStyle(.plainPointer)
                     }
-
                 }
                 .padding(DS.Spacing.lg)
                 .onHover { hovering in
@@ -90,15 +89,15 @@ struct CommandPaletteView: View {
                                         .id(item.id)
                                         .onTapGesture {
                                             switch item {
-                                            case .command(let cmd): cmd.action()
-                                            case .workspaceItem(let ws): ws.action()
+                                            case let .command(cmd): cmd.action()
+                                            case let .workspaceItem(ws): ws.action()
                                             }
                                             dismiss()
                                         }
                                 }
                             }
 
-                            if flatItems.isEmpty && !state.query.isEmpty {
+                            if flatItems.isEmpty, !state.query.isEmpty {
                                 VStack(spacing: DS.Spacing.sm) {
                                     Image(systemName: "magnifyingglass")
                                         .font(.system(size: DS.IconSize.xl, weight: .light))
@@ -183,13 +182,13 @@ struct CommandPaletteView: View {
     }
 
     private var recentNotes: [Note] {
-        notes.filter { !$0.isArchived }.sorted(by: { (a: Note, b: Note) in a.modifiedAt > b.modifiedAt }).prefix(3).map { $0 }
+        notes.filter { !$0.isArchived }.sorted(by: { (a: Note, b: Note) in a.modifiedAt > b.modifiedAt }).prefix(3).map(\.self)
     }
 
     private var recentTasks: [TaskItem] {
         tasks.filter { (t: TaskItem) in t.status != .done && !t.isArchived }
             .sorted(by: { (a: TaskItem, b: TaskItem) in a.createdAt > b.createdAt })
-            .prefix(2).map { $0 }
+            .prefix(2).map(\.self)
     }
 
     @ViewBuilder
@@ -239,21 +238,21 @@ struct CommandPaletteView: View {
 
     private func prefixLabel(_ prefix: String) -> String {
         switch prefix {
-        case ">": return "Commands"
-        case "#": return "Notes"
-        case "@": return "Tasks"
-        case "%": return "Knowledge"
-        default: return prefix
+        case ">": "Commands"
+        case "#": "Notes"
+        case "@": "Tasks"
+        case "%": "Knowledge"
+        default: prefix
         }
     }
 
     private func placeholderText(_ prefix: String?) -> String {
         switch prefix {
-        case ">": return "Search commands..."
-        case "#": return "Search notes..."
-        case "@": return "Search tasks..."
-        case "%": return "Search knowledge..."
-        default: return "Search or type > # @ %"
+        case ">": "Search commands..."
+        case "#": "Search notes..."
+        case "@": "Search tasks..."
+        case "%": "Search knowledge..."
+        default: "Search or type > # @ %"
         }
     }
 
@@ -360,7 +359,7 @@ private struct PaletteItemRow: View {
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, 3)
                     .background(
-                        (isSelected ? AnyShapeStyle(DS.Colors.onAccent.opacity(0.15)) : AnyShapeStyle(DS.Colors.border)),
+                        isSelected ? AnyShapeStyle(DS.Colors.onAccent.opacity(0.15)) : AnyShapeStyle(DS.Colors.border),
                         in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                     )
             }
@@ -387,15 +386,15 @@ private struct PaletteItemRow: View {
 
     private var itemIcon: String {
         switch item {
-        case .command(let c): c.icon
-        case .workspaceItem(let w): w.icon
+        case let .command(c): c.icon
+        case let .workspaceItem(w): w.icon
         }
     }
 
     private var iconColor: Color {
         switch item {
         case .command: DS.Colors.textSecondary
-        case .workspaceItem(let w):
+        case let .workspaceItem(w):
             switch w.type {
             case .note: DS.Colors.accent
             case .task: DS.Colors.success
@@ -408,20 +407,20 @@ private struct PaletteItemRow: View {
     private var itemSubtitle: String? {
         switch item {
         case .command: nil
-        case .workspaceItem(let w): w.subtitle
+        case let .workspaceItem(w): w.subtitle
         }
     }
 
     private var itemShortcut: String? {
         switch item {
-        case .command(let c): c.shortcut
+        case let .command(c): c.shortcut
         case .workspaceItem: nil
         }
     }
 
     private var itemSection: String? {
         switch item {
-        case .command(let c): c.section
+        case let .command(c): c.section
         case .workspaceItem: nil
         }
     }
@@ -431,7 +430,9 @@ private struct PaletteItemRow: View {
 
 private struct KeyHint: View {
     let text: String
-    init(_ text: String) { self.text = text }
+    init(_ text: String) {
+        self.text = text
+    }
 
     var body: some View {
         Text(text)
