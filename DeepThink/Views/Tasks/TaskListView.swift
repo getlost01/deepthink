@@ -95,7 +95,6 @@ struct TaskListView: View {
                         )
                 }
                 .menuStyle(.borderlessButton)
-                .pointerOnHover()
                 .frame(width: 28)
                 .pointerOnHover()
 
@@ -198,6 +197,7 @@ struct TaskListView: View {
                                     Button(task.isArchived ? "Unarchive" : "Archive") {
                                         task.isArchived.toggle()
                                         task.modifiedAt = Date()
+                                        try? modelContext.save()
                                     }
                                     Divider()
                                     Button("Delete", role: .destructive) { deleteTask(task) }
@@ -268,8 +268,7 @@ struct TaskListView: View {
         let allItems = groupedTasks.flatMap(\.1)
         guard !allItems.isEmpty else { return }
         if let current = appState.selectedTaskID,
-           let idx = allItems.firstIndex(where: { $0.id == current })
-        {
+           let idx = allItems.firstIndex(where: { $0.id == current }) {
             let next = min(max(idx + direction, 0), allItems.count - 1)
             appState.selectedTaskID = allItems[next].id
         } else {

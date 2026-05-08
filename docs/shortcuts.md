@@ -14,10 +14,11 @@
 | `Cmd+0` | Recent |
 | `Cmd+1` | Workspace |
 | `Cmd+2` | Knowledge |
-| `Cmd+3` | AI Assistant |
-| `Cmd+4` | Integrations |
+| `Cmd+3` | Context Graph |
+| `Cmd+4` | AI Assistant |
 | `Cmd+5` | Reminders |
-| `Cmd+6` | Terminal |
+| `Cmd+6` | Integration |
+| `Cmd+7` | Terminal |
 
 ## Workspace
 

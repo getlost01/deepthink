@@ -283,10 +283,10 @@ struct TaskDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: task.title) { task.modifiedAt = Date() }
-        .onChange(of: task.detail) { task.modifiedAt = Date(); scheduleScanDeadLinks() }
-        .onChange(of: task.statusRaw) { task.modifiedAt = Date() }
-        .onChange(of: task.priorityRaw) { task.modifiedAt = Date() }
+        .onChange(of: task.title) { task.modifiedAt = Date(); try? modelContext.save() }
+        .onChange(of: task.detail) { task.modifiedAt = Date(); try? modelContext.save(); scheduleScanDeadLinks() }
+        .onChange(of: task.statusRaw) { task.modifiedAt = Date(); try? modelContext.save() }
+        .onChange(of: task.priorityRaw) { task.modifiedAt = Date(); try? modelContext.save() }
         .sheet(isPresented: $showCustomPoints) {
             CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
         }

@@ -1,6 +1,6 @@
 import AppKit
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 final class QuickCapturePanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -18,8 +18,8 @@ final class TransparentHostingView<Content: View>: NSHostingView<Content> {
 
 final class QuickCaptureWindowController: NSWindowController {
     static let shared = QuickCaptureWindowController()
-    private var previousApp: NSRunningApplication?
     private var currentContainer: ModelContainer?
+    private var currentAppState: AppState?
 
     private init() {
         let panel = QuickCapturePanel(
@@ -30,11 +30,11 @@ final class QuickCaptureWindowController: NSWindowController {
         )
         panel.level = .floating
         panel.isMovableByWindowBackground = false
-        panel.hidesOnDeactivate = false
+        panel.hidesOnDeactivate = true
         panel.backgroundColor = .clear
         panel.isOpaque = false
         panel.hasShadow = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.collectionBehavior = [.fullScreenAuxiliary]
 
         super.init(window: panel)
 
@@ -47,18 +47,17 @@ final class QuickCaptureWindowController: NSWindowController {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    func show(with container: ModelContainer) {
-        let frontmost = NSWorkspace.shared.frontmostApplication
-        if frontmost?.bundleIdentifier != Bundle.main.bundleIdentifier {
-            previousApp = frontmost
-        }
+    func show(with container: ModelContainer, appState: AppState) {
+        guard NSApp.isActive else { return }
 
-        if currentContainer !== container || window?.contentView == nil {
+        if currentContainer !== container || currentAppState !== appState || window?.contentView == nil {
             currentContainer = container
+            currentAppState = appState
             let view = QuickCaptureView(
                 onDismiss: { [weak self] in self?.dismiss() },
                 modelContainer: container
             )
+            .environment(appState)
             let hostingView = TransparentHostingView(rootView: view)
             hostingView.wantsLayer = true
             hostingView.layer?.cornerRadius = 14
@@ -67,11 +66,11 @@ final class QuickCaptureWindowController: NSWindowController {
         }
 
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
     }
 
-    func showPrefilled(with container: ModelContainer, content: String) {
-        show(with: container)
+    func showPrefilled(with container: ModelContainer, appState: AppState, content: String) {
+        guard NSApp.isActive else { return }
+        show(with: container, appState: appState)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             NotificationCenter.default.post(
                 name: .quickCapturePrefill,
@@ -84,10 +83,6 @@ final class QuickCaptureWindowController: NSWindowController {
     func dismiss() {
         window?.orderOut(nil)
         NotificationCenter.default.post(name: .quickCaptureReset, object: nil)
-        if let prev = previousApp {
-            prev.activate()
-        }
-        previousApp = nil
     }
 
     func resetAndDismiss() {
@@ -96,11 +91,11 @@ final class QuickCaptureWindowController: NSWindowController {
         dismiss()
     }
 
-    func toggle(with container: ModelContainer) {
+    func toggle(with container: ModelContainer, appState: AppState) {
         if window?.isVisible == true {
             dismiss()
         } else {
-            show(with: container)
+            show(with: container, appState: appState)
         }
     }
 }

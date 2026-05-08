@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct AllNotesView: View {
     @Environment(AppState.self) private var appState
@@ -74,7 +74,7 @@ struct AllNotesView: View {
                     )
                 } else {
                     ScrollView {
-                        LazyVStack(spacing: 0) {
+                        VStack(spacing: 0) {
                             if !pinnedNotes.isEmpty {
                                 HStack(spacing: DS.Spacing.xs) {
                                     Image(systemName: "pin.fill")
@@ -159,12 +159,14 @@ struct AllNotesView: View {
         Button {
             note.isPinned.toggle()
             note.modifiedAt = Date()
+            try? modelContext.save()
         } label: {
             Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
         }
         Button {
             note.isArchived.toggle()
             note.modifiedAt = Date()
+            try? modelContext.save()
         } label: {
             Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "archivebox" : "archivebox.fill")
         }

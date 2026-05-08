@@ -128,7 +128,7 @@ struct DeepThinkApp: App {
                     BackupService.shared.start()
 
                     // Register global hotkey for Quick Capture (Option+Space)
-                    GlobalHotKey.shared.register(container: sharedModelContainer)
+                    GlobalHotKey.shared.register(container: sharedModelContainer, appState: appState)
                 }
         }
         .handlesExternalEvents(matching: ["main"])
@@ -136,7 +136,7 @@ struct DeepThinkApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Quick Capture  (\u{2325}Space)") {
-                    QuickCaptureWindowController.shared.toggle(with: sharedModelContainer)
+                    QuickCaptureWindowController.shared.toggle(with: sharedModelContainer, appState: appState)
                 }
 
                 Divider()
@@ -193,13 +193,13 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("2", modifiers: .command)
 
-                Button("Go to AI Assistant") {
-                    appState.navigate(to: .aiAssistant)
+                Button("Go to Context Graph") {
+                    appState.navigate(to: .contextGraph)
                 }
                 .keyboardShortcut("3", modifiers: .command)
 
-                Button("Go to Integration") {
-                    appState.navigate(to: .integrations)
+                Button("Go to AI Assistant") {
+                    appState.navigate(to: .aiAssistant)
                 }
                 .keyboardShortcut("4", modifiers: .command)
 
@@ -208,10 +208,15 @@ struct DeepThinkApp: App {
                 }
                 .keyboardShortcut("5", modifiers: .command)
 
+                Button("Go to Integration") {
+                    appState.navigate(to: .integrations)
+                }
+                .keyboardShortcut("6", modifiers: .command)
+
                 Button("Go to Terminal") {
                     appState.navigate(to: .terminal)
                 }
-                .keyboardShortcut("6", modifiers: .command)
+                .keyboardShortcut("7", modifiers: .command)
 
                 Divider()
 
@@ -268,7 +273,7 @@ struct DeepThinkApp: App {
                 NotificationCenter.default.post(name: .createNewReminder, object: nil)
             },
             Command(title: "Quick Capture", icon: "bolt.fill", shortcut: "⌥Space", section: "Create") {
-                QuickCaptureWindowController.shared.toggle(with: sharedModelContainer)
+                QuickCaptureWindowController.shared.toggle(with: sharedModelContainer, appState: appState)
             },
 
             // Navigate

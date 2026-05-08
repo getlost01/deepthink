@@ -4,6 +4,7 @@ import UserNotifications
 
 struct ReminderDetailView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @Bindable var reminder: Reminder
     @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasksForScan: [TaskItem]
@@ -27,6 +28,7 @@ struct ReminderDetailView: View {
                         reminder.modifiedAt = Date()
                         if reminder.isCompleted { cancelNotification(for: reminder) }
                     }
+                    try? modelContext.save()
                 } label: {
                     Image(systemName: reminder.isCompleted ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(reminder.isCompleted ? DS.Colors.success : DS.Colors.textSecondary)
@@ -39,6 +41,7 @@ struct ReminderDetailView: View {
                     .textFieldStyle(.plain)
                     .onChange(of: reminder.title) {
                         reminder.modifiedAt = Date()
+                        try? modelContext.save()
                     }
             }
             .padding(.horizontal, DS.Spacing.xl)
@@ -83,6 +86,7 @@ struct ReminderDetailView: View {
                                         cancelNotification(for: reminder)
                                     }
                                     reminder.modifiedAt = Date()
+                                    try? modelContext.save()
                                 }
                             ),
                             isPresented: $showCalendar
@@ -111,6 +115,7 @@ struct ReminderDetailView: View {
                                     set: { newDate in
                                         reminder.reminderDate = newDate
                                         reminder.modifiedAt = Date()
+                                        try? modelContext.save()
                                     }
                                 ),
                                 isPresented: $showTimePicker
@@ -192,7 +197,7 @@ struct ReminderDetailView: View {
             .padding(.vertical, DS.Spacing.sm)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: reminder.notes) { reminder.modifiedAt = Date(); scheduleScanDeadLinks() }
+        .onChange(of: reminder.notes) { reminder.modifiedAt = Date(); try? modelContext.save(); scheduleScanDeadLinks() }
         .onAppear { scheduleScanDeadLinks() }
         .onChange(of: showCalendar) {
             if !showCalendar { scheduleNotification(for: reminder) }

@@ -234,6 +234,7 @@ struct NoteEditorView: View {
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
             note.modifiedAt = Date()
+            try? modelContext.save()
             scheduleKnowledgeExtraction()
             BacklinkService.shared.updateLinks(for: note, allNotes: allNotes, context: modelContext)
         }

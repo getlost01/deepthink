@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReminderRowView: View {
+    @Environment(\.modelContext) private var modelContext
     @Bindable var reminder: Reminder
 
     var body: some View {
@@ -11,6 +12,7 @@ struct ReminderRowView: View {
                     reminder.completedAt = reminder.isCompleted ? Date() : nil
                     reminder.modifiedAt = Date()
                 }
+                try? modelContext.save()
             } label: {
                 Image(systemName: reminder.isCompleted ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(reminder.isCompleted ? DS.Colors.success : DS.Colors.textSecondary)
@@ -37,12 +39,6 @@ struct ReminderRowView: View {
             }
 
             Spacer()
-
-            if reminder.reminderDate != nil && !reminder.isCompleted {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: DS.IconSize.sm))
-                    .foregroundStyle(reminder.isOverdue ? DS.Colors.danger : DS.Colors.accent)
-            }
         }
         .padding(.vertical, DS.Spacing.xs)
     }

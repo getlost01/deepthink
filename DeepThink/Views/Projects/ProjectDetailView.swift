@@ -9,12 +9,12 @@ struct ProjectDetailView: View {
     @Query private var allNotes: [Note]
 
     private var selectedTask: TaskItem? {
-        guard case .taskDetail(let id) = appState.projectDetailMode else { return nil }
+        guard case let .taskDetail(id) = appState.projectDetailMode else { return nil }
         return allTasks.first { $0.id == id }
     }
 
     private var selectedNote: Note? {
-        guard case .noteDetail(let id) = appState.projectDetailMode else { return nil }
+        guard case let .noteDetail(id) = appState.projectDetailMode else { return nil }
         return allNotes.first { $0.id == id }
     }
 
@@ -74,7 +74,6 @@ struct ProjectDetailView: View {
     @State private var showArchivedNotes = false
     @State private var descriptionPreview = false
 
-    @ViewBuilder
     private var projectOverview: some View {
         VStack(spacing: 0) {
             // Header
@@ -159,7 +158,7 @@ struct ProjectDetailView: View {
 
                         HStack(spacing: DS.Spacing.md) {
                             ForEach(TaskStatus.allCases) { status in
-                                let count = project.tasks.filter { $0.status == status }.count
+                                let count = project.tasks.count(where: { $0.status == status })
                                 if count > 0 {
                                     HStack(spacing: DS.Spacing.xs) {
                                         Circle()
@@ -262,7 +261,6 @@ struct ProjectDetailView: View {
             .sorted(by: { $0.modifiedAt > $1.modifiedAt })
     }
 
-    @ViewBuilder
     private var tasksPane: some View {
         VStack(spacing: 0) {
             HStack {
@@ -272,13 +270,16 @@ struct ProjectDetailView: View {
                     .textCase(.uppercase)
 
                 if !visibleTasks.isEmpty {
-                    DSPill(text: showArchivedTasks ? "\(visibleTasks.count) archived" : "\(project.openTaskCount) open", color: showArchivedTasks ? DS.Colors.textSecondary : DS.Colors.accent)
+                    DSPill(
+                        text: showArchivedTasks ? "\(visibleTasks.count) archived" : "\(project.openTaskCount) open",
+                        color: showArchivedTasks ? DS.Colors.textSecondary : DS.Colors.accent
+                    )
                 }
 
                 Spacer()
 
                 HStack(spacing: DS.Spacing.xs) {
-                    DSArchiveButton(isOn: showArchivedTasks, count: project.tasks.filter { $0.isArchived }.count) { showArchivedTasks.toggle() }
+                    DSArchiveButton(isOn: showArchivedTasks, count: project.tasks.count(where: { $0.isArchived })) { showArchivedTasks.toggle() }
                     if !project.isArchived { DSAddButton { createTaskInProject() } }
                 }
             }
@@ -326,7 +327,6 @@ struct ProjectDetailView: View {
 
     // MARK: - Notes Pane
 
-    @ViewBuilder
     private var notesPane: some View {
         VStack(spacing: 0) {
             HStack {
@@ -336,13 +336,16 @@ struct ProjectDetailView: View {
                     .textCase(.uppercase)
 
                 if !visibleNotes.isEmpty {
-                    DSPill(text: showArchivedNotes ? "\(visibleNotes.count) archived" : "\(visibleNotes.count)", color: showArchivedNotes ? DS.Colors.textSecondary : DS.Colors.warning)
+                    DSPill(
+                        text: showArchivedNotes ? "\(visibleNotes.count) archived" : "\(visibleNotes.count)",
+                        color: showArchivedNotes ? DS.Colors.textSecondary : DS.Colors.warning
+                    )
                 }
 
                 Spacer()
 
                 HStack(spacing: DS.Spacing.xs) {
-                    DSArchiveButton(isOn: showArchivedNotes, count: project.notes.filter { $0.isArchived }.count) { showArchivedNotes.toggle() }
+                    DSArchiveButton(isOn: showArchivedNotes, count: project.notes.count(where: { $0.isArchived })) { showArchivedNotes.toggle() }
                     if !project.isArchived { DSAddButton { createNoteInProject() } }
                 }
             }
@@ -427,7 +430,7 @@ private struct ProjectTaskRow: View {
                     .foregroundStyle(task.status == .done ? DS.Colors.textTertiary : DS.Colors.textPrimary)
 
                 if !task.subtasks.isEmpty {
-                    let done = task.subtasks.filter { $0.status == .done }.count
+                    let done = task.subtasks.count(where: { $0.status == .done })
                     HStack(spacing: DS.Spacing.xxs) {
                         Image(systemName: "checklist")
                             .font(.system(size: DS.IconSize.xs))
@@ -499,6 +502,7 @@ private struct ProjectTaskRow: View {
 // MARK: - Note Row
 
 private struct ProjectNoteRow: View {
+    @Environment(\.modelContext) private var modelContext
     let note: Note
     let action: () -> Void
     var onDelete: (() -> Void)?
@@ -543,10 +547,13 @@ private struct ProjectNoteRow: View {
             Divider()
             Button(note.isPinned ? "Unpin" : "Pin") {
                 note.isPinned.toggle()
+                note.modifiedAt = Date()
+                try? modelContext.save()
             }
             Button(note.isArchived ? "Unarchive" : "Archive") {
                 note.isArchived.toggle()
                 note.modifiedAt = Date()
+                try? modelContext.save()
             }
             if let onDelete {
                 Divider()

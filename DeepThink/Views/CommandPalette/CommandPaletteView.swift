@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct CommandPaletteView: View {
     @Environment(AppState.self) private var appState
@@ -53,13 +53,16 @@ struct CommandPaletteView: View {
                         }
                         .buttonStyle(.plainPointer)
                     }
+
                 }
                 .padding(DS.Spacing.lg)
                 .onHover { hovering in
                     if hovering { NSCursor.iBeam.push() } else { NSCursor.pop() }
                 }
 
-                Divider().opacity(0.5)
+                Rectangle()
+                    .fill(DS.Colors.border)
+                    .frame(height: 0.5)
 
                 ScrollViewReader { proxy in
                     ScrollView(showsIndicators: false) {
@@ -117,9 +120,17 @@ struct CommandPaletteView: View {
                             proxy.scrollTo(items[newValue].id, anchor: .center)
                         }
                     }
+                    .onChange(of: state.query) {
+                        let items = state.allFlatItems
+                        if let first = items.first {
+                            proxy.scrollTo(first.id, anchor: .top)
+                        }
+                    }
                 }
 
-                Divider().opacity(0.5)
+                Rectangle()
+                    .fill(DS.Colors.border)
+                    .frame(height: 0.5)
 
                 HStack(spacing: DS.Spacing.lg) {
                     HStack(spacing: DS.Spacing.xs) {

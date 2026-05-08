@@ -304,42 +304,6 @@ struct ContextGraphView: View {
                     .foregroundStyle(DS.Colors.textSecondary)
                     .frame(width: 36)
 
-                if uniqueSources.count > 1 {
-                    Divider().frame(height: 14)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: DS.Spacing.xs) {
-                            ForEach(uniqueSources, id: \.self) { src in
-                                let isActive = activeSourceFilter == src
-                                Button {
-                                    withAnimation(DS.Animation.quick) {
-                                        activeSourceFilter = isActive ? nil : src
-                                    }
-                                } label: {
-                                    HStack(spacing: 4) {
-                                        Circle()
-                                            .fill(colorForSource(src))
-                                            .frame(width: 6, height: 6)
-                                        Text(src)
-                                            .font(DS.Font.small)
-                                            .foregroundStyle(isActive ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                                    }
-                                    .padding(.horizontal, DS.Spacing.xs)
-                                    .padding(.vertical, 3)
-                                    .background(isActive ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
-                                    .overlay(Capsule().strokeBorder(
-                                        isActive ? DS.Colors.accent : DS.Colors.border, lineWidth: 1
-                                    ))
-                                }
-                                .buttonStyle(.plainPointer)
-                            }
-                        }
-                    }
-                }
-
-                Spacer()
-
-                // Edge type toggles
                 Divider().frame(height: 14)
                 let semanticCount = edges.count(where: { $0.kind == .semantic })
                 let explicitCount = edges.count(where: { $0.kind == .explicit })
@@ -376,6 +340,39 @@ struct ContextGraphView: View {
                     .opacity(showExplicitEdges ? 1 : 0.5)
                 }
                 .buttonStyle(.plainPointer)
+
+                if uniqueSources.count > 1 {
+                    Divider().frame(height: 14)
+
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: DS.Spacing.xs) {
+                            ForEach(uniqueSources, id: \.self) { src in
+                                let isActive = activeSourceFilter == src
+                                Button {
+                                    withAnimation(DS.Animation.quick) {
+                                        activeSourceFilter = isActive ? nil : src
+                                    }
+                                } label: {
+                                    HStack(spacing: 4) {
+                                        Circle()
+                                            .fill(colorForSource(src))
+                                            .frame(width: 6, height: 6)
+                                        Text(src)
+                                            .font(DS.Font.small)
+                                            .foregroundStyle(isActive ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                                    }
+                                    .padding(.horizontal, DS.Spacing.xs)
+                                    .padding(.vertical, 3)
+                                    .background(isActive ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
+                                    .overlay(Capsule().strokeBorder(
+                                        isActive ? DS.Colors.accent : DS.Colors.border, lineWidth: 1
+                                    ))
+                                }
+                                .buttonStyle(.plainPointer)
+                            }
+                        }
+                    }
+                }
 
                 Spacer()
 
@@ -1058,8 +1055,7 @@ struct ContextGraphView: View {
                 for (nodeID, entryID) in [(fromID, fromID), (toID, toID)] {
                     if !newNodes.contains(where: { $0.id == nodeID }),
                        let entry = knowledgeEntries.first(where: { $0.id == entryID }),
-                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID })
-                    {
+                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID }) {
                         let angle = Double(idx) / Double(max(knowledgeEntries.count, 1)) * 2 * .pi
                         let r = spread * CGFloat.random(in: 0.3...1.0)
                         newNodes.append(ContextNode(

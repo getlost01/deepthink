@@ -505,6 +505,7 @@ struct AIChatView: View {
     private func saveResponseToQuickCapture(_ content: String) {
         QuickCaptureWindowController.shared.showPrefilled(
             with: modelContext.container,
+            appState: appState,
             content: content
         )
     }
@@ -621,8 +622,7 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
-            {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -648,8 +648,7 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID)
-        {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
             let recent = Array(prior.suffix(4))
             return "# Conversation summary\n\(summary)\n\n# Recent\n\(compactMessages(recent))"
         }

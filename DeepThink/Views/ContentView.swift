@@ -49,6 +49,8 @@ struct ContentView: View {
 
 private struct GlobalHeader: View {
     @Environment(AppState.self) private var appState
+    @State private var showDailyBrief = false
+    @State private var dailyBriefRefreshID = UUID()
 
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
@@ -88,10 +90,32 @@ private struct GlobalHeader: View {
             .keyboardShortcut("k", modifiers: .command)
 
             Spacer()
+
+            Button {
+                showDailyBrief = true
+            } label: {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "sun.horizon")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.accent)
+                    Text("Daily Brief")
+                        .font(DS.Font.small)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs)
+                .background(DS.Colors.fill, in: Capsule())
+                .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
+            }
+            .buttonStyle(.plainPointer)
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
         .background(DS.Colors.surface)
+        .sheet(isPresented: $showDailyBrief) {
+            DailyBriefModal(refreshID: $dailyBriefRefreshID)
+        }
     }
 
     private func navButton(icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {

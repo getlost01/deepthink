@@ -281,11 +281,6 @@ private struct SkillRow: View {
                 Button { onRun() } label: { Label("Run", systemImage: "play.fill") }
             }
             Button {
-                SkillFileService.shared.togglePin(skill: skill)
-            } label: {
-                Label(skill.isPinned ? "Unpin" : "Pin to Sidebar", systemImage: skill.isPinned ? "pin.slash" : "pin")
-            }
-            Button {
                 SkillFileService.shared.create(
                     name: "\(skill.name) Copy", category: skill.category,
                     icon: skill.icon, systemPrompt: skill.systemPrompt,
@@ -464,15 +459,6 @@ private struct SkillInlineEditor: View {
                 Spacer()
 
                 HStack(spacing: DS.Spacing.xs) {
-                    DSToolbarButton(
-                        icon: skill.isPinned ? "pin.fill" : "pin",
-                        color: skill.isPinned ? DS.Colors.warning : DS.Colors.textSecondary,
-                        size: DS.IconSize.sm
-                    ) {
-                        SkillFileService.shared.togglePin(skill: skill)
-                    }
-                    .help(skill.isPinned ? "Unpin from sidebar" : "Pin to sidebar")
-
                     DSToolbarButton(
                         icon: duplicated ? "checkmark" : "plus.square.on.square",
                         color: duplicated ? DS.Colors.success : DS.Colors.textSecondary,

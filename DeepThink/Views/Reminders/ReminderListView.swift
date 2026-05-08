@@ -56,8 +56,10 @@ struct ReminderListView: View {
             listPane
         } right: {
             if let selectedID = appState.selectedReminderID,
-               let reminder = allReminders.first(where: { $0.id == selectedID }) {
+               let reminder = allReminders.first(where: { $0.id == selectedID })
+            {
                 ReminderDetailView(reminder: reminder)
+                    .id(reminder.id)
             } else {
                 VStack(spacing: DS.Spacing.md) {
                     Image(systemName: "bell")
@@ -194,6 +196,7 @@ struct ReminderListView: View {
         if reminder.isCompleted {
             cancelNotification(for: reminder)
         }
+        try? modelContext.save()
     }
 
     private func cancelNotification(for reminder: Reminder) {

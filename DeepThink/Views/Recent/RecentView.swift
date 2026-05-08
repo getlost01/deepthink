@@ -11,8 +11,6 @@ struct RecentView: View {
 
     @State private var thisWeekVisibleCount = 20
     @State private var insightsRefreshID = UUID()
-    @State private var showDailyBrief = false
-
     private var knowledge: KnowledgeService {
         KnowledgeService.shared
     }
@@ -121,32 +119,12 @@ struct RecentView: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                         Text(greeting)
-                            .font(.system(size: 22, weight: .semibold))
+                            .font(DS.Font.titleLarge)
                             .foregroundStyle(DS.Colors.textPrimary)
                         Text(summaryLine)
                             .font(DS.Font.body)
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
-                    Spacer()
-                    Button {
-                        showDailyBrief = true
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "sun.horizon")
-                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                            Text("Daily Brief")
-                                .font(DS.Font.small)
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(DS.Colors.accent)
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.accentFill, in: Capsule())
-                    }
-                    .buttonStyle(.plainPointer)
-                }
-                .sheet(isPresented: $showDailyBrief) {
-                    DailyBriefModal(refreshID: $insightsRefreshID)
                 }
 
                 // Quick stats
@@ -588,8 +566,7 @@ private struct AgentsSection: View {
     private func loadState() {
         let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
         if let data = try? Data(contentsOf: url),
-           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data)
-        {
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
             lastRun = state.lastRun
         }
         loadOutputs()
@@ -632,8 +609,7 @@ private struct AgentsSection: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // If content is a JSON object, extract "suggestion" or "result" field
         if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        {
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let s = json["suggestion"] as? String { return s }
             if let s = json["result"] as? String { return s }
             if let s = json["message"] as? String { return s }
@@ -647,8 +623,7 @@ private struct AgentsSection: View {
                 .joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            {
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 if let s = json["suggestion"] as? String { return s }
                 if let s = json["result"] as? String { return s }
                 return ""
@@ -687,7 +662,7 @@ private struct AgentOutputCard: View {
 
 // MARK: - Daily Brief Modal
 
-private struct DailyBriefModal: View {
+struct DailyBriefModal: View {
     @Binding var refreshID: UUID
     @Environment(\.dismiss) private var dismiss
 
@@ -820,10 +795,16 @@ private struct InsightsStrip: View {
                     .font(DS.Font.body)
                     .fontWeight(.medium)
                     .foregroundStyle(DS.Colors.textPrimary)
+                if !insight.description.isEmpty {
+                    Text(insight.description)
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
                 if let action = insight.suggestedAction {
                     Text(action)
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textTertiary)
+                        .italic()
                 }
             }
             Spacer()

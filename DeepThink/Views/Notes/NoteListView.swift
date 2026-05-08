@@ -110,7 +110,6 @@ struct NoteListView: View {
                             }
                             .padding(.vertical, DS.Spacing.sm)
                             .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, DS.Spacing.xxs)
                             .background(isSelected ? DS.Colors.accentFill : .clear)
                             .contentShape(Rectangle())
                         }
@@ -118,10 +117,13 @@ struct NoteListView: View {
                         .contextMenu {
                             Button(note.isPinned ? "Unpin" : "Pin") {
                                 note.isPinned.toggle()
+                                note.modifiedAt = Date()
+                                try? modelContext.save()
                             }
                             Button(note.isArchived ? "Unarchive" : "Archive") {
                                 note.isArchived.toggle()
                                 note.modifiedAt = Date()
+                                try? modelContext.save()
                             }
                             Divider()
                             Button("Delete", role: .destructive) {
@@ -188,7 +190,8 @@ struct NoteListView: View {
     private func moveSelection(_ direction: Int) {
         guard !filteredNotes.isEmpty else { return }
         if let current = appState.selectedNoteID,
-           let idx = filteredNotes.firstIndex(where: { $0.id == current }) {
+           let idx = filteredNotes.firstIndex(where: { $0.id == current })
+        {
             let next = min(max(idx + direction, 0), filteredNotes.count - 1)
             appState.selectedNoteID = filteredNotes[next].id
         } else {

@@ -30,7 +30,9 @@ struct WorkspaceSearchItem: Identifiable {
 struct PaletteSection: Identifiable {
     let title: String
     let items: [PaletteItem]
-    var id: String { title }
+    var id: String {
+        title
+    }
 }
 
 enum PaletteItem: Identifiable {
@@ -39,22 +41,22 @@ enum PaletteItem: Identifiable {
 
     var id: UUID {
         switch self {
-        case .command(let c): c.id
-        case .workspaceItem(let w): w.id
+        case let .command(c): c.id
+        case let .workspaceItem(w): w.id
         }
     }
 
     var title: String {
         switch self {
-        case .command(let c): c.title
-        case .workspaceItem(let w): w.title
+        case let .command(c): c.title
+        case let .workspaceItem(w): w.title
         }
     }
 
     var isArchived: Bool {
         switch self {
         case .command: false
-        case .workspaceItem(let w): w.isArchived
+        case let .workspaceItem(w): w.isArchived
         }
     }
 }
@@ -78,7 +80,7 @@ final class CommandPaletteState {
     }
 
     private var searchQuery: String {
-        guard let prefix = activePrefix else { return query }
+        guard activePrefix != nil else { return query }
         return String(query.dropFirst()).trimmingCharacters(in: .whitespaces)
     }
 
@@ -92,7 +94,8 @@ final class CommandPaletteState {
         var result: [PaletteSection] = []
 
         if activePrefix == nil || activePrefix == ">" {
-            let matched = q.isEmpty ? Array(commands.prefix(8)) : commands.filter { fuzzyMatch(q, in: $0.title) }
+            let limit = activePrefix == ">" ? 10 : 8
+            let matched = q.isEmpty ? Array(commands.prefix(limit)) : commands.filter { fuzzyMatch(q, in: $0.title) }.prefix(limit).map(\.self)
             if !matched.isEmpty {
                 result.append(PaletteSection(title: "Commands", items: matched.map { .command($0) }))
             }
@@ -109,7 +112,8 @@ final class CommandPaletteState {
             guard filteredType == nil || filteredType == type else { continue }
             if let items = grouped[type], !items.isEmpty {
                 let sorted = items.sorted { !$0.isArchived && $1.isArchived }
-                result.append(PaletteSection(title: type.rawValue, items: sorted.prefix(5).map { .workspaceItem($0) }))
+                let limit = filteredType != nil ? 10 : 5
+                result.append(PaletteSection(title: type.rawValue, items: sorted.prefix(limit).map { .workspaceItem($0) }))
             }
         }
 
@@ -149,8 +153,8 @@ final class CommandPaletteState {
         let items = allFlatItems
         guard items.indices.contains(selectedIndex) else { return false }
         switch items[selectedIndex] {
-        case .command(let cmd): cmd.action()
-        case .workspaceItem(let item): item.action()
+        case let .command(cmd): cmd.action()
+        case let .workspaceItem(item): item.action()
         }
         return true
     }
