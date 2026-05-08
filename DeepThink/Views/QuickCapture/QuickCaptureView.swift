@@ -1,5 +1,5 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
 struct QuickCaptureView: View {
     let onDismiss: () -> Void
@@ -12,6 +12,7 @@ struct QuickCaptureView: View {
     @State private var selectedProjectName: String?
     @State private var selectedBucket: String = "General"
     @State private var saved = false
+    @State private var saveError: String?
     @State private var projects: [Project] = []
     @FocusState private var titleFocused: Bool
 
@@ -58,6 +59,14 @@ struct QuickCaptureView: View {
                 content = prefillContent
                 title = String(prefillContent.prefix(60)).components(separatedBy: "\n").first ?? "AI Response"
             }
+        }
+        .alert("Save Failed", isPresented: Binding(
+            get: { saveError != nil },
+            set: { if !$0 { saveError = nil } }
+        )) {
+            Button("OK") { saveError = nil }
+        } message: {
+            Text(saveError ?? "An unexpected error occurred while saving.")
         }
     }
 
@@ -307,36 +316,41 @@ struct QuickCaptureView: View {
             ? "Quick capture \(Date().formatted(date: .abbreviated, time: .shortened))"
             : title.trimmingCharacters(in: .whitespaces)
 
-        switch captureType {
-        case .note:
-            let context = ModelContext(modelContainer)
-            let note = Note(title: resolvedTitle, content: content)
-            if let projectName = selectedProjectName {
-                let desc = FetchDescriptor<Project>(predicate: #Predicate { $0.name == projectName })
-                note.project = try? context.fetch(desc).first
-            }
-            context.insert(note)
-            try? context.save()
+        do {
+            switch captureType {
+            case .note:
+                let context = ModelContext(modelContainer)
+                let note = Note(title: resolvedTitle, content: content)
+                if let projectName = selectedProjectName {
+                    let desc = FetchDescriptor<Project>(predicate: #Predicate { $0.name == projectName })
+                    note.project = try? context.fetch(desc).first
+                }
+                context.insert(note)
+                try context.save()
 
-        case .knowledge:
-            let tagList = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            KnowledgeService.shared.createEntry(
-                title: resolvedTitle,
-                content: content,
-                source: "manual",
-                tags: tagList,
-                bucket: selectedBucket
-            )
+            case .knowledge:
+                let tagList = tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                KnowledgeService.shared.createEntry(
+                    title: resolvedTitle,
+                    content: content,
+                    source: "manual",
+                    tags: tagList,
+                    bucket: selectedBucket
+                )
 
-        case .task:
-            let context = ModelContext(modelContainer)
-            let task = TaskItem(title: resolvedTitle, detail: content)
-            if let projectName = selectedProjectName {
-                let desc = FetchDescriptor<Project>(predicate: #Predicate { $0.name == projectName })
-                task.project = try? context.fetch(desc).first
+            case .task:
+                let context = ModelContext(modelContainer)
+                let task = TaskItem(title: resolvedTitle, detail: content)
+                if let projectName = selectedProjectName {
+                    let desc = FetchDescriptor<Project>(predicate: #Predicate { $0.name == projectName })
+                    task.project = try? context.fetch(desc).first
+                }
+                context.insert(task)
+                try context.save()
             }
-            context.insert(task)
-            try? context.save()
+        } catch {
+            saveError = error.localizedDescription
+            return
         }
 
         withAnimation(.spring(duration: 0.3)) { saved = true }

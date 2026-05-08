@@ -10,10 +10,13 @@ packages:
   SwiftTerm:
     url: https://github.com/migueldeicaza/SwiftTerm
     from: "1.2.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.0.0"
 
 settings:
   base:
-    SWIFT_VERSION: "5.9"
+    SWIFT_VERSION: "6.0"
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -29,6 +32,8 @@ targets:
           - "Preview Content"
     dependencies:
       - package: SwiftTerm
+      - package: Sparkle
+        product: Sparkle
     preBuildScripts:
       - script: |
           if which swiftformat > /dev/null; then
@@ -46,11 +51,23 @@ targets:
         name: SwiftLint
     postCompileScripts:
       - script: |
-          if [ -f "${SRCROOT}/cli/deepthink" ]; then
-            mkdir -p "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
-            cp "${SRCROOT}/cli/deepthink" "${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/deepthink-cli"
+          CLI_SRC="${SRCROOT}/cli/out/deepthink"
+          MCP_SRC="${SRCROOT}/cli/out/deepthink-mcp"
+          RESOURCES="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$RESOURCES"
+          if [ -f "$CLI_SRC" ]; then
+            cp "$CLI_SRC" "$RESOURCES/deepthink-cli"
+            echo "Bundled CLI → deepthink-cli"
+          else
+            echo "warning: CLI binary not found at $CLI_SRC — run 'cd cli && bash build.sh' first"
           fi
-        name: Bundle DeepThink CLI
+          if [ -f "$MCP_SRC" ]; then
+            cp "$MCP_SRC" "$RESOURCES/deepthink-mcp"
+            echo "Bundled MCP → deepthink-mcp"
+          else
+            echo "warning: MCP binary not found at $MCP_SRC — run 'cd cli && bash build.sh' first"
+          fi
+        name: Bundle DeepThink CLI + MCP
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.deepthink.app
@@ -62,6 +79,8 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_ENTITLEMENTS: DeepThink/DeepThink.entitlements
         ENABLE_PREVIEWS: "YES"
+        INFOPLIST_KEY_SUFeedURL: "https://deepthink.app/appcast.xml"
+        INFOPLIST_KEY_SUEnableAutomaticChecks: "YES"
     entitlements:
       path: DeepThink/DeepThink.entitlements
       properties:

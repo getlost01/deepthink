@@ -236,12 +236,17 @@ struct AIChatView: View {
 
     // MARK: - Messages
 
+    @State private var claude = ClaudeService.shared
+
     private var chatMessages: some View {
         ZStack(alignment: .bottomTrailing) {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
-                        if appState.chatMessages.isEmpty, !appState.isChatProcessing {
+                        if !claude.isAvailable {
+                            ClaudeNotInstalledView()
+                                .padding(.top, 80)
+                        } else if appState.chatMessages.isEmpty, !appState.isChatProcessing {
                             WelcomePrompts(
                                 onSelect: { prompt in
                                     inputText = prompt
@@ -622,8 +627,7 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
-            {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -649,8 +653,7 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID)
-        {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
             let recent = Array(prior.suffix(4))
             return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }
@@ -1128,6 +1131,42 @@ struct FollowUpChipsView: View {
 
             Spacer(minLength: 40)
         }
+    }
+}
+
+private struct ClaudeNotInstalledView: View {
+    var body: some View {
+        VStack(spacing: DS.Spacing.lg) {
+            Image(systemName: "terminal.fill")
+                .font(.system(size: DS.IconSize.xxl))
+                .foregroundStyle(DS.Colors.textTertiary)
+
+            VStack(spacing: DS.Spacing.sm) {
+                Text("Claude CLI not installed")
+                    .font(DS.Font.heading)
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                Text("DeepThink uses the Claude CLI for all AI features.\nInstall it to get started.")
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            VStack(spacing: DS.Spacing.sm) {
+                Button("Open Installation Guide") {
+                    NSWorkspace.shared.open(URL(string: "https://claude.ai/code")!)
+                }
+                .buttonStyle(.dsPrimary)
+
+                Text("After installing, relaunch DeepThink or go to Settings → Claude to set the CLI path.")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .padding(DS.Spacing.xl)
+        .frame(maxWidth: 400)
+        .frame(maxWidth: .infinity)
     }
 }
 

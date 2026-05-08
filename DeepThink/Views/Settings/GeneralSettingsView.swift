@@ -4,11 +4,46 @@ struct GeneralSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
+                UpdatesSettingsSection()
                 BackupSettingsSection()
             }
             .padding(DS.Spacing.xl)
         }
         .dsPage()
+    }
+}
+
+// MARK: - Updates Section
+
+private struct UpdatesSettingsSection: View {
+    @State private var updater = UpdateService.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "Updates")
+
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Automatic updates")
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text("DeepThink checks for updates automatically on launch.")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    Spacer()
+                    Button("Check Now") {
+                        updater.checkForUpdates()
+                    }
+                    .buttonStyle(.dsSecondary)
+                    .disabled(!updater.canCheckForUpdates)
+                }
+                .padding(DS.Spacing.lg)
+            }
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+        }
     }
 }
 

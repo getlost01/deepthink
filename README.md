@@ -1,65 +1,214 @@
 # DeepThink
 
-AI-powered knowledge workspace for macOS. Organize projects, capture knowledge from anywhere, and chat with AI that actually knows your work.
+A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge base — combined with Claude AI that has full context of everything you're working on. All data stays on your machine.
 
-Built with SwiftUI + SwiftData (native macOS app) and a Bun/TypeScript CLI. All data stays local — no cloud sync.
+> **Download:** [Latest Release →](https://github.com/aagam-headout/deepthink/releases/latest) · macOS 14+ · No account required
 
-## Features
+---
 
-| Feature | Description |
-|---------|-------------|
-| **Workspace** | Projects, notes, tasks with rich markdown editing and kanban board |
-| **Knowledge Base** | Multi-source capture (web, files, clipboard, RSS, scripts, Obsidian) organized into buckets |
-| **AI Chat** | Streaming chat with Claude, conversation history, edit branching, auto-compaction |
-| **Hybrid RAG** | BM25 keyword + semantic vector search — AI finds relevant knowledge automatically |
-| **AI Agents** | Custom personas with knowledge scopes, model selection, and skill assignments |
-| **Skills & Rules** | Slash-command skills with template variables, context-aware rules with structured triggers |
-| **Quick Capture** | `Cmd+Shift+D` from any app — floating panel to capture notes, knowledge, or tasks |
-| **MCP Server** | 47-tool MCP server for Claude Code, Cursor, VS Code, and any MCP-compatible client |
+## What it does
+
+| | |
+|--|--|
+| **Workspace** | Projects, rich markdown notes with backlinks and version history, kanban task board, and timed reminders |
+| **Knowledge Base** | Capture from any source — URLs, files, clipboard, RSS feeds, Obsidian vaults, or custom scripts. Organized into buckets, searchable instantly |
+| **Hybrid RAG** | Every query runs BM25 keyword + semantic vector search (Apple NLEmbedding). AI gets the right context automatically — you never have to paste things in |
+| **AI Chat** | Streaming Claude with full workspace context, conversation history, edit branching, and auto-compaction for long sessions |
+| **AI Agents** | Custom personas with their own knowledge scopes, model selection, and skill assignments |
+| **Skills** | Slash-command automations (`/summarize`, `/standup`, etc.) with template variables and context injection |
+| **Rules** | Context-aware instructions that activate automatically — e.g. "when I'm in Project X, always reply concisely" |
+| **MCP Server** | 47-tool MCP server that gives Claude Code, Cursor, VS Code, and any MCP-compatible client direct access to your workspace |
 | **Terminal** | Built-in multi-tab terminal with AI output analysis |
-| **Command Palette** | `Cmd+K` quick access to all commands, navigation, and skills |
-| **Obsidian Import** | One-click vault import with wiki-link conversion and dedup |
-| **Data Collection** | Automated capture from URLs, RSS feeds, folders, and custom scripts |
-| **Proactive Insights** | AI scans workspace every 4h — flags overdue, stale, and blocked items |
+| **Quick Capture** | Option+Space from any app — floating panel to save notes, knowledge, or tasks without switching windows |
+| **Command Palette** | Cmd+K — navigate anywhere, run skills, and find anything |
+| **Context Graph** | Force-directed graph of semantic and wiki-link connections across your workspace |
 
-## Quick Start
+---
 
-**Prerequisites:** macOS 14+, Xcode 16+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [Bun](https://bun.sh), [Claude CLI](https://docs.anthropic.com/claude/docs/claude-cli)
+## Installing
+
+### Option A — Download the DMG (recommended for most users)
+
+1. Download `DeepThink.dmg` from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
+2. Open the DMG and drag DeepThink to Applications
+3. Launch DeepThink — the app installs the CLI and MCP server automatically on first launch
+4. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
+
+That's it. The AI chat is ready.
+
+### Option B — Build from source
+
+**Prerequisites**
+
+- macOS 14+
+- Xcode 16+
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) — `brew install xcodegen`
+- [Bun](https://bun.sh) — `curl -fsSL https://bun.sh/install | bash`
+- [Claude CLI](https://claude.ai/code) — install and run `claude login`
+
+**Build**
 
 ```bash
 git clone https://github.com/aagam-headout/deepthink
 cd deepthink
 
-# Build CLI tools
-cd cli && bun install && bun run build:all && cd ..
+# Build CLI + MCP binaries
+cd cli && bash build.sh && cd ..
 
-# Generate Xcode project and open
-xcodegen generate && open DeepThink.xcodeproj
+# Generate Xcode project
+xcodegen generate
+
+# Open and run in Xcode
+open DeepThink.xcodeproj
 ```
 
-Set your API key before running:
+Hit **Run** (⌘R) in Xcode. On first launch the app copies the CLI binaries to `~/.local/bin/` and registers the MCP server with Claude.
+
+---
+
+## Using the CLI
+
+After first launch, `deepthink` is available in your terminal:
 
 ```bash
-export ANTHROPIC_API_KEY=your_key_here
+deepthink status              # workspace overview
+deepthink ask "what's due this week?"
+deepthink note "meeting with design team"
+deepthink task "fix login bug" --project api
+deepthink knowledge capture https://some-article.com
+deepthink search "vector embeddings"
+deepthink context             # current workspace context
 ```
 
-The app auto-installs CLI binaries (`deepthink`, `deepthink-mcp`) to `~/.local/bin/` on first launch.
+Full command reference: [docs/cli/README.md](docs/cli/README.md)
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed build instructions, code style, and how to submit changes.
+---
+
+## MCP Server
+
+DeepThink ships a full MCP server (`deepthink-mcp`) automatically registered at:
+
+```
+~/.local/bin/deepthink-mcp
+```
+
+**Use with Claude Code:**
+```bash
+claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
+```
+
+**Use with Cursor / VS Code:**
+```json
+{
+  "mcpServers": {
+    "deepthink": {
+      "command": "/Users/yourname/.local/bin/deepthink-mcp"
+    }
+  }
+}
+```
+
+The MCP server exposes your tasks, notes, projects, reminders, and knowledge base as resources and tools — so any MCP-compatible AI client can read and write your workspace.
+
+---
+
+## Architecture
+
+```
+DeepThink/
+├── DeepThinkApp.swift         # app entry point, service startup, onboarding
+├── Models/                    # SwiftData models (Note, Task, Project, Reminder, ...)
+├── Services/                  # 23 @Observable singletons
+│   ├── ClaudeService          # Claude CLI subprocess + streaming JSON
+│   ├── ContextEngine          # RAG retrieval, workspace context packaging
+│   ├── KnowledgeService       # knowledge entry CRUD + file layout
+│   ├── VectorStore            # SQLite vector index (Apple NLEmbedding)
+│   ├── MCPService             # MCP subprocess management + config
+│   ├── InstallationManager    # first-launch CLI/MCP install + PATH setup
+│   └── ...
+├── Views/                     # SwiftUI views organized by feature
+│   ├── Shared/                # design system, reusable components
+│   ├── Workspace/             # projects, notes, tasks
+│   ├── Knowledge/             # knowledge browser, Obsidian import
+│   ├── Chat/                  # AI chat, history, bubbles
+│   ├── Settings/              # Claude, general, backup settings
+│   └── ...
+└── Utilities/                 # constants, extensions, error types
+
+cli/
+├── src/index.ts               # CLI entrypoint (Bun)
+├── src/mcp-server.ts          # MCP server (47 tools, stdio transport)
+├── src/agents/                # research, schedule, insight agents
+├── src/tools/                 # workspace, knowledge, config tools
+└── src/core/                  # db access (reads SwiftData store readonly)
+
+~/DeepThink/                   # user data directory
+├── data/deepthink.store       # SwiftData SQLite database
+├── data/vectors.db            # vector embeddings (SQLite)
+├── knowledge/                 # knowledge entries as markdown files
+└── logs/                      # app + CLI logs
+```
+
+All data lives in `~/DeepThink/`. No iCloud, no backend.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|-----------|
+| App | Swift 6 / SwiftUI / AppKit / macOS 14+ |
+| Persistence | SwiftData + SQLite (vectors) |
+| Embeddings | Apple NaturalLanguage framework (`NLEmbedding`) |
+| Terminal | [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) |
+| Updates | [Sparkle](https://github.com/sparkle-project/Sparkle) 2 |
+| Editor | TipTap (ProseMirror) compiled to a WKWebView bundle |
+| CLI / MCP | Bun + TypeScript, compiled to single binaries |
+| AI | Anthropic Claude CLI (streaming JSON, local subprocess) |
+
+---
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+**Quick contributor setup:**
+
+```bash
+git clone https://github.com/aagam-headout/deepthink
+cd deepthink
+cd cli && bash build.sh && cd ..
+xcodegen generate
+open DeepThink.xcodeproj
+```
+
+Code style is enforced by SwiftFormat (`.swiftformat`) and SwiftLint (`.swiftlint.yml`), both run as Xcode pre-build scripts. Install them with:
+
+```bash
+brew install swiftformat swiftlint
+```
+
+The design system is in `DeepThink/Views/Shared/DesignSystem.swift`. All new UI must use `DS.*` tokens — no raw colors, fonts, or spacing values. See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for the full reference.
+
+**Open issues and good first issues:** [github.com/aagam-headout/deepthink/issues](https://github.com/aagam-headout/deepthink/issues)
+
+---
 
 ## Documentation
 
 | | |
 |-|-|
 | [App Features](docs/app/README.md) | Workspace, knowledge, AI chat, terminal, quick capture |
-| [CLI](docs/cli/README.md) | All `deepthink` commands, agent system, MCP server |
+| [CLI Reference](docs/cli/README.md) | All `deepthink` commands, agent system |
+| [MCP Integration](docs/mcp-integration.md) | MCP server tools, external client setup |
 | [Architecture](docs/ARCHITECTURE.md) | System design, service layer, data flow |
 | [RAG Pipeline](docs/rag-pipeline.md) | Hybrid BM25 + semantic retrieval |
-| [MCP Integration](docs/mcp-integration.md) | 45-tool MCP server, external client setup |
 | [Storage](docs/storage.md) | Data directory layout, database schema |
-| [Shortcuts](docs/shortcuts.md) | Keyboard shortcuts reference |
+| [Keyboard Shortcuts](docs/shortcuts.md) | Full shortcuts reference |
 | [Contributing](CONTRIBUTING.md) | Build guide, code style, PR workflow |
 | [Security](SECURITY.md) | Reporting vulnerabilities |
+
+---
 
 ## License
 

@@ -36,8 +36,9 @@ Never use bare `.buttonStyle(.plain)` or `.borderless` — they lack the pointer
 ## Architecture
 - Services in `DeepThink/Services/` — singletons via `.shared`, `@Observable`
 - Views in `DeepThink/Views/` — organized by feature (Settings, Shared, etc.)
-- MCP server binary at `DeepThink/CLI/Sources/MCP/`
-- CLI binary at `DeepThink/CLI/Sources/CLI/`
+- MCP server source at `cli/src/mcp-server.ts` — built with Bun, output to `cli/out/deepthink-mcp`
+- CLI source at `cli/src/index.ts` — built with Bun, output to `cli/out/deepthink`
+- Both binaries are bundled into the app resources via Xcode post-compile script
 
 ## Code Style
 - No comments unless explaining a non-obvious "why"

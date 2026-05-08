@@ -44,7 +44,15 @@ function getDB(): Database {
 }
 
 function getWriteDB(): Database {
-  if (!_writeDb) _writeDb = new Database(STORE_PATH);
+  if (!_writeDb) {
+    _writeDb = new Database(STORE_PATH);
+    // WAL mode allows SwiftData and the CLI to coexist on the same file.
+    // One writer at a time is enforced by SQLite; busy_timeout retries for
+    // up to 5 s before throwing so short app-side saves don't cause failures.
+    _writeDb.exec("PRAGMA journal_mode=WAL");
+    _writeDb.exec("PRAGMA busy_timeout=5000");
+    _writeDb.exec("PRAGMA synchronous=NORMAL");
+  }
   return _writeDb;
 }
 
