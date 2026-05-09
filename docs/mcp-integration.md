@@ -123,7 +123,9 @@ Output: project count, task counts by status, note count, knowledge stats, recen
 
 ---
 
-## Full Tool Reference
+## Full tool reference
+
+The server aggregates tool definitions in `cli/src/mcp-server.ts` (`ALL_TOOLS`): **50 tools** total as of the current codebase — **5** smart/context tools + **23** workspace tools + **10** knowledge tools + **12** agents/rules/skills configuration tools. If you add tools, bump this narrative or regenerate counts from source.
 
 ### Workspace — Tasks (5 tools)
 

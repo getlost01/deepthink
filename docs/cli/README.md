@@ -1,6 +1,6 @@
-# CLI Documentation
+# CLI documentation
 
-The `deepthink` CLI and `deepthink-mcp` MCP server — built with Bun + TypeScript, compiled to standalone binaries. Both auto-installed to `~/.local/bin/` on app launch.
+The `deepthink` CLI and `deepthink-mcp` MCP server — built with Bun + TypeScript, compiled to standalone binaries. Both install to `~/.local/bin/` on first app launch (see repository [README](../../README.md) for overview).
 
 ## Docs
 

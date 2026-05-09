@@ -4,8 +4,8 @@
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+Shift+D` | **Quick Capture** — floating panel from any app (requires Accessibility permission) |
-| `Cmd+K` | Command Palette |
+| `Option+Space` | **Quick Capture** — floating panel from any app (may require Accessibility; see [Quick Capture](app/quick-capture.md)) |
+| `Cmd+K` | Command palette |
 
 ## Navigation
 

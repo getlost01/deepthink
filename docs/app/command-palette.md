@@ -10,34 +10,40 @@ Quick launcher for all app actions via `Cmd+K`. Fuzzy search across commands, no
 4. Enter to execute
 5. Escape to dismiss
 
-## Command Categories
+## Command categories
 
-### Create (4 commands)
+**Navigation shortcuts:** the menu bar (**DeepThink → Go to Recent / Workspace / …**) defines the authoritative **⌘0–⌘7** sequence. Prefer that or [Keyboard shortcuts](../shortcuts.md); the palette may show overlapping labels for subset of these.
+
+### Create (5 commands)
 
 | Command | Shortcut |
 |---------|----------|
-| Quick Capture | `Shift+Cmd+D` |
+| Quick Capture | `Option+Space` |
 | New Note | `Cmd+N` |
 | New Task | `Cmd+T` |
 | New Project | `Shift+Cmd+N` |
 | New Reminder | `Shift+Cmd+R` |
 
-### Navigate (12 commands)
+### Navigate (sidebar + tabs)
 
-| Command | Shortcut |
-|---------|----------|
+Commands below appear in the palette; **`Cmd+0` … `Cmd+7`** match the **Go to** menu items in `DeepThinkApp`.
+
+| Command | Menu shortcut |
+|---------|----------------|
 | Recent | `Cmd+0` |
 | Workspace | `Cmd+1` |
 | Knowledge | `Cmd+2` |
-| AI Assistant | `Cmd+3` |
-| Connections | `Cmd+4` |
+| Context Graph | `Cmd+3` |
+| AI Assistant | `Cmd+4` |
 | Reminders | `Cmd+5` |
-| Terminal | `Cmd+6` |
-| Projects | `Shift+Cmd+1` |
-| All Notes | `Shift+Cmd+2` |
-| All Tasks | `Shift+Cmd+3` |
-| Assistants | — |
-| Automations | — |
+| Integration | `Cmd+6` |
+| Terminal | `Cmd+7` |
+| Projects (workspace tab) | `Shift+Cmd+1` |
+| All Notes (workspace tab) | `Shift+Cmd+2` |
+| All Tasks (workspace tab) | `Shift+Cmd+3` |
+| Reload Knowledge | — |
+| Capture to Knowledge | — |
+| Assistants / Skills / Rules | — (navigate within Integration to the right tab) |
 | Settings | `Cmd+,` |
 
 ### Skills (dynamic)

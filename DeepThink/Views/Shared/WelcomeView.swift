@@ -61,7 +61,7 @@ struct WelcomeView: View {
                 Feature(icon: "terminal", title: "Built-in Terminal", description: "Multi-tab terminal with AI-powered output analysis"),
                 Feature(icon: "bolt.fill", title: "Quick Capture", description: "Option+Space from any app — save notes, knowledge, or tasks in seconds"),
                 Feature(icon: "magnifyingglass", title: "Command Palette", description: "Cmd+K — navigate, run skills, and find anything instantly"),
-                Feature(icon: "server.rack", title: "MCP Server", description: "47-tool server for Claude Code, Cursor, VS Code, and any MCP client")
+                Feature(icon: "server.rack", title: "MCP Server", description: "Bundled MCP server for Claude Code, Cursor, VS Code, and any MCP client")
             ],
             tag: "Tools"
         ),

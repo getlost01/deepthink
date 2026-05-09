@@ -1,32 +1,96 @@
 # DeepThink
 
+**Local-first AI workspace for macOS** — projects, notes, tasks, and a personal knowledge base with **Claude** and **hybrid RAG**. Your data stays on your machine. **MIT licensed** and open to contributions.
+
+DeepThink is one **native SwiftUI** surface for juggling **projects**, **notes**, **tasks**, and **reminders** next to capture-friendly **knowledge**—plus **⌘K** navigation, and a built-in **terminal**. The same workspace backs the **`deepthink` CLI** and the shipped **MCP server**, so terminals and MCP-capable editors can read and update what the app manages. Persistence lives under **`~/DeepThink/`** (SwiftData plus on-disk markdown and embeddings); conversational AI routes through Anthropic's **Claude CLI** (`claude login`) alongside local hybrid retrieval (**BM25** + semantic search).
+
+DeepThink is under active development—contributions are welcome and help shape it into a more robust workspace ↔ knowledge tool.
+
 [![CI](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml/badge.svg)](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/aagam-headout/deepthink?logo=github)](https://github.com/aagam-headout/deepthink/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7cb342)](LICENSE)
 [![Contributing](https://img.shields.io/badge/contributing-CONTRIBUTING-0366d6)](CONTRIBUTING.md)
 
-A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge base — combined with Claude AI that has full context of everything you're working on. All data stays on your machine.
+> **Download:** [Latest release →](https://github.com/aagam-headout/deepthink/releases/latest) (unsigned `.zip`; first launch: **Right-click → Open**) · macOS **14+**
 
-> **Download:** [Latest Release →](https://github.com/aagam-headout/deepthink/releases/latest) — zip of the app (unsigned); first open: **Right-click → Open** · macOS 14+
+<p align="center">
+  <img src="images/settings.png" alt="DeepThink settings" width="720" />
+</p>
+
+<details>
+<summary><strong>More screenshots(Full Flow)</strong></summary>
+
+<p align="center"><img src="images/recent.png" alt="Recent activity" width="640" /></p>
+<p align="center"><img src="images/workspace.png" alt="Workspace" width="640" /></p>
+<p align="center"><img src="images/knowledge.png" alt="Knowledge base" width="640" /></p>
+<p align="center"><img src="images/context-graph.png" alt="Context graph" width="640" /></p>
+<p align="center"><img src="images/ai-assistant.png" alt="AI assistant" width="640" /></p>
+<p align="center"><img src="images/reminders.png" alt="Reminders" width="640" /></p>
+<p align="center"><img src="images/integrations.png" alt="Integrations" width="640" /></p>
+<p align="center"><img src="images/terminal.png" alt="Built-in terminal" width="640" /></p>
+
+</details>
 
 ---
 
-## What it does
+## Features at a glance
+
+### Workspace & productivity
 
 | | |
 |--|--|
-| **Workspace** | Projects, rich markdown notes with backlinks and version history, kanban task board, and timed reminders |
-| **Knowledge Base** | Capture from any source — URLs, files, clipboard, RSS feeds, Obsidian vaults, or custom scripts. Organized into buckets, searchable instantly |
-| **Hybrid RAG** | Every query runs BM25 keyword + semantic vector search (Apple NLEmbedding). AI gets the right context automatically — you never have to paste things in |
-| **AI Chat** | Streaming Claude with full workspace context, conversation history, edit branching, and auto-compaction for long sessions |
-| **AI Agents** | Custom personas with their own knowledge scopes, model selection, and skill assignments |
-| **Skills** | Slash-command automations (`/summarize`, `/standup`, etc.) with template variables and context injection |
-| **Rules** | Context-aware instructions that activate automatically — e.g. "when I'm in Project X, always reply concisely" |
-| **MCP Server** | 47-tool MCP server that gives Claude Code, Cursor, VS Code, and any MCP-compatible client direct access to your workspace |
-| **Terminal** | Built-in multi-tab terminal with AI output analysis |
-| **Quick Capture** | Option+Space from any app — floating panel to save notes, knowledge, or tasks without switching windows |
-| **Command Palette** | Cmd+K — navigate anywhere, run skills, and find anything |
-| **Context Graph** | Force-directed graph of semantic and wiki-link connections across your workspace |
+| **Projects** | Group notes, tasks, and context by project |
+| **Notes** | Rich markdown, wiki-style **backlinks**, **version history** |
+| **Tasks** | **Kanban** board, priorities, story points, due dates |
+| **Reminders** | Timed reminders with **native macOS notifications** |
+
+### Knowledge base & capture
+
+| | |
+|--|--|
+| **Capture** | URLs, files, clipboard, RSS, **Obsidian** vault import, scripts |
+| **Organization** | **Buckets**, tags, dedup-aware storage |
+| **Search** | Instant search across workspace + knowledge |
+
+### AI & context (no copy-paste churn)
+
+| | |
+|--|--|
+| **Hybrid RAG** | **BM25** keyword + **semantic** vector search (Apple **NLEmbedding**) so the assistant sees the *right* context |
+| **AI chat** | Streaming Claude with full workspace awareness, history, branch edits, session compaction |
+| **Agents** | Custom personas: knowledge scope, models, assigned skills |
+| **Skills** | Slash commands (`/summarize`, `/standup`, …) with templates & context injection |
+| **Rules** | Auto-triggered instructions (e.g. per-project tone or format) |
+
+### Editors & integrations
+
+| | |
+|--|--|
+| **Built-in terminal** | Multi-tab terminal with **AI output analysis** |
+| **MCP server** | Full MCP server ([integration guide](docs/mcp-integration.md)) — **Claude Code**, **Cursor**, **VS Code**, any MCP client can read/write your workspace |
+| **CLI** | `deepthink` in the terminal (`ask`, notes, tasks, knowledge, hybrid `context`) — see [CLI docs](docs/cli/README.md) |
+
+### Fast navigation & discovery
+
+| | |
+|--|--|
+| **Command palette** | **⌘K** — jump anywhere, run skills, fuzzy-find entities |
+| **Quick capture** | **⌥Space** (Option+Space) globally — floating panel for notes, knowledge, or tasks without switching apps |
+| **Context graph** | Force-directed view of **semantic** + **wiki-link** connections |
+
+---
+
+## Table of contents
+
+- [Features at a glance](#features-at-a-glance)
+- [Installing](#installing)
+- [Using the CLI](#using-the-cli)
+- [MCP server](#mcp-server)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Contributing](#contributing)
+- [Documentation](#documentation)
+- [License](#license)
 
 ---
 
@@ -36,11 +100,9 @@ A local-first AI workspace for macOS. Projects, notes, tasks, and a knowledge ba
 
 1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
 2. Unzip and drag **DeepThink.app** to Applications
-3. First launch: **Right-click → Open** (macOS may show an unidentified developer warning)
-4. Launch DeepThink — the app installs the CLI and MCP server automatically on first launch
+3. First launch: **Right-click → Open** (macOS may warn about unidentified developer)
+4. Launch DeepThink — the app installs the **CLI** and **MCP** server automatically on first launch
 5. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
-
-That's it. The AI chat is ready.
 
 ### Option B — Build from source
 
@@ -92,18 +154,20 @@ Full command reference: [docs/cli/README.md](docs/cli/README.md)
 
 ## MCP Server
 
-DeepThink ships a full MCP server (`deepthink-mcp`) automatically registered at:
+DeepThink ships a full MCP server (`deepthink-mcp`), installed to:
 
 ```
 ~/.local/bin/deepthink-mcp
 ```
 
 **Use with Claude Code:**
+
 ```bash
 claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
 ```
 
 **Use with Cursor / VS Code:**
+
 ```json
 {
   "mcpServers": {
@@ -114,7 +178,7 @@ claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
 }
 ```
 
-The MCP server exposes your tasks, notes, projects, reminders, and knowledge base as resources and tools — so any MCP-compatible AI client can read and write your workspace.
+The MCP server exposes tasks, notes, projects, reminders, and the knowledge base as resources and tools for any MCP-compatible client.
 
 ---
 
@@ -143,7 +207,7 @@ DeepThink/
 
 cli/
 ├── src/index.ts               # CLI entrypoint (Bun)
-├── src/mcp-server.ts          # MCP server (47 tools, stdio transport)
+├── src/mcp-server.ts          # MCP server (stdio transport; tools in src/tools/*)
 ├── src/agents/                # research, schedule, insight agents
 ├── src/tools/                 # workspace, knowledge, config tools
 └── src/core/                  # db access (reads SwiftData store readonly)
@@ -176,7 +240,7 @@ All data lives in `~/DeepThink/`. No iCloud, no backend.
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Contributions are welcome. DeepThink is **open source (MIT)**. Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 
 **Quick contributor setup:**
 
@@ -194,9 +258,9 @@ Code style is enforced by SwiftFormat (`.swiftformat`) and SwiftLint (`.swiftlin
 brew install swiftformat swiftlint
 ```
 
-The design system is in `DeepThink/Views/Shared/DesignSystem.swift`. All new UI must use `DS.*` tokens — no raw colors, fonts, or spacing values. See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) for the full reference.
+The design system is in `DeepThink/Views/Shared/DesignSystem.swift`. All new UI must use `DS.*` tokens — no raw colors, fonts, or spacing values. See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 
-**Open issues and good first issues:** [github.com/aagam-headout/deepthink/issues](https://github.com/aagam-headout/deepthink/issues)
+**Issues & good first issues:** [github.com/aagam-headout/deepthink/issues](https://github.com/aagam-headout/deepthink/issues)
 
 ---
 
