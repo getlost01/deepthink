@@ -131,6 +131,7 @@ struct DeepThinkApp: App {
                     center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
                     UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
                     registerCommands()
+                    UpdateService.shared.prepareIfNeeded()
                     // On subsequent launches (onboarding already done), install immediately.
                     // First launch: WelcomeView triggers install so the user can see progress.
                     if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
@@ -261,10 +262,12 @@ struct DeepThinkApp: App {
             }
 
             CommandGroup(after: .appInfo) {
-                Button("Check for Updates...") {
-                    UpdateService.shared.checkForUpdates()
+                if UpdateService.shared.isEmbedded {
+                    Button("Check for Updates...") {
+                        UpdateService.shared.checkForUpdates()
+                    }
+                    .disabled(!UpdateService.shared.canCheckForUpdates)
                 }
-                .disabled(!UpdateService.shared.canCheckForUpdates)
             }
         }
         .defaultSize(width: 1200, height: 800)
