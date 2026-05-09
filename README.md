@@ -14,20 +14,20 @@ DeepThink is under active development—contributions are welcome and help shape
 > **Download:** [Latest release →](https://github.com/aagam-headout/deepthink/releases/latest) (unsigned `.zip`; first launch: **Right-click → Open**) · macOS **14+**
 
 <p align="center">
-  <img src="images/settings.png" alt="DeepThink settings" width="720" />
+  <img src="web-app/public/images/settings.png" alt="DeepThink settings" width="720" />
 </p>
 
 <details>
 <summary><strong>More screenshots(Full Flow)</strong></summary>
 
-<p align="center"><img src="images/recent.png" alt="Recent activity" width="640" /></p>
-<p align="center"><img src="images/workspace.png" alt="Workspace" width="640" /></p>
-<p align="center"><img src="images/knowledge.png" alt="Knowledge base" width="640" /></p>
-<p align="center"><img src="images/context-graph.png" alt="Context graph" width="640" /></p>
-<p align="center"><img src="images/ai-assistant.png" alt="AI assistant" width="640" /></p>
-<p align="center"><img src="images/reminders.png" alt="Reminders" width="640" /></p>
-<p align="center"><img src="images/integrations.png" alt="Integrations" width="640" /></p>
-<p align="center"><img src="images/terminal.png" alt="Built-in terminal" width="640" /></p>
+<p align="center"><img src="web-app/public/images/recent.png" alt="Recent activity" width="640" /></p>
+<p align="center"><img src="web-app/public/images/workspace.png" alt="Workspace" width="640" /></p>
+<p align="center"><img src="web-app/public/images/knowledge.png" alt="Knowledge base" width="640" /></p>
+<p align="center"><img src="web-app/public/images/context-graph.png" alt="Context graph" width="640" /></p>
+<p align="center"><img src="web-app/public/images/ai-assistant.png" alt="AI assistant" width="640" /></p>
+<p align="center"><img src="web-app/public/images/reminders.png" alt="Reminders" width="640" /></p>
+<p align="center"><img src="web-app/public/images/integrations.png" alt="Integrations" width="640" /></p>
+<p align="center"><img src="web-app/public/images/terminal.png" alt="Built-in terminal" width="640" /></p>
 
 </details>
 
