@@ -16,8 +16,12 @@ import {
   REPO_NAME,
   REPO_OWNER,
 } from '../constants/repo'
+import {
+  getBuildTimeDocPaths,
+  getBuildTimeMarkdownByPath,
+  hasBuildTimeDocs,
+} from '../docs/buildTimeDocs'
 
-const docsTreeApi = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/git/trees/${REPO_DEFAULT_BRANCH}?recursive=1`
 const rawBase = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_DEFAULT_BRANCH}`
 const repoBlobBase = `https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${REPO_DEFAULT_BRANCH}`
 const README_FILE = 'readme.md'
@@ -132,15 +136,6 @@ interface DocsCachePayload {
   markdownByPath: Record<string, string>
 }
 
-interface GitTreeItem {
-  type?: string
-  path?: string
-}
-
-interface GitTreeResponse {
-  tree?: GitTreeItem[]
-}
-
 function readDocsCache(): DocsCachePayload | null {
   try {
     const cached = window.localStorage.getItem(DOCS_CACHE_KEY)
@@ -160,24 +155,6 @@ function readDocsCache(): DocsCachePayload | null {
     return payload
   } catch {
     return null
-  }
-}
-
-function writeDocsCache(
-  docPaths: string[],
-  markdownByPath: Record<string, string>,
-): void {
-  try {
-    window.localStorage.setItem(
-      DOCS_CACHE_KEY,
-      JSON.stringify({
-        cachedAt: Date.now(),
-        docPaths,
-        markdownByPath,
-      }),
-    )
-  } catch {
-    /* quota / private mode */
   }
 }
 
@@ -268,6 +245,21 @@ export default function DocumentationPage() {
       setListLoading(true)
       setError('')
       try {
+        if (hasBuildTimeDocs()) {
+          const files = getBuildTimeDocPaths()
+          const nextMarkdownByPath = getBuildTimeMarkdownByPath()
+          const defaultDoc = getDefaultDocPath(files)
+          if (!defaultDoc) throw new Error('No default doc path.')
+          if (!isMounted) return
+          setDocPaths(files)
+          setActiveDocPath(defaultDoc)
+          setMarkdownByPath(nextMarkdownByPath)
+          setMarkdown(nextMarkdownByPath[defaultDoc] || '')
+          setListLoading(false)
+          setDocLoading(false)
+          return
+        }
+
         const cachedDocs = readDocsCache()
         if (cachedDocs) {
           const defaultDoc = getDefaultDocPath(cachedDocs.docPaths)
@@ -284,47 +276,9 @@ export default function DocumentationPage() {
           return
         }
 
-        const response = await fetch(docsTreeApi)
-        if (!response.ok) {
-          throw new Error(`Failed to load docs list (${response.status})`)
-        }
-        const payload = (await response.json()) as GitTreeResponse
-        const files = (payload.tree ?? [])
-          .filter(
-            (item) =>
-              item.type === 'blob' &&
-              item.path?.startsWith('docs/') &&
-              item.path.endsWith('.md'),
-          )
-          .map((item) => item.path!)
-          .sort((a, b) => a.localeCompare(b))
-        if (!files.length) {
-          throw new Error('No markdown docs found in docs/.')
-        }
-        const defaultDoc = getDefaultDocPath(files)
-        if (!defaultDoc) throw new Error('No default doc path.')
-
-        if (!isMounted) return
-        setDocPaths(files)
-        setActiveDocPath(defaultDoc)
-        setListLoading(false)
-        setDocLoading(true)
-
-        const docs = await Promise.all(
-          files.map(async (path) => {
-            const docResponse = await fetch(`${rawBase}/${path}`)
-            if (!docResponse.ok) {
-              throw new Error(`Failed to load ${path} (${docResponse.status})`)
-            }
-            return [path, await docResponse.text()] as const
-          }),
+        throw new Error(
+          'Documentation is not bundled (run npm run ingest-docs before build). On Vercel, set GitHub Actions or project env GITHUB_TOKEN with repo read access.',
         )
-
-        if (!isMounted) return
-        const nextMarkdownByPath = Object.fromEntries(docs)
-        writeDocsCache(files, nextMarkdownByPath)
-        setMarkdownByPath(nextMarkdownByPath)
-        setMarkdown(nextMarkdownByPath[defaultDoc] || '')
       } catch (loadError: unknown) {
         const message =
           loadError instanceof Error

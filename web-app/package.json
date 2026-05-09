@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "ingest-docs": "node scripts/ingest-docs.mjs",
+    "dev": "npm run ingest-docs && vite",
+    "build": "npm run ingest-docs && vite build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
