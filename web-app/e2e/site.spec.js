@@ -3,12 +3,11 @@ import { expect, test } from '@playwright/test'
 test.describe('Marketing site', () => {
   test('home loads with open-source stats link', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-      'grounded knowledge',
-    )
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('CLI')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('MCP')
 
     await expect(
-      page.getByRole('heading', { name: 'Why local-first matters' }),
+      page.getByRole('heading', { name: 'Why local-first is important' }),
     ).toBeVisible()
     await expect(page.getByRole('heading', { name: 'FAQ' })).toBeVisible()
     await expect(

@@ -90,7 +90,7 @@ function HeroSection() {
           initial={{ opacity: 0, y: 14 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-6 max-w-4xl text-pretty text-4xl font-semibold leading-tight tracking-tight text-white md:text-5xl lg:text-6xl"
+          className="mt-6 max-w-4xl text-pretty text-3xl font-semibold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl"
         >
           {hero.title}
         </motion.h1>
@@ -98,7 +98,7 @@ function HeroSection() {
           initial={{ opacity: 0, y: 18 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-6 max-w-2xl text-base text-zinc-300 md:text-lg"
+          className="mt-6 max-w-2xl text-sm text-zinc-300 md:text-base"
         >
           {hero.subtitle}
         </motion.p>
@@ -284,11 +284,10 @@ function FeaturesSection() {
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           <h2 className="text-2xl font-semibold text-white md:text-4xl">
-            Core capabilities
+            {landingContent.sections.capabilities.title}
           </h2>
           <p className="mt-4 max-w-2xl text-zinc-400">
-            Everything below runs locally and shares one workspace with the CLI
-            and MCP layer.
+            {landingContent.sections.capabilities.subtitle}
           </p>
         </motion.div>
         <motion.div
@@ -343,10 +342,10 @@ function PlatformContextSection() {
         >
           <div>
             <h2 className="text-2xl font-semibold text-white md:text-4xl">
-              App, CLI, and MCP
+              {landingContent.sections.appCliMcp.title}
             </h2>
             <p className="mt-4 max-w-2xl text-zinc-400">
-              Three surfaces, one disk and retrieval stack. Architecture page
+              {landingContent.sections.appCliMcp.subtitle} Architecture diagram
               shows how they connect.
             </p>
           </div>
@@ -577,7 +576,7 @@ function ProductTourSection() {
               }
               className="flex flex-col gap-5 rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.045] to-white/[0.015] p-4 shadow-[0_28px_90px_-36px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-6 md:p-6"
             >
-              <p className="max-w-2xl text-sm leading-relaxed text-zinc-300 md:text-base">
+              <p className="max-w-2xl text-xs leading-relaxed text-zinc-300 md:text-sm">
                 {activeItem.description}
               </p>
               <figure className="m-0 w-full">
@@ -599,7 +598,7 @@ function ProductTourSection() {
                     />
                     <motion.img
                       src={activeItem.image}
-                      alt={`${activeItem.title} — app screenshot`}
+                      alt={`${activeItem.title}, app screenshot`}
                       className="relative z-[1] mx-auto block h-auto w-full max-h-[min(76dvh,920px)] max-w-full object-contain object-center"
                       loading={activeIndex === 0 ? 'eager' : 'lazy'}
                       decoding="async"
@@ -659,10 +658,10 @@ function WorkflowSection() {
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
         <h2 className="text-2xl font-semibold text-white md:text-3xl">
-          How you use it
+          {landingContent.sections.workflow.title}
         </h2>
         <p className="mt-3 max-w-xl text-zinc-400">
-          A simple capture → organize → retrieve loop.
+          {landingContent.sections.workflow.subtitle}
         </p>
         <motion.div
           className="mt-8 grid gap-4 md:grid-cols-3"

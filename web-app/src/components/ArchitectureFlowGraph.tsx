@@ -111,7 +111,7 @@ function DataPlaneNode() {
   const rows = [
     {
       path: 'data/deepthink.store',
-      hint: 'SwiftData SQLite (WAL) — projects, notes, tasks, reminders, chat, MCP catalog…',
+      hint: 'SwiftData SQLite (WAL): projects, notes, tasks, reminders, chat, MCP catalog…',
     },
     {
       path: 'data/vectors.db',
@@ -237,7 +237,7 @@ function ClaudeNode() {
       />
       <p className="mt-2 border-t border-white/10 pt-2 text-[10px] leading-snug text-zinc-500">
         Spawned by the app + CLI agents (Planner · Writer · Executor · Research
-        · … ) — nothing leaves your Mac except API calls you authorize.
+        · …). Nothing leaves your Mac except API calls you authorize.
       </p>
     </div>
   )

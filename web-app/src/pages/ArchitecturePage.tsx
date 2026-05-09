@@ -52,7 +52,7 @@ export default function ArchitecturePage() {
             className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400 md:text-base md:leading-relaxed"
           >
             One diagram: three ways in, one disk, hybrid retrieval, Claude. Zoom
-            and drag—the labels are the documentation.
+            and drag; the labels are the documentation.
           </motion.p>
           <motion.div
             variants={fadeUpBlock}

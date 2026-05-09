@@ -53,7 +53,7 @@ const SiteHeader = forwardRef<HTMLElement, SiteHeaderProps>(function SiteHeader(
         <Link
           to="/"
           className={`flex min-w-0 shrink items-center gap-2 text-base font-semibold text-white sm:text-lg ${linkBase}`}
-          aria-label="DeepThink — Home"
+          aria-label="DeepThink home"
           onClick={() => setMenuOpen(false)}
         >
           <img
@@ -96,7 +96,7 @@ const SiteHeader = forwardRef<HTMLElement, SiteHeaderProps>(function SiteHeader(
                   className="fill-[#e3b341] text-[#e3b341]"
                 />
                 <span className="tabular-nums leading-none">
-                  {loading ? '…' : (starsLabel ?? '—')}
+                  {loading ? '…' : (starsLabel ?? '-')}
                 </span>
               </span>
               <span className="hidden text-[11px] font-semibold uppercase leading-none text-[#8b949e] lg:inline">
