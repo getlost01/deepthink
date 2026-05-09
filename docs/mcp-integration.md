@@ -52,7 +52,7 @@ The server exposes your entire DeepThink workspace to any MCP-compatible AI clie
 
 ### How It Works
 
-```
+```text
 AI client (Claude Code, Cursor, etc.)
     ↓  MCP request
 deepthink-mcp (stdio server)
@@ -74,7 +74,7 @@ These are the highest-value tools — designed for AI agents that need to pull r
 
 The recommended starting point for any query about your workspace. Auto-detects whether you need a summary or full data, runs hybrid retrieval (BM25 + semantic), and returns a token-budgeted response.
 
-```
+```text
 Input:  query (string), mode ("auto"|"summary"|"full"), maxTokens (number)
 Output: ranked knowledge chunks + relevant workspace items, token-budgeted
 ```
@@ -85,7 +85,7 @@ Output: ranked knowledge chunks + relevant workspace items, token-budgeted
 
 Retrieves knowledge base entries most relevant to a query using hybrid BM25 + semantic search. Supports scoping to specific knowledge buckets/tags and project boosting.
 
-```
+```text
 Input:  query, maxTokens (default 4000), projectScope, knowledgeScope (tags), topK (default 10)
 Output: ranked knowledge chunks with titles, sources, and relevance scores
 ```
@@ -96,7 +96,7 @@ Output: ranked knowledge chunks with titles, sources, and relevance scores
 
 Retrieves workspace items (tasks, notes, reminders) most relevant to a query. Great for understanding what's in-progress or blocked.
 
-```
+```text
 Input:  query, maxItems (default 5 per category)
 Output: scored tasks, notes, reminders filtered by relevance to query
 ```
@@ -107,7 +107,7 @@ Output: scored tasks, notes, reminders filtered by relevance to query
 
 Single call to search across all data types simultaneously — knowledge, tasks, notes, reminders. Useful when you don't know where the information lives.
 
-```
+```text
 Input:  query, maxItems (default 10), types (filter: "knowledge"|"task"|"note"|"reminder")
 Output: ranked results with type labels
 ```
@@ -116,7 +116,7 @@ Output: ranked results with type labels
 
 Compact system overview in ~200 tokens. Counts, recent items, active projects. Good as a first call to orient an agent.
 
-```
+```text
 Input:  none
 Output: project count, task counts by status, note count, knowledge stats, recent activity
 ```
@@ -247,7 +247,7 @@ Resources expose data as JSON without consuming a tool call. Access via `deepthi
 
 ### Morning standup prep
 
-```
+```text
 1. deepthink_overview          → see what's active
 2. workspace_list_tasks        → filter status="In Progress"
 3. knowledge_context           → query="blockers or decisions from last week"
@@ -255,14 +255,14 @@ Resources expose data as JSON without consuming a tool call. Access via `deepthi
 
 ### Research and save
 
-```
+```text
 1. smart_query                 → query="everything about auth architecture"
 2. knowledge_save_project      → save findings as decision/artifact
 ```
 
 ### Create tasks from a meeting
 
-```
+```text
 1. workspace_list_projects     → find the right project
 2. workspace_create_task       → one call per action item
 3. workspace_create_note       → save meeting notes
@@ -270,7 +270,7 @@ Resources expose data as JSON without consuming a tool call. Access via `deepthi
 
 ### Build a custom agent
 
-```
+```text
 1. agent_list                  → see existing agents
 2. agent_create                → name, role, system prompt, knowledge_scope
 3. rule_create                 → add a trigger:always rule for it
@@ -282,7 +282,7 @@ Resources expose data as JSON without consuming a tool call. Access via `deepthi
 
 Inside the DeepThink app, `MCPService` auto-detects when a chat message needs workspace tools (keywords: `create`, `task`, `note`, `list`, `project`, etc.) and switches to MCP mode:
 
-```
+```text
 User message
     ↓
 Keyword detection → workspace intent?

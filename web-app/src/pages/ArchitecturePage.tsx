@@ -101,7 +101,7 @@ export default function ArchitecturePage() {
           </ReactFlowProvider>
         </motion.div>
         <motion.p
-          className="mx-auto mt-4 max-w-lg px-6 text-center text-[11px] text-zinc-600"
+          className="mx-auto mt-4 max-w-lg px-4 text-center text-[11px] text-zinc-600 sm:px-6"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}

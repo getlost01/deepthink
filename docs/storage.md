@@ -4,7 +4,7 @@ All DeepThink data lives in `~/DeepThink/` on your Mac. Nothing leaves your mach
 
 ## Directory Layout
 
-```
+```text
 ~/DeepThink/
 ├── data/
 │   ├── deepthink.store          # SwiftData SQLite (notes, tasks, projects, conversations)

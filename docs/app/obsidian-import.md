@@ -59,7 +59,7 @@ Inline `#tags` in note body are extracted and added to the entry's frontmatter t
 
 A vault like:
 
-```
+```text
 my-vault/
   daily/2024-03-15.md
   projects/api-redesign.md
@@ -68,7 +68,7 @@ my-vault/
 
 Becomes:
 
-```
+```text
 ~/DeepThink/knowledge/obsidian/
   daily/2024-03-15.md
   projects/api-redesign.md

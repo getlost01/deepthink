@@ -6,7 +6,7 @@ DeepThink's Retrieval-Augmented Generation pipeline automatically finds relevant
 
 Every chat message flows through this pipeline:
 
-```
+```text
 User types question
         ↓
    ┌────────────────────────────┐
@@ -44,7 +44,7 @@ Indexing happens automatically on app launch and whenever knowledge changes.
 
 All chunks and embeddings are stored in a shared SQLite database:
 
-```
+```text
 ~/DeepThink/data/vectors.db
 ```
 
@@ -112,7 +112,7 @@ For each query, both search methods run:
 
 Results merged via **Reciprocal Rank Fusion (RRF)**:
 
-```
+```text
 fused_score(entry) = 1/(k + bm25_rank) + 1/(k + semantic_rank)
 where k = 60
 ```
@@ -169,7 +169,7 @@ Summary regenerates every 6 messages, incorporating previous summary.
 
 Every 6 chat messages, DeepThink auto-extracts knowledge back into the knowledge base:
 
-```
+```text
 Chat conversation
     ↓ (every 6 messages)
 KnowledgeExtractionService.extractFromConversation()

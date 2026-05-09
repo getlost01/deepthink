@@ -36,7 +36,7 @@ The app auto-installs the CLI binaries to `~/.local/bin/` on first launch.
 
 ## Project Structure
 
-```
+```text
 deepthink/
 ├── DeepThink/                  # Swift app
 │   ├── Views/                  # SwiftUI views (by feature)

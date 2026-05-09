@@ -10,7 +10,7 @@ DeepThink is **local-first**: data lives under `~/DeepThink/` (see [storage](../
 |------|----------------|
 | **Workspace** | Projects, markdown notes with backlinks & version history, kanban tasks, reminders |
 | **Knowledge** | Multi-source capture, buckets/tags, hybrid search (BM25 + semantic via shared [RAG pipeline](../rag-pipeline.md)) |
-| **AI** | Streaming Claude with workspace context, agents, slash-command skills, auto rules |
+| **AI** | Agents + optional slash skills; **MCP defaults on** so every agent inherits **`mcp__deepthink__*`** tools; Claude Code gets the same via optional global **`/deepthink`** (`~/.claude/commands/deepthink.md`) |
 | **Integrations** | Built-in terminal, bundled **CLI** and **MCP** server (`~/.local/bin/`), see [MCP Integration](../mcp-integration.md) |
 
 ## Workspace & productivity

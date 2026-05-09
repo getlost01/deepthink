@@ -170,7 +170,7 @@ Full command reference: [docs/cli/README.md](docs/cli/README.md)
 
 DeepThink ships a full MCP server (`deepthink-mcp`), installed to:
 
-```
+```text
 ~/.local/bin/deepthink-mcp
 ```
 
@@ -198,7 +198,7 @@ The MCP server exposes tasks, notes, projects, reminders, and the knowledge base
 
 ## Architecture
 
-```
+```text
 DeepThink/
 ├── DeepThinkApp.swift         # app entry point, service startup, onboarding
 ├── Models/                    # SwiftData models (Note, Task, Project, Reminder, ...)

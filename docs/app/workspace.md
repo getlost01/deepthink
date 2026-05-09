@@ -102,7 +102,7 @@ Full task management with kanban board, priorities, subtasks, and story points.
 
 ### Status Flow
 
-```
+```text
 Backlog → Todo → In Progress → Done
                               → Cancelled
 ```
@@ -138,7 +138,7 @@ Each status has an associated color and icon.
 
 ## Navigation
 
-```
+```text
 Workspace (Cmd+1)
 ├── Projects (Shift+Cmd+1)  — project cards grid
 ├── Notes (Shift+Cmd+2)     — all notes list

@@ -507,34 +507,22 @@ export default function ArchitectureFlowGraph() {
             <p className="hidden font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-500 sm:block">
               Drag nodes · scroll to zoom · use +/− controls
             </p>
-            <div className="flex flex-nowrap items-center gap-x-2 overflow-x-auto text-[9px] text-zinc-400 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:gap-x-3 sm:gap-y-1.5 sm:overflow-visible">
+            <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[9px] text-zinc-400">
               <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <span className="inline-block h-px w-3 bg-violet-400" />
                 app → disk
-              </span>
-              <span className="shrink-0 text-zinc-600 sm:hidden" aria-hidden>
-                ·
               </span>
               <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <span className="inline-block h-px w-3 bg-emerald-400" />
                 CLI/MCP → disk
               </span>
-              <span className="shrink-0 text-zinc-600 sm:hidden" aria-hidden>
-                ·
-              </span>
               <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <span className="inline-block h-px w-3 bg-cyan-400" />
                 disk → RAG
               </span>
-              <span className="shrink-0 text-zinc-600 sm:hidden" aria-hidden>
-                ·
-              </span>
               <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <span className="inline-block h-px w-3 bg-fuchsia-400" />
                 RAG → Claude
-              </span>
-              <span className="shrink-0 text-zinc-600 sm:hidden" aria-hidden>
-                ·
               </span>
               <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <span className="inline-block w-3 border-t border-dotted border-violet-300" />

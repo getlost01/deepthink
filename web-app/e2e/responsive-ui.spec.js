@@ -81,6 +81,17 @@ test.describe('Responsive layout', () => {
       timeout: 30_000,
     })
     await expect(page.locator('article').first()).toBeVisible()
+
+    await page.getByPlaceholder('Search docs...').fill('docs/storage.md')
+    await page.getByRole('button', { name: 'Storage' }).click()
+    await expect(
+      page.getByRole('heading', { level: 1, name: /Data Storage/i }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('columnheader', { name: /^Column$/i }),
+    ).toBeVisible()
+    await expect(page.locator('article pre code').first()).toBeVisible()
+    await expect(page.locator('article p code').first()).toBeVisible()
   })
 
   test('architecture page: diagram on all viewports', async ({ page }) => {

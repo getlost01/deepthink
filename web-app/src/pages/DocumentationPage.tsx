@@ -1,10 +1,11 @@
 import { AnimatePresence, motion, type Variants } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import {
+  type ComponentPropsWithoutRef,
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
@@ -24,7 +25,7 @@ import {
 
 const rawBase = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REPO_DEFAULT_BRANCH}`
 const repoBlobBase = `https://github.com/${REPO_OWNER}/${REPO_NAME}/blob/${REPO_DEFAULT_BRANCH}`
-const README_FILE = 'readme.md'
+const README_FILE = 'readme' + '.md'
 const DOCS_CACHE_KEY = `deepthink-docs-cache:${REPO_FULL_NAME}:${REPO_DEFAULT_BRANCH}`
 const DOCS_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
@@ -238,6 +239,7 @@ export default function DocumentationPage() {
   const [docLoading, setDocLoading] = useState(false)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [docsPanelOpen, setDocsPanelOpen] = useState(false)
 
   useEffect(() => {
     let isMounted = true
@@ -303,6 +305,7 @@ export default function DocumentationPage() {
     (path: string) => {
       if (path === activeDocPath) return
       setActiveDocPath(path)
+      setDocsPanelOpen(false)
       if (markdownByPath[path]) {
         setMarkdown(markdownByPath[path])
       }
@@ -377,21 +380,31 @@ export default function DocumentationPage() {
         )
       },
       code: ({
-        inline,
+        className,
         children,
-      }: {
-        inline?: boolean
-        children?: ReactNode
-      }) =>
-        inline ? (
-          <code className="rounded-md border border-white/10 bg-zinc-800 px-1.5 py-0.5 text-[0.85em] text-zinc-100">
+        ...rest
+      }: ComponentPropsWithoutRef<'code'>) => {
+        const isFenced =
+          typeof className === 'string' &&
+          /(^|\s)language-[A-Za-z0-9_-]+/.test(className)
+        return isFenced ? (
+          <code
+            {...rest}
+            className={[className, 'text-sm leading-relaxed text-zinc-100']
+              .filter(Boolean)
+              .join(' ')}
+          >
             {children}
           </code>
         ) : (
-          <code className="text-sm leading-relaxed text-zinc-100">
+          <code
+            {...rest}
+            className="rounded-md border border-white/10 bg-zinc-800 px-1.5 py-0.5 text-[0.85em] text-zinc-100"
+          >
             {children}
           </code>
-        ),
+        )
+      },
       pre: ({ children }) => (
         <pre className="my-6 overflow-x-auto rounded-xl border border-white/10 bg-zinc-950 p-4 text-sm leading-relaxed text-zinc-100">
           {children}
@@ -403,8 +416,8 @@ export default function DocumentationPage() {
         </blockquote>
       ),
       table: ({ children }) => (
-        <div className="my-6 overflow-x-auto rounded-xl border border-white/10">
-          <table className="w-full border-collapse text-left text-sm">
+        <div className="not-prose my-6 overflow-x-auto rounded-xl border border-white/10">
+          <table className="w-full border-collapse border-spacing-0 text-left text-sm">
             {children}
           </table>
         </div>
@@ -474,10 +487,30 @@ export default function DocumentationPage() {
               variants={fadeUpVariants}
               className="w-full max-w-full rounded-2xl border border-white/10 bg-zinc-900/90 p-3 shadow-2xl shadow-black/20 backdrop-blur-sm md:p-4"
             >
-              <p className="px-2 text-xs font-semibold uppercase tracking-widest text-purple-200">
-                Documentation
-              </p>
-              <div className="mt-3">
+              <div className="flex items-center justify-between gap-2 px-2 md:block md:px-2">
+                <p className="min-w-0 text-xs font-semibold uppercase tracking-widest text-purple-200 md:truncate">
+                  Documentation
+                </p>
+                <button
+                  type="button"
+                  aria-expanded={docsPanelOpen}
+                  aria-controls="docs-nav-panel"
+                  className="btn btn-ghost btn-sm shrink-0 gap-1 border-0 px-2 text-zinc-200 hover:bg-white/5 md:hidden"
+                  onClick={() => setDocsPanelOpen((open) => !open)}
+                >
+                  {docsPanelOpen ? 'Hide list' : 'Browse'}
+                  <ChevronDown
+                    size={18}
+                    aria-hidden
+                    className={`transition-transform duration-200 ${docsPanelOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              </div>
+
+              <div
+                id="docs-nav-panel"
+                className={`mt-3 space-y-3 ${docsPanelOpen ? 'block' : 'hidden'} md:block`}
+              >
                 <input
                   type="text"
                   value={query}
@@ -485,25 +518,25 @@ export default function DocumentationPage() {
                   placeholder="Search docs..."
                   className="w-full rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-purple-300/50 focus:outline-none"
                 />
+                {listLoading ? (
+                  <p className="px-2 py-2 text-sm text-zinc-400">
+                    Loading docs...
+                  </p>
+                ) : (
+                  <div className="max-h-72 overflow-auto pr-1 lg:max-h-[68vh]">
+                    <DocTreeList
+                      node={docTree}
+                      activeDocPath={activeDocPath}
+                      onSelectDoc={handleSelectDoc}
+                    />
+                    {!filteredDocPaths.length && (
+                      <p className="px-2 py-3 text-sm text-zinc-500">
+                        No docs match your search.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-              {listLoading ? (
-                <p className="px-2 py-4 text-sm text-zinc-400">
-                  Loading docs...
-                </p>
-              ) : (
-                <div className="mt-3 max-h-72 overflow-auto pr-1 lg:max-h-[68vh]">
-                  <DocTreeList
-                    node={docTree}
-                    activeDocPath={activeDocPath}
-                    onSelectDoc={handleSelectDoc}
-                  />
-                  {!filteredDocPaths.length && (
-                    <p className="px-2 py-3 text-sm text-zinc-500">
-                      No docs match your search.
-                    </p>
-                  )}
-                </div>
-              )}
             </motion.div>
           </aside>
 

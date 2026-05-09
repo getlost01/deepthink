@@ -59,7 +59,9 @@ async function fetchBlobText(sha) {
   const res = await fetch(url, { headers: rawBlobHeaders() })
   if (!res.ok) {
     const errBody = await res.text()
-    throw new Error(`${res.status} blob ${sha.slice(0, 7)}\n${errBody.slice(0, 400)}`)
+    throw new Error(
+      `${res.status} blob ${sha.slice(0, 7)}\n${errBody.slice(0, 400)}`,
+    )
   }
   return res.text()
 }
@@ -77,7 +79,8 @@ async function ingestFromGitHub() {
     )
     .sort((a, b) => a.path.localeCompare(b.path))
 
-  if (!mdDocs.length) throw new Error('GitHub tree contains no docs/**/*.md blobs.')
+  if (!mdDocs.length)
+    throw new Error('GitHub tree contains no docs/**/*.md blobs.')
 
   fs.rmSync(destRoot, { recursive: true, force: true })
   fs.mkdirSync(destRoot, { recursive: true })
@@ -98,7 +101,10 @@ async function ingestFromGitHub() {
 async function main() {
   if (process.env.DOCS_INGEST === 'local') {
     if (!fs.existsSync(repoDocsRoot)) {
-      console.error('[ingest-docs] DOCS_INGEST=local but ../docs missing:', repoDocsRoot)
+      console.error(
+        '[ingest-docs] DOCS_INGEST=local but ../docs missing:',
+        repoDocsRoot,
+      )
       process.exit(1)
     }
     copyRepoDocsSymlinkAware()

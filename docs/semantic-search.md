@@ -12,7 +12,7 @@ Semantic search converts both the query and every knowledge entry into ~512-dime
 
 ### Embedding Generation
 
-```
+```text
 Knowledge Entry: "OAuth token rotation prevents session hijacking"
         ↓
 SemanticChunker splits into sentence-boundary chunks (max 500 chars)
@@ -26,7 +26,7 @@ Float32 array (~512 dims) stored as BLOB in vectors.db
 
 ### Cosine Similarity Search
 
-```
+```text
 Query: "authentication security"
         ↓
 embed(query) → query vector
@@ -43,7 +43,7 @@ Sort by score, return top K
 
 Semantic results are merged with BM25 results using Reciprocal Rank Fusion, keyed by `entryId` (not title — prevents false merges when entries share titles):
 
-```
+```text
 fused_score = 1/(60 + bm25_rank) + 1/(60 + semantic_rank)
 ```
 

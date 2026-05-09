@@ -121,7 +121,7 @@ The CLI includes a multi-agent system for complex tasks:
 
 ### Agent Flow
 
-```
+```text
 deepthink run "task description"
     ↓
 Planner.think() → JSON steps [{action, tool, params}]
@@ -176,7 +176,7 @@ CLI and app share the same data directory (`~/DeepThink/`):
 
 ## Key Files
 
-```
+```text
 cli/src/
 ├── index.ts           # CLI entry point, command routing
 ├── mcp-server.ts      # MCP server (45 tools for Claude)

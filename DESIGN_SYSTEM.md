@@ -288,7 +288,7 @@ Overview, Projects, Notes, Tasks, Knowledge
 ## Layout Patterns
 
 ### Sidebar + Content (App Root)
-```
+```text
 +----------+------------------------------------+
 | Sidebar  | ContentRouter                      |
 | (200pt)  |                                    |
@@ -297,7 +297,7 @@ Overview, Projects, Notes, Tasks, Knowledge
 ```
 
 ### Tab Bar + Content
-```
+```text
 +-----------------------------------------------+
 | DSToolbarBar [Tab] [Tab] [Tab]   Spacer  [...] |
 +-----------------------------------------------+
@@ -306,7 +306,7 @@ Overview, Projects, Notes, Tasks, Knowledge
 ```
 
 ### List + Detail (HSplitView)
-```
+```text
 +------------------+-------------------------------+
 | List Panel       | Detail Panel                  |
 | (300pt fixed)    | (flex)                        |
@@ -314,7 +314,7 @@ Overview, Projects, Notes, Tasks, Knowledge
 ```
 
 ### Dashboard Grid
-```
+```text
 +--------+--------+--------+--------+
 | Stat   | Stat   | Stat   | Stat   |
 +--------+--------+--------+--------+

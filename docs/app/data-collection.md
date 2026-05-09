@@ -82,7 +82,7 @@ Each configured source is stored as a SwiftData `DataSource`:
 
 ### Sync Logic
 
-```
+```text
 Timer fires
     ↓
 Check: never synced OR (now - lastSyncAt) > interval?

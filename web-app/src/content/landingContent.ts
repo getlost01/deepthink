@@ -22,6 +22,7 @@ export const landingContent = {
     badges: [
       'SwiftUI native',
       'Claude integrated',
+      'Query `/deepthink` command',
       'MCP ready',
       'MIT licensed',
     ],
@@ -127,8 +128,8 @@ export const landingContent = {
         'Expose tools to editors so agents read specs and notes under permissions you set.',
       points: [
         'Tools + resources over MCP',
+        'Query `/deepthink` command routes to MCP tools',
         'Agent-friendly',
-        'Knowledge flows to the IDE on your terms',
       ],
     },
   ],
@@ -212,9 +213,9 @@ export const landingContent = {
         'Yes. The CLI and MCP share the app’s SwiftData workspace with scripts and editors.',
     },
     {
-      question: 'Which AI model is integrated?',
+      question: 'What is the `/deepthink` command?',
       answer:
-        'Claude via the CLI with workspace retrieval: prompts include chunks from your index, not only the open buffer.',
+        'In the DeepThink app, turn MCP on (default with the bundled server): every agent already gets the full deepthink-mcp toolset alongside RAG—no per-agent `/deepthink` entry required. In Claude Code, the app can install the same routing as a global slash command at ~/.claude/commands/deepthink.md so you type /deepthink for fuzzy intents. See the docs for MCP setup.',
     },
     {
       question: 'How do I bring in an Obsidian vault or files?',

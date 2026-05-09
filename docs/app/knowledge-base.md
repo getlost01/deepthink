@@ -36,7 +36,7 @@ We use rotating refresh tokens with 15-minute access token TTL...
 
 ## Directory Structure
 
-```
+```text
 ~/DeepThink/knowledge/
 ├── general/           # Default bucket
 ├── folders/           # User-created buckets

@@ -4,7 +4,7 @@
 
 DeepThink has two main components that share a local data directory (`~/DeepThink/`):
 
-```
+```text
 ┌─────────────────────────────────────┐    ┌──────────────────────────────────┐
 │        macOS App (SwiftUI)          │    │       CLI + MCP Server           │
 │                                     │    │        (Bun/TypeScript)          │
@@ -46,7 +46,7 @@ DeepThink has two main components that share a local data directory (`~/DeepThin
 
 ### UI Layer (SwiftUI Views)
 
-```
+```text
 Views/
 ├── ContentView.swift              # Root: sidebar + content router + onboarding
 ├── Sidebar/SidebarView.swift      # Navigation sidebar
@@ -64,7 +64,7 @@ Views/
 
 ### Service Layer
 
-```
+```text
 Services/
 ├── ContextEngine.swift                # TF-IDF index, RAG, chunking, dedup, summaries
 ├── KnowledgeService.swift             # Knowledge CRUD, search, RAG context formatting
@@ -86,7 +86,7 @@ Services/
 
 ### Model Layer
 
-```
+```text
 Models/
 ├── Note.swift              # @Model — title, content, project, tags, pinned
 ├── TaskItem.swift          # @Model — title, status, priority, due date, story points
@@ -108,7 +108,7 @@ Models/
 
 Every AI interaction flows through this pipeline:
 
-```
+```text
 User Query
     │
     ▼
@@ -173,7 +173,7 @@ Total per query: ~5–7K tokens.
 
 ## CLI Architecture
 
-```
+```text
 cli/src/
 ├── index.ts            # Entry point + command routing
 ├── mcp-server.ts       # MCP server (45 tools for Claude/Cursor/VS Code)
@@ -268,7 +268,7 @@ Content in markdown...
 
 ## MCP Integration
 
-```
+```text
 User query → keyword detection → write MCP config JSON
     → Claude CLI --mcp-config → tool calls → response
 ```
