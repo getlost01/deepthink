@@ -28,22 +28,31 @@ private struct UpdatesSettingsSection: View {
                         Text("Automatic updates")
                             .font(DS.Font.body)
                             .foregroundStyle(DS.Colors.textPrimary)
-                        Text("DeepThink checks for updates automatically on launch.")
+                        if updater.isEmbedded {
+                            Text("DeepThink checks for updates automatically on launch.")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        } else {
+                            Text(
+                                "In-app updates require a signed build or SUPublicEDKey in Info.plist — enable Signing & Capabilities in Xcode (or CI), or omit Sparkle checks for unsigned local builds."
+                            )
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
+                        }
                     }
                     Spacer()
                     Button("Check Now") {
                         updater.checkForUpdates()
                     }
                     .buttonStyle(.dsSecondary)
-                    .disabled(!updater.canCheckForUpdates)
+                    .disabled(!updater.isEmbedded || !updater.canCheckForUpdates)
                 }
                 .padding(DS.Spacing.lg)
             }
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
         }
+        .onAppear { updater.prepareIfNeeded() }
     }
 }
 
