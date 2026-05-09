@@ -201,9 +201,11 @@ struct NoteEditorView: View {
         .onChange(of: allTasks.count) { buildLinkPreviews() }
         .onChange(of: allReminders.count) { buildLinkPreviews() }
         .onDisappear {
-            appState.currentNoteContent = nil
-            appState.currentNoteTitle = nil
-            appState.currentNoteTags = []
+            if appState.pendingSkillExecution == nil {
+                appState.currentNoteContent = nil
+                appState.currentNoteTitle = nil
+                appState.currentNoteTags = []
+            }
         }
         .onChange(of: note.id) {
             publishNoteContext()

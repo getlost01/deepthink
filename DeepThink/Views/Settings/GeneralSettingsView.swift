@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct GeneralSettingsView: View {
@@ -17,6 +18,11 @@ struct GeneralSettingsView: View {
 
 private struct UpdatesSettingsSection: View {
     @State private var updater = UpdateService.shared
+    @State private var didTriggerManualCheck = false
+    @State private var showManualCheckDone = false
+    @State private var hideDoneTask: Task<Void, Never>?
+    @State private var installInstructionsExpanded = false
+    @State private var copiedCommand: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
@@ -33,26 +39,170 @@ private struct UpdatesSettingsSection: View {
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                         } else {
-                            Text(
-                                "In-app updates require a signed build or SUPublicEDKey in Info.plist — enable Signing & Capabilities in Xcode (or CI), or omit Sparkle checks for unsigned local builds."
-                            )
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textTertiary)
+                            Text("DeepThink checks GitHub Releases and offers the latest macOS zip download.")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                            HStack(spacing: DS.Spacing.xs) {
+                                Text("Verify releases at")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                Button("deepthink -> releases") {
+                                    updater.openRepository()
+                                }
+                                .buttonStyle(.plainPointer)
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.accent)
+                            }
+                            if updater.isCheckingForUpdates {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("Checking for updates...")
+                                        .font(DS.Font.small)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                            }
+                            if let latest = updater.latestVersion {
+                                let message = updater.hasUpdateAvailable
+                                    ? "Update available: \(latest) (current \(updater.currentVersion))"
+                                    : "You're up to date (\(updater.currentVersion))."
+                                Text(message)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(updater.hasUpdateAvailable ? DS.Colors.accent : DS.Colors.textTertiary)
+                            }
+                            if let error = updater.lastGitHubError {
+                                Text(error)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.danger.opacity(0.9))
+                            }
                         }
                     }
                     Spacer()
-                    Button("Check Now") {
-                        updater.checkForUpdates()
+                    HStack(spacing: DS.Spacing.sm) {
+                        if !updater.isEmbedded, updater.hasUpdateAvailable {
+                            Button("Download Update") {
+                                updater.openLatestReleaseDownload()
+                            }
+                            .buttonStyle(.dsPrimary)
+                        }
+                        Button(checkNowButtonTitle) {
+                            guard !showManualCheckDone else { return }
+                            didTriggerManualCheck = true
+                            showManualCheckDone = false
+                            hideDoneTask?.cancel()
+                            updater.checkForUpdates()
+                        }
+                        .buttonStyle(.dsSecondary)
+                        .disabled(!updater.canCheckForUpdates || showManualCheckDone)
                     }
-                    .buttonStyle(.dsSecondary)
-                    .disabled(!updater.isEmbedded || !updater.canCheckForUpdates)
                 }
                 .padding(DS.Spacing.lg)
             }
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+
+            installInstructionsDisclosure
         }
-        .onAppear { updater.prepareIfNeeded() }
+        .onAppear { updater.checkForUpdatesOnLaunchIfNeeded() }
+        .onChange(of: updater.isCheckingForUpdates) { _, isChecking in
+            handleManualCheckStateChange(isChecking: isChecking)
+        }
+        .onDisappear {
+            hideDoneTask?.cancel()
+        }
+    }
+
+    private var checkNowButtonTitle: String {
+        if updater.isCheckingForUpdates { return "Checking..." }
+        if showManualCheckDone { return "Done" }
+        return "Check Now"
+    }
+
+    private func handleManualCheckStateChange(isChecking: Bool) {
+        guard didTriggerManualCheck, !isChecking else { return }
+
+        didTriggerManualCheck = false
+        guard updater.lastGitHubError == nil else { return }
+
+        showManualCheckDone = true
+        hideDoneTask?.cancel()
+        hideDoneTask = Task {
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                showManualCheckDone = false
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var installInstructionsDisclosure: some View {
+        if !updater.isEmbedded {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Button {
+                    withAnimation(DS.Animation.standard) {
+                        installInstructionsExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Text("How to install a downloaded update")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Image(systemName: installInstructionsExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                }
+                .buttonStyle(.plainPointer)
+
+                if installInstructionsExpanded {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("1. Click \"Download Update\" and wait for the zip to finish downloading.")
+                        Text("2. Open the downloaded zip and drag DeepThink.app to Applications.")
+                        Text("3. If prompted, choose Replace to overwrite the existing app build.")
+                        Text("4. If macOS still blocks opening, run one of these in Terminal:")
+                        commandCopyRow(
+                            title: "App still in Downloads",
+                            command: "xattr -cr ~/Downloads/DeepThink.app"
+                        )
+                        commandCopyRow(
+                            title: "App already in Applications",
+                            command: "xattr -cr /Applications/DeepThink.app"
+                        )
+                        Text("5. Re-open DeepThink from Applications.")
+                    }
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(DS.Spacing.lg)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+                    .padding(.top, 2)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
+            }
+            .padding(.horizontal, DS.Spacing.xs)
+        }
+    }
+
+    private func commandCopyRow(title: String, command: String) -> some View {
+        HStack(spacing: DS.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+                Text(command)
+                    .font(DS.Font.monoSmall)
+                    .foregroundStyle(DS.Colors.textPrimary)
+            }
+            Spacer()
+            Button(copiedCommand == command ? "Copied" : "Copy") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(command, forType: .string)
+                copiedCommand = command
+            }
+            .buttonStyle(.dsSecondary)
+        }
+        .padding(.vertical, DS.Spacing.xs)
     }
 }
 

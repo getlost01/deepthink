@@ -18,7 +18,7 @@ Quick launcher for all app actions via `Cmd+K`. Fuzzy search across commands, no
 
 | Command | Shortcut |
 |---------|----------|
-| Quick Capture | `Option+Space` |
+| Quick Capture | — (launch from Quick Search) |
 | New Note | `Cmd+N` |
 | New Task | `Cmd+T` |
 | New Project | `Shift+Cmd+N` |

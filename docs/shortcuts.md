@@ -1,11 +1,11 @@
 # Keyboard Shortcuts
 
-## Global
+## App
 
 | Shortcut | Action |
 |----------|--------|
-| `Option+Space` | **Quick Capture** — floating panel from any app (may require Accessibility; see [Quick Capture](app/quick-capture.md)) |
-| `Cmd+K` | Command palette |
+| `Cmd+K` | **Quick Search** (command palette) |
+| `Option+Space` | Quick Search alias (app-only) |
 
 ## Navigation
 

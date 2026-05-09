@@ -29,7 +29,7 @@ DeepThink is **local-first**: data lives under `~/DeepThink/` (see [storage](../
 | [Knowledge Base](knowledge-base.md) | Multi-source capture, buckets, tagging, dedup |
 | [Data Collection](data-collection.md) | Automated URL scraping, RSS, folders, scripts |
 | [Obsidian Import](obsidian-import.md) | Vault import with wiki-link conversion |
-| [Quick Capture](quick-capture.md) | **`Option+Space`** global floating panel |
+| [Quick Capture](quick-capture.md) | In-app floating panel via menu or Quick Search |
 
 ## AI
 

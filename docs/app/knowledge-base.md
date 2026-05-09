@@ -12,7 +12,7 @@ Multi-source knowledge capture, storage, and retrieval system. Everything stored
 | **Clipboard** | System pasteboard capture | Manual or recurring |
 | **Scripts** | Shell execution → output capture | Recurring |
 | **Obsidian vaults** | One-click vault import with syntax conversion | Manual |
-| **Quick Capture** | Option+Space from anywhere | Manual |
+| **Quick Capture** | In-app Quick Search (`Cmd+K`) or File menu | Manual |
 | **Conversations** | Auto-extract every 6 chat messages | Automatic |
 | **Notes** | Auto-extract facts from notes >30 words | Automatic |
 | **MCP servers** | Via Model Context Protocol | On-demand |

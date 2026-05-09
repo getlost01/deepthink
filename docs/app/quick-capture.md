@@ -1,10 +1,10 @@
-# Global Quick Capture
+# Quick Capture
 
-System-wide floating panel for instant note, knowledge, or task capture without leaving your current app.
+Fast in-app panel for instant note, knowledge, or task capture.
 
 ## How to use
 
-Press **Option+Space** (`⌥Space`) from anywhere on your Mac. A floating panel appears:
+Open Quick Capture from inside DeepThink. A floating panel appears:
 
 1. Pick type: **Note**, **Knowledge**, or **Task**
 2. Enter title and content
@@ -12,7 +12,10 @@ Press **Option+Space** (`⌥Space`) from anywhere on your Mac. A floating panel 
 4. For Knowledge: select a bucket and add tags
 5. Press **Cmd+Enter** to save (or **Escape** to dismiss)
 
-You can also open Quick Capture from the menu bar (**File → Quick Capture**), from the command palette (**⌘K** → “Quick Capture”), or via **DeepThink** menu shortcuts where shown as **⌥Space**.
+Open paths:
+
+- Menu bar: **File → Quick Capture**
+- Command palette / Quick Search: **⌘K** (or app-only **⌥Space**) → “Quick Capture”
 
 The panel shows a brief “Saved!” animation and auto-dismisses.
 
@@ -43,24 +46,15 @@ The panel shows a brief “Saved!” animation and auto-dismisses.
 
 | Shortcut | Action |
 |----------|--------|
-| `Option+Space` | Toggle Quick Capture when DeepThink has registered the global hotkey |
+| `⌘K` / `⌥Space` | Open Quick Search, then run “Quick Capture” |
 | `Cmd+Enter` | Save and dismiss |
 | `Escape` | Dismiss without saving |
 
-## Accessibility permission
+## Global shortcut behavior
 
-Showing the panel **from another app** uses a registered **global hotkey**. macOS may require **Accessibility** access for DeepThink:
+Quick Capture no longer uses a global hotkey.
 
-1. First trigger from outside DeepThink → macOS may prompt for permission
-2. **System Settings → Privacy & Security → Accessibility**
-3. Enable **DeepThink**
-
-Panel access from inside the app, the menu bar, or the command palette does not rely on this global registration.
-
-If permission is denied, Quick Capture is still available via:
-
-- Menu: **File → Quick Capture**
-- Command palette: **⌘K** → “Quick Capture”
+Global shortcut support is currently for app Quick Search behavior only. For capture, use in-app entry points (menu or Quick Search command).
 
 ## Technical details
 
@@ -76,11 +70,9 @@ Uses `NSPanel` (not `NSWindow`) with these properties:
 - `canJoinAllSpaces` — visible on all Spaces
 - `.ultraThickMaterial` background — frosted glass appearance
 
-### Hotkey registration
+### Shortcut integration
 
-The global shortcut **`Option+Space`** is registered with Carbon `RegisterEventHotKey` in **`Services/GlobalHotKey.swift`** (keyCode `49`, modifier `optionKey`). `DeepThinkApp` calls **`GlobalHotKey.shared.register`** on launch.
-
-Menu and command palette labels use **`⌥Space`** for the same action.
+Quick Capture is exposed as an in-app command and can be launched from Quick Search.
 
 ### Cursor behavior
 
@@ -93,5 +85,4 @@ Menu and command palette labels use **`⌥Space`** for the same action.
 |------|------|
 | `Views/QuickCapture/QuickCapturePanel.swift` | `NSPanel` wrapper, singleton, toggle logic |
 | `Views/QuickCapture/QuickCaptureView.swift` | SwiftUI content, save logic, project/bucket pickers |
-| `Services/GlobalHotKey.swift` | Global `⌥Space` registration |
-| `DeepThinkApp.swift` | Register hotkey on launch; menu → Quick Capture |
+| `DeepThinkApp.swift` | Menu + command registration for Quick Capture |

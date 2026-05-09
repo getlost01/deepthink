@@ -75,7 +75,7 @@ DeepThink is under active development—contributions are welcome and help shape
 | | |
 |--|--|
 | **Command palette** | **⌘K** — jump anywhere, run skills, fuzzy-find entities |
-| **Quick capture** | **⌥Space** (Option+Space) globally — floating panel for notes, knowledge, or tasks without switching apps |
+| **Quick capture** | In-app floating panel for notes, knowledge, or tasks (open via menu or Quick Search) |
 | **Context graph** | Force-directed view of **semantic** + **wiki-link** connections |
 
 ---
@@ -101,8 +101,22 @@ DeepThink is under active development—contributions are welcome and help shape
 1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
 2. Unzip and drag **DeepThink.app** to Applications
 3. First launch: **Right-click → Open** (macOS may warn about unidentified developer)
-4. Launch DeepThink — the app installs the **CLI** and **MCP** server automatically on first launch
-5. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
+4. If macOS still blocks opening, clear quarantine in Terminal:
+
+App still in Downloads
+
+```bash
+xattr -cr ~/Downloads/DeepThink.app
+```
+
+App already in Applications
+
+```bash
+xattr -cr /Applications/DeepThink.app
+```
+
+5. Launch DeepThink — the app installs the **CLI** and **MCP** server automatically on first launch
+6. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
 
 ### Option B — Build from source
 

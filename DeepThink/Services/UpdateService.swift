@@ -1,72 +1,133 @@
-import Security
-import Sparkle
+import AppKit
+import Foundation
 import SwiftUI
-
-private func bundleIsEligibleForSparkle(_ bundle: Bundle) -> Bool {
-    if bundle.sparkleLooksSigned { return true }
-    if Bundle.main.publicSparkleSigningKeyConfigured { return true }
-    return false
-}
 
 @MainActor
 @Observable
 final class UpdateService {
     static let shared = UpdateService()
 
-    private static let hostEligibleForSparkle = bundleIsEligibleForSparkle(.main)
+    private static let repositoryURL = URL(string: "https://github.com/aagam-headout/deepthink")!
+    private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/aagam-headout/deepthink/releases/latest")!
+    private static let fallbackReleasePageURL = URL(string: "https://github.com/aagam-headout/deepthink/releases/latest")!
 
-    private var updaterController: SPUStandardUpdaterController?
+    private var isCheckingGitHub = false
+    private var hasCheckedAtLaunch = false
 
-    /// When Sparkle refuses to run (typically unsigned hosts without SUPublicEDKey), skips startup so SwiftUI touching this service does not show Sparkle's
-    /// fatal modal.
+    private(set) var latestVersion: String?
+    private(set) var latestReleaseURL: URL?
+    private(set) var lastGitHubError: String?
+
     var isEmbedded: Bool {
-        Self.hostEligibleForSparkle
+        false
     }
 
     var canCheckForUpdates: Bool {
-        guard isEmbedded else { return false }
-        return updaterController?.updater.canCheckForUpdates ?? false
+        !isCheckingGitHub
+    }
+
+    var isCheckingForUpdates: Bool {
+        isCheckingGitHub
+    }
+
+    var currentVersion: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? "0.0.0"
+    }
+
+    var hasUpdateAvailable: Bool {
+        guard let latestVersion else { return false }
+        return compareVersions(currentVersion, latestVersion) == .orderedAscending
     }
 
     private init() {}
 
-    func prepareIfNeeded() {
-        guard isEmbedded, updaterController == nil else { return }
-        updaterController = SPUStandardUpdaterController(
-            startingUpdater: true,
-            updaterDelegate: nil,
-            userDriverDelegate: nil
-        )
+    func prepareIfNeeded() {}
+
+    func checkForUpdatesOnLaunchIfNeeded() {
+        guard !hasCheckedAtLaunch else { return }
+        hasCheckedAtLaunch = true
+        checkForUpdates()
     }
 
     func checkForUpdates() {
-        guard isEmbedded else { return }
-        prepareIfNeeded()
-        updaterController?.checkForUpdates(nil)
+        Task {
+            await fetchLatestRelease()
+        }
+    }
+
+    func openLatestReleaseDownload() {
+        let url = latestReleaseURL ?? Self.fallbackReleasePageURL
+        NSWorkspace.shared.open(url)
+    }
+
+    func openRepository() {
+        NSWorkspace.shared.open(Self.repositoryURL)
+    }
+
+    private func fetchLatestRelease() async {
+        guard !isCheckingGitHub else { return }
+        isCheckingGitHub = true
+        defer { isCheckingGitHub = false }
+        lastGitHubError = nil
+
+        var request = URLRequest(url: Self.latestReleaseAPIURL)
+        request.timeoutInterval = 10
+        request.setValue("DeepThinkApp", forHTTPHeaderField: "User-Agent")
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+                lastGitHubError = "Could not reach GitHub releases."
+                return
+            }
+
+            let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
+            latestVersion = normalizeVersionTag(release.tagName)
+            latestReleaseURL = preferredDownloadURL(from: release)
+        } catch {
+            lastGitHubError = "Update check failed. Try again."
+        }
+    }
+
+    private func preferredDownloadURL(from release: GitHubRelease) -> URL {
+        if let macAsset = release.assets.first(where: { $0.browserDownloadURL.lastPathComponent == "DeepThink-macOS.zip" }) {
+            return macAsset.browserDownloadURL
+        }
+        if let firstZip = release.assets.first(where: { $0.browserDownloadURL.pathExtension.lowercased() == "zip" }) {
+            return firstZip.browserDownloadURL
+        }
+        return release.htmlURL
+    }
+
+    private func normalizeVersionTag(_ tag: String) -> String {
+        var clean = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        if clean.lowercased().hasPrefix("v") { clean.removeFirst() }
+        return clean
+    }
+
+    private func compareVersions(_ lhs: String, _ rhs: String) -> ComparisonResult {
+        lhs.compare(rhs, options: .numeric)
     }
 }
 
-private extension Bundle {
-    var publicSparkleSigningKeyConfigured: Bool {
-        guard let key = object(forInfoDictionaryKey: "SUPublicEDKey") as? String else { return false }
-        return !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
+private struct GitHubRelease: Decodable {
+    let tagName: String
+    let htmlURL: URL
+    let assets: [GitHubAsset]
 
-    /// Same gate Sparkle applies: `-bundleAtURLIsCodeSigned:` treats errSecCSUnsigned as not signed.
-    var sparkleLooksSigned: Bool {
-        guard let url = bundleURL as CFURL? else { return false }
-        var staticCode: SecStaticCode?
-        let created = SecStaticCodeCreateWithPath(url, [], &staticCode)
-        if created == errSecCSUnsigned {
-            return false
-        }
-        guard created == errSecSuccess, let code = staticCode else { return false }
-        var requirement: SecRequirement?
-        let reqResult = SecCodeCopyDesignatedRequirement(code, [], &requirement)
-        _ = requirement
-        if reqResult == errSecCSUnsigned {
-            return false
-        }
-        return reqResult == errSecSuccess
+    enum CodingKeys: String, CodingKey {
+        case tagName = "tag_name"
+        case htmlURL = "html_url"
+        case assets
+    }
+}
+
+private struct GitHubAsset: Decodable {
+    let browserDownloadURL: URL
+
+    enum CodingKeys: String, CodingKey {
+        case browserDownloadURL = "browser_download_url"
     }
 }
