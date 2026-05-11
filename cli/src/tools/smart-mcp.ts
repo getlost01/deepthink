@@ -101,9 +101,8 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
-      const mode = p.mode ?? classifyIntent(p.query);
-      const resolvedMode = mode === "auto" ? classifyIntent(p.query) : mode;
-      const actualMode = resolvedMode === "auto" ? "summary" : resolvedMode;
+      const rawMode = p.mode && p.mode !== "auto" ? p.mode : classifyIntent(p.query);
+      const actualMode = rawMode === "auto" ? "summary" : rawMode;
 
       if (actualMode === "full") {
         return {

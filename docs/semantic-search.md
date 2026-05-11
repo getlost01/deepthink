@@ -1,116 +1,176 @@
 # Semantic Search
 
-Meaning-based search using Apple's NaturalLanguage framework. Complements BM25 keyword search — together they form the hybrid retrieval system.
+Meaning-based search using Apple's NaturalLanguage framework. Complements BM25 keyword search — together they form the hybrid retrieval system used by both the Swift app and CLI.
 
 ## Why Semantic Search
 
 BM25 only matches keywords. If your knowledge says "OAuth token rotation prevents session hijacking" and you search "authentication security", BM25 finds nothing — no shared words.
 
-Semantic search converts both the query and every knowledge entry into ~512-dimensional vectors. Entries with similar meaning score high even without keyword overlap.
+Semantic search converts both the query and every chunk into ~512-dimensional vectors. Entries with similar meaning score high even without keyword overlap.
 
-## How It Works
+---
 
-### Embedding Generation
+## Shared vectors.db
+
+Both the Swift app (`VectorStore.swift`) and the CLI (`vector-store.ts`) read from and write to the same database:
 
 ```text
-Knowledge Entry: "OAuth token rotation prevents session hijacking"
-        ↓
-SemanticChunker splits into sentence-boundary chunks (max 500 chars)
-        ↓
-For each chunk: embed("{title}. {first 500 chars of chunk}")
-        ↓
-NLEmbedding.sentenceEmbedding(for: .english)
-        ↓
-Float32 array (~512 dims) stored as BLOB in vectors.db
+~/DeepThink/data/vectors.db
 ```
 
-### Cosine Similarity Search
+WAL mode is enabled so both processes can access the file concurrently without blocking each other. There is no replication or sync step — writes from either side are immediately visible to the other.
+
+---
+
+## Embedding Model
+
+**Apple `NLEmbedding.sentenceEmbedding(for: .english)`**
+
+- On-device inference — no API key, no network call
+- ~512-dimensional Float32 output
+- English language only; other languages may return nil
+- Available on macOS 12+ via the NaturalLanguage framework
+
+The CLI accesses this model via a compiled Swift helper binary (`embed-helper`) rather than calling NLEmbedding directly from TypeScript. The helper is auto-compiled on first use:
+
+```text
+~/DeepThink/.cache/embed-helper
+```
+
+Requires macOS with Xcode Command Line Tools (`swiftc`). The app and CLI use the identical model — there is no version skew in embedding space.
+
+---
+
+## Chunking Algorithm
+
+Long entries are split before embedding. Both Swift (`SemanticChunker` in `EmbeddingService.swift`) and TypeScript (`semanticChunk` in `vector-store.ts`) implement the same logic:
+
+- **Split boundary:** sentence boundaries (Swift uses `enumerateSubstrings(.bySentences, .localized)`; TypeScript uses a sentence regex)
+- **Minimum chunk size:** 100 characters — sentences below this are merged with the next
+- **Maximum chunk size:** 500 characters — sentences that would exceed this start a new chunk
+- **Overlap:** the last sentence of the previous chunk is prepended to the next chunk, preserving context across boundaries
+- **Result:** each chunk is self-contained enough to be meaningful in isolation, with a small bridge to adjacent content
+
+---
+
+## Embedding Format
+
+The input string sent to NLEmbedding for every chunk and every query is standardized:
+
+```text
+"{title}. {content.prefix(500)}"
+```
+
+This format applies to all item types — knowledge entries, tasks, notes, and reminders. Using the same format for indexing and querying keeps the embedding space consistent.
+
+---
+
+## NaN / Infinite Validation
+
+Before any embedding vector is written to `vectors.db`, every element is checked:
+
+```swift
+// Swift
+guard embedding.allSatisfy({ $0.isFinite }) else { return }
+```
+
+```typescript
+// TypeScript (embedding-service.ts)
+if (embedding.some(v => !isFinite(v))) { continue; }
+```
+
+Vectors containing NaN or Infinite values are silently discarded. This prevents corrupt blobs from poisoning cosine similarity results.
+
+---
+
+## Cosine Similarity Scoring
 
 ```text
 Query: "authentication security"
-        ↓
-embed(query) → query vector
-        ↓
+    │
+    ▼
+embed("{title}. {query text}") → query vector (Float32[~512])
+    │
+    ▼
 For each chunk with embedding in vectors.db:
-    similarity = dot(query, chunk) / (|query| × |chunk|)
-        ↓
-Filter: similarity > 0.3 (minimum threshold)
-Dedup: one result per entry_id
-Sort by score, return top K
+    similarity = dot(query_vec, chunk_vec) / (|query_vec| × |chunk_vec|)
+    │
+    ▼
+Filter: similarity ≤ 0.3 → discarded
+Dedup: one result per entry_id (highest chunk score wins)
+Sort descending, return top-k=20
 ```
 
-### Hybrid Fusion
+The 0.3 threshold filters out weakly related entries that would add noise to the context window.
 
-Semantic results are merged with BM25 results using Reciprocal Rank Fusion, keyed by `entryId` (not title — prevents false merges when entries share titles):
+---
 
-```text
-fused_score = 1/(60 + bm25_rank) + 1/(60 + semantic_rank)
+## Content Hash Deduplication
+
+Each chunk row in `vectors.db` stores a `content_hash` (djb2 integer). On re-index:
+
+1. Compute hash of current chunk content
+2. Compare against stored `content_hash`
+3. If match → skip (embedding already current)
+4. If new or changed → re-chunk and re-embed
+5. Entries deleted from the knowledge FS or workspace → pruned from `vectors.db`
+
+This makes incremental indexing cheap — only changed content triggers NLEmbedding calls.
+
+---
+
+## Chunk Cascade Delete
+
+When any entity is deleted — task, note, project, reminder, or knowledge entry — all associated chunks in `vectors.db` are removed:
+
+```sql
+DELETE FROM chunks WHERE entry_id = ?
 ```
 
-An entry found by only one method still surfaces. An entry found by both ranks higher. In `unifiedSearch`, semantic search runs once and is shared across workspace and knowledge retrieval to avoid duplicate embedding lookups.
+For project deletes, all chunks belonging to entries in that project are cascade-deleted. This keeps `vectors.db` in sync with the source of truth without requiring periodic cleanup jobs.
+
+---
 
 ## What Gets Indexed
 
-VectorStore indexes all content types, not just knowledge entries:
+| Entry Type | entry_type value | Indexed by |
+|------------|-----------------|-----------|
+| Knowledge FS entries | `knowledge` | Swift `EmbeddingService`, CLI `embedding-service.ts` |
+| Tasks | `task` | Swift `EmbeddingService.indexWorkspaceItems()`, CLI |
+| Notes | `note` | Swift `EmbeddingService.indexWorkspaceItems()`, CLI |
+| Reminders | `reminder` | Swift `EmbeddingService.indexWorkspaceItems()`, CLI |
 
-| Entry Type | Source | `entry_type` value |
-|------------|--------|-------------------|
-| Knowledge base entries | `~/DeepThink/knowledge/**/*.md` | `knowledge` |
-| Tasks + Notes (CLI) | SwiftData (read by CLI) | `workspace` — indexed by CLI for semantic retrieval in `workspaceContext` / `unifiedSearch` |
-| Tasks + Notes (app) | SwiftData | Indexed via `EmbeddingService.indexWorkspaceItems()` |
+Archive entries (`source == 'archive'`) are stored in `vectors.db` but excluded from retrieval queries by default via `WHERE source != 'archive'`.
 
-## Incremental Indexing
+---
 
-Embeddings are expensive to compute. A `content_hash` (djb2) stored per chunk in `vectors.db` skips unchanged entries:
+## CLI Commands
 
-1. On `KnowledgeService.reload()`, all entries passed to `EmbeddingService.indexEntries()`
-2. For each entry, compute content hash
-3. If hash matches stored hash → skip (already embedded)
-4. If new or changed → re-chunk and re-embed
-5. Stale entries (deleted from knowledge base) → pruned from `vectors.db`
+```bash
+deepthink context semantic "authentication"     # pure semantic search
+deepthink context query "auth flow"             # hybrid BM25 + semantic (default)
+deepthink context query "auth flow" --bm25      # keyword-only, skip semantic
+```
 
-## Storage
-
-Everything stored in a single SQLite database:
-
-| File | Content |
-|------|---------|
-| `~/DeepThink/data/vectors.db` | All chunks + embeddings (Float32 BLOB), content hashes, entry metadata |
-
-Replaces the old `embeddings.json` + `embedding_hashes.json` files. Uses WAL journal mode for concurrent read/write access by both app and CLI.
-
-## CLI Support
-
-Semantic search is available in the CLI via `cli/src/core/embedding-service.ts`:
-
-- **Shared DB**: reads and writes to the same `~/DeepThink/data/vectors.db` as the Swift app
-- **Query embedding**: compiled Swift helper at `~/DeepThink/.cache/embed-helper` using the same `NLEmbedding` model
-- **Indexing**: CLI can index entries independently via `indexEntry()` — does not require the app to run first
-- **Hybrid retrieval**: `context-engine.ts` merges BM25 + semantic via RRF, same algorithm as Swift app
-- **CLI commands**:
-  - `deepthink context query <q>` — hybrid retrieval (default)
-  - `deepthink context query <q> --bm25` — keyword-only fallback
-  - `deepthink context semantic <q>` — pure semantic search
-- **MCP tools**: `smart_query` and `knowledge_context` use hybrid retrieval
-
-The Swift helper is auto-compiled on first use and cached at `~/DeepThink/.cache/embed-helper`. Requires macOS with Xcode Command Line Tools (`swiftc`).
+---
 
 ## Limitations
 
-- **English only**: `NLEmbedding.sentenceEmbedding(for: .english)` — other languages may return nil
-- **Quality**: Apple's built-in model is general-purpose, not tuned for domain-specific content
-- **Input truncation**: Only first 500 chars of each chunk embedded (quality degrades with length)
-- **macOS only**: CLI semantic search requires Apple's NaturalLanguage framework via `swiftc`
-- **Future upgrade path**: swap `NLEmbedding` for a local MLX model (e.g., all-MiniLM-L6-v2) for better quality and cross-platform support
+- **English only** — `NLEmbedding.sentenceEmbedding(for: .english)`. Non-English content may produce nil or degraded embeddings.
+- **500-char input cap** — only the first 500 chars of each chunk are embedded; very long chunks lose tail content in the vector representation.
+- **General-purpose model** — Apple's built-in model is not tuned for software or personal knowledge domains.
+- **macOS only** — the `embed-helper` binary requires `swiftc` and the NaturalLanguage framework. Not available on Linux or Windows.
+
+---
 
 ## Key Files
 
 | File | Role |
 |------|------|
-| `Services/VectorStore.swift` | SQLite CRUD for chunks + embeddings, `VectorChunk` model |
-| `Services/EmbeddingService.swift` | Embedding generation, `SemanticChunker`, cosine similarity, incremental indexing |
+| `Services/VectorStore.swift` | SQLite CRUD for `vectors.db`, Float32 BLOB read/write, parameterized queries |
+| `Services/EmbeddingService.swift` | NLEmbedding calls, SemanticChunker, incremental indexing, NaN guard, workspace item indexing |
 | `Services/ContextEngine.swift` | `retrieveContextHybrid()` — merges BM25 + semantic via RRF |
-| `Services/KnowledgeService.swift` | Triggers embedding indexing on `reload()` |
-| `cli/src/core/vector-store.ts` | CLI SQLite layer, `semanticChunk`, shared schema |
-| `cli/src/core/embedding-service.ts` | CLI: query embedding via Swift helper, indexing, cosine similarity |
-| `cli/src/core/context-engine.ts` | CLI: `retrieveContextHybrid()` — BM25 + semantic RRF fusion |
+| `Services/KnowledgeService.swift` | Triggers `EmbeddingService.indexEntries()` on knowledge reload |
+| `cli/src/core/vector-store.ts` | CLI SQLite layer, `semanticChunk`, shared schema, `chunksForEntryIds()` |
+| `cli/src/core/embedding-service.ts` | Query embedding via embed-helper, cosine similarity, indexing, NaN guard |
+| `cli/src/core/context-engine.ts` | CLI `retrieveContextHybrid()` — BM25 + semantic RRF fusion |

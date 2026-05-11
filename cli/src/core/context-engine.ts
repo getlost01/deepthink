@@ -4,6 +4,7 @@ import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { type SemanticResult, semanticSearch } from "./embedding-service";
 import {
   allChunks,
+  chunksForEntryIds,
   contentHash as getContentHash,
   pruneStaleEntries,
   semanticChunk,
@@ -458,9 +459,13 @@ export function retrieveContext(
   const { docFreq, docTerms, entryCount: docCount } = getTFIDF(entries);
 
   // Only score knowledge chunks — workspace chunks have no docTerms entry and would be skipped anyway
-  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge" });
+  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge", excludeArchive: true });
 
-  const avgDocLen = chunks.reduce((s, c) => s + c.content.length, 0) / Math.max(chunks.length, 1);
+  const scorableChunks = chunks.filter((c) => docTerms.has(c.entryId));
+  const avgDocLen =
+    scorableChunks.length > 0
+      ? scorableChunks.reduce((s, c) => s + c.content.length, 0) / scorableChunks.length
+      : chunks.reduce((s, c) => s + c.content.length, 0) / Math.max(chunks.length, 1);
   const k1 = 1.5;
   const b = 0.75;
   const queryTF = computeTF(queryTerms);
@@ -495,12 +500,12 @@ export function retrieveContext(
 
     if (opts.projectScope) {
       const p = opts.projectScope.toLowerCase();
-      if (chunk.title.toLowerCase().includes(p) || chunk.tags.some((t) => t.toLowerCase() === p)) {
+      if (chunk.title.toLowerCase().includes(p) || chunk.tags.some((t) => t.toLowerCase().includes(p))) {
         score *= 1.5;
       }
     }
 
-    if (score > 0.01) scored.push({ chunk, score });
+    if (score > 0.1) scored.push({ chunk, score });
   }
 
   scored.sort((a, b) => b.score - a.score);
@@ -562,17 +567,15 @@ export function retrieveContextHybrid(
   const bm25 = retrieveContext(query, { ...opts, maxTokens: maxTokens * 2 });
   const semantic = precomputedSemantic ?? semanticSearch(query, 20, opts.agentScope);
 
+  if (bm25.parts.length === 0 && semantic.length === 0) {
+    return { parts: [], totalTokensEstimate: 0, entriesScanned: 0, entriesReturned: 0 };
+  }
   if (semantic.length === 0) {
-    return retrieveContext(query, opts);
+    return bm25;
   }
 
   const entries = loadAllEntriesCached();
   const entryMap = new Map(entries.map((e) => [e.id, e]));
-  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge" });
-  const chunkByEntryId = new Map<string, VectorChunk>();
-  for (const c of chunks) {
-    if (!chunkByEntryId.has(c.entryId)) chunkByEntryId.set(c.entryId, c);
-  }
 
   function resolveEntryId(embeddingID: string): string | undefined {
     if (entryMap.has(embeddingID)) return embeddingID;
@@ -597,6 +600,15 @@ export function retrieveContextHybrid(
   for (let rank = 0; rank < semantic.length; rank++) {
     const entryId = resolveEntryId(semantic[rank].entryID) ?? semantic[rank].entryID;
     fusedScores.set(entryId, (fusedScores.get(entryId) ?? 0) + 1 / (K + rank + 1));
+  }
+
+  // Only load chunks for semantic-only results — BM25 results already have content
+  const neededIds = [...fusedScores.keys()].filter((id) => !bm25PartByEntryId.has(id));
+  const chunkByEntryId = new Map<string, VectorChunk>();
+  if (neededIds.length > 0) {
+    for (const c of chunksForEntryIds(neededIds, "knowledge")) {
+      if (!chunkByEntryId.has(c.entryId)) chunkByEntryId.set(c.entryId, c);
+    }
   }
 
   const sorted = [...fusedScores.entries()].sort((a, b) => b[1] - a[1]);
@@ -689,8 +701,9 @@ export function workspaceContext(
   semResults.forEach((r, rank) => semRankMap.set(r.entryID, rank));
 
   function rrfScore(bm25Rank: number, entryKey: string): number {
-    const semRank = semRankMap.get(entryKey) ?? 1000;
-    return 1 / (K + bm25Rank + 1) + 1 / (K + semRank + 1);
+    const semRank = semRankMap.get(entryKey);
+    const semRrf = semRank !== undefined ? 1 / (K + semRank + 1) : 0;
+    return 1 / (K + bm25Rank + 1) + semRrf;
   }
 
   const tasksBM25 = tasks
@@ -758,6 +771,7 @@ export function workspaceContext(
 
 export interface UnifiedResult {
   type: "task" | "note" | "reminder" | "knowledge";
+  entryId: string;
   pk?: number;
   title: string;
   content: string;
@@ -786,6 +800,10 @@ export function unifiedSearch(
   ensureWorkspaceIndexed(tasks, notes);
   const semantic = semanticSearch(query, 60);
 
+  const taskDetail = new Map(tasks.map((t) => [t.pk, t.detail]));
+  const noteContent = new Map(notes.map((n) => [n.pk, n.content]));
+  const reminderNotes = new Map(reminders.map((r) => [r.pk, r.notes]));
+
   const scoreMap = new Map<string, number>();
   const resultMap = new Map<string, UnifiedResult>();
 
@@ -798,9 +816,10 @@ export function unifiedSearch(
       if (!resultMap.has(key))
         resultMap.set(key, {
           type: "task",
+          entryId: key,
           pk: t.pk,
           title: t.title,
-          content: "",
+          content: taskDetail.get(t.pk) ?? "",
           status: t.status,
           priority: t.priority,
           score: 0,
@@ -813,7 +832,15 @@ export function unifiedSearch(
       const key = `note:${n.pk}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
       if (!resultMap.has(key))
-        resultMap.set(key, { type: "note", pk: n.pk, title: n.title, content: "", project: n.project, score: 0 });
+        resultMap.set(key, {
+          type: "note",
+          entryId: key,
+          pk: n.pk,
+          title: n.title,
+          content: noteContent.get(n.pk) ?? "",
+          project: n.project,
+          score: 0,
+        });
     });
   }
 
@@ -822,19 +849,27 @@ export function unifiedSearch(
       const key = `reminder:${r.pk}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
       if (!resultMap.has(key))
-        resultMap.set(key, { type: "reminder", pk: r.pk, title: r.title, content: "", score: 0 });
+        resultMap.set(key, {
+          type: "reminder",
+          entryId: key,
+          pk: r.pk,
+          title: r.title,
+          content: reminderNotes.get(r.pk) ?? "",
+          score: 0,
+        });
     });
   }
 
   if (types.includes("knowledge")) {
     // Pass pre-computed semantic (trimmed to top 20) to avoid a second search
-    const kn = retrieveContextHybrid(query, { topK: 20 }, semantic.slice(0, 20));
+    const kn = retrieveContextHybrid(query, { topK: 20 }, semantic);
     kn.parts.forEach((p, rank) => {
       const key = `knowledge:${p.entryId}`;
       scoreMap.set(key, (scoreMap.get(key) ?? 0) + 1 / (K + rank + 1));
       if (!resultMap.has(key))
         resultMap.set(key, {
           type: "knowledge",
+          entryId: p.entryId,
           title: p.title,
           content: p.content,
           tags: p.tags,

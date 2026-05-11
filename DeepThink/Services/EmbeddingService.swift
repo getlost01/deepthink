@@ -23,7 +23,9 @@ final class EmbeddingService {
     func embed(_ text: String) -> [Double]? {
         guard let nlEmbedding else { return nil }
         return embedQueue.sync {
-            nlEmbedding.vector(for: text)
+            guard let vector = nlEmbedding.vector(for: text) else { return nil }
+            guard !vector.contains(where: { $0.isNaN || $0.isInfinite }) else { return nil }
+            return vector
         }
     }
 
@@ -115,7 +117,7 @@ final class EmbeddingService {
         )
 
         let vectorChunks = chunks.map { chunk -> VectorChunk in
-            let embedding = embed("\(title). \(String(chunk.content.prefix(400)))")
+            let embedding = embed("\(title). \(String(chunk.content.prefix(500)))")
             return VectorChunk(
                 id: chunk.id, entryID: chunk.entryID, entryType: chunk.entryType,
                 title: chunk.title, content: chunk.content, tags: chunk.tags,

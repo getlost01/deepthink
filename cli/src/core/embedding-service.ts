@@ -17,6 +17,10 @@ const CACHE_DIR = join(DEEPTHINK_ROOT, ".cache");
 const HELPER_BIN = join(CACHE_DIR, "embed-helper");
 const HELPER_SRC = join(CACHE_DIR, "embed-helper.swift");
 
+const _embeddingCache = new Map<string, { vector: Float32Array; ts: number }>();
+const EMBEDDING_CACHE_TTL = 5 * 60 * 1000;
+const EMBEDDING_CACHE_MAX = 200;
+
 const SWIFT_SOURCE = `import NaturalLanguage
 import Foundation
 
@@ -50,6 +54,9 @@ function ensureHelper(): boolean {
 
 function embedQuery(text: string): Float32Array | null {
   if (!ensureHelper()) return null;
+  const now = Date.now();
+  const cached = _embeddingCache.get(text);
+  if (cached && now - cached.ts < EMBEDDING_CACHE_TTL) return cached.vector;
   try {
     const result = execFileSync(HELPER_BIN, [text], {
       timeout: 5000,
@@ -57,7 +64,12 @@ function embedQuery(text: string): Float32Array | null {
       stdio: ["pipe", "pipe", "pipe"],
     });
     const values = result.trim().split(",").map(Number);
-    if (values.length > 0 && !values.some(Number.isNaN)) return new Float32Array(values);
+    if (values.length > 0 && !values.some(Number.isNaN)) {
+      const vector = new Float32Array(values);
+      if (_embeddingCache.size >= EMBEDDING_CACHE_MAX) _embeddingCache.delete(_embeddingCache.keys().next().value!);
+      _embeddingCache.set(text, { vector, ts: now });
+      return vector;
+    }
     return null;
   } catch {
     return null;

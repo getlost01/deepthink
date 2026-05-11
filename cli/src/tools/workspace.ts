@@ -7,6 +7,7 @@ export interface WorkspaceTool {
   description: string;
   inputSchema: Record<string, any>;
   execute: (params: Record<string, any>) => any;
+  readonly?: boolean;
 }
 
 const STATUS_ENUM = ["Backlog", "To Do", "In Progress", "Done", "Cancelled"];
@@ -16,6 +17,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Tasks ──
   {
     name: "workspace_list_tasks",
+    readonly: true,
     description: "List tasks with optional filters. Returns paginated results (default 50 per page).",
     inputSchema: {
       type: "object",
@@ -42,6 +44,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   },
   {
     name: "workspace_get_task",
+    readonly: true,
     description: "Get a single task by ID (number) or name (fuzzy match).",
     inputSchema: {
       type: "object",
@@ -139,8 +142,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const t = db.getTask(p.ref);
       if (!t) throw new Error(`task not found: ${p.ref}`);
-      db.deleteTask(t.pk);
       deleteChunksForEntry(`task:${t.pk}`);
+      db.deleteTask(t.pk);
       return { pk: t.pk, deleted: true };
     },
   },
@@ -148,6 +151,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Notes ──
   {
     name: "workspace_list_notes",
+    readonly: true,
     description: "List notes with optional filters. Returns paginated results (default 50 per page).",
     inputSchema: {
       type: "object",
@@ -173,6 +177,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   },
   {
     name: "workspace_get_note",
+    readonly: true,
     description: "Get a single note by ID or name.",
     inputSchema: {
       type: "object",
@@ -261,8 +266,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const n = db.getNote(p.ref);
       if (!n) throw new Error(`note not found: ${p.ref}`);
-      db.deleteNote(n.pk);
       deleteChunksForEntry(`note:${n.pk}`);
+      db.deleteNote(n.pk);
       return { pk: n.pk, deleted: true };
     },
   },
@@ -270,6 +275,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Projects ──
   {
     name: "workspace_list_projects",
+    readonly: true,
     description: "List all projects with task/note counts. Returns paginated results (default 50 per page).",
     inputSchema: {
       type: "object",
@@ -293,6 +299,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   },
   {
     name: "workspace_get_project",
+    readonly: true,
     description: "Get a single project by ID or name.",
     inputSchema: {
       type: "object",
@@ -379,6 +386,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const pr = db.getProject(p.ref);
       if (!pr) throw new Error(`project not found: ${p.ref}`);
+      deleteChunksForEntry(`project:${pr.pk}`);
       db.deleteProject(pr.pk);
       return { pk: pr.pk, deleted: true };
     },
@@ -387,6 +395,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Reminders ──
   {
     name: "workspace_list_reminders",
+    readonly: true,
     description: "List all reminders. Optionally filter by completion status.",
     inputSchema: {
       type: "object",
@@ -398,6 +407,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   },
   {
     name: "workspace_get_reminder",
+    readonly: true,
     description: "Get a single reminder by ID (number) or title (fuzzy match).",
     inputSchema: {
       type: "object",
@@ -484,8 +494,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const r = db.getReminder(p.ref);
       if (!r) throw new Error(`reminder not found: ${p.ref}`);
-      db.deleteReminder(r.pk);
       deleteChunksForEntry(`reminder:${r.pk}`);
+      db.deleteReminder(r.pk);
       return { pk: r.pk, deleted: true };
     },
   },
@@ -627,6 +637,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Summary ──
   {
     name: "workspace_summary",
+    readonly: true,
     description: "Get a summary of the entire workspace: project, task, and note counts plus recent items.",
     inputSchema: { type: "object", properties: {} },
     execute: () => {

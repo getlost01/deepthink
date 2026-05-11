@@ -1,214 +1,214 @@
 # RAG Pipeline
 
-DeepThink's Retrieval-Augmented Generation pipeline automatically finds relevant knowledge for every AI interaction. No manual context-pasting — ask a question, get an answer grounded in your actual knowledge base.
+DeepThink's Retrieval-Augmented Generation pipeline finds relevant knowledge for every AI interaction automatically. Both the Swift app and CLI implement the same algorithm against the same shared databases.
 
-## How It Works
-
-Every chat message flows through this pipeline:
+## End-to-End Flow
 
 ```text
-User types question
-        ↓
-   ┌────────────────────────────┐
-   │  1. DUAL INDEXING          │
-   │  BM25 (keywords) +        │
-   │  NLEmbedding (meaning)    │
-   └────────────┬───────────────┘
-                ↓
-   ┌────────────────────────────┐
-   │  2. HYBRID RETRIEVAL       │
-   │  Reciprocal Rank Fusion    │
-   │  (best of both searches)  │
-   └────────────┬───────────────┘
-                ↓
-   ┌────────────────────────────┐
-   │  3. CONTEXT ASSEMBLY       │
-   │  Knowledge + Workspace +   │
-   │  Conversation history      │
-   └────────────┬───────────────┘
-                ↓
-   ┌────────────────────────────┐
-   │  4. PROMPT INJECTION       │
-   │  Agent instructions +      │
-   │  Rules + Scoped knowledge  │
-   └────────────┬───────────────┘
-                ↓
-   Claude responds with grounded answer
+User query
+    │
+    ▼
+┌─────────────────────────────────┐
+│  1. Tokenize + Stem             │
+│  lowercase · stopwords · stem   │
+└───────────────┬─────────────────┘
+                │
+        ┌───────┴────────┐
+        ▼                ▼
+┌──────────────┐  ┌──────────────────┐
+│  2. BM25     │  │  3. Semantic     │
+│  keyword     │  │  NLEmbedding     │
+│  scoring     │  │  cosine sim      │
+└──────┬───────┘  └────────┬─────────┘
+        └───────┬────────┘
+                ▼
+┌─────────────────────────────────┐
+│  4. RRF Fusion                  │
+│  rank merge · K=60              │
+└───────────────┬─────────────────┘
+                ▼
+┌─────────────────────────────────┐
+│  5. chunksForEntryIds()         │
+│  load only needed chunks        │
+└───────────────┬─────────────────┘
+                ▼
+┌─────────────────────────────────┐
+│  6. Window Extraction           │
+│  highest query-term density     │
+└───────────────┬─────────────────┘
+                ▼
+┌─────────────────────────────────┐
+│  7. Context Assembly            │
+│  token-budgeted prompt inject   │
+└─────────────────────────────────┘
 ```
 
-## Indexing
+---
 
-Indexing happens automatically on app launch and whenever knowledge changes.
+## Step 1 — Tokenize + Stem
 
-### Storage Layer (`VectorStore`)
+Applied to both the query and all indexed content at build time.
 
-All chunks and embeddings are stored in a shared SQLite database:
+- Lowercase entire input
+- Remove 150+ stopwords (synchronized between TypeScript and Swift implementations)
+- Filter tokens shorter than 3 characters
+- Apply suffix stemmer: strips `-ing`, `-ed`, `-tion`, `-ness`, `-ment`, `-ly`, and common plural endings
+- Result: "running authentication systems" → `["run", "authent", "system"]`
+
+---
+
+## Step 2 — BM25 Keyword Scoring
+
+**Parameters:** k1=1.5, b=0.75
+
+**IDF formula:**
 
 ```text
-~/DeepThink/data/vectors.db
+IDF(term) = log((N - df + 0.5) / (df + 0.5) + 1)
 ```
 
-Schema (`chunks` table):
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | TEXT | `{entry_id}:{chunk_index}` |
-| `entry_id` | TEXT | Source entry identifier |
-| `entry_type` | TEXT | `knowledge`, `task`, `note`, `reminder` |
-| `title` | TEXT | Entry title |
-| `content` | TEXT | Chunk text content |
-| `tags` | TEXT | JSON array of tags |
-| `source` | TEXT | Source bucket/type |
-| `imported_at` | REAL | Unix timestamp |
-| `chunk_index` | INTEGER | Chunk position in entry |
-| `total_chunks` | INTEGER | Total chunks for entry |
-| `content_hash` | INTEGER | djb2 hash for change detection |
-| `embedding` | BLOB | Float32 array (NLEmbedding, ~512 dims) |
-
-Both the Swift app and CLI share the same `vectors.db` file. Indexed entry types:
-- Knowledge base entries
-- Notes (from SwiftData)
-- Tasks (from SwiftData)
-- Reminders (from SwiftData)
-
-### Chunking (`SemanticChunker`)
-
-Long entries split into sentence-boundary chunks:
-
-- **Max chunk size**: 500 chars
-- **Min chunk size**: 100 chars
-- **Overlap**: last sentence of previous chunk kept as first sentence of next
-- **Split method**: Apple `enumerateSubstrings(.bySentences, .localized)` in Swift; sentence regex in CLI
-
-### BM25/TF-IDF Index (`ContextEngine`)
-
-Cached in RAM; rebuilt only when knowledge content changes (version-gated, not per-query):
-
-- **Tokenization**: lowercase, remove 150+ stop words, filter tokens >2 chars, apply suffix stemmer (`-ing`, `-ed`, `-tion`, `-ness`, `-ment`, `-ly`, plurals) — "running" and "runs" both match "run"
-- **Term Frequency (TF)**: normalized frequency per document
-- **Inverse Document Frequency (IDF)**: `log((N - df + 0.5) / (df + 0.5) + 1)`
-- **BM25 Scoring**: `IDF × TF_norm` with `k1=1.5, b=0.75` length normalization
-- Scores only `knowledge` chunks — workspace chunks excluded from BM25 (scored separately via workspace context)
-- **Relevance window**: sliding window selects the highest query-term density region of each chunk (not naive front-truncation)
-
-### Semantic Embeddings (`EmbeddingService`)
-
-- **Model**: Apple NaturalLanguage `NLEmbedding.sentenceEmbedding(for: .english)` — ~512 dimensions
-- **Input per chunk**: `"{title}. {first 500 chars of chunk content}"`
-- **Change detection**: `content_hash` stored per chunk in `vectors.db` — skips unchanged entries
-- **Storage**: Float32 BLOB in `vectors.db` (replaces old `embeddings.json`)
-- **Stale pruning**: removed entries deleted from `vectors.db` on index rebuild
-
-## Retrieval
-
-### Hybrid Search (`retrieveContextHybrid`)
-
-For each query, both search methods run:
-
-| Method | What It Finds | Example |
-|--------|---------------|---------|
-| BM25 | Entries with matching keywords | "authentication" finds entries containing "authentication" |
-| Semantic | Entries with similar meaning | "authentication" finds entries about "login security", "OAuth tokens" |
-
-Results merged via **Reciprocal Rank Fusion (RRF)**:
+**BM25 score per document:**
 
 ```text
-fused_score(entry) = 1/(k + bm25_rank) + 1/(k + semantic_rank)
-where k = 60
+score(d, q) = Σ IDF(t) × (TF(t,d) × (k1+1)) / (TF(t,d) + k1×(1 - b + b×(|d|/avgdl)))
 ```
 
-Falls back to BM25-only if no embeddings are available.
+**Boosting applied after base score:**
 
-### Scope Filtering
+| Boost | Factor | Condition |
+|-------|--------|-----------|
+| Title match | ×1.5 | Query terms found in entry title |
+| Tag match | ×1.3 | Query terms found in entry tags |
+| Recency decay | e^(-days/90) | Applied as: `score × (0.7 + 0.3 × decay)` — min 0.7× |
+| Project scope | ×1.5 | Entry belongs to the scoped project |
 
-Context narrowed at retrieval time:
+**Threshold:** Scores ≤0.1 are discarded before fusion.
 
-| Scope | Set By | Effect |
-|-------|--------|--------|
-| `agentScope` | Agent's `knowledge_scope` field | Only chunks matching specified buckets/tags |
-| `projectScope` | Current project context | Entries tagged with project name boosted 1.5x |
-| `skillScope` | Skill's `knowledge_scope` field | Skill-specific RAG filtering |
+**Archive exclusion:** Entries with `source == 'archive'` are excluded from BM25 retrieval. The index is built only over active entries.
 
-### Boosting (applied to BM25 scores)
+**Index caching:** The BM25 index is built in RAM and rebuilt only when knowledge content changes (version-gated). Not rebuilt per query.
 
-- **Title match**: query terms in title → 1.5x per overlapping term
-- **Tag match**: query terms in tags → 1.3x per overlapping term
-- **Recency**: `exp(-days/90) * 0.3 + 0.7` (90-day exponential decay, min 0.7x)
-- **Project scope**: matching project → 1.5x
+---
 
-### Chunk Dedup
+## Step 3 — Semantic Search
 
-Per-query dedup prevents the same entry from flooding results:
+**Model:** Apple `NLEmbedding.sentenceEmbedding(for: .english)` — on-device, ~512 dimensions, no API key required.
 
-- First chunk from each entry always included if score > threshold
-- Additional chunks from same entry only included if score > 70% of top score
+**Input format (standardized):**
 
-## Context Assembly
+```text
+"{title}. {content.prefix(500)}"
+```
 
-The full prompt sent to Claude:
+This format is used for both indexing chunks and embedding queries, ensuring the vector space is consistent.
+
+**Cosine similarity:**
+
+```text
+similarity(a, b) = dot(a, b) / (|a| × |b|)
+```
+
+**Threshold:** similarity ≤0.3 discarded.
+
+**Top-k:** 20 results returned before fusion.
+
+**NaN/Infinite guard:** All embedding vectors are validated before storage. Any vector containing NaN or Infinite values is rejected and not written to `vectors.db`.
+
+**Archive exclusion:** Same as BM25 — `source == 'archive'` entries excluded from semantic retrieval.
+
+---
+
+## Step 4 — RRF Fusion
+
+Reciprocal Rank Fusion merges BM25 and semantic result lists without requiring score normalization.
+
+**Formula:**
+
+```text
+fused_score(entry) = 1/(K + bm25_rank + 1) + (semrank exists ? 1/(K + semrank + 1) : 0)
+where K = 60
+```
+
+Key properties:
+- An entry found by only one method contributes its term to the sum (no penalty for missing from the other list)
+- An entry found by both methods scores higher than either alone
+- K=60 dampens rank differences at the top of each list
+- Results keyed by `entry_id` (not title) to prevent false merges when entries share titles
+
+Falls back to BM25-only if no embeddings are available in `vectors.db`.
+
+---
+
+## Step 5 — chunksForEntryIds() Optimization
+
+After RRF produces a ranked list of `entry_id` values, the system loads only the chunks for those specific entries:
+
+```sql
+SELECT * FROM chunks WHERE entry_id IN (?, ?, ...)
+```
+
+This avoids a full table scan of `vectors.db`. The chunk content, title, tags, and source are loaded only for entries that passed the ranking threshold.
+
+---
+
+## Step 6 — Window Extraction
+
+For multi-chunk entries, a sliding window selects the region of highest query-term density rather than naively truncating from the front. This ensures the most relevant portion of a long entry is surfaced even if it appears mid-document.
+
+---
+
+## Step 7 — Context Assembly
+
+Token-budgeted injection into the Claude system prompt:
 
 | Component | Token Budget | Content |
 |-----------|-------------|---------|
 | Knowledge RAG | ~4,000 tokens | Top ranked chunks from hybrid search |
-| Workspace context | ~600 tokens | Query-relevant notes + active tasks |
-| Conversation history | ~400 tokens | Rolling summary for long convos |
+| Workspace context | ~600 tokens | Query-relevant tasks, notes, reminders |
+| Conversation history | ~400 tokens | Rolling summary for long conversations |
 | System prompt | Varies | Agent instructions + active rules |
-| **Total per query** | **~5-7K tokens** | Down from ~10K unbounded |
+| **Total** | **~5–7K tokens** | |
 
-### Conversation History Compaction
+---
 
-| Messages | Strategy |
-|----------|----------|
-| 1-4 | Full history sent |
-| 5-8 | Older messages compacted (truncated), recent 4 full |
-| 8+ | Claude-generated summary (~300 tokens) + last 4 full |
+## unified_search — All Four Types
 
-Summary regenerates every 6 messages, incorporating previous summary.
+`unified_search` runs hybrid retrieval across all entity types simultaneously: `knowledge`, `task`, `note`, `reminder`. Key behaviors:
 
-## Auto-Learning Loop
+- The `content` field is fully populated for workspace items (tasks, notes, reminders) — not empty or truncated
+- Semantic search runs once and is shared across knowledge and workspace retrieval to avoid duplicate embedding lookups
+- Results carry a `type` label so callers know what kind of item each result is
+- Archive entries excluded by default; pass explicit source filter to include them
 
-Every 6 chat messages, DeepThink auto-extracts knowledge back into the knowledge base:
+---
 
-```text
-Chat conversation
-    ↓ (every 6 messages)
-KnowledgeExtractionService.extractFromConversation()
-    ↓
-New knowledge entry created in knowledge base
-    ↓
-ContextEngine.rebuildIndex() + EmbeddingService.indexEntries()
-    ↓
-Future conversations can find this knowledge via RAG
-```
+## workspace_context vs knowledge_context vs unified_search
 
-Manual extraction also available via "Save to Knowledge" button in chat toolbar.
+| Tool / Function | What it searches | When to use |
+|-----------------|-----------------|-------------|
+| `workspace_context` | Tasks, notes, reminders only | "What's blocking X?", "Tasks related to auth" |
+| `knowledge_context` | Knowledge FS entries only | "Find everything about JWT", "Design decisions for project Y" |
+| `unified_search` | All four types simultaneously | Unknown where info lives, broad context gathering |
+| `smart_query` | Auto-selects mode, token-budgets output | Default first call for any open-ended question |
 
-## Data Storage
-
-| Data | Location | Persistence |
-|------|----------|-------------|
-| BM25 index (TF-IDF terms) | RAM | Cached; rebuilt only when `_indexVersion` increments (content write detected) |
-| Chunks + embeddings | `data/vectors.db` | SQLite WAL, persisted, incremental updates |
-| Content hashes | `data/vectors.db` (`content_hash` column) | Persisted, tracks what's already embedded |
-| Knowledge entries | `knowledge/**/*.md` | Markdown + YAML frontmatter |
-| Conversation summaries | RAM | Cache, regenerated as needed |
-| Dedup fingerprints | RAM | `Set<UInt64>`, rebuilt with index |
+---
 
 ## Key Files
 
 ### Swift App
+
 | File | Role |
 |------|------|
-| `Services/VectorStore.swift` | SQLite storage for chunks + embeddings (WAL, Float32 BLOB) |
-| `Services/ContextEngine.swift` | BM25 retrieval, hybrid RRF fusion, chunk dedup, token budgeting |
-| `Services/EmbeddingService.swift` | NLEmbedding vectors, `SemanticChunker`, incremental indexing |
-| `Services/KnowledgeService.swift` | Knowledge CRUD, RAG context formatting, reload triggers |
-| `Views/Shared/AIChatView.swift` | Context assembly, prompt building, sends to Claude |
+| `Services/ContextEngine.swift` | BM25 index build, `retrieveContextHybrid()`, RRF fusion, token budgeting |
+| `Services/EmbeddingService.swift` | NLEmbedding, SemanticChunker, incremental indexing, NaN guard |
+| `Services/VectorStore.swift` | SQLite CRUD, `chunksForEntryIds()`, Float32 BLOB |
+| `Services/KnowledgeService.swift` | Knowledge FS reload, context formatting |
 
 ### CLI
+
 | File | Role |
 |------|------|
-| `cli/src/core/vector-store.ts` | SQLite storage, `semanticChunk`, shared DB with Swift app |
-| `cli/src/core/context-engine.ts` | BM25 index, hybrid retrieval (RRF), workspace context |
-| `cli/src/core/embedding-service.ts` | Query embedding via Swift helper, cosine similarity, indexing |
-| `cli/src/tools/smart-mcp.ts` | MCP tools (`smart_query`, `knowledge_context`) |
+| `cli/src/core/context-engine.ts` | BM25 index, `retrieveContextHybrid()`, archive exclusion, workspace context |
+| `cli/src/core/embedding-service.ts` | Query embedding via embed-helper, cosine similarity, indexing |
+| `cli/src/core/vector-store.ts` | SQLite layer, `chunksForEntryIds()`, shared schema |
+| `cli/src/tools/smart-mcp.ts` | MCP tools: `smart_query`, `knowledge_context`, `workspace_context`, `unified_search` |

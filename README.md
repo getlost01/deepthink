@@ -1,8 +1,18 @@
 # DeepThink
 
-**Local-first AI workspace for macOS** — projects, notes, tasks, and a personal knowledge base with **Claude** and **hybrid RAG**. Your data stays on your machine. **MIT licensed** and open to contributions.
+**Local-first AI workspace for macOS** — projects, notes, tasks, and a personal knowledge base with hybrid RAG. Your data stays on your machine. **MIT licensed** and open to contributions.
 
-DeepThink is one **native SwiftUI** surface for juggling **projects**, **notes**, **tasks**, and **reminders** next to capture-friendly **knowledge**—plus **⌘K** navigation, and a built-in **terminal**. The same workspace backs the **`deepthink` CLI** and the shipped **MCP server**, so terminals and MCP-capable editors can read and update what the app manages. Persistence lives under **`~/DeepThink/`** (SwiftData plus on-disk markdown and embeddings); conversational AI routes through Anthropic's **Claude CLI** (`claude login`) alongside local hybrid retrieval (**BM25** + semantic search).
+DeepThink is one **native SwiftUI** surface for juggling **projects**, **notes**, **tasks**, and **reminders** next to capture-friendly **knowledge**—plus **⌘K** navigation, and a built-in **terminal**. The same workspace backs the **`deepthink` CLI** and the shipped **MCP server**, so terminals and MCP-capable editors can read and update what the app manages. Persistence lives under **`~/DeepThink/`** (SwiftData plus on-disk markdown and embeddings) with local hybrid retrieval (**BM25** + semantic search via Apple **NLEmbedding**).
+
+> **AI model compatibility — two distinct surfaces:**
+>
+> | Surface | Works with |
+> |---------|-----------|
+> | **`deepthink-mcp` MCP server** | Any MCP-capable AI agent — Claude Code, Cursor, VS Code Copilot, Windsurf, or any client that speaks the Model Context Protocol |
+> | **`deepthink` CLI** | Any AI agent or shell script — the CLI is model-agnostic; `deepthink ask` uses whatever LLM you wire up |
+> | **In-app AI** (chat, agents, skills, rules) | Requires the **Claude CLI** (`claude login`) — the app's conversational layer is built on Anthropic's Claude and spawns it as a local subprocess |
+>
+> In short: the workspace, retrieval, and MCP tools are agent-agnostic. The native app's AI chat is Claude-specific.
 
 DeepThink is under active development—contributions are welcome and help shape it into a more robust workspace ↔ knowledge tool.
 
@@ -56,19 +66,21 @@ DeepThink is under active development—contributions are welcome and help shape
 
 | | |
 |--|--|
-| **Hybrid RAG** | **BM25** keyword + **semantic** vector search (Apple **NLEmbedding**) so the assistant sees the *right* context |
-| **AI chat** | Streaming Claude with full workspace awareness, history, branch edits, session compaction |
-| **Agents** | Custom personas: knowledge scope, models, assigned skills |
-| **Skills** | Slash commands (`/summarize`, `/standup`, …) with templates & context injection |
-| **Rules** | Auto-triggered instructions (e.g. per-project tone or format) |
+| **Hybrid RAG** | **BM25** keyword + **semantic** vector search (Apple **NLEmbedding**, on-device) — any agent that calls `knowledge_context` or `unified_search` gets the same retrieval |
+| **AI chat** | Streaming **Claude** with full workspace awareness, history, branch edits, session compaction — requires Claude CLI |
+| **Agents** | Custom personas with knowledge scope, model selection, and assigned skills — run in-app via Claude |
+| **Skills** | Slash commands (`/summarize`, `/standup`, …) with templates & context injection — in-app only, Claude-powered |
+| **Rules** | Auto-triggered instructions (e.g. per-project tone or format) — injected into every Claude conversation |
+
+> **Note:** Agents, skills, and rules run inside the app via Claude CLI. The MCP server and CLI expose the same workspace data to any external agent without requiring Claude.
 
 ### Editors & integrations
 
 | | |
 |--|--|
-| **Built-in terminal** | Multi-tab terminal with **AI output analysis** |
-| **MCP server** | Full MCP server ([integration guide](docs/mcp-integration.md)) — **Claude Code**, **Cursor**, **VS Code**, any MCP client can read/write your workspace |
-| **CLI** | `deepthink` in the terminal (`ask`, notes, tasks, knowledge, hybrid `context`) — see [CLI docs](docs/cli/README.md) |
+| **Built-in terminal** | Multi-tab terminal with AI output analysis |
+| **MCP server** | 45-tool MCP server ([integration guide](docs/mcp-integration.md)) — works with **any MCP-capable agent**: Claude Code, Cursor, VS Code Copilot, Windsurf, etc. No Claude required to use MCP tools |
+| **CLI** | `deepthink` in the terminal — model-agnostic workspace access (`context`, `task`, `note`, `knowledge`) — see [CLI docs](docs/cli/README.md) |
 
 ### Fast navigation & discovery
 
@@ -192,7 +204,7 @@ claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
 }
 ```
 
-The MCP server exposes tasks, notes, projects, reminders, and the knowledge base as resources and tools for any MCP-compatible client.
+The MCP server works with **any MCP-compatible AI agent** — it is not Claude-specific. Claude Code, Cursor, VS Code Copilot, Windsurf, or any client that speaks the Model Context Protocol can read and write your workspace through the same 45 tools. The only thing that requires Claude is the **in-app AI chat** (chat, agents, skills, rules), which spawns the Claude CLI as a local subprocess.
 
 ---
 

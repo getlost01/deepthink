@@ -79,10 +79,24 @@ final class AppState {
     var selectedText: String?
     var pendingSkillExecution: SkillFile?
     var disabledRuleIDs: Set<String>
+    var externalSyncToken: Int = 0
+
+    private var syncObserver: NSObjectProtocol?
 
     init() {
         let saved = UserDefaults.standard.stringArray(forKey: "disabledRuleIDs") ?? []
         disabledRuleIDs = Set(saved)
+        syncObserver = NotificationCenter.default.addObserver(
+            forName: .cliWorkspaceChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.externalSyncToken += 1
+        }
+    }
+
+    deinit {
+        if let obs = syncObserver { NotificationCenter.default.removeObserver(obs) }
     }
 
     func toggleRuleDisabled(_ id: String) {
@@ -178,8 +192,7 @@ final class AppState {
         let host = url.host ?? ""
         if host == "knowledge" {
             if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value
-            {
+               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value {
                 navigateToKnowledgeEntry(entryID)
             }
             return

@@ -144,7 +144,12 @@ export function contentHash(entryId: string): number | null {
   return row ? row.content_hash : null;
 }
 
-export function allChunks(opts?: { entryType?: string; source?: string; scope?: string[] }): VectorChunk[] {
+export function allChunks(opts?: {
+  entryType?: string;
+  source?: string;
+  scope?: string[];
+  excludeArchive?: boolean;
+}): VectorChunk[] {
   let sql = "SELECT * FROM chunks";
   const conditions: string[] = [];
   const params: any[] = [];
@@ -156,6 +161,10 @@ export function allChunks(opts?: { entryType?: string; source?: string; scope?: 
   if (opts?.source) {
     conditions.push("source = ?");
     params.push(opts.source);
+  }
+  if (opts?.excludeArchive) {
+    conditions.push("source != ?");
+    params.push("archive");
   }
   if (conditions.length > 0) sql += ` WHERE ${conditions.join(" AND ")}`;
 
@@ -181,6 +190,7 @@ export function allChunks(opts?: { entryType?: string; source?: string; scope?: 
 export function chunksWithEmbeddings(opts?: {
   entryType?: string;
   scope?: string[];
+  excludeArchive?: boolean;
 }): { chunk: VectorChunk; embedding: number[] }[] {
   let sql = "SELECT * FROM chunks WHERE embedding IS NOT NULL";
   const params: any[] = [];
@@ -188,6 +198,10 @@ export function chunksWithEmbeddings(opts?: {
   if (opts?.entryType) {
     sql += " AND entry_type = ?";
     params.push(opts.entryType);
+  }
+  if (opts?.excludeArchive) {
+    sql += " AND source != ?";
+    params.push("archive");
   }
 
   const rows = getDB()
@@ -216,15 +230,43 @@ export function chunksWithEmbeddings(opts?: {
 }
 
 export function chunkCount(entryType?: string): number {
-  let sql = "SELECT COUNT(*) as c FROM chunks";
-  if (entryType) sql += ` WHERE entry_type = '${entryType}'`;
-  return (getDB().query(sql).get() as any).c;
+  if (entryType) {
+    return (getDB().query("SELECT COUNT(*) as c FROM chunks WHERE entry_type = ?").get(entryType) as any).c;
+  }
+  return (getDB().query("SELECT COUNT(*) as c FROM chunks").get() as any).c;
 }
 
 export function entryCount(entryType?: string): number {
-  let sql = "SELECT COUNT(DISTINCT entry_id) as c FROM chunks";
-  if (entryType) sql += ` WHERE entry_type = '${entryType}'`;
-  return (getDB().query(sql).get() as any).c;
+  if (entryType) {
+    return (
+      getDB().query("SELECT COUNT(DISTINCT entry_id) as c FROM chunks WHERE entry_type = ?").get(entryType) as any
+    ).c;
+  }
+  return (getDB().query("SELECT COUNT(DISTINCT entry_id) as c FROM chunks").get() as any).c;
+}
+
+export function chunksForEntryIds(entryIds: string[], entryType?: string): VectorChunk[] {
+  if (entryIds.length === 0) return [];
+  const BATCH_SIZE = 100;
+  const results: VectorChunk[] = [];
+  for (let i = 0; i < entryIds.length; i += BATCH_SIZE) {
+    const batch = entryIds.slice(i, i + BATCH_SIZE);
+    const placeholders = batch.map(() => "?").join(",");
+    let sql = `SELECT * FROM chunks WHERE entry_id IN (${placeholders})`;
+    const params: (string | number)[] = [...batch];
+    if (entryType) {
+      sql += " AND entry_type = ?";
+      params.push(entryType);
+    }
+    results.push(
+      ...(
+        getDB()
+          .query(sql)
+          .all(...params) as any[]
+      ).map(parseRow)
+    );
+  }
+  return results;
 }
 
 export function embeddedCount(): number {

@@ -149,6 +149,7 @@ struct DeepThinkApp: App {
                     ClaudeService.shared.start(container: sharedModelContainer)
                     ArchiveService.shared.start(container: sharedModelContainer)
                     BackupService.shared.start()
+                    CLISyncService.shared.start()
 
                     // Register global hotkey for Quick Capture (Option+Space)
                     GlobalHotKey.shared.register(container: sharedModelContainer, appState: appState)

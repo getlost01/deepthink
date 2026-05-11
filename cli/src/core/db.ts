@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
@@ -46,14 +47,49 @@ function getDB(): Database {
 function getWriteDB(): Database {
   if (!_writeDb) {
     _writeDb = new Database(STORE_PATH);
-    // WAL mode allows SwiftData and the CLI to coexist on the same file.
-    // One writer at a time is enforced by SQLite; busy_timeout retries for
-    // up to 5 s before throwing so short app-side saves don't cause failures.
     _writeDb.exec("PRAGMA journal_mode=WAL");
     _writeDb.exec("PRAGMA busy_timeout=5000");
     _writeDb.exec("PRAGMA synchronous=NORMAL");
+    _writeDb.exec(`
+      CREATE TABLE IF NOT EXISTS dt_audit_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        entity_pk INTEGER NOT NULL,
+        operation TEXT NOT NULL,
+        snapshot TEXT,
+        changed_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS dt_trash (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        entity_type TEXT NOT NULL,
+        entity_pk INTEGER NOT NULL,
+        snapshot TEXT NOT NULL,
+        deleted_at INTEGER NOT NULL
+      );
+    `);
   }
   return _writeDb;
+}
+
+function auditLog(db: Database, op: "create" | "update" | "delete", type: string, pk: number, snapshot?: object): void {
+  db.query(
+    "INSERT INTO dt_audit_log (entity_type, entity_pk, operation, snapshot, changed_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(type, pk, op, snapshot ? JSON.stringify(snapshot) : null, Date.now());
+}
+
+function trashEntity(db: Database, type: string, pk: number, snapshot: object): void {
+  db.query("INSERT INTO dt_trash (entity_type, entity_pk, snapshot, deleted_at) VALUES (?, ?, ?, ?)").run(
+    type,
+    pk,
+    JSON.stringify(snapshot),
+    Date.now()
+  );
+}
+
+function notifySync(): void {
+  try {
+    execSync("notifyutil -p com.deepthink.workspace.changed 2>/dev/null || true", { stdio: "ignore" });
+  } catch {}
 }
 
 // ── Project ──
@@ -116,6 +152,8 @@ export function createProject(name: string, opts: { summary?: string; color?: st
     INSERT INTO ZPROJECT (Z_PK, Z_ENT, Z_OPT, ZISARCHIVED, ZCREATEDAT, ZMODIFIEDAT, ZNAME, ZSUMMARY, ZCOLOR, ZID)
     VALUES (?, ?, 1, 0, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, now, now, name, opts.summary ?? "", opts.color ?? "#007AFF");
+  auditLog(db, "create", "project", pk);
+  notifySync();
   return pk;
 }
 
@@ -150,13 +188,21 @@ export function updateProject(pk: number, fields: Record<string, any>): void {
   vals.push(pk);
 
   db.query(`UPDATE ZPROJECT SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  auditLog(db, "update", "project", pk);
+  notifySync();
 }
 
 export function deleteProject(pk: number): void {
   const db = getWriteDB();
-  db.query("UPDATE ZTASKITEM SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
-  db.query("UPDATE ZNOTE SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
-  db.query("DELETE FROM ZPROJECT WHERE Z_PK = ?").run(pk);
+  db.transaction(() => {
+    const snap = db.query("SELECT * FROM ZPROJECT WHERE Z_PK = ?").get(pk) as object | undefined;
+    if (snap) trashEntity(db, "project", pk, snap);
+    db.query("UPDATE ZTASKITEM SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
+    db.query("UPDATE ZNOTE SET ZPROJECT = NULL WHERE ZPROJECT = ?").run(pk);
+    db.query("DELETE FROM ZPROJECT WHERE Z_PK = ?").run(pk);
+    auditLog(db, "delete", "project", pk);
+  })();
+  notifySync();
 }
 
 // ── Task ──
@@ -281,6 +327,8 @@ export function createTask(
     opts.status ?? "To Do",
     title
   );
+  auditLog(db, "create", "task", pk);
+  notifySync();
   return pk;
 }
 
@@ -342,12 +390,20 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
   vals.push(pk);
 
   db.query(`UPDATE ZTASKITEM SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  auditLog(db, "update", "task", pk);
+  notifySync();
 }
 
 export function deleteTask(pk: number): void {
   const db = getWriteDB();
-  db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(pk);
-  db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
+  db.transaction(() => {
+    const snap = db.query("SELECT * FROM ZTASKITEM WHERE Z_PK = ?").get(pk) as object | undefined;
+    if (snap) trashEntity(db, "task", pk, snap);
+    db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(pk);
+    db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
+    auditLog(db, "delete", "task", pk);
+  })();
+  notifySync();
 }
 
 // ── Note ──
@@ -439,6 +495,8 @@ export function createNote(
     INSERT INTO ZNOTE (Z_PK, Z_ENT, Z_OPT, ZISPINNED, ZPROJECT, ZCREATEDAT, ZMODIFIEDAT, ZCONTENT, ZTITLE, ZID)
     VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, opts.pinned ? 1 : 0, projectPk, now, now, opts.content ?? "", title);
+  auditLog(db, "create", "note", pk);
+  notifySync();
   return pk;
 }
 
@@ -481,12 +539,20 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
   vals.push(pk);
 
   db.query(`UPDATE ZNOTE SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  auditLog(db, "update", "note", pk);
+  notifySync();
 }
 
 export function deleteNote(pk: number): void {
   const db = getWriteDB();
-  db.query("DELETE FROM Z_5TAGS WHERE Z_5NOTES = ?").run(pk);
-  db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
+  db.transaction(() => {
+    const snap = db.query("SELECT * FROM ZNOTE WHERE Z_PK = ?").get(pk) as object | undefined;
+    if (snap) trashEntity(db, "note", pk, snap);
+    db.query("DELETE FROM Z_5TAGS WHERE Z_5NOTES = ?").run(pk);
+    db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
+    auditLog(db, "delete", "note", pk);
+  })();
+  notifySync();
 }
 
 // ── Reminder ──
@@ -567,6 +633,8 @@ export function createReminder(
     INSERT INTO ZREMINDER (Z_PK, Z_ENT, Z_OPT, ZISCOMPLETED, ZNOTIFICATIONSCHEDULED, ZCOMPLETEDAT, ZCREATEDAT, ZMODIFIEDAT, ZREMINDERDATE, ZNOTES, ZTITLE, ZID)
     VALUES (?, ?, 1, 0, 0, NULL, ?, ?, ?, ?, ?, x'${uuidHex()}')
   `).run(pk, ent, now, now, reminderDateCD, opts.notes ?? "", title);
+  auditLog(db, "create", "reminder", pk);
+  notifySync();
   return pk;
 }
 
@@ -608,11 +676,19 @@ export function updateReminder(pk: number, fields: Record<string, any>): void {
   vals.push(pk);
 
   db.query(`UPDATE ZREMINDER SET ${sets.join(", ")} WHERE Z_PK = ?`).run(...vals);
+  auditLog(db, "update", "reminder", pk);
+  notifySync();
 }
 
 export function deleteReminder(pk: number): void {
   const db = getWriteDB();
-  db.query("DELETE FROM ZREMINDER WHERE Z_PK = ?").run(pk);
+  db.transaction(() => {
+    const snap = db.query("SELECT * FROM ZREMINDER WHERE Z_PK = ?").get(pk) as object | undefined;
+    if (snap) trashEntity(db, "reminder", pk, snap);
+    db.query("DELETE FROM ZREMINDER WHERE Z_PK = ?").run(pk);
+    auditLog(db, "delete", "reminder", pk);
+  })();
+  notifySync();
 }
 
 // ── Helpers ──

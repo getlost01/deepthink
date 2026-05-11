@@ -69,7 +69,7 @@ final class ContextEngine {
         let queryTerms = tokenize(query)
         guard !queryTerms.isEmpty else { return ContextBundle.empty }
 
-        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope)
+        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope, excludeArchive: true)
         guard !chunks.isEmpty else { return ContextBundle.empty }
 
         let queryTF = computeTF(queryTerms)
@@ -109,7 +109,8 @@ final class ContextEngine {
 
             if let project = projectScope {
                 if chunk.title.localizedCaseInsensitiveContains(project) ||
-                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame }) {
+                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame })
+                {
                     score *= 1.5
                 }
             }
@@ -171,7 +172,7 @@ final class ContextEngine {
             return retrieveContext(for: query, maxTokens: maxTokens, projectScope: projectScope, agentScope: agentScope)
         }
 
-        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope)
+        let chunks = store.allChunks(entryType: "knowledge", scope: agentScope, excludeArchive: true)
         var chunkByEntryID: [String: VectorChunk] = [:]
         for c in chunks {
             if chunkByEntryID[c.entryID] == nil { chunkByEntryID[c.entryID] = c }
@@ -523,7 +524,29 @@ final class ContextEngine {
             "her",
             "they",
             "them",
-            "their"
+            "their",
+            "need",
+            "dare",
+            "ought",
+            "yet",
+            "either",
+            "neither",
+            "any",
+            "until",
+            "down",
+            "against",
+            "myself",
+            "ours",
+            "ourselves",
+            "yours",
+            "yourself",
+            "yourselves",
+            "himself",
+            "hers",
+            "herself",
+            "itself",
+            "theirs",
+            "themselves"
         ]
 
         return text.lowercased()

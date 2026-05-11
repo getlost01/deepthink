@@ -218,7 +218,8 @@ final class VectorStore {
     func allChunks(
         entryType: String? = nil,
         source: String? = nil,
-        scope: [String]? = nil
+        scope: [String]? = nil,
+        excludeArchive: Bool = false
     ) -> [VectorChunk] {
         var conditions: [String] = []
         var params: [String] = []
@@ -230,6 +231,10 @@ final class VectorStore {
         if let source {
             conditions.append("source = ?")
             params.append(source)
+        }
+        if excludeArchive {
+            conditions.append("source != ?")
+            params.append("archive")
         }
 
         var sql = "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding FROM chunks"
@@ -251,9 +256,10 @@ final class VectorStore {
 
             if let scope, !scope.isEmpty {
                 let matches = scope.contains { s in
-                    chunk.source.localizedCaseInsensitiveContains(s) ||
-                        chunk.tags.contains(s) ||
-                        chunk.title.localizedCaseInsensitiveContains(s)
+                    let sl = s.lowercased()
+                    return chunk.source.lowercased().contains(sl) ||
+                        chunk.tags.contains { $0.lowercased().contains(sl) } ||
+                        chunk.title.lowercased().contains(sl)
                 }
                 if !matches { continue }
             }
@@ -295,9 +301,10 @@ final class VectorStore {
 
             if let scope, !scope.isEmpty {
                 let matches = scope.contains { s in
-                    chunk.source.localizedCaseInsensitiveContains(s) ||
-                        chunk.tags.contains(s) ||
-                        chunk.title.localizedCaseInsensitiveContains(s)
+                    let sl = s.lowercased()
+                    return chunk.source.lowercased().contains(sl) ||
+                        chunk.tags.contains { $0.lowercased().contains(sl) } ||
+                        chunk.title.lowercased().contains(sl)
                 }
                 if !matches { continue }
             }
@@ -353,7 +360,13 @@ final class VectorStore {
     }
 
     func setMeta(_ key: String, _ value: String) {
-        exec("INSERT OR REPLACE INTO meta (key, value) VALUES ('\(key)', '\(value)')")
+        var stmt: OpaquePointer?
+        let sql = "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
+        sqlite3_bind_text(stmt, 2, value.cString, -1, SQLITE_TRANSIENT_PTR)
+        sqlite3_step(stmt)
     }
 
     // MARK: - Helpers

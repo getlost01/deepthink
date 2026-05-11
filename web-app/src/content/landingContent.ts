@@ -11,8 +11,8 @@ export const landingContent = {
     secondaryCta: { label: 'Documentation', to: '/documentation' },
     stats: [
       { value: '100%', label: 'your vault stays on disk' },
-      { value: 'CLI + MCP', label: 'same SwiftData workspace as the app' },
-      { value: 'Hybrid', label: 'keyword + semantic retrieval' },
+      { value: 'CLI + MCP', label: 'MCP server — same workspace as the app' },
+      { value: 'BM25 + RRF', label: 'keyword + semantic hybrid retrieval' },
     ],
   },
   snapshot: {
@@ -87,13 +87,13 @@ export const landingContent = {
     {
       title: 'CLI & MCP on your workspace',
       description:
-        'Bundled binaries connect to the live SwiftData workspace so agents and shell scripts can search, append, and report without a second database.',
+        'Bundled binaries share the live SwiftData workspace. All 45 MCP tools carry a readonly flag so agents can distinguish safe reads from state-changing writes.',
       icon: 'NotebookPen',
     },
     {
-      title: 'Hybrid context engine',
+      title: 'Hybrid RAG — BM25 + semantic + RRF',
       description:
-        'BM25 and embeddings surface phrases and semantic matches so answers rely on archived passages instead of generic AI filler.',
+        'BM25 (k1=1.5, b=0.75) and Apple NLEmbedding vectors fused via RRF (K=60). Query embedding cached 5 min. Archive entries excluded by default. Threshold 0.1 / 0.3.',
       icon: 'Search',
     },
     {
@@ -125,31 +125,31 @@ export const landingContent = {
     {
       title: 'Native app',
       description:
-        '~/DeepThink is the source of truth interface with ingestion, backlinks, reminders, embedding jobs, graph views, and a terminal tab sharing the same state.',
+        '~/DeepThink is the source of truth. CLI writes sync live via Darwin notification → CLISyncService → AppState so the UI always reflects the latest state.',
       points: [
         'SwiftUI on macOS 14+',
-        'Hybrid search previews before agents run',
-        'Built in terminal with AI focused log review',
+        'Live sync from CLI/MCP writes via Darwin notification',
+        'Built-in terminal with AI-focused log review',
       ],
     },
     {
       title: 'CLI workflow',
       description:
-        'Build automations that stay aligned with the GUI: query the workspace, export context packs, and chain shell tools without fragile exports.',
+        'Every CLI write is atomic: snapshot → dt_trash → SQL mutation → dt_audit_log in one transaction. notifyutil fires after commit to sync the app.',
       points: [
-        'Shared SwiftData backed workspace',
-        'Scriptable stdin/stdout',
-        'Cron and CI compatible',
+        'Shared SwiftData-backed workspace (WAL mode)',
+        'Atomic deletes with full row snapshot in dt_trash',
+        'Audit log on every create / update / delete',
       ],
     },
     {
       title: 'MCP integration',
       description:
-        'Connect Cursor, Claude Desktop, or any MCP host to curated tools and resources so assistants operate on snippets you intentionally exposed.',
+        '45 tools across smart, workspace, knowledge, and config categories. Read-only tools carry readonly: true so MCP clients can enforce safe-read boundaries.',
       points: [
-        'deepthink-mcp exposes workspace tools',
-        'Optional /deepthink command in Claude Code',
-        'Agent defaults inherit MCP tooling in app',
+        '45 MCP tools — smart_query, unified_search, workspace_*, knowledge_*',
+        'readonly flag distinguishes reads from mutations',
+        'All writes go through audit log + Darwin sync',
       ],
     },
   ],
@@ -218,6 +218,16 @@ export const landingContent = {
   ],
   faqs: [
     {
+      question: 'Does the MCP server require Claude?',
+      answer:
+        'No. deepthink-mcp works with any MCP-capable AI agent — Claude Code, Cursor, VS Code Copilot, Windsurf, Continue, or any host that speaks MCP over stdio. The MCP server is model-agnostic. Only the in-app AI chat (agents, skills, rules) requires the Claude CLI, because the app spawns Claude as a local subprocess for conversational AI.',
+    },
+    {
+      question: 'Can the CLI or MCP server run without the app open?',
+      answer:
+        'Yes. Both deepthink and deepthink-mcp read and write ~/DeepThink directly over SQLite (WAL mode) and the knowledge filesystem — the app does not need to be running. When the app is open, CLI and MCP writes automatically sync to it via a Darwin notification so the UI stays current. When it is closed, changes persist to disk and appear the next time the app launches.',
+    },
+    {
       question: 'What platform does DeepThink support?',
       answer:
         'DeepThink is a native SwiftUI app for macOS 14+. The MCP server and CLI ship alongside the app and target the same local workspace.',
@@ -230,7 +240,7 @@ export const landingContent = {
     {
       question: 'Can I use DeepThink from terminal tools?',
       answer:
-        'Yes. Install the bundled deepthink CLI to script against the SwiftData backed workspace and pair it with git hooks or server side jobs while staying local first.',
+        'Yes. The bundled deepthink CLI is model-agnostic — it reads and writes the same workspace regardless of which AI you use. Pair it with git hooks, cron jobs, or any shell automation.',
     },
     {
       question: 'Does DeepThink upload my codebase to external servers?',
