@@ -24,12 +24,17 @@ enum DS {
     }
 
     enum IconSize {
+        static let micro: CGFloat = 7
+        static let nano: CGFloat = 8
         static let xs: CGFloat = 9
+        static let sm2: CGFloat = 10
         static let sm: CGFloat = 12
         static let md: CGFloat = 14
         static let lg: CGFloat = 16
         static let xl: CGFloat = 20
         static let xxl: CGFloat = 24
+        static let xxxl: CGFloat = 28
+        static let hero: CGFloat = 40
     }
 
     enum Font {
@@ -45,6 +50,9 @@ enum DS {
         static let buttonSmall: SwiftUI.Font = .system(size: 10, weight: .medium)
         static let mono: SwiftUI.Font = .system(size: 13, weight: .regular, design: .monospaced)
         static let monoSmall: SwiftUI.Font = .system(size: 11, weight: .regular, design: .monospaced)
+        static let badge: SwiftUI.Font = .system(size: 7, weight: .bold)
+        static let bodySmall: SwiftUI.Font = .system(size: 12)
+        static let titleSmall: SwiftUI.Font = .system(size: 17, weight: .semibold)
     }
 
     enum Colors {

@@ -18,7 +18,7 @@ struct NoteVersionsView: View {
                 if versions.isEmpty {
                     VStack(spacing: DS.Spacing.sm) {
                         Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 24, weight: .light))
+                            .font(.system(size: DS.IconSize.xxl, weight: .light))
                             .foregroundStyle(DS.Colors.textTertiary)
                         Text("No versions yet")
                             .font(DS.Font.caption)

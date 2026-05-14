@@ -45,7 +45,7 @@ struct QuickCaptureView: View {
             RoundedRectangle(cornerRadius: DS.Radius.xl)
                 .strokeBorder(DS.Colors.borderHover, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.35), radius: 30, y: 10)
+        .shadow(color: DS.Colors.overlayBg, radius: 30, y: 10)
         .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
         .onAppear {
             titleFocused = true
@@ -79,7 +79,7 @@ struct QuickCaptureView: View {
                     .fill(DS.Colors.accentFill)
                     .frame(width: 26, height: 26)
                 Image(systemName: "bolt.fill")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: DS.IconSize.sm, weight: .semibold))
                     .foregroundStyle(DS.Colors.accent)
             }
 
@@ -259,7 +259,7 @@ struct QuickCaptureView: View {
             if saved {
                 HStack(spacing: 4) {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 13))
+                        .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.success)
                     Text("Saved!")
                         .font(DS.Font.small)

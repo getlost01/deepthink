@@ -163,7 +163,7 @@ struct CommandPaletteView: View {
             .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
-                    .strokeBorder(.white.opacity(0.08), lineWidth: 0.5)
+                    .strokeBorder(DS.Colors.fill, lineWidth: 0.5)
             }
             .shadow(color: DS.Colors.modalShadow, radius: 30, y: 10)
             .padding(.top, 80)

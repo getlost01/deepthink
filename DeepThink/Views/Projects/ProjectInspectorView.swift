@@ -17,7 +17,7 @@ struct ProjectInspectorView: View {
             } else {
                 VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "folder")
-                        .font(.system(size: 24, weight: .light))
+                        .font(.system(size: DS.IconSize.xxl, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a project")
                         .foregroundStyle(DS.Colors.textSecondary)

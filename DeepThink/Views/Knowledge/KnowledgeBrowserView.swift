@@ -811,30 +811,82 @@ struct NewKnowledgeSheet: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: DS.Spacing.lg) {
-                DSLabeledTextField(label: "Title", text: $title, placeholder: "Entry title")
+            VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                    Text("TITLE")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .textCase(.uppercase)
 
-                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                    Text("Bucket")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Picker("Bucket", selection: $selectedBucket) {
-                        ForEach(knowledge.buckets, id: \.self) { bucket in
-                            Text(bucket).tag(bucket)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .font(DS.Font.body)
-                    .fixedSize()
+                    TextField("Enter a title...", text: $title)
+                        .textFieldStyle(.plain)
+                        .font(DS.Font.body)
+                        .padding(.horizontal, DS.Spacing.lg)
+                        .padding(.vertical, DS.Spacing.md)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.md)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                        )
                 }
 
-                DSLabeledTextField(label: "Tags (comma-separated)", text: $tags, placeholder: "api, docs, reference")
-                DSLabeledTextEditor(label: "Content", text: $content, minHeight: 200)
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                    Text("CONTENT")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .textCase(.uppercase)
+
+                    MarkdownEditorWithToggle(text: $content, placeholder: "Start writing...")
+                        .frame(maxHeight: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.md)
+                                .strokeBorder(DS.Colors.border, lineWidth: 1)
+                        )
+                }
+
+                HStack(spacing: DS.Spacing.sm) {
+                    Menu {
+                        ForEach(knowledge.buckets, id: \.self) { bucket in
+                            Button {
+                                selectedBucket = bucket
+                            } label: {
+                                Label(bucket, systemImage: "archivebox")
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "archivebox")
+                                .font(.system(size: DS.IconSize.sm))
+                                .foregroundStyle(DS.Colors.textSecondary)
+                            Text(selectedBucket)
+                        }
+                        .font(DS.Font.caption)
+                        .padding(.horizontal, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.xs + 2)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    }
+                    .buttonStyle(.plainPointer)
+
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "tag")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        TextField("Tags (comma separated)", text: $tags)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.caption)
+                    }
+                    .padding(.horizontal, DS.Spacing.sm + 2)
+                    .padding(.vertical, DS.Spacing.xs + 2)
+                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                    Spacer()
+                }
             }
-            .padding(DS.Spacing.lg)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.lg)
         }
-        .frame(width: 550)
-        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 600, height: 520)
     }
 
     private func save() {

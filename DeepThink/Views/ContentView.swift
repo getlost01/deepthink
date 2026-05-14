@@ -71,9 +71,9 @@ private struct GlobalHeader: View {
                         .foregroundStyle(DS.Colors.textSecondary)
                     HStack(spacing: 1) {
                         Image(systemName: "command")
-                            .font(.system(size: 9, weight: .medium))
+                            .font(DS.Font.micro)
                         Text("K")
-                            .font(.system(size: 9, weight: .semibold))
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, DS.Spacing.xs)

@@ -100,7 +100,7 @@ struct ChatBubble: View {
                     .fill(DS.Colors.accent.opacity(0.12))
                     .frame(width: 28, height: 28)
                 Text("Y")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: DS.IconSize.sm, weight: .semibold, design: .rounded))
                     .foregroundStyle(DS.Colors.accent)
             }
             .padding(.top, DS.Spacing.lg)

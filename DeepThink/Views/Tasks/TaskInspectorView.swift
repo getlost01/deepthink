@@ -17,7 +17,7 @@ struct TaskInspectorView: View {
             } else {
                 VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "checklist")
-                        .font(.system(size: 24, weight: .light))
+                        .font(.system(size: DS.IconSize.xxl, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a task")
                         .foregroundStyle(DS.Colors.textSecondary)

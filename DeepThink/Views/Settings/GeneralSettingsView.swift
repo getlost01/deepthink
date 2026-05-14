@@ -284,7 +284,7 @@ private struct BackupSettingsSection: View {
             if let err = backup.lastError {
                 Text("Last backup failed: \(err)")
                     .font(DS.Font.caption)
-                    .foregroundStyle(.red.opacity(0.8))
+                    .foregroundStyle(DS.Colors.danger)
             }
         }
         .alert("Delete Snapshot?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } })) {

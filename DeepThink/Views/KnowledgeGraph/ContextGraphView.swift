@@ -148,7 +148,7 @@ struct ContextGraphView: View {
                         } else if nodes.isEmpty {
                             VStack(spacing: DS.Spacing.md) {
                                 Image(systemName: "point.3.connected.trianglepath.dotted")
-                                    .font(.system(size: 40))
+                                    .font(.system(size: DS.IconSize.hero))
                                     .foregroundStyle(DS.Colors.textTertiary)
                                 Text("No knowledge indexed yet")
                                     .font(DS.Font.body)
@@ -266,7 +266,7 @@ struct ContextGraphView: View {
 
                 Button { rebuild(in: canvasSize) } label: {
                     Image(systemName: "arrow.triangle.2.circlepath")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -280,7 +280,7 @@ struct ContextGraphView: View {
 
                 Button { threshold = max(0.05, threshold - 0.01) } label: {
                     Image(systemName: "minus")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: DS.IconSize.sm2, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -292,7 +292,7 @@ struct ContextGraphView: View {
 
                 Button { threshold = min(0.5, threshold + 0.01) } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.system(size: DS.IconSize.sm2, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -390,7 +390,7 @@ struct ContextGraphView: View {
 
                 Button { withAnimation(DS.Animation.quick) { scale = max(0.15, scale / 1.25); lastScale = scale } } label: {
                     Image(systemName: "minus")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -400,7 +400,7 @@ struct ContextGraphView: View {
 
                 Button { withAnimation(DS.Animation.quick) { scale = min(5.0, scale * 1.25); lastScale = scale } } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -410,7 +410,7 @@ struct ContextGraphView: View {
 
                 Button { fitToScreen() } label: {
                     Image(systemName: "arrow.up.left.and.arrow.down.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -425,7 +425,7 @@ struct ContextGraphView: View {
                     }
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .frame(width: 20, height: 20)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -719,7 +719,7 @@ struct ContextGraphView: View {
                 .overlay(
                     Circle()
                         .fill(LinearGradient(
-                            colors: [Color.white.opacity(0.18), Color.clear],
+                            colors: [DS.Colors.onAccent.opacity(0.18), Color.clear],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         ))
                         .frame(width: radius, height: radius)
@@ -731,7 +731,7 @@ struct ContextGraphView: View {
             // initial letter
             Text(initial)
                 .font(.system(size: max(11, radius * 0.38), weight: .bold, design: .rounded))
-                .foregroundStyle(isSelected ? DS.Colors.onAccent : Color.white.opacity(0.9))
+                .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.onAccent.opacity(0.9))
 
             // label below node — always visible, expand on hover
             VStack(spacing: 0) {
@@ -747,7 +747,7 @@ struct ContextGraphView: View {
                     .background(
                         RoundedRectangle(cornerRadius: DS.Radius.sm)
                             .fill(DS.Colors.surfaceElevated.opacity(isHovered ? 0.97 : 0.75))
-                            .shadow(color: .black.opacity(isHovered ? 0.14 : 0.06), radius: isHovered ? 5 : 2)
+                            .shadow(color: DS.Colors.cardShadow.opacity(isHovered ? 0.14 : 0.06), radius: isHovered ? 5 : 2)
                     )
                     .animation(DS.Animation.quick, value: isHovered)
             }
@@ -759,7 +759,7 @@ struct ContextGraphView: View {
                         Spacer()
                         Text(String(format: "%.0f%%", pct * 100))
                             .font(DS.Font.micro)
-                            .foregroundStyle(Color.white)
+                            .foregroundStyle(DS.Colors.onAccent)
                             .padding(.horizontal, 4)
                             .padding(.vertical, 2)
                             .background(nodeColor, in: Capsule())
@@ -817,7 +817,7 @@ struct ContextGraphView: View {
                     withAnimation(DS.Animation.quick) { selectedNodeID = nil }
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
                         .foregroundStyle(DS.Colors.textTertiary)
                         .frame(width: 18, height: 18)
                         .background(DS.Colors.fill, in: Circle())
@@ -849,7 +849,7 @@ struct ContextGraphView: View {
 
                         HStack(spacing: DS.Spacing.xs) {
                             Image(systemName: "point.3.connected.trianglepath.dotted")
-                                .font(.system(size: 9))
+                                .font(.system(size: DS.IconSize.xs))
                                 .foregroundStyle(DS.Colors.textTertiary)
                             Text("\(node.connectionCount) connection\(node.connectionCount == 1 ? "" : "s")")
                                 .font(DS.Font.caption)
@@ -927,7 +927,7 @@ struct ContextGraphView: View {
                                         Spacer()
                                         if isExplicit {
                                             Image(systemName: "link")
-                                                .font(.system(size: 8, weight: .semibold))
+                                                .font(.system(size: DS.IconSize.nano, weight: .semibold))
                                                 .foregroundStyle(explicitEdgeColor)
                                         } else {
                                             Text(String(format: "%.0f%%", edgeWeight * 100))

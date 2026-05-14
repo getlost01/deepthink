@@ -32,7 +32,7 @@ struct ReminderDetailView: View {
                 } label: {
                     Image(systemName: reminder.isCompleted ? "checkmark.circle.fill" : "circle")
                         .foregroundStyle(reminder.isCompleted ? DS.Colors.success : DS.Colors.textSecondary)
-                        .font(.system(size: 24))
+                        .font(.system(size: DS.IconSize.xxl))
                 }
                 .buttonStyle(.plainPointer)
 

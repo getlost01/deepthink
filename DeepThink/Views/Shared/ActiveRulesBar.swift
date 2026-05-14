@@ -28,7 +28,7 @@ struct ActiveRulesBar: View {
                         } label: {
                             HStack(spacing: 3) {
                                 Image(systemName: rule.icon)
-                                    .font(.system(size: 7))
+                                    .font(.system(size: DS.IconSize.micro))
                                 Text(rule.name)
                                     .font(DS.Font.micro)
                             }

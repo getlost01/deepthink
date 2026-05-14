@@ -133,7 +133,7 @@ struct AIChatView: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(DS.Colors.textPrimary)
                     Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 7, weight: .bold))
+                        .font(DS.Font.badge)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
                 .padding(.horizontal, DS.Spacing.sm)
@@ -625,7 +625,8 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
+            {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -651,7 +652,8 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID)
+        {
             let recent = Array(prior.suffix(4))
             return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }

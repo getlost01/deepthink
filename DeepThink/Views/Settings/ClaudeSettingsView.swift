@@ -528,7 +528,7 @@ struct ClaudeSettingsView: View {
                         .font(DS.Font.small)
                         .fontWeight(.medium)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 7, weight: .bold))
+                        .font(DS.Font.badge)
                         .rotationEffect(.degrees(showTroubleshoot ? 90 : 0))
                 }
                 .foregroundStyle(DS.Colors.textTertiary)
@@ -925,7 +925,7 @@ private struct VersionPill: View {
 
                 if version.isLatest {
                     Text("Latest")
-                        .font(.system(size: 7, weight: .bold))
+                        .font(DS.Font.badge)
                         .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)
@@ -934,7 +934,7 @@ private struct VersionPill: View {
 
                 if let suffix = version.suffix, suffix != "Latest" {
                     Text(suffix)
-                        .font(.system(size: 7, weight: .medium))
+                        .font(.system(size: DS.IconSize.micro, weight: .medium))
                         .foregroundStyle(DS.Colors.warning)
                         .padding(.horizontal, 3)
                         .padding(.vertical, 1)

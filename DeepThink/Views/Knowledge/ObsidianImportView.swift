@@ -226,7 +226,7 @@ struct ObsidianImportView: View {
             Spacer()
 
             Image(systemName: result.errors == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                .font(.system(size: 40, weight: .light))
+                .font(.system(size: DS.IconSize.hero, weight: .light))
                 .foregroundStyle(result.errors == 0 ? DS.Colors.success : DS.Colors.warning)
 
             Text("Import Complete")

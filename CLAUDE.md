@@ -6,14 +6,15 @@
 - **Data:** SwiftData for persistence
 - **Terminal:** SwiftTerm for embedded terminal views
 
-## Design System (`DS`)
+## Design System (`DS`) — STRICT ENFORCEMENT
 All UI must use the design system defined in `DeepThink/Views/Shared/DesignSystem.swift`.
+**No raw values allowed.** Every color, font size, spacing value, corner radius, and opacity MUST come from a DS token. If a needed token doesn't exist, add it to DesignSystem.swift first — never inline a raw literal.
 
-- **Colors:** `DS.Colors.*` — never use raw Color literals or system colors directly
-- **Typography:** `DS.Font.*` (heading, body, caption, small, micro, monoSmall) — no ad-hoc font calls
-- **Spacing:** `DS.Spacing.*` (xs, sm, md, lg, xl) — consistent padding/gaps
-- **Radius:** `DS.Radius.*` (sm, md, lg) — rounded corners
-- **Icons:** `DS.IconSize.*` (xs, sm, md, lg, xl, xxl) — icon sizing
+- **Colors:** `DS.Colors.*` — never use `Color.white`, `Color.black`, `Color.red`, `.white`, `.black`, or any raw `Color(...)`. Use `DS.Colors.onAccent` for white-on-colored-bg, `DS.Colors.danger` for red, `DS.Colors.cardShadow`/`subtleShadow`/`modalShadow` for shadow colors.
+- **Typography:** `DS.Font.*` (hero, display, titleLarge, titleSmall, title, heading, body, bodySmall, caption, small, micro, badge, mono, monoSmall) — no `.font(.system(size: <number>))` calls. For icons with custom weight, use `DS.IconSize.*` for the size: `.font(.system(size: DS.IconSize.xs, weight: .semibold))`.
+- **Spacing:** `DS.Spacing.*` (xxs=2, xs=4, xs2=6, sm=8, sm2=10, md=12, lg=16, xl=24, xxl=32) — consistent padding/gaps
+- **Radius:** `DS.Radius.*` (sm=6, md=8, lg=12, xl=14, pill=20) — rounded corners
+- **Icons:** `DS.IconSize.*` (micro=7, nano=8, xs=9, sm2=10, sm=12, md=14, lg=16, xl=20, xxl=24, xxxl=28, hero=40) — icon sizing
 - **Opacity:** `DS.Opacity.*` — hover/pressed states
 - **Animation:** `DS.Animation.standard` / `.quick` — transitions
 - **Page style:** `.dsPage()` modifier on ScrollView roots
@@ -45,3 +46,9 @@ Never use bare `.buttonStyle(.plain)` or `.borderless` — they lack the pointer
 - Prefer editing existing files over creating new ones
 - Keep views small — extract subviews as private structs in same file
 - Use `@ViewBuilder` for computed view properties
+
+## Working Philosophy
+- **macOS 14+ compatibility:** All UI must render consistently across macOS 14–26. Avoid raw system colors that resolve differently across OS versions — always go through DS tokens.
+- **Token-first:** When you need a value not in DS, add the token to `DesignSystem.swift` first, then use it. Never scatter raw literals.
+- **Pointer cursor on everything clickable:** Every `Button`, `onTapGesture`, or interactive element must show a pointer cursor. Use `.buttonStyle(.plainPointer)`, `.dsPrimary`, `.dsSecondary`, or `.pointerOnHover()`.
+- **No visual regressions:** When refactoring styles to use DS tokens, the rendered output must not change. Map to tokens with identical numeric values.

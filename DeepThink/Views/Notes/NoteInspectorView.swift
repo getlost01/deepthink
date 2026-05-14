@@ -19,7 +19,7 @@ struct NoteInspectorView: View {
             } else {
                 VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "doc.text")
-                        .font(.system(size: 24, weight: .light))
+                        .font(.system(size: DS.IconSize.xxl, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a note")
                         .foregroundStyle(DS.Colors.textSecondary)

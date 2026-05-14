@@ -14,6 +14,7 @@
 		08BC8620EF79F498A7638158 /* editor.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = 6E5D80FD3C638E1DDAD6961D /* editor.bundle.js */; };
 		09A5B19621F51B4465925EFD /* DataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC481A9BCCB447E8BB39804 /* DataSource.swift */; };
 		0CE09CA803E5FFF48104D2A4 /* MarkdownEditorWithToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */; };
+		0C1A2B3C4D5E6F7081929AAA /* CLISyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */; };
 		0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */; };
 		0F6DE790355F98D52B88A16E /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36CF5F5545352A9E8C751ED3 /* Note.swift */; };
 		0FF2A86195CF7229784E1974 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 306A8A7284D41C7FA40818BB /* NoteEditorView.swift */; };
@@ -120,6 +121,7 @@
 		05F1A0F50C47FEEFD23BB385 /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
 		0600BB6D0E20A8A684ED8D07 /* MCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPService.swift; sourceTree = "<group>"; };
 		0784749C45091B5719161924 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
+		0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLISyncService.swift; sourceTree = "<group>"; };
 		0C223BF79E3501B2849D0061 /* KnowledgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeView.swift; sourceTree = "<group>"; };
 		1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeExtractionService.swift; sourceTree = "<group>"; };
 		15F1316DBB5604DCB63BED10 /* SkillFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFile.swift; sourceTree = "<group>"; };
@@ -356,6 +358,7 @@
 				6EC64CBB4FA445B4649AE1E0 /* ArchiveService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
 				C0FA0B0EF4EF57C609BFC6DA /* BackupService.swift */,
+				0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
 				7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */,
 				4812F0BAB761C0C2D9EC1324 /* ContextEngine.swift */,
@@ -664,11 +667,15 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/cli/out/deepthink",
+				"$(SRCROOT)/cli/out/deepthink-mcp",
 			);
 			name = "Bundle DeepThink CLI + MCP";
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/deepthink-cli",
+				"$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/deepthink-mcp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -698,6 +705,7 @@
 				C46E34B2FFBEC78E725C4F98 /* ChatComponents.swift in Sources */,
 				ADD2B6A0C5CDF057A6C73230 /* ChatHistorySidebar.swift in Sources */,
 				2E47277475F632844BA34247 /* ChatMarkdownView.swift in Sources */,
+				0C1A2B3C4D5E6F7081929AAA /* CLISyncService.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,
 				7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */,
 				FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */,

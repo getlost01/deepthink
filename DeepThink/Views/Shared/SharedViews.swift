@@ -210,7 +210,7 @@ struct DeepLinkPickerSheet: View {
             if linkItems.isEmpty {
                 VStack(spacing: DS.Spacing.md) {
                     Image(systemName: linkIcon)
-                        .font(.system(size: 28, weight: .light))
+                        .font(.system(size: DS.IconSize.xxxl, weight: .light))
                         .foregroundStyle(DS.Colors.textTertiary)
                     VStack(spacing: DS.Spacing.xs) {
                         Text(search.isEmpty ? "No \(linkLabel.lowercased())s yet" : "No results for \"\(search)\"")
@@ -329,8 +329,8 @@ private struct DeepLinkPickerRow: View {
 
                     if isArchived {
                         Image(systemName: "archivebox.fill")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.white)
+                            .font(.system(size: DS.IconSize.nano, weight: .bold))
+                            .foregroundStyle(DS.Colors.onAccent)
                             .padding(2)
                             .background(DS.Colors.textTertiary, in: RoundedRectangle(cornerRadius: 3))
                             .offset(x: 4, y: 4)

@@ -495,7 +495,7 @@ private struct AgentDetailEditor: View {
                     scheduleSave()
                 } label: {
                     Image(systemName: ic)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(icon == ic ? DS.Colors.onAccent : DS.Colors.textSecondary)
                         .frame(width: 32, height: 32)
                         .background(icon == ic ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))

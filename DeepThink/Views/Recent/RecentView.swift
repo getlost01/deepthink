@@ -98,7 +98,6 @@ struct RecentView: View {
     }
 
     private var summaryLine: String {
-        let todayCount = todayItems.count
         let noteCount = todayItems.count(where: { $0.kind == .note })
         let taskDoneCount = todayItems.count(where: { $0.kind == .task && $0.detail == "Completed" })
         let knowledgeCount = todayItems.count(where: { $0.kind == .knowledge })
@@ -208,7 +207,7 @@ struct RecentView: View {
                     .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(color)
                 Text(value)
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: DS.IconSize.xl, weight: .bold))
                     .foregroundStyle(DS.Colors.textPrimary)
             }
             Text(label)
@@ -340,7 +339,7 @@ private struct RecentItemRow: View {
                         .fill(item.iconColor.opacity(0.1))
                         .frame(width: 32, height: 32)
                     Image(systemName: item.icon)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(item.iconColor)
                 }
 
@@ -476,7 +475,7 @@ private struct AgentsSection: View {
     private func agentPill(_ agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) -> some View {
         HStack(spacing: DS.Spacing.xs) {
             Image(systemName: agent.icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(DS.Font.caption).fontWeight(.semibold)
                 .foregroundStyle(DS.Colors.accent)
                 .frame(width: 22, height: 22)
                 .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -506,7 +505,7 @@ private struct AgentsSection: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: DS.IconSize.xs, weight: .bold))
                     .foregroundStyle(DS.Colors.textTertiary)
                     .frame(width: 20, height: 20)
                     .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
@@ -542,7 +541,7 @@ private struct AgentsSection: View {
     private func runAll() {
         runningAll = true
         Task {
-            await DeepThinkCLIService.shared.run(["schedule", "run", "--force"])
+            _ = await DeepThinkCLIService.shared.run(["schedule", "run", "--force"])
             await MainActor.run {
                 runningAll = false
                 loadState()
@@ -554,7 +553,7 @@ private struct AgentsSection: View {
     private func runSingle(_ agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) {
         runningAll = true
         Task {
-            await DeepThinkCLIService.shared.run(["schedule", "run", "--agent", agent.id, "--force"])
+            _ = await DeepThinkCLIService.shared.run(["schedule", "run", "--agent", agent.id, "--force"])
             await MainActor.run {
                 runningAll = false
                 loadState()
@@ -566,7 +565,8 @@ private struct AgentsSection: View {
     private func loadState() {
         let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
         if let data = try? Data(contentsOf: url),
-           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data)
+        {
             lastRun = state.lastRun
         }
         loadOutputs()
@@ -609,7 +609,8 @@ private struct AgentsSection: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // If content is a JSON object, extract "suggestion" or "result" field
         if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
             if let s = json["suggestion"] as? String { return s }
             if let s = json["result"] as? String { return s }
             if let s = json["message"] as? String { return s }
@@ -623,7 +624,8 @@ private struct AgentsSection: View {
                 .joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            {
                 if let s = json["suggestion"] as? String { return s }
                 if let s = json["result"] as? String { return s }
                 return ""
@@ -675,7 +677,7 @@ struct DailyBriefModal: View {
                         .font(.system(size: DS.IconSize.sm, weight: .semibold))
                         .foregroundStyle(Color(hue: 0.08, saturation: 0.85, brightness: 0.98))
                     Text("Daily Brief")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(DS.Font.titleSmall)
                         .foregroundStyle(DS.Colors.textPrimary)
                 }
                 Spacer()

@@ -162,7 +162,7 @@ private struct HistoryRow: View {
                 if isHovered {
                     Button(action: onDelete) {
                         Image(systemName: "xmark")
-                            .font(.system(size: 7, weight: .bold))
+                            .font(DS.Font.badge)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
                     .buttonStyle(.plainPointer)

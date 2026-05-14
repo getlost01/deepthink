@@ -22,7 +22,7 @@ struct ThinkingIndicator: View {
     var body: some View {
         HStack(spacing: DS.Spacing.sm) {
             Text("✽")
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: DS.IconSize.lg, weight: .medium))
                 .foregroundStyle(DS.Colors.accent)
                 .rotationEffect(.degrees(rotation))
 
@@ -252,7 +252,7 @@ struct StreamingAsterisk: View {
     var body: some View {
         HStack(spacing: 4) {
             Text("✽")
-                .font(.system(size: 12, weight: .medium))
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
                 .foregroundStyle(DS.Colors.accent)
                 .rotationEffect(.degrees(rotation))
 

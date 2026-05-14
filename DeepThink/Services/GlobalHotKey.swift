@@ -22,7 +22,7 @@ final class GlobalHotKey {
         }, 1, &eventType, nil, &eventHandlerRef)
 
         // Option+Space: modifier 0x0800 = optionKey, keyCode 49 = Space
-        var hotKeyID = EventHotKeyID(signature: OSType(0x4454_484B), id: 1) // "DTHK"
+        let hotKeyID = EventHotKeyID(signature: OSType(0x4454_484B), id: 1)
         let modifiers = UInt32(optionKey)
         RegisterEventHotKey(UInt32(49), modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
 

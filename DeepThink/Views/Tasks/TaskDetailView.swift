@@ -195,7 +195,7 @@ struct TaskDetailView: View {
                                     }
                                 } label: {
                                     Image(systemName: sub.status == .done ? "checkmark.circle.fill" : "circle")
-                                        .font(.system(size: 13))
+                                        .font(DS.Font.body)
                                         .foregroundStyle(sub.status == .done ? DS.Colors.success : DS.Colors.textTertiary)
                                 }
                                 .buttonStyle(.plainPointer)
@@ -231,7 +231,7 @@ struct TaskDetailView: View {
 
                         HStack(spacing: DS.Spacing.sm) {
                             Image(systemName: "plus.circle")
-                                .font(.system(size: 13))
+                                .font(DS.Font.body)
                                 .foregroundStyle(DS.Colors.textTertiary)
 
                             TextField("Add subtask...", text: $newSubtaskTitle)

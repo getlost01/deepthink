@@ -56,14 +56,13 @@ struct ReminderListView: View {
             listPane
         } right: {
             if let selectedID = appState.selectedReminderID,
-               let reminder = allReminders.first(where: { $0.id == selectedID })
-            {
+               let reminder = allReminders.first(where: { $0.id == selectedID }) {
                 ReminderDetailView(reminder: reminder)
                     .id(reminder.id)
             } else {
                 VStack(spacing: DS.Spacing.md) {
                     Image(systemName: "bell")
-                        .font(.system(size: 40))
+                        .font(.system(size: DS.IconSize.hero))
                         .foregroundStyle(DS.Colors.textTertiary)
                     Text("Select a reminder")
                         .font(DS.Font.body)
