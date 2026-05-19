@@ -80,8 +80,7 @@ final class EmbeddingService {
             )
         }
 
-        store.deleteChunksForEntry(entry.id)
-        store.upsertChunks(vectorChunks)
+        store.replaceChunksForEntry(entry.id, with: vectorChunks)
     }
 
     func removeEntry(_ entryID: String) {
@@ -127,8 +126,7 @@ final class EmbeddingService {
             )
         }
 
-        store.deleteChunksForEntry(id)
-        store.upsertChunks(vectorChunks)
+        store.replaceChunksForEntry(id, with: vectorChunks)
     }
 
     func indexWorkspaceItems(_ items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)]) {
@@ -155,18 +153,20 @@ final class EmbeddingService {
         guard let queryVector = embed(query) else { return [] }
 
         let entries = store.chunksWithEmbeddings(entryType: entryType, scope: scope)
-        var results: [(entryID: String, score: Double)] = []
-        var seen: Set<String> = []
+        var bestScores: [String: Double] = [:]
 
         for (chunk, embedding) in entries {
             let similarity = cosineSimilarity(queryVector, embedding)
-            if similarity > 0.3, !seen.contains(chunk.entryID) {
-                results.append((chunk.entryID, similarity))
-                seen.insert(chunk.entryID)
+            if similarity > 0.3 {
+                let current = bestScores[chunk.entryID] ?? 0
+                if similarity > current {
+                    bestScores[chunk.entryID] = similarity
+                }
             }
         }
 
-        return results
+        return bestScores
+            .map { (entryID: $0.key, score: $0.value) }
             .sorted { $0.score > $1.score }
             .prefix(topK)
             .map(\.self)
@@ -201,7 +201,7 @@ final class EmbeddingService {
 
     private func simpleHash(_ text: String) -> UInt64 {
         var hash: UInt64 = 5381
-        for char in text.prefix(2000).utf8 {
+        for char in text.utf8 {
             hash = hash &* 33 &+ UInt64(char)
         }
         return hash

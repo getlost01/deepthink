@@ -7,9 +7,11 @@ import { Writer } from "./agents/writer";
 import { DEEPTHINK_ROOT } from "./config";
 import { retrieveContext, retrieveContextHybrid, workspaceContext } from "./core/context-engine";
 import * as db from "./core/db";
+import { hexToUUID } from "./core/db";
 import { indexEntry, semanticSearch } from "./core/embedding-service";
 import { isClaudeAvailable, query } from "./core/llm";
 import { initSandbox, listFiles } from "./core/sandbox";
+import { deleteChunksForEntry } from "./core/vector-store";
 import * as fileTools from "./tools/file";
 import * as knowledgeTools from "./tools/knowledge";
 import * as search from "./tools/search";
@@ -530,7 +532,7 @@ function cmdTask() {
       err(
         "usage: deepthink task add <title> [--status s] [--priority p] [--points n] [--due YYYY-MM-DD] [--project name]"
       );
-    const pk = db.createTask(title, {
+    const { pk, id } = db.createTask(title, {
       status: flagVal("--status") ?? undefined,
       priority: flagVal("--priority") ?? undefined,
       storyPoints: flagVal("--points") ? parseInt(flagVal("--points")!, 10) : undefined,
@@ -538,10 +540,10 @@ function cmdTask() {
       project: flagVal("--project") ?? undefined,
     });
     indexEntry({
-      id: `task:${pk}`,
+      id: `task:${hexToUUID(id)}`,
       type: "task",
       title,
-      content: flagVal("--detail") ?? "",
+      content: `${title}\n${flagVal("--detail") ?? ""}`,
       tags: [],
       source: "task",
       importedAt: new Date(),
@@ -595,10 +597,10 @@ function cmdTask() {
     const updatedTask = db.getTask(t.pk.toString());
     if (updatedTask)
       indexEntry({
-        id: `task:${updatedTask.pk}`,
+        id: `task:${hexToUUID(t.id)}`,
         type: "task",
         title: updatedTask.title,
-        content: updatedTask.detail,
+        content: `${updatedTask.title}\n${updatedTask.detail}`,
         tags: [],
         source: "task",
         importedAt: updatedTask.modifiedAt,
@@ -622,6 +624,7 @@ function cmdTask() {
     if (!ref) err("usage: deepthink task delete <id|name>");
     const t = db.getTask(ref);
     if (!t) err(`task not found: ${ref}`);
+    deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
     db.deleteTask(t.pk);
     ok(`task #${t.pk} deleted`);
     return;
@@ -652,16 +655,16 @@ function cmdNote() {
   if (sub === "add" || sub === "create") {
     const title = args[2];
     if (!title) err("usage: deepthink note add <title> [--content text] [--pinned] [--project name]");
-    const pk = db.createNote(title, {
+    const { pk, id } = db.createNote(title, {
       content: flagVal("--content") ?? undefined,
       pinned: flag("--pinned"),
       project: flagVal("--project") ?? undefined,
     });
     indexEntry({
-      id: `note:${pk}`,
+      id: `note:${hexToUUID(id)}`,
       type: "note",
       title,
-      content: flagVal("--content") ?? "",
+      content: `${title}\n${flagVal("--content") ?? ""}`,
       tags: [],
       source: "note",
       importedAt: new Date(),
@@ -708,10 +711,10 @@ function cmdNote() {
     const updatedNote = db.getNote(n.pk.toString());
     if (updatedNote)
       indexEntry({
-        id: `note:${updatedNote.pk}`,
+        id: `note:${hexToUUID(n.id)}`,
         type: "note",
         title: updatedNote.title,
-        content: updatedNote.content,
+        content: `${updatedNote.title}\n${updatedNote.content}`,
         tags: [],
         source: "note",
         importedAt: updatedNote.modifiedAt,
@@ -725,6 +728,7 @@ function cmdNote() {
     if (!ref) err("usage: deepthink note delete <id|name>");
     const n = db.getNote(ref);
     if (!n) err(`note not found: ${ref}`);
+    deleteChunksForEntry(`note:${hexToUUID(n.id)}`);
     db.deleteNote(n.pk);
     ok(`note #${n.pk} deleted`);
     return;
@@ -752,15 +756,15 @@ function cmdProject() {
   if (sub === "add" || sub === "create") {
     const name = args[2];
     if (!name) err("usage: deepthink project add <name> [--summary text] [--color hex]");
-    const pk = db.createProject(name, {
+    const { pk, id } = db.createProject(name, {
       summary: flagVal("--summary") ?? undefined,
       color: flagVal("--color") ?? undefined,
     });
     indexEntry({
-      id: `project:${pk}`,
+      id: `project:${hexToUUID(id)}`,
       type: "project",
       title: name,
-      content: flagVal("--summary") ?? "",
+      content: `${name}\n${flagVal("--summary") ?? ""}`,
       tags: [],
       source: "project",
       importedAt: new Date(),
@@ -804,10 +808,10 @@ function cmdProject() {
     const updatedProj = db.getProject(pr.pk.toString());
     if (updatedProj)
       indexEntry({
-        id: `project:${updatedProj.pk}`,
+        id: `project:${hexToUUID(pr.id)}`,
         type: "project",
         title: updatedProj.name,
-        content: updatedProj.summary,
+        content: `${updatedProj.name}\n${updatedProj.summary ?? ""}`,
         tags: [],
         source: "project",
         importedAt: updatedProj.modifiedAt,
@@ -821,6 +825,7 @@ function cmdProject() {
     if (!ref) err("usage: deepthink project delete <id|name>");
     const pr = db.getProject(ref);
     if (!pr) err(`project not found: ${ref}`);
+    deleteChunksForEntry(`project:${hexToUUID(pr.id)}`);
     db.deleteProject(pr.pk);
     ok(`project #${pr.pk} deleted`);
     return;

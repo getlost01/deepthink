@@ -172,6 +172,20 @@ final class VectorStore {
         }
     }
 
+    func replaceChunksForEntry(_ entryID: String, with chunks: [VectorChunk]) {
+        queue.sync(flags: .barrier) {
+            exec("BEGIN TRANSACTION")
+            var delStmt: OpaquePointer?
+            if sqlite3_prepare_v2(db, "DELETE FROM chunks WHERE entry_id = ?", -1, &delStmt, nil) == SQLITE_OK {
+                sqlite3_bind_text(delStmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+                sqlite3_step(delStmt)
+                sqlite3_finalize(delStmt)
+            }
+            for chunk in chunks { upsertChunkUnsafe(chunk) }
+            exec("COMMIT")
+        }
+    }
+
     func deleteChunksByType(_ entryType: String) {
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?

@@ -24,6 +24,14 @@ function uuidHex(): string {
   return crypto.randomUUID().replace(/-/g, "").toUpperCase();
 }
 
+// Converts a 32-char hex UUID (from SQLite hex()) to the canonical lowercase
+// dashed format matching Swift's UUID.uuidString, so app and CLI share the
+// same entry IDs in vectors.db.
+export function hexToUUID(hex: string): string {
+  const h = hex.toLowerCase();
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 function nextPK(db: Database, entity: string): { pk: number; ent: number } {
   let result: { pk: number; ent: number } | undefined;
   db.transaction(() => {
@@ -144,17 +152,21 @@ export function getProject(nameOrPk: string): ProjectRow | null {
   );
 }
 
-export function createProject(name: string, opts: { summary?: string; color?: string } = {}): number {
+export function createProject(
+  name: string,
+  opts: { summary?: string; color?: string } = {}
+): { pk: number; id: string } {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "Project");
   const now = toCD(new Date());
+  const id = uuidHex();
   db.query(`
     INSERT INTO ZPROJECT (Z_PK, Z_ENT, Z_OPT, ZISARCHIVED, ZCREATEDAT, ZMODIFIEDAT, ZNAME, ZSUMMARY, ZCOLOR, ZID)
-    VALUES (?, ?, 1, 0, ?, ?, ?, ?, ?, x'${uuidHex()}')
+    VALUES (?, ?, 1, 0, ?, ?, ?, ?, ?, x'${id}')
   `).run(pk, ent, now, now, name, opts.summary ?? "", opts.color ?? "#007AFF");
   auditLog(db, "create", "project", pk);
   notifySync();
-  return pk;
+  return { pk, id };
 }
 
 export function updateProject(pk: number, fields: Record<string, any>): void {
@@ -295,10 +307,11 @@ export function createTask(
     dueDate?: string;
     project?: string;
   } = {}
-): number {
+): { pk: number; id: string } {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "TaskItem");
   const now = toCD(new Date());
+  const id = uuidHex();
 
   let projectPk: number | null = null;
   if (opts.project) {
@@ -313,7 +326,7 @@ export function createTask(
 
   db.query(`
     INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
-    VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
+    VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${id}')
   `).run(
     pk,
     ent,
@@ -329,7 +342,7 @@ export function createTask(
   );
   auditLog(db, "create", "task", pk);
   notifySync();
-  return pk;
+  return { pk, id };
 }
 
 export function updateTask(pk: number, fields: Record<string, any>): void {
@@ -480,10 +493,11 @@ export function createNote(
     pinned?: boolean;
     project?: string;
   } = {}
-): number {
+): { pk: number; id: string } {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "Note");
   const now = toCD(new Date());
+  const id = uuidHex();
 
   let projectPk: number | null = null;
   if (opts.project) {
@@ -493,11 +507,11 @@ export function createNote(
 
   db.query(`
     INSERT INTO ZNOTE (Z_PK, Z_ENT, Z_OPT, ZISPINNED, ZPROJECT, ZCREATEDAT, ZMODIFIEDAT, ZCONTENT, ZTITLE, ZID)
-    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, x'${uuidHex()}')
+    VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, x'${id}')
   `).run(pk, ent, opts.pinned ? 1 : 0, projectPk, now, now, opts.content ?? "", title);
   auditLog(db, "create", "note", pk);
   notifySync();
-  return pk;
+  return { pk, id };
 }
 
 export function updateNote(pk: number, fields: Record<string, any>): void {
@@ -619,10 +633,11 @@ export function createReminder(
     notes?: string;
     reminderDate?: string;
   } = {}
-): number {
+): { pk: number; id: string } {
   const db = getWriteDB();
   const { pk, ent } = nextPK(db, "Reminder");
   const now = toCD(new Date());
+  const id = uuidHex();
 
   let reminderDateCD: number | null = null;
   if (opts.reminderDate) {
@@ -631,11 +646,11 @@ export function createReminder(
 
   db.query(`
     INSERT INTO ZREMINDER (Z_PK, Z_ENT, Z_OPT, ZISCOMPLETED, ZNOTIFICATIONSCHEDULED, ZCOMPLETEDAT, ZCREATEDAT, ZMODIFIEDAT, ZREMINDERDATE, ZNOTES, ZTITLE, ZID)
-    VALUES (?, ?, 1, 0, 0, NULL, ?, ?, ?, ?, ?, x'${uuidHex()}')
+    VALUES (?, ?, 1, 0, 0, NULL, ?, ?, ?, ?, ?, x'${id}')
   `).run(pk, ent, now, now, reminderDateCD, opts.notes ?? "", title);
   auditLog(db, "create", "reminder", pk);
   notifySync();
-  return pk;
+  return { pk, id };
 }
 
 export function updateReminder(pk: number, fields: Record<string, any>): void {

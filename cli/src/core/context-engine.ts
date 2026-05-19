@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
+import * as db from "./db";
 import { type SemanticResult, semanticSearch } from "./embedding-service";
 import {
   allChunks,
@@ -392,51 +393,6 @@ function ensureIndexed(entries: IndexedEntry[]): void {
   pruneStaleEntries(validIds, "knowledge");
 }
 
-// ── Workspace indexing into vector store ──
-
-import * as db from "./db";
-
-function ensureWorkspaceIndexed(tasks: db.TaskRow[], notes: db.NoteRow[]): void {
-  for (const task of tasks) {
-    const content = `${task.title}\n${task.detail}`;
-    const hash = simpleHash(content);
-    const entryId = `task:${task.pk}`;
-    const cached = _hashCache.get(entryId);
-    if (cached === hash) continue;
-
-    const existing = getContentHash(entryId);
-    if (existing !== null && existing === hash) {
-      _hashCache.set(entryId, hash);
-      continue;
-    }
-
-    const chunks = semanticChunk(content, entryId, "workspace", task.title, [], "workspace", task.modifiedAt, hash);
-    upsertChunks(chunks);
-    _hashCache.set(entryId, hash);
-  }
-
-  for (const note of notes) {
-    const content = `${note.title}\n${note.content}`;
-    const hash = simpleHash(content);
-    const entryId = `note:${note.pk}`;
-    const cached = _hashCache.get(entryId);
-    if (cached === hash) continue;
-
-    const existing = getContentHash(entryId);
-    if (existing !== null && existing === hash) {
-      _hashCache.set(entryId, hash);
-      continue;
-    }
-
-    const chunks = semanticChunk(content, entryId, "workspace", note.title, [], "workspace", note.modifiedAt, hash);
-    upsertChunks(chunks);
-    _hashCache.set(entryId, hash);
-  }
-
-  const validIds = new Set([...tasks.map((t) => `task:${t.pk}`), ...notes.map((n) => `note:${n.pk}`)]);
-  pruneStaleEntries(validIds, "workspace");
-}
-
 // ── BM25 Retrieval ──
 
 export function retrieveContext(
@@ -686,9 +642,6 @@ export function workspaceContext(
   const notes = preloaded?.notes ?? db.listNotes();
   const reminders = preloaded?.reminders ?? db.listReminders({ completed: false });
 
-  // Index workspace items if not pre-indexed by caller
-  if (!preloaded) ensureWorkspaceIndexed(tasks, notes);
-
   function scoreText(text: string): number {
     const terms = tokenize(text);
     const overlap = terms.filter((t) => queryTerms.has(t)).length;
@@ -796,8 +749,6 @@ export function unifiedSearch(
   const notes = db.listNotes();
   const reminders = db.listReminders({ completed: false });
 
-  // Index workspace items once, then run semantic search once for all consumers
-  ensureWorkspaceIndexed(tasks, notes);
   const semantic = semanticSearch(query, 60);
 
   const taskDetail = new Map(tasks.map((t) => [t.pk, t.detail]));

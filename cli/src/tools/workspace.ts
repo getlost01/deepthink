@@ -1,5 +1,6 @@
 import * as db from "../core/db";
-import { indexEntry } from "../core/embedding-service";
+import { hexToUUID } from "../core/db";
+import { indexEntry, reindexWorkspace } from "../core/embedding-service";
 import { deleteChunksForEntry } from "../core/vector-store";
 
 export interface WorkspaceTool {
@@ -74,7 +75,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       required: ["title"],
     },
     execute: (p) => {
-      const pk = db.createTask(p.title, {
+      const { pk, id } = db.createTask(p.title, {
         detail: p.detail,
         status: p.status,
         priority: p.priority,
@@ -83,10 +84,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         project: p.project,
       });
       indexEntry({
-        id: `task:${pk}`,
+        id: `task:${hexToUUID(id)}`,
         type: "task",
         title: p.title,
-        content: p.detail ?? "",
+        content: `${p.title}\n${p.detail ?? ""}`,
         tags: [],
         source: "task",
         importedAt: new Date(),
@@ -120,10 +121,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const updated = db.getTask(t.pk.toString());
       if (updated)
         indexEntry({
-          id: `task:${t.pk}`,
+          id: `task:${hexToUUID(t.id)}`,
           type: "task",
           title: updated.title,
-          content: updated.detail,
+          content: `${updated.title}\n${updated.detail}`,
           tags: [],
           source: "task",
           importedAt: updated.modifiedAt,
@@ -142,7 +143,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const t = db.getTask(p.ref);
       if (!t) throw new Error(`task not found: ${p.ref}`);
-      deleteChunksForEntry(`task:${t.pk}`);
+      deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
       db.deleteTask(t.pk);
       return { pk: t.pk, deleted: true };
     },
@@ -204,16 +205,16 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       required: ["title"],
     },
     execute: (p) => {
-      const pk = db.createNote(p.title, {
+      const { pk, id } = db.createNote(p.title, {
         content: p.content,
         pinned: p.pinned,
         project: p.project,
       });
       indexEntry({
-        id: `note:${pk}`,
+        id: `note:${hexToUUID(id)}`,
         type: "note",
         title: p.title,
-        content: p.content ?? "",
+        content: `${p.title}\n${p.content ?? ""}`,
         tags: [],
         source: "note",
         importedAt: new Date(),
@@ -244,10 +245,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const updated = db.getNote(n.pk.toString());
       if (updated)
         indexEntry({
-          id: `note:${n.pk}`,
+          id: `note:${hexToUUID(n.id)}`,
           type: "note",
           title: updated.title,
-          content: updated.content,
+          content: `${updated.title}\n${updated.content}`,
           tags: [],
           source: "note",
           importedAt: updated.modifiedAt,
@@ -266,7 +267,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const n = db.getNote(p.ref);
       if (!n) throw new Error(`note not found: ${p.ref}`);
-      deleteChunksForEntry(`note:${n.pk}`);
+      deleteChunksForEntry(`note:${hexToUUID(n.id)}`);
       db.deleteNote(n.pk);
       return { pk: n.pk, deleted: true };
     },
@@ -325,12 +326,12 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       required: ["name"],
     },
     execute: (p) => {
-      const pk = db.createProject(p.name, { summary: p.summary, color: p.color });
+      const { pk, id } = db.createProject(p.name, { summary: p.summary, color: p.color });
       indexEntry({
-        id: `project:${pk}`,
+        id: `project:${hexToUUID(id)}`,
         type: "project",
         title: p.name,
-        content: p.summary ?? "",
+        content: `${p.name}\n${p.summary ?? ""}`,
         tags: [],
         source: "project",
         importedAt: new Date(),
@@ -364,10 +365,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const updated2 = db.getProject(pr.pk.toString());
       if (updated2)
         indexEntry({
-          id: `project:${pr.pk}`,
+          id: `project:${hexToUUID(pr.id)}`,
           type: "project",
           title: updated2.name,
-          content: updated2.summary,
+          content: `${updated2.name}\n${updated2.summary ?? ""}`,
           tags: [],
           source: "project",
           importedAt: updated2.modifiedAt,
@@ -386,7 +387,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const pr = db.getProject(p.ref);
       if (!pr) throw new Error(`project not found: ${p.ref}`);
-      deleteChunksForEntry(`project:${pr.pk}`);
+      deleteChunksForEntry(`project:${hexToUUID(pr.id)}`);
       db.deleteProject(pr.pk);
       return { pk: pr.pk, deleted: true };
     },
@@ -436,12 +437,12 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       required: ["title"],
     },
     execute: (p) => {
-      const pk = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
+      const { pk, id } = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
       indexEntry({
-        id: `reminder:${pk}`,
+        id: `reminder:${hexToUUID(id)}`,
         type: "reminder",
         title: p.title,
-        content: p.notes ?? "",
+        content: `${p.title}\n${p.notes ?? ""}`,
         tags: [],
         source: "reminder",
         importedAt: new Date(),
@@ -472,10 +473,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       const updated = db.getReminder(r.pk.toString());
       if (updated)
         indexEntry({
-          id: `reminder:${r.pk}`,
+          id: `reminder:${hexToUUID(r.id)}`,
           type: "reminder",
           title: updated.title,
-          content: updated.notes,
+          content: `${updated.title}\n${updated.notes ?? ""}`,
           tags: [],
           source: "reminder",
           importedAt: updated.modifiedAt,
@@ -494,7 +495,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const r = db.getReminder(p.ref);
       if (!r) throw new Error(`reminder not found: ${p.ref}`);
-      deleteChunksForEntry(`reminder:${r.pk}`);
+      deleteChunksForEntry(`reminder:${hexToUUID(r.id)}`);
       db.deleteReminder(r.pk);
       return { pk: r.pk, deleted: true };
     },
@@ -680,6 +681,16 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         },
       };
     },
+  },
+  // ── Reindex ──
+  {
+    name: "workspace_reindex",
+    description:
+      "Re-embed all workspace items (tasks, notes, reminders) that are missing embeddings or have stale content. " +
+      "Run once after a fresh install or after upgrading from a version that lacked per-item embedding. " +
+      "Safe to call multiple times — unchanged items are skipped. Returns the count of items actually indexed.",
+    inputSchema: { type: "object", properties: {} },
+    execute: (_p) => reindexWorkspace(),
   },
 ];
 

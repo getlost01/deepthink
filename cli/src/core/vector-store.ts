@@ -120,6 +120,33 @@ export function deleteChunksForEntry(entryId: string): void {
   getDB().run("DELETE FROM chunks WHERE entry_id = ?", [entryId]);
 }
 
+// Atomically replaces all chunks for an entry — delete + insert in one transaction.
+// Prevents the window where an entry has zero chunks between a delete and re-insert.
+export function replaceChunksForEntry(entryId: string, chunks: VectorChunk[]): void {
+  const db = getDB();
+  const stmt = db.prepare(upsertSQL);
+  const tx = db.transaction(() => {
+    db.run("DELETE FROM chunks WHERE entry_id = ?", [entryId]);
+    for (const chunk of chunks) {
+      stmt.run(
+        chunk.id,
+        chunk.entryId,
+        chunk.entryType,
+        chunk.title,
+        chunk.content,
+        JSON.stringify(chunk.tags),
+        chunk.source,
+        chunk.importedAt.getTime() / 1000,
+        chunk.chunkIndex,
+        chunk.totalChunks,
+        chunk.contentHash,
+        chunk.embedding ? Buffer.from(chunk.embedding.buffer) : null
+      );
+    }
+  });
+  tx();
+}
+
 export function deleteChunksByType(entryType: string): void {
   getDB().run("DELETE FROM chunks WHERE entry_type = ?", [entryType]);
 }
@@ -142,6 +169,21 @@ export function pruneStaleEntries(validIds: Set<string>, entryType: string): voi
 export function contentHash(entryId: string): number | null {
   const row = getDB().query("SELECT content_hash FROM chunks WHERE entry_id = ? LIMIT 1").get(entryId) as any;
   return row ? row.content_hash : null;
+}
+
+export function batchContentHashes(entryIds: string[]): Map<string, number> {
+  if (entryIds.length === 0) return new Map();
+  const result = new Map<string, number>();
+  const BATCH_SIZE = 100;
+  for (let i = 0; i < entryIds.length; i += BATCH_SIZE) {
+    const batch = entryIds.slice(i, i + BATCH_SIZE);
+    const placeholders = batch.map(() => "?").join(",");
+    const rows = getDB()
+      .query(`SELECT entry_id, content_hash FROM chunks WHERE entry_id IN (${placeholders}) GROUP BY entry_id`)
+      .all(...batch) as { entry_id: string; content_hash: number }[];
+    for (const row of rows) result.set(row.entry_id, row.content_hash);
+  }
+  return result;
 }
 
 export function allChunks(opts?: {
@@ -310,9 +352,8 @@ function parseRow(row: any): VectorChunk {
 
 export function simpleHash(text: string): number {
   let hash = 5381;
-  const slice = text.slice(0, 2000);
-  for (let i = 0; i < slice.length; i++) {
-    hash = ((hash * 33) ^ slice.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash * 33) ^ text.charCodeAt(i)) >>> 0;
   }
   return hash;
 }

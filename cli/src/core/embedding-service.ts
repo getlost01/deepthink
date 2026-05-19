@@ -1,21 +1,28 @@
 import { execFileSync, execSync } from "node:child_process";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
+import * as db from "./db";
+import { hexToUUID } from "./db";
 import {
+  batchContentHashes,
   chunksWithEmbeddings,
   deleteChunksForEntry,
   embeddedCount,
   contentHash as getContentHash,
   pruneStaleEntries,
+  replaceChunksForEntry,
   semanticChunk,
   simpleHash,
-  upsertChunks,
 } from "./vector-store";
 
 const CACHE_DIR = join(DEEPTHINK_ROOT, ".cache");
 const HELPER_BIN = join(CACHE_DIR, "embed-helper");
 const HELPER_SRC = join(CACHE_DIR, "embed-helper.swift");
+const HELPER_VERSION_FILE = join(CACHE_DIR, "embed-helper.version");
+
+// Bump this whenever SWIFT_SOURCE changes so stale binaries are auto-recompiled.
+const SWIFT_VERSION = "2";
 
 const _embeddingCache = new Map<string, { vector: Float32Array; ts: number }>();
 const EMBEDDING_CACHE_TTL = 5 * 60 * 1000;
@@ -24,21 +31,56 @@ const EMBEDDING_CACHE_MAX = 200;
 const SWIFT_SOURCE = `import NaturalLanguage
 import Foundation
 
-guard CommandLine.arguments.count > 1 else {
-    fputs("usage: embed-helper <text>\\n", stderr)
-    exit(1)
+let args = CommandLine.arguments.dropFirst()
+
+if args.first == "--batch" {
+    // Batch mode: read one text per line from stdin, emit one CSV vector per line.
+    // An empty output line signals embedding failure for that input.
+    guard let embedding = NLEmbedding.sentenceEmbedding(for: .english) else {
+        fputs("error: NLEmbedding unavailable\\n", stderr)
+        exit(1)
+    }
+    while let line = readLine(strippingNewline: true) {
+        if let vector = embedding.vector(for: line) {
+            print(vector.map { String($0) }.joined(separator: ","))
+        } else {
+            print("")
+        }
+    }
+} else {
+    // Single-arg mode (backward compat)
+    guard !args.isEmpty else {
+        fputs("usage: embed-helper <text>\\n", stderr)
+        exit(1)
+    }
+    let text = args.joined(separator: " ")
+    guard let embedding = NLEmbedding.sentenceEmbedding(for: .english),
+          let vector = embedding.vector(for: text) else {
+        fputs("error: NLEmbedding unavailable\\n", stderr)
+        exit(1)
+    }
+    print(vector.map { String($0) }.joined(separator: ","))
 }
-let text = CommandLine.arguments.dropFirst().joined(separator: " ")
-guard let embedding = NLEmbedding.sentenceEmbedding(for: .english),
-      let vector = embedding.vector(for: text) else {
-    fputs("error: NLEmbedding unavailable\\n", stderr)
-    exit(1)
-}
-print(vector.map { String($0) }.joined(separator: ","))
 `;
 
 function ensureHelper(): boolean {
-  if (existsSync(HELPER_BIN)) return true;
+  if (existsSync(HELPER_BIN) && existsSync(HELPER_VERSION_FILE)) {
+    try {
+      if (readFileSync(HELPER_VERSION_FILE, "utf-8").trim() === SWIFT_VERSION) return true;
+    } catch {}
+    // Version mismatch — delete stale artifacts and recompile.
+    try {
+      unlinkSync(HELPER_BIN);
+    } catch {}
+    try {
+      unlinkSync(HELPER_VERSION_FILE);
+    } catch {}
+  } else if (existsSync(HELPER_BIN)) {
+    // Binary exists but no version file — treat as stale.
+    try {
+      unlinkSync(HELPER_BIN);
+    } catch {}
+  }
   try {
     if (!existsSync(CACHE_DIR)) mkdirSync(CACHE_DIR, { recursive: true });
     writeFileSync(HELPER_SRC, SWIFT_SOURCE);
@@ -46,34 +88,67 @@ function ensureHelper(): boolean {
       timeout: 30000,
       stdio: ["pipe", "pipe", "pipe"],
     });
+    writeFileSync(HELPER_VERSION_FILE, SWIFT_VERSION);
     return true;
   } catch {
     return false;
   }
 }
 
-function embedQuery(text: string): Float32Array | null {
-  if (!ensureHelper()) return null;
+// Embeds multiple texts in a single subprocess call. Cache is consulted/updated per text.
+function embedBatch(texts: string[]): (Float32Array | null)[] {
+  if (texts.length === 0) return [];
+  if (!ensureHelper()) return texts.map(() => null);
+
   const now = Date.now();
-  const cached = _embeddingCache.get(text);
-  if (cached && now - cached.ts < EMBEDDING_CACHE_TTL) return cached.vector;
+  const results: (Float32Array | null)[] = new Array(texts.length).fill(null);
+  const uncachedIndices: number[] = [];
+  const uncachedTexts: string[] = [];
+
+  for (let i = 0; i < texts.length; i++) {
+    const cached = _embeddingCache.get(texts[i]);
+    if (cached && now - cached.ts < EMBEDDING_CACHE_TTL) {
+      results[i] = cached.vector;
+    } else {
+      uncachedIndices.push(i);
+      uncachedTexts.push(texts[i]);
+    }
+  }
+
+  if (uncachedTexts.length === 0) return results;
+
   try {
-    const result = execFileSync(HELPER_BIN, [text], {
-      timeout: 5000,
+    // Newlines would break the line-delimited protocol — replace with spaces.
+    const stdin = uncachedTexts.map((t) => t.replace(/\n/g, " ")).join("\n");
+    const output = execFileSync(HELPER_BIN, ["--batch"], {
+      input: stdin,
+      timeout: Math.max(10000, uncachedTexts.length * 800),
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
-    const values = result.trim().split(",").map(Number);
-    if (values.length > 0 && !values.some(Number.isNaN)) {
-      const vector = new Float32Array(values);
-      if (_embeddingCache.size >= EMBEDDING_CACHE_MAX) _embeddingCache.delete(_embeddingCache.keys().next().value!);
-      _embeddingCache.set(text, { vector, ts: now });
-      return vector;
+    const lines = output.split("\n");
+    for (let j = 0; j < uncachedIndices.length; j++) {
+      const line = (lines[j] ?? "").trim();
+      if (!line) continue;
+      const values = line.split(",").map(Number);
+      if (values.length > 0 && !values.some(Number.isNaN)) {
+        const vector = new Float32Array(values);
+        if (_embeddingCache.size >= EMBEDDING_CACHE_MAX) {
+          _embeddingCache.delete(_embeddingCache.keys().next().value!);
+        }
+        _embeddingCache.set(texts[uncachedIndices[j]], { vector, ts: now });
+        results[uncachedIndices[j]] = vector;
+      }
     }
-    return null;
   } catch {
-    return null;
+    // Leave nulls for uncached texts on failure.
   }
+
+  return results;
+}
+
+function embedQuery(text: string): Float32Array | null {
+  return embedBatch([text])[0] ?? null;
 }
 
 function cosineSimilarity(a: number[] | Float32Array, b: number[] | Float32Array): number {
@@ -102,9 +177,10 @@ export interface IndexableEntry {
   importedAt: Date;
 }
 
-export function indexEntry(entry: IndexableEntry): void {
+// Internal: accepts a pre-loaded hash map to avoid per-entry DB queries.
+function indexEntryCore(entry: IndexableEntry, knownHashes?: Map<string, number>): void {
   const hash = simpleHash(entry.content);
-  const existing = getContentHash(entry.id);
+  const existing = knownHashes !== undefined ? (knownHashes.get(entry.id) ?? null) : getContentHash(entry.id);
   if (existing !== null && existing === hash) return;
 
   const chunks = semanticChunk(
@@ -118,26 +194,76 @@ export function indexEntry(entry: IndexableEntry): void {
     hash
   );
 
-  const withEmbeddings = chunks.map((chunk) => {
-    const text = `${entry.title}. ${chunk.content.slice(0, 500)}`;
-    const embedding = embedQuery(text);
-    return { ...chunk, embedding };
-  });
+  const texts = chunks.map((c) => `${entry.title}. ${c.content.slice(0, 500)}`);
+  const embeddings = embedBatch(texts);
+  const withEmbeddings = chunks.map((chunk, i) => ({ ...chunk, embedding: embeddings[i] ?? null }));
 
-  deleteChunksForEntry(entry.id);
-  upsertChunks(withEmbeddings);
+  replaceChunksForEntry(entry.id, withEmbeddings);
+}
+
+export function indexEntry(entry: IndexableEntry): void {
+  indexEntryCore(entry);
 }
 
 export function indexEntries(entries: IndexableEntry[]): void {
-  for (const entry of entries) {
-    indexEntry(entry);
-  }
+  if (entries.length === 0) return;
+  const knownHashes = batchContentHashes(entries.map((e) => e.id));
+  for (const entry of entries) indexEntryCore(entry, knownHashes);
   const validIds = new Set(entries.map((e) => e.id));
-  pruneStaleEntries(validIds, entries[0]?.type ?? "knowledge");
+  pruneStaleEntries(validIds, entries[0].type ?? "knowledge");
 }
 
 export function removeEntry(entryId: string): void {
   deleteChunksForEntry(entryId);
+}
+
+// Re-embed all workspace items that are missing or have stale embeddings.
+// Safe to call multiple times — unchanged items are skipped.
+export function reindexWorkspace(): { indexed: number } {
+  const tasks = db.listTasks({ excludeArchived: false });
+  const notes = db.listNotes({ excludeArchived: false });
+  const reminders = db.listReminders({});
+
+  const entries: IndexableEntry[] = [
+    ...tasks.map((t) => ({
+      id: `task:${hexToUUID(t.id)}`,
+      type: "task",
+      title: t.title,
+      content: `${t.title}\n${t.detail}`,
+      tags: [],
+      source: "task",
+      importedAt: t.modifiedAt,
+    })),
+    ...notes.map((n) => ({
+      id: `note:${hexToUUID(n.id)}`,
+      type: "note",
+      title: n.title,
+      content: `${n.title}\n${n.content}`,
+      tags: [],
+      source: "note",
+      importedAt: n.modifiedAt,
+    })),
+    ...reminders.map((r) => ({
+      id: `reminder:${hexToUUID(r.id)}`,
+      type: "reminder",
+      title: r.title,
+      content: `${r.title}\n${r.notes}`,
+      tags: [],
+      source: "reminder",
+      importedAt: r.modifiedAt,
+    })),
+  ];
+
+  const knownHashes = batchContentHashes(entries.map((e) => e.id));
+  let indexed = 0;
+  for (const entry of entries) {
+    const hash = simpleHash(entry.content);
+    if ((knownHashes.get(entry.id) ?? null) !== hash) {
+      indexEntryCore(entry, knownHashes);
+      indexed++;
+    }
+  }
+  return { indexed };
 }
 
 // MARK: - Search
@@ -152,18 +278,21 @@ export function semanticSearch(query: string, topK: number = 10, scope?: string[
   if (!queryVector) return [];
 
   const entries = chunksWithEmbeddings({ scope });
-  const seen = new Set<string>();
-  const results: SemanticResult[] = [];
+  // Track the best-scoring chunk per entry (not just first-seen).
+  const bestScores = new Map<string, number>();
 
   for (const { chunk, embedding } of entries) {
     const similarity = cosineSimilarity(queryVector, embedding);
-    if (similarity > 0.3 && !seen.has(chunk.entryId)) {
-      results.push({ entryID: chunk.entryId, score: similarity });
-      seen.add(chunk.entryId);
+    if (similarity > 0.3) {
+      const prev = bestScores.get(chunk.entryId);
+      if (prev === undefined || similarity > prev) bestScores.set(chunk.entryId, similarity);
     }
   }
 
-  return results.sort((a, b) => b.score - a.score).slice(0, topK);
+  return [...bestScores.entries()]
+    .map(([entryID, score]) => ({ entryID, score }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
 }
 
 export function embeddingStats(): { indexed: number; available: boolean } {
