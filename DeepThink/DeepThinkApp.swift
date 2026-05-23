@@ -41,6 +41,7 @@ private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         reminder.notificationScheduled = false
         do {
             try context.save()
+            VectorStore.shared.enqueuePendingReindex(entryID: "reminder:\(reminderID.uuidString)", entryType: "reminder")
         } catch {
             StorageService.shared.writeLog("Failed to save reminder completion: \(error)", to: "errors")
         }
@@ -144,6 +145,8 @@ struct DeepThinkApp: App {
                     AgentFileService.shared.installDefaultAgents()
                     KnowledgeService.shared.reload()
                     indexWorkspaceItems(container: sharedModelContainer)
+                    EmbeddingService.shared.drainPendingReindex(container: sharedModelContainer)
+                    EmbeddingService.shared.startReconcilerTimer(container: sharedModelContainer)
                     CollectorScheduler.shared.start(container: sharedModelContainer)
                     TaskNotificationService.shared.start(container: sharedModelContainer)
                     ClaudeService.shared.start(container: sharedModelContainer)
@@ -382,21 +385,24 @@ struct DeepThinkApp: App {
             for task in tasks {
                 items.append((
                     id: "task:\(task.id.uuidString)", type: "task",
-                    title: task.title, content: task.detail,
+                    title: task.title,
+                    content: EmbeddingService.taskContent(title: task.title, detail: task.detail, status: task.statusRaw, isArchived: task.isArchived),
                     tags: task.tags.map(\.name), modifiedAt: task.modifiedAt
                 ))
             }
             for note in notes {
                 items.append((
                     id: "note:\(note.id.uuidString)", type: "note",
-                    title: note.title, content: note.content,
+                    title: note.title,
+                    content: EmbeddingService.noteContent(title: note.title, content: note.content, isArchived: note.isArchived),
                     tags: note.tags.map(\.name), modifiedAt: note.modifiedAt
                 ))
             }
             for reminder in reminders {
                 items.append((
                     id: "reminder:\(reminder.id.uuidString)", type: "reminder",
-                    title: reminder.title, content: reminder.notes,
+                    title: reminder.title,
+                    content: EmbeddingService.reminderContent(title: reminder.title, notes: reminder.notes, isCompleted: reminder.isCompleted),
                     tags: [], modifiedAt: reminder.modifiedAt
                 ))
             }

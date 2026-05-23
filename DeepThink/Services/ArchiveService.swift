@@ -4,7 +4,7 @@ import SwiftData
 @ModelActor
 actor ArchiveActor {
     func run(autoArchiveTasks: Bool, threshold: Int) {
-        let cutoff = Calendar.current.date(byAdding: .day, value: -threshold, to: Date())!
+        let cutoff = Calendar.current.date(byAdding: .day, value: -threshold, to: Date()) ?? Date()
 
         if autoArchiveTasks {
             let doneTasks = (try? modelContext.fetch(
@@ -13,6 +13,7 @@ actor ArchiveActor {
             for task in doneTasks {
                 if let completedAt = task.completedAt, completedAt < cutoff {
                     task.isArchived = true
+                    VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task")
                 }
             }
 
@@ -24,6 +25,7 @@ actor ArchiveActor {
                 guard !(task.project?.isArchived ?? false) else { continue }
                 if let completedAt = task.completedAt, completedAt >= cutoff {
                     task.isArchived = false
+                    VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task")
                 }
             }
         }
@@ -32,14 +34,15 @@ actor ArchiveActor {
         let archivedProjects = (try? modelContext.fetch(
             FetchDescriptor<Project>(predicate: #Predicate { $0.isArchived })
         )) ?? []
-        let archivedIDs = Set(archivedProjects.map(\.persistentModelID))
+        let archivedIDs = Set(archivedProjects.map(\.id))
 
         let activeTasks = (try? modelContext.fetch(
             FetchDescriptor<TaskItem>(predicate: #Predicate { !$0.isArchived })
         )) ?? []
         for task in activeTasks {
-            if let project = task.project, archivedIDs.contains(project.persistentModelID) {
+            if let project = task.project, archivedIDs.contains(project.id) {
                 task.isArchived = true
+                VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task")
             }
         }
 
@@ -47,8 +50,9 @@ actor ArchiveActor {
             FetchDescriptor<Note>(predicate: #Predicate { !$0.isArchived })
         )) ?? []
         for note in activeNotes {
-            if let project = note.project, archivedIDs.contains(project.persistentModelID) {
+            if let project = note.project, archivedIDs.contains(project.id) {
                 note.isArchived = true
+                VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
             }
         }
 
@@ -59,6 +63,7 @@ actor ArchiveActor {
         for task in allArchived {
             for subtask in task.subtasks where !subtask.isArchived {
                 subtask.isArchived = true
+                VectorStore.shared.enqueuePendingReindex(entryID: "task:\(subtask.id.uuidString)", entryType: "task")
             }
         }
 
@@ -90,12 +95,15 @@ final class ArchiveService {
     static func archiveProjectTasks(_ project: Project, context: ModelContext) {
         for task in project.tasks {
             task.isArchived = true
+            VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task")
             for subtask in task.subtasks {
                 subtask.isArchived = true
+                VectorStore.shared.enqueuePendingReindex(entryID: "task:\(subtask.id.uuidString)", entryType: "task")
             }
         }
         for note in project.notes {
             note.isArchived = true
+            VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
         }
         try? context.save()
     }
@@ -103,23 +111,26 @@ final class ArchiveService {
     static func unarchiveProjectTasks(_ project: Project, context: ModelContext) {
         let days = UserDefaults.standard.integer(forKey: "archiveDaysThreshold")
         let threshold = days > 0 ? days : 3
-        let cutoff = Calendar.current.date(byAdding: .day, value: -threshold, to: Date())!
+        let cutoff = Calendar.current.date(byAdding: .day, value: -threshold, to: Date()) ?? Date()
         for task in project.tasks {
             let isStale = task.status == .done && (task.completedAt.map { $0 < cutoff } ?? true)
             if !isStale {
                 task.isArchived = false
                 task.manuallyArchived = false
+                VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task")
                 for subtask in task.subtasks {
                     let subtaskStale = subtask.status == .done && (subtask.completedAt.map { $0 < cutoff } ?? true)
                     if !subtaskStale {
                         subtask.isArchived = false
                         subtask.manuallyArchived = false
+                        VectorStore.shared.enqueuePendingReindex(entryID: "task:\(subtask.id.uuidString)", entryType: "task")
                     }
                 }
             }
         }
         for note in project.notes {
             note.isArchived = false
+            VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
         }
         try? context.save()
     }

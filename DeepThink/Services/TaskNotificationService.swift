@@ -12,6 +12,10 @@ final class TaskNotificationService {
 
     private init() {}
 
+    deinit {
+        timer?.invalidate()
+    }
+
     func start(container: ModelContainer) {
         self.container = container
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in

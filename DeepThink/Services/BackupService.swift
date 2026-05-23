@@ -30,8 +30,13 @@ final class BackupService {
 
     private var timer: Timer?
 
+    deinit {
+        timer?.invalidate()
+    }
+
     private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
         backupRoot = appSupport.appendingPathComponent("DeepThink/Backups")
         snapshotsDir = backupRoot.appendingPathComponent("snapshots")
         manifestURL = backupRoot.appendingPathComponent("manifest.json")

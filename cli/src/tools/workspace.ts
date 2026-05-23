@@ -1,6 +1,6 @@
 import * as db from "../core/db";
-import { hexToUUID } from "../core/db";
-import { indexEntry, reindexWorkspace } from "../core/embedding-service";
+import { hexToUUID, listSubtaskIds } from "../core/db";
+import { indexEntry, noteContent, projectContent, reindexWorkspace, reminderContent, taskContent } from "../core/embedding-service";
 import { deleteChunksForEntry } from "../core/vector-store";
 
 export interface WorkspaceTool {
@@ -87,7 +87,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         id: `task:${hexToUUID(id)}`,
         type: "task",
         title: p.title,
-        content: `${p.title}\n${p.detail ?? ""}`,
+        content: taskContent(p.title, p.detail ?? "", p.status ?? "To Do", false),
         tags: [],
         source: "task",
         importedAt: new Date(),
@@ -124,9 +124,9 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           id: `task:${hexToUUID(t.id)}`,
           type: "task",
           title: updated.title,
-          content: `${updated.title}\n${updated.detail}`,
+          content: taskContent(updated.title, updated.detail, updated.status, updated.isArchived),
           tags: [],
-          source: "task",
+          source: updated.isArchived ? "archive" : "task",
           importedAt: updated.modifiedAt,
         });
       return { pk: t.pk, updated: Object.keys(fields) };
@@ -143,6 +143,9 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     execute: (p) => {
       const t = db.getTask(p.ref);
       if (!t) throw new Error(`task not found: ${p.ref}`);
+      for (const subId of listSubtaskIds(t.pk)) {
+        deleteChunksForEntry(`task:${hexToUUID(subId)}`);
+      }
       deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
       db.deleteTask(t.pk);
       return { pk: t.pk, deleted: true };
@@ -214,7 +217,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         id: `note:${hexToUUID(id)}`,
         type: "note",
         title: p.title,
-        content: `${p.title}\n${p.content ?? ""}`,
+        content: noteContent(p.title, p.content ?? "", false),
         tags: [],
         source: "note",
         importedAt: new Date(),
@@ -248,9 +251,9 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           id: `note:${hexToUUID(n.id)}`,
           type: "note",
           title: updated.title,
-          content: `${updated.title}\n${updated.content}`,
+          content: noteContent(updated.title, updated.content, updated.isArchived),
           tags: [],
-          source: "note",
+          source: updated.isArchived ? "archive" : "note",
           importedAt: updated.modifiedAt,
         });
       return { pk: n.pk, updated: Object.keys(fields) };
@@ -331,7 +334,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         id: `project:${hexToUUID(id)}`,
         type: "project",
         title: p.name,
-        content: `${p.name}\n${p.summary ?? ""}`,
+        content: projectContent(p.name, p.summary, false),
         tags: [],
         source: "project",
         importedAt: new Date(),
@@ -368,9 +371,9 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           id: `project:${hexToUUID(pr.id)}`,
           type: "project",
           title: updated2.name,
-          content: `${updated2.name}\n${updated2.summary ?? ""}`,
+          content: projectContent(updated2.name, updated2.summary, updated2.isArchived),
           tags: [],
-          source: "project",
+          source: updated2.isArchived ? "archive" : "project",
           importedAt: updated2.modifiedAt,
         });
       return { pk: pr.pk, updated: Object.keys(fields) };
@@ -442,7 +445,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         id: `reminder:${hexToUUID(id)}`,
         type: "reminder",
         title: p.title,
-        content: `${p.title}\n${p.notes ?? ""}`,
+        content: reminderContent(p.title, p.notes, false),
         tags: [],
         source: "reminder",
         importedAt: new Date(),
@@ -476,7 +479,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           id: `reminder:${hexToUUID(r.id)}`,
           type: "reminder",
           title: updated.title,
-          content: `${updated.title}\n${updated.notes ?? ""}`,
+          content: reminderContent(updated.title, updated.notes, updated.isCompleted),
           tags: [],
           source: "reminder",
           importedAt: updated.modifiedAt,

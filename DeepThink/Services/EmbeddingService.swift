@@ -1,5 +1,6 @@
 import Foundation
 import NaturalLanguage
+import SwiftData
 
 @Observable
 final class EmbeddingService {
@@ -12,6 +13,8 @@ final class EmbeddingService {
     private let nlEmbedding: NLEmbedding?
     private let store = VectorStore.shared
     private let embedQueue = DispatchQueue(label: "com.deepthink.embedding.nlp")
+    private let drainQueue = DispatchQueue(label: "com.deepthink.embedding.drain", qos: .utility)
+    private var reconcilerTask: Task<Void, Never>?
 
     private init() {
         nlEmbedding = NLEmbedding.sentenceEmbedding(for: .english)
@@ -97,7 +100,7 @@ final class EmbeddingService {
         content: String,
         tags: [String] = [],
         modifiedAt: Date = Date()
-    ) {
+    ) throws {
         let hash = simpleHash(content)
         if let existing = store.contentHash(forEntry: id), existing == hash {
             return
@@ -126,6 +129,10 @@ final class EmbeddingService {
             )
         }
 
+        if vectorChunks.allSatisfy({ $0.embedding == nil }) {
+            throw EmbeddingError.allChunksFailed
+        }
+
         store.replaceChunksForEntry(id, with: vectorChunks)
     }
 
@@ -138,13 +145,121 @@ final class EmbeddingService {
 
         let total = items.count
         for (i, item) in items.enumerated() {
-            indexWorkspaceItem(
-                id: item.id, type: item.type, title: item.title,
-                content: item.content, tags: item.tags, modifiedAt: item.modifiedAt
-            )
+            do {
+                try indexWorkspaceItem(
+                    id: item.id, type: item.type, title: item.title,
+                    content: item.content, tags: item.tags, modifiedAt: item.modifiedAt
+                )
+            } catch {
+                VectorStore.shared.enqueuePendingReindex(entryID: item.id, entryType: item.type)
+            }
             let p = Double(i + 1) / Double(total)
             DispatchQueue.main.async { self.progress = p }
         }
+    }
+
+    // MARK: - Pending Reindex Drain
+
+    func drainPendingReindex(container: ModelContainer) {
+        drainQueue.async {
+            let pending = VectorStore.shared.fetchPendingReindex(maxRetries: 3)
+            guard !pending.isEmpty else { return }
+
+            let context = ModelContext(container)
+
+            for row in pending {
+                do {
+                    if row.operation == "delete" {
+                        VectorStore.shared.deleteChunksForEntry(row.entryID)
+                        VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                        continue
+                    }
+
+                    let parts = row.entryID.split(separator: ":", maxSplits: 1)
+                    guard parts.count == 2, let uuid = UUID(uuidString: String(parts[1])) else {
+                        VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                        continue
+                    }
+
+                    switch row.entryType {
+                    case "task":
+                        let tasks = (try? context.fetch(FetchDescriptor<TaskItem>(predicate: #Predicate { $0.id == uuid }))) ?? []
+                        guard let task = tasks.first else {
+                            // Item deleted — clean up any orphaned chunks
+                            VectorStore.shared.deleteChunksForEntry(row.entryID)
+                            VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                            continue
+                        }
+                        try self.indexWorkspaceItem(
+                            id: row.entryID, type: "task",
+                            title: task.title,
+                            content: Self.taskContent(title: task.title, detail: task.detail, status: task.statusRaw, isArchived: task.isArchived),
+                            tags: task.tags.map(\.name), modifiedAt: task.modifiedAt
+                        )
+                    case "note":
+                        let notes = (try? context.fetch(FetchDescriptor<Note>(predicate: #Predicate { $0.id == uuid }))) ?? []
+                        guard let note = notes.first else {
+                            VectorStore.shared.deleteChunksForEntry(row.entryID)
+                            VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                            continue
+                        }
+                        try self.indexWorkspaceItem(
+                            id: row.entryID, type: "note",
+                            title: note.title,
+                            content: Self.noteContent(title: note.title, content: note.content, isArchived: note.isArchived),
+                            tags: note.tags.map(\.name), modifiedAt: note.modifiedAt
+                        )
+                    case "reminder":
+                        let reminders = (try? context.fetch(FetchDescriptor<Reminder>(predicate: #Predicate { $0.id == uuid }))) ?? []
+                        guard let reminder = reminders.first else {
+                            VectorStore.shared.deleteChunksForEntry(row.entryID)
+                            VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                            continue
+                        }
+                        try self.indexWorkspaceItem(
+                            id: row.entryID, type: "reminder",
+                            title: reminder.title,
+                            content: Self.reminderContent(title: reminder.title, notes: reminder.notes, isCompleted: reminder.isCompleted),
+                            modifiedAt: reminder.modifiedAt
+                        )
+                    default:
+                        VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                        continue
+                    }
+                    VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                } catch {
+                    VectorStore.shared.incrementPendingRetry(entryID: row.entryID)
+                }
+            }
+
+            let count = VectorStore.shared.embeddedCount()
+            DispatchQueue.main.async { self.indexedCount = count }
+        }
+    }
+
+    func startReconcilerTimer(container: ModelContainer) {
+        reconcilerTask?.cancel()
+        reconcilerTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60))
+                guard !Task.isCancelled else { break }
+                drainPendingReindex(container: container)
+            }
+        }
+    }
+
+    // MARK: - Content String Builders (canonical — keep in sync with TypeScript side)
+
+    static func taskContent(title: String, detail: String, status: String, isArchived: Bool) -> String {
+        "\(title)\n\(detail)\nstatus:\(status)\narchived:\(isArchived)"
+    }
+
+    static func noteContent(title: String, content: String, isArchived: Bool) -> String {
+        "\(title)\n\(content)\narchived:\(isArchived)"
+    }
+
+    static func reminderContent(title: String, notes: String, isCompleted: Bool) -> String {
+        "\(title)\n\(notes)\ncompleted:\(isCompleted)"
     }
 
     // MARK: - Search
@@ -199,13 +314,20 @@ final class EmbeddingService {
         return denom > 0 ? dot / denom : 0
     }
 
+    // 32-bit djb2 addition over UTF-8 bytes — matches TypeScript's simpleHash exactly.
     private func simpleHash(_ text: String) -> UInt64 {
-        var hash: UInt64 = 5381
-        for char in text.utf8 {
-            hash = hash &* 33 &+ UInt64(char)
+        var hash: UInt32 = 5381
+        for byte in text.utf8 {
+            hash = hash &* 33 &+ UInt32(byte)
         }
-        return hash
+        return UInt64(hash)
     }
+}
+
+// MARK: - Errors
+
+enum EmbeddingError: Error {
+    case allChunksFailed
 }
 
 // MARK: - Semantic Chunker

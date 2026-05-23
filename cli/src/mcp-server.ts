@@ -8,6 +8,7 @@ import {
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import * as db from "./core/db";
+import { startReconciler } from "./core/embedding-service";
 import { CONFIG_TOOL_MAP, CONFIG_TOOLS } from "./tools/config-mcp";
 import * as knowledge from "./tools/knowledge";
 import { KNOWLEDGE_TOOL_MAP, KNOWLEDGE_TOOLS } from "./tools/knowledge-mcp";
@@ -130,3 +131,4 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+startReconciler();

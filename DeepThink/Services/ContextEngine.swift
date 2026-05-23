@@ -123,9 +123,10 @@ final class ContextEngine {
         var usedEntries: Set<String> = []
         var selectedChunks: [(chunk: VectorChunk, score: Double)] = []
 
+        let topScore = scoredChunks.first?.score ?? 0
         for item in scoredChunks {
             if usedEntries.contains(item.chunk.entryID) {
-                if item.score > scoredChunks.first!.score * 0.7 {
+                if item.score > topScore * 0.7 {
                     selectedChunks.append(item)
                 }
             } else {

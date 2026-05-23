@@ -237,6 +237,7 @@ struct NoteEditorView: View {
             guard !Task.isCancelled else { return }
             note.modifiedAt = Date()
             try? modelContext.save()
+            VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
             scheduleKnowledgeExtraction()
             BacklinkService.shared.updateLinks(for: note, allNotes: allNotes, context: modelContext)
         }

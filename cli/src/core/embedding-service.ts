@@ -8,8 +8,12 @@ import {
   batchContentHashes,
   chunksWithEmbeddings,
   deleteChunksForEntry,
+  deletePendingReindex,
   embeddedCount,
+  enqueuePendingReindex,
   contentHash as getContentHash,
+  getPendingReindex,
+  incrementPendingRetry,
   pruneStaleEntries,
   replaceChunksForEntry,
   semanticChunk,
@@ -198,11 +202,19 @@ function indexEntryCore(entry: IndexableEntry, knownHashes?: Map<string, number>
   const embeddings = embedBatch(texts);
   const withEmbeddings = chunks.map((chunk, i) => ({ ...chunk, embedding: embeddings[i] ?? null }));
 
+  if (withEmbeddings.every((c) => c.embedding === null)) {
+    throw new Error(`embedding failed for all chunks of ${entry.id} — will retry`);
+  }
+
   replaceChunksForEntry(entry.id, withEmbeddings);
 }
 
 export function indexEntry(entry: IndexableEntry): void {
-  indexEntryCore(entry);
+  try {
+    indexEntryCore(entry);
+  } catch {
+    enqueuePendingReindex(entry.id, entry.type);
+  }
 }
 
 export function indexEntries(entries: IndexableEntry[]): void {
@@ -223,34 +235,44 @@ export function reindexWorkspace(): { indexed: number } {
   const tasks = db.listTasks({ excludeArchived: false });
   const notes = db.listNotes({ excludeArchived: false });
   const reminders = db.listReminders({});
+  const projects = db.listProjects();
 
   const entries: IndexableEntry[] = [
     ...tasks.map((t) => ({
       id: `task:${hexToUUID(t.id)}`,
       type: "task",
       title: t.title,
-      content: `${t.title}\n${t.detail}`,
+      content: taskContent(t.title, t.detail, t.status, t.isArchived),
       tags: [],
-      source: "task",
+      source: t.isArchived ? "archive" : "task",
       importedAt: t.modifiedAt,
     })),
     ...notes.map((n) => ({
       id: `note:${hexToUUID(n.id)}`,
       type: "note",
       title: n.title,
-      content: `${n.title}\n${n.content}`,
+      content: noteContent(n.title, n.content, n.isArchived),
       tags: [],
-      source: "note",
+      source: n.isArchived ? "archive" : "note",
       importedAt: n.modifiedAt,
     })),
     ...reminders.map((r) => ({
       id: `reminder:${hexToUUID(r.id)}`,
       type: "reminder",
       title: r.title,
-      content: `${r.title}\n${r.notes}`,
+      content: reminderContent(r.title, r.notes, r.isCompleted),
       tags: [],
       source: "reminder",
       importedAt: r.modifiedAt,
+    })),
+    ...projects.map((p) => ({
+      id: `project:${hexToUUID(p.id)}`,
+      type: "project",
+      title: p.name,
+      content: projectContent(p.name, p.summary, p.isArchived),
+      tags: [],
+      source: p.isArchived ? "archive" : "project",
+      importedAt: p.modifiedAt,
     })),
   ];
 
@@ -259,11 +281,106 @@ export function reindexWorkspace(): { indexed: number } {
   for (const entry of entries) {
     const hash = simpleHash(entry.content);
     if ((knownHashes.get(entry.id) ?? null) !== hash) {
-      indexEntryCore(entry, knownHashes);
-      indexed++;
+      try {
+        indexEntryCore(entry, knownHashes);
+        indexed++;
+      } catch {
+        enqueuePendingReindex(entry.id, entry.type);
+      }
     }
   }
+
+  const validIds = new Set(entries.map((e) => e.id));
+  pruneStaleEntries(new Set([...validIds].filter((id) => id.startsWith("task:"))), "task");
+  pruneStaleEntries(new Set([...validIds].filter((id) => id.startsWith("note:"))), "note");
+  pruneStaleEntries(new Set([...validIds].filter((id) => id.startsWith("reminder:"))), "reminder");
+  pruneStaleEntries(new Set([...validIds].filter((id) => id.startsWith("project:"))), "project");
+
   return { indexed };
+}
+
+// Drain the pending_reindex queue — processes entries that failed inline indexing.
+export function drainPendingReindex(): { processed: number; failed: number } {
+  const pending = getPendingReindex(3);
+  if (pending.length === 0) return { processed: 0, failed: 0 };
+
+  const tasks = db.listTasks({ excludeArchived: false });
+  const notes = db.listNotes({ excludeArchived: false });
+  const reminders = db.listReminders({});
+  const projects = db.listProjects();
+
+  const taskMap = new Map(tasks.map((t) => [`task:${hexToUUID(t.id)}`, t]));
+  const noteMap = new Map(notes.map((n) => [`note:${hexToUUID(n.id)}`, n]));
+  const reminderMap = new Map(reminders.map((r) => [`reminder:${hexToUUID(r.id)}`, r]));
+  const projectMap = new Map(projects.map((p) => [`project:${hexToUUID(p.id)}`, p]));
+
+  let processed = 0;
+  let failed = 0;
+
+  for (const row of pending) {
+    try {
+      if (row.operation === "delete") {
+        deleteChunksForEntry(row.entryId);
+        deletePendingReindex(row.entryId);
+        processed++;
+        continue;
+      }
+
+      let entry: IndexableEntry | null = null;
+
+      if (row.entryType === "task") {
+        const t = taskMap.get(row.entryId);
+        if (!t) { deletePendingReindex(row.entryId); continue; }
+        entry = { id: row.entryId, type: "task", title: t.title, content: taskContent(t.title, t.detail, t.status, t.isArchived), tags: [], source: t.isArchived ? "archive" : "task", importedAt: t.modifiedAt };
+      } else if (row.entryType === "note") {
+        const n = noteMap.get(row.entryId);
+        if (!n) { deletePendingReindex(row.entryId); continue; }
+        entry = { id: row.entryId, type: "note", title: n.title, content: noteContent(n.title, n.content, n.isArchived), tags: [], source: n.isArchived ? "archive" : "note", importedAt: n.modifiedAt };
+      } else if (row.entryType === "reminder") {
+        const r = reminderMap.get(row.entryId);
+        if (!r) { deletePendingReindex(row.entryId); continue; }
+        entry = { id: row.entryId, type: "reminder", title: r.title, content: reminderContent(r.title, r.notes, r.isCompleted), tags: [], source: "reminder", importedAt: r.modifiedAt };
+      } else if (row.entryType === "project") {
+        const p = projectMap.get(row.entryId);
+        if (!p) { deletePendingReindex(row.entryId); continue; }
+        entry = { id: row.entryId, type: "project", title: p.name, content: projectContent(p.name, p.summary, p.isArchived), tags: [], source: p.isArchived ? "archive" : "project", importedAt: p.modifiedAt };
+      }
+
+      if (!entry) { deletePendingReindex(row.entryId); continue; }
+
+      indexEntryCore(entry);
+      deletePendingReindex(row.entryId);
+      processed++;
+    } catch {
+      incrementPendingRetry(row.entryId);
+      failed++;
+    }
+  }
+
+  return { processed, failed };
+}
+
+// Start a 30-second background reconciler that drains the pending_reindex queue.
+export function startReconciler(): void {
+  setInterval(() => { try { drainPendingReindex(); } catch {} }, 30_000);
+}
+
+// MARK: - Content string builders (canonical format — keep in sync with Swift side)
+
+export function taskContent(title: string, detail: string, status: string, isArchived: boolean): string {
+  return `${title}\n${detail}\nstatus:${status}\narchived:${isArchived}`;
+}
+
+export function noteContent(title: string, content: string, isArchived: boolean): string {
+  return `${title}\n${content}\narchived:${isArchived}`;
+}
+
+export function reminderContent(title: string, notes: string | null | undefined, isCompleted: boolean): string {
+  return `${title}\n${notes ?? ""}\ncompleted:${isCompleted}`;
+}
+
+export function projectContent(name: string, summary: string | null | undefined, isArchived: boolean): string {
+  return `${name}\n${summary ?? ""}\narchived:${isArchived}`;
 }
 
 // MARK: - Search

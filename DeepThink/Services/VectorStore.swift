@@ -62,6 +62,16 @@ final class VectorStore {
                 value TEXT
             )
         """)
+
+        exec("""
+            CREATE TABLE IF NOT EXISTS pending_reindex (
+                entry_id    TEXT PRIMARY KEY,
+                entry_type  TEXT NOT NULL,
+                operation   TEXT NOT NULL DEFAULT 'upsert',
+                queued_at   INTEGER NOT NULL,
+                retry_count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
     }
 
     private func migrate() {
@@ -214,6 +224,62 @@ final class VectorStore {
                 sqlite3_finalize(stmt)
             }
             exec("COMMIT")
+        }
+    }
+
+    // MARK: - Pending Reindex Queue
+
+    func enqueuePendingReindex(entryID: String, entryType: String, operation: String = "upsert") {
+        queue.async(flags: .barrier) { [weak self] in
+            guard let self else { return }
+            let sql = "INSERT OR REPLACE INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count) VALUES (?, ?, ?, ?, 0)"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_bind_text(stmt, 2, entryType.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_bind_text(stmt, 3, operation.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_bind_int64(stmt, 4, Int64(Date().timeIntervalSince1970 * 1000))
+            sqlite3_step(stmt)
+        }
+    }
+
+    func fetchPendingReindex(maxRetries: Int = 3) -> [PendingReindexRow] {
+        var results: [PendingReindexRow] = []
+        queue.sync {
+            let sql = "SELECT entry_id, entry_type, operation, queued_at, retry_count FROM pending_reindex WHERE retry_count < ? ORDER BY queued_at ASC"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int(stmt, 1, Int32(maxRetries))
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let entryID = String(cString: sqlite3_column_text(stmt, 0))
+                let entryType = String(cString: sqlite3_column_text(stmt, 1))
+                let operation = String(cString: sqlite3_column_text(stmt, 2))
+                let retryCount = Int(sqlite3_column_int(stmt, 4))
+                results.append(PendingReindexRow(entryID: entryID, entryType: entryType, operation: operation, retryCount: retryCount))
+            }
+        }
+        return results
+    }
+
+    func deletePendingReindex(entryID: String) {
+        queue.sync(flags: .barrier) {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, "DELETE FROM pending_reindex WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_step(stmt)
+        }
+    }
+
+    func incrementPendingRetry(entryID: String) {
+        queue.sync(flags: .barrier) {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, "UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_step(stmt)
         }
     }
 
@@ -463,6 +529,15 @@ struct VectorChunk {
     let totalChunks: Int
     let contentHash: UInt64
     let embedding: [Double]?
+}
+
+// MARK: - Pending Reindex Model
+
+struct PendingReindexRow {
+    let entryID: String
+    let entryType: String
+    let operation: String
+    let retryCount: Int
 }
 
 // MARK: - SQLite Helpers

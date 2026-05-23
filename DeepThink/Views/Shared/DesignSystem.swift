@@ -79,6 +79,7 @@ enum DS {
 
         static let success = Color(hue: 0.38, saturation: 0.72, brightness: 0.82)
         static let warning = Color(hue: 0.09, saturation: 0.78, brightness: 0.95)
+        static let warningFill = warning.opacity(0.12)
         static let danger = Color(hue: 0.0, saturation: 0.72, brightness: 0.90)
         static let knowledge = Color(hue: 0.75, saturation: 0.55, brightness: 0.88)
 

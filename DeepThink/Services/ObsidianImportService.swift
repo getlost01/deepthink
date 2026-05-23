@@ -14,6 +14,10 @@ final class ObsidianImportService {
     private let fm = FileManager.default
     private init() {}
 
+    private static let wikiLinkRegex = try! NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]")
+    private static let calloutRegex = try! NSRegularExpression(pattern: "> \\[!(\\w+)\\]\\s*(.*)", options: .caseInsensitive)
+    private static let inlineTagRegex = try! NSRegularExpression(pattern: "(?:^|\\s)#([a-zA-Z][a-zA-Z0-9_/-]*)")
+
     // MARK: - Options & Result
 
     struct ImportOptions {
@@ -280,9 +284,8 @@ final class ObsidianImportService {
         )
 
         // Convert plain wiki-links [[note name]] -> [note name](note-name)
-        let wikiLinkPattern = try! NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]")
         let nsResult = result as NSString
-        let matches = wikiLinkPattern.matches(in: result, range: NSRange(location: 0, length: nsResult.length))
+        let matches = Self.wikiLinkRegex.matches(in: result, range: NSRange(location: 0, length: nsResult.length))
 
         // Process in reverse to preserve indices
         for match in matches.reversed() {
@@ -302,18 +305,13 @@ final class ObsidianImportService {
     }
 
     private func convertCallouts(_ text: String) -> String {
-        let calloutPattern = try! NSRegularExpression(
-            pattern: "> \\[!(\\w+)\\]\\s*(.*)",
-            options: .caseInsensitive
-        )
-
         let lines = text.components(separatedBy: "\n")
         var resultLines: [String] = []
 
         for line in lines {
             let nsLine = line as NSString
             let range = NSRange(location: 0, length: nsLine.length)
-            if let match = calloutPattern.firstMatch(in: line, range: range) {
+            if let match = Self.calloutRegex.firstMatch(in: line, range: range) {
                 let typeRange = match.range(at: 1)
                 let restRange = match.range(at: 2)
                 let calloutType = nsLine.substring(with: typeRange).capitalized
@@ -363,10 +361,8 @@ final class ObsidianImportService {
     }
 
     private func extractTagsFromLine(_ line: String, into tags: inout Set<String>) {
-        // Match #tag patterns (not inside links or at line start as heading)
-        let pattern = try! NSRegularExpression(pattern: "(?:^|\\s)#([a-zA-Z][a-zA-Z0-9_/-]*)")
         let nsLine = line as NSString
-        let matches = pattern.matches(in: line, range: NSRange(location: 0, length: nsLine.length))
+        let matches = Self.inlineTagRegex.matches(in: line, range: NSRange(location: 0, length: nsLine.length))
 
         for match in matches {
             let tagRange = match.range(at: 1)

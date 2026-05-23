@@ -10,6 +10,7 @@ struct ReminderListView: View {
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
     @State private var filterMode: FilterMode = .active
+    @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
 
     enum FilterMode: String, CaseIterable {
         case active = "Active"
@@ -82,6 +83,10 @@ struct ReminderListView: View {
         .onReceive(NotificationCenter.default.publisher(for: .createNewReminder)) { _ in
             createReminder()
         }
+        .onAppear { checkNotificationStatus() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            checkNotificationStatus()
+        }
     }
 
     private var listPane: some View {
@@ -95,6 +100,12 @@ struct ReminderListView: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
+
+            if notificationStatus == .denied {
+                NotificationPermissionBanner()
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.bottom, DS.Spacing.sm)
+            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
@@ -203,5 +214,44 @@ struct ReminderListView: View {
             withIdentifiers: [reminder.id.uuidString]
         )
         reminder.notificationScheduled = false
+    }
+
+    private func checkNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                notificationStatus = settings.authorizationStatus
+            }
+        }
+    }
+}
+
+private struct NotificationPermissionBanner: View {
+    var body: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: "bell.slash.fill")
+                .font(.system(size: DS.IconSize.md))
+                .foregroundStyle(DS.Colors.warning)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text("Notifications Disabled")
+                    .font(DS.Font.bodySmall)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("Reminders won't alert you. Enable notifications in System Settings.")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+
+            Spacer()
+
+            Button("Open Settings") {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+            }
+            .buttonStyle(.dsSecondary)
+            .controlSize(.small)
+        }
+        .padding(DS.Spacing.sm)
+        .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.3), lineWidth: 1))
     }
 }

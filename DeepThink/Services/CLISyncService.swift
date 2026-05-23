@@ -8,6 +8,17 @@ final class CLISyncService {
     static let shared = CLISyncService()
     private var isRegistered = false
 
+    deinit {
+        if isRegistered {
+            CFNotificationCenterRemoveObserver(
+                CFNotificationCenterGetDarwinNotifyCenter(),
+                Unmanaged.passUnretained(self).toOpaque(),
+                CFNotificationName("com.deepthink.workspace.changed" as CFString),
+                nil
+            )
+        }
+    }
+
     func start() {
         guard !isRegistered else { return }
         isRegistered = true

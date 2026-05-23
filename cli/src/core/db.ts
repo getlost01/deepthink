@@ -141,9 +141,32 @@ export function listProjects(): ProjectRow[] {
 }
 
 export function getProject(nameOrPk: string): ProjectRow | null {
+  if (/^\d+$/.test(nameOrPk)) {
+    const db = getDB();
+    const row = db
+      .query(`
+      SELECT p.Z_PK, hex(p.ZID) as id, p.ZNAME, p.ZSUMMARY, p.ZCOLOR, p.ZISARCHIVED,
+             p.ZCREATEDAT, p.ZMODIFIEDAT,
+             (SELECT COUNT(*) FROM ZTASKITEM WHERE ZPROJECT = p.Z_PK) as taskCount,
+             (SELECT COUNT(*) FROM ZNOTE WHERE ZPROJECT = p.Z_PK) as noteCount
+      FROM ZPROJECT p WHERE p.Z_PK = ?
+    `)
+      .get(Number(nameOrPk)) as any;
+    if (!row) return null;
+    return {
+      pk: row.Z_PK,
+      id: row.id,
+      name: row.ZNAME,
+      summary: row.ZSUMMARY ?? "",
+      color: row.ZCOLOR ?? "#007AFF",
+      isArchived: !!row.ZISARCHIVED,
+      createdAt: fromCD(row.ZCREATEDAT),
+      modifiedAt: fromCD(row.ZMODIFIEDAT),
+      taskCount: row.taskCount,
+      noteCount: row.noteCount,
+    };
+  }
   const projects = listProjects();
-  const byPk = projects.find((p) => p.pk.toString() === nameOrPk);
-  if (byPk) return byPk;
   const lower = nameOrPk.toLowerCase();
   return (
     projects.find((p) => p.name.toLowerCase() === lower) ??
@@ -407,9 +430,22 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
   notifySync();
 }
 
+export function listSubtaskIds(parentPk: number): string[] {
+  const rows = getDB().query("SELECT hex(ZID) as id FROM ZTASKITEM WHERE ZPARENT = ?").all(parentPk) as { id: string }[];
+  return rows.map((r) => r.id);
+}
+
 export function deleteTask(pk: number): void {
   const db = getWriteDB();
   db.transaction(() => {
+    const subtaskPKs = db.query("SELECT Z_PK FROM ZTASKITEM WHERE ZPARENT = ?").all(pk) as { Z_PK: number }[];
+    for (const sub of subtaskPKs) {
+      const subSnap = db.query("SELECT * FROM ZTASKITEM WHERE Z_PK = ?").get(sub.Z_PK) as object | undefined;
+      if (subSnap) trashEntity(db, "task", sub.Z_PK, subSnap);
+      db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(sub.Z_PK);
+      db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(sub.Z_PK);
+      auditLog(db, "delete", "task", sub.Z_PK);
+    }
     const snap = db.query("SELECT * FROM ZTASKITEM WHERE Z_PK = ?").get(pk) as object | undefined;
     if (snap) trashEntity(db, "task", pk, snap);
     db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(pk);

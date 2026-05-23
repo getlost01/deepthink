@@ -220,7 +220,8 @@ final class StorageService {
         let line = "[\(timestamp)] \(message)\n"
         if let handle = try? FileHandle(forWritingTo: url) {
             handle.seekToEndOfFile()
-            handle.write(line.data(using: .utf8)!)
+            guard let data = line.data(using: .utf8) else { return }
+            handle.write(data)
             handle.closeFile()
         } else {
             try? line.write(to: url, atomically: true, encoding: .utf8)

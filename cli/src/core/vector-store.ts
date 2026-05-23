@@ -17,6 +17,7 @@ function getDB(): Database {
   _db.exec("PRAGMA journal_mode=WAL");
   _db.exec("PRAGMA synchronous=NORMAL");
   _db.exec("PRAGMA cache_size=-8000");
+  _db.exec("PRAGMA busy_timeout=5000");
 
   _db.exec(`
     CREATE TABLE IF NOT EXISTS chunks (
@@ -43,6 +44,16 @@ function getDB(): Database {
     CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY,
       value TEXT
+    )
+  `);
+
+  _db.exec(`
+    CREATE TABLE IF NOT EXISTS pending_reindex (
+      entry_id    TEXT PRIMARY KEY,
+      entry_type  TEXT NOT NULL,
+      operation   TEXT NOT NULL DEFAULT 'upsert',
+      queued_at   INTEGER NOT NULL,
+      retry_count INTEGER NOT NULL DEFAULT 0
     )
   `);
 
@@ -350,12 +361,52 @@ function parseRow(row: any): VectorChunk {
   };
 }
 
+// UTF-8 byte iteration with 32-bit wrapping addition — matches Swift's simpleHash exactly.
 export function simpleHash(text: string): number {
+  const bytes = new TextEncoder().encode(text);
   let hash = 5381;
-  for (let i = 0; i < text.length; i++) {
-    hash = ((hash * 33) ^ text.charCodeAt(i)) >>> 0;
+  for (const byte of bytes) {
+    hash = (Math.imul(hash, 33) + byte) >>> 0;
   }
   return hash;
+}
+
+// MARK: - Pending Reindex Queue
+
+export interface PendingReindexRow {
+  entryId: string;
+  entryType: string;
+  operation: "upsert" | "delete";
+  queuedAt: number;
+  retryCount: number;
+}
+
+export function enqueuePendingReindex(entryId: string, entryType: string, operation: "upsert" | "delete" = "upsert"): void {
+  getDB().run(
+    "INSERT OR REPLACE INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count) VALUES (?, ?, ?, ?, 0)",
+    [entryId, entryType, operation, Date.now()]
+  );
+}
+
+export function getPendingReindex(maxRetries = 3): PendingReindexRow[] {
+  const rows = getDB()
+    .query("SELECT entry_id, entry_type, operation, queued_at, retry_count FROM pending_reindex WHERE retry_count < ? ORDER BY queued_at ASC")
+    .all(maxRetries) as any[];
+  return rows.map((r) => ({
+    entryId: r.entry_id,
+    entryType: r.entry_type,
+    operation: r.operation as "upsert" | "delete",
+    queuedAt: r.queued_at,
+    retryCount: r.retry_count,
+  }));
+}
+
+export function deletePendingReindex(entryId: string): void {
+  getDB().run("DELETE FROM pending_reindex WHERE entry_id = ?", [entryId]);
+}
+
+export function incrementPendingRetry(entryId: string): void {
+  getDB().run("UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", [entryId]);
 }
 
 // MARK: - Semantic Chunker
