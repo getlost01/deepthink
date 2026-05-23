@@ -11,17 +11,15 @@ cask "deepthink" do
 
   app "DeepThink.app"
 
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-rd", "com.apple.quarantine", "#{appdir}/DeepThink.app"]
+  end
+
   zap trash: [
     "~/Library/Application Support/DeepThink",
     "~/Library/Caches/com.deepthink.app",
     "~/Library/Preferences/com.deepthink.app.plist",
     "~/Library/Saved Application State/com.deepthink.app.savedState",
   ]
-
-  caveats <<~EOS
-    DeepThink is ad-hoc signed (no Apple Developer ID). macOS may show an
-    "unidentified developer" warning. To open it, right-click and choose Open,
-    or remove the quarantine flag:
-      xattr -rd com.apple.quarantine /Applications/DeepThink.app
-  EOS
 end
