@@ -101,11 +101,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git clone https://github.com/getlost01/homebrew-deepthink.git /tmp/tap --depth=1
-          cd /tmp/tap
+          cp homebrew/deepthink.rb /tmp/tap/Casks/deepthink.rb
           sed -i '' \
             -e "s/version \"[^\"]*\"/version \"${{ env.VERSION }}\"/" \
             -e "s/sha256 \"[^\"]*\"/sha256 \"${{ env.SHA256 }}\"/" \
-            Casks/deepthink.rb
+            /tmp/tap/Casks/deepthink.rb
+          cd /tmp/tap
           git add Casks/deepthink.rb
           git diff --cached --quiet || git commit -m "chore: release v${{ env.VERSION }}"
           git -c "http.extraHeader=Authorization: token ${TAP_TOKEN}" push origin main
