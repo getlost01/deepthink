@@ -310,7 +310,7 @@ struct AIChatView: View {
 
                             Color.clear.frame(height: 1).id("bottom")
                         }
-                        .frame(maxWidth: 720)
+                        .frame(maxWidth: 840)
                         .frame(maxWidth: .infinity)
                     }
                     .padding(.bottom, DS.Spacing.lg)
@@ -504,7 +504,7 @@ struct AIChatView: View {
                 .frame(width: 280)
             }
         }
-        .frame(maxWidth: 860)
+        .frame(maxWidth: 840)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.md)
@@ -529,7 +529,7 @@ struct AIChatView: View {
 
         DispatchQueue.main.async {
             if animate {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(DS.Animation.standard) {
                     scrollChatToEndImpl(proxy)
                 }
             } else {
@@ -554,7 +554,10 @@ struct AIChatView: View {
     private func endStreamSlot(_ idx: Int, response: String) async {
         await MainActor.run {
             guard idx < appState.chatMessages.count else { return }
-            appState.chatMessages[idx].content = response
+            let finalContent = response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "_No response received. The model returned an empty reply — try again or check your Claude CLI connection._"
+                : response
+            appState.chatMessages[idx].content = finalContent
             appState.chatMessages[idx].isStreaming = false
             appState.chatMessages[idx].tokenUsage = ClaudeService.shared.lastTokenUsage
         }
@@ -639,7 +642,10 @@ struct AIChatView: View {
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
             }
 
-            let result = await skillService.execute(skill: skill, context: context)
+            let rawResult = await skillService.execute(skill: skill, context: context)
+            let result = rawResult.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "_No response received. The model returned an empty reply — try again or check your Claude CLI connection._"
+                : rawResult
             await MainActor.run {
                 appState.chatMessages.append(AIMessage(role: .assistant, content: result))
                 persistMessage(role: "assistant", content: result)

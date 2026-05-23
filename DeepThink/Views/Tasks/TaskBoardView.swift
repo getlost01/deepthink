@@ -119,6 +119,12 @@ struct TaskBoardView: View {
         }
         .frame(width: 280)
         .frame(maxHeight: .infinity, alignment: .top)
+        .padding(DS.Spacing.sm)
+        .background(
+            isDropTarget ? status.color.opacity(0.06) : .clear,
+            in: RoundedRectangle(cornerRadius: DS.Radius.md)
+        )
+        .animation(DS.Animation.quick, value: isDropTarget)
         .dropDestination(for: String.self) { items, _ in
             guard let taskIDString = items.first,
                   let taskID = UUID(uuidString: taskIDString),
@@ -273,16 +279,20 @@ struct TaskBoardView: View {
         }
         .contextMenu {
             ForEach(TaskStatus.allCases) { newStatus in
-                Button("Move to \(newStatus.rawValue)") {
+                Button {
                     withAnimation(DS.Animation.standard) {
                         task.status = newStatus
                         task.modifiedAt = Date()
                     }
+                } label: {
+                    Label("Move to \(newStatus.rawValue)", systemImage: newStatus.icon)
                 }
             }
             Divider()
-            Button("Delete", role: .destructive) {
+            Button(role: .destructive) {
                 modelContext.delete(task)
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
     }

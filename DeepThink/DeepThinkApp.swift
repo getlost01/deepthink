@@ -53,12 +53,17 @@ private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
             title: "Acknowledge",
             options: [.foreground]
         )
-        let category = UNNotificationCategory(
+        let reminderCategory = UNNotificationCategory(
             identifier: "REMINDER",
             actions: [acknowledge],
             intentIdentifiers: []
         )
-        UNUserNotificationCenter.current().setNotificationCategories([category])
+        let taskCategory = UNNotificationCategory(
+            identifier: "TASK",
+            actions: [],
+            intentIdentifiers: []
+        )
+        UNUserNotificationCenter.current().setNotificationCategories([reminderCategory, taskCategory])
     }
 }
 

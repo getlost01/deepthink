@@ -473,13 +473,15 @@ private struct ProjectTaskRow: View {
             }
             Divider()
             ForEach(TaskStatus.allCases) { newStatus in
-                Button("Mark as \(newStatus.rawValue)") {
+                Button {
                     task.status = newStatus
                     task.modifiedAt = Date()
+                } label: {
+                    Label("Mark as \(newStatus.rawValue)", systemImage: newStatus.icon)
                 }
             }
             Divider()
-            Button(task.isArchived ? "Unarchive" : "Archive") {
+            Button {
                 if task.isArchived {
                     task.isArchived = false
                     task.manuallyArchived = false
@@ -488,6 +490,8 @@ private struct ProjectTaskRow: View {
                     task.manuallyArchived = true
                 }
                 task.modifiedAt = Date()
+            } label: {
+                Label(task.isArchived ? "Unarchive" : "Archive", systemImage: task.isArchived ? "archivebox" : "archivebox.fill")
             }
             if let onDelete {
                 Divider()
@@ -545,15 +549,19 @@ private struct ProjectNoteRow: View {
                 Label("Open", systemImage: "doc.text")
             }
             Divider()
-            Button(note.isPinned ? "Unpin" : "Pin") {
+            Button {
                 note.isPinned.toggle()
                 note.modifiedAt = Date()
                 try? modelContext.save()
+            } label: {
+                Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
             }
-            Button(note.isArchived ? "Unarchive" : "Archive") {
+            Button {
                 note.isArchived.toggle()
                 note.modifiedAt = Date()
                 try? modelContext.save()
+            } label: {
+                Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "archivebox" : "archivebox.fill")
             }
             if let onDelete {
                 Divider()

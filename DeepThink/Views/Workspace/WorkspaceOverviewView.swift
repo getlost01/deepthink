@@ -7,6 +7,15 @@ struct WorkspaceOverviewView: View {
     @Query(filter: #Predicate<Note> { !$0.isArchived }) private var notes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var tasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var projects: [Project]
+    @Query(filter: #Predicate<Reminder> { !$0.isCompleted }) private var activeReminders: [Reminder]
+
+    private var todayReminders: [Reminder] {
+        let cal = Calendar.current
+        return activeReminders.filter { r in
+            guard let date = r.reminderDate else { return false }
+            return cal.isDateInToday(date)
+        }.sorted { ($0.reminderDate ?? .distantFuture) < ($1.reminderDate ?? .distantFuture) }
+    }
 
     private var recentNotes: [Note] {
         notes.sorted { $0.modifiedAt > $1.modifiedAt }.prefix(5).map(\.self)
@@ -161,6 +170,53 @@ struct WorkspaceOverviewView: View {
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plainPointer)
+                            }
+                        }
+                        .dsCard(padding: 0)
+                    }
+                }
+
+                // Today's reminders
+                if !todayReminders.isEmpty {
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                        DSSectionHeader(title: "Today's Reminders", count: todayReminders.count) {
+                            appState.navigate(to: .reminders)
+                        }
+
+                        VStack(spacing: 0) {
+                            ForEach(todayReminders.prefix(4)) { reminder in
+                                Button {
+                                    appState.navigate(to: .reminders)
+                                } label: {
+                                    HStack(spacing: DS.Spacing.md) {
+                                        Image(systemName: "bell.fill")
+                                            .font(.system(size: DS.IconSize.sm))
+                                            .foregroundStyle(reminder.isOverdue ? DS.Colors.danger : DS.Colors.accent)
+                                            .frame(width: 20)
+                                        Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
+                                            .font(DS.Font.body)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        if let date = reminder.reminderDate {
+                                            Text(date, style: .time)
+                                                .font(DS.Font.small)
+                                                .foregroundStyle(reminder.isOverdue ? DS.Colors.danger : DS.Colors.textTertiary)
+                                        }
+                                        if reminder.priority != .none {
+                                            Circle()
+                                                .fill(reminder.priority.color)
+                                                .frame(width: 6, height: 6)
+                                        }
+                                    }
+                                    .padding(.horizontal, DS.Spacing.md)
+                                    .padding(.vertical, DS.Spacing.sm)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plainPointer)
+                                if reminder.id != todayReminders.prefix(4).last?.id {
+                                    Divider().padding(.leading, 20 + DS.Spacing.md)
+                                }
                             }
                         }
                         .dsCard(padding: 0)

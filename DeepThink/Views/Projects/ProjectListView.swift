@@ -55,7 +55,7 @@ struct ProjectListView: View {
                         }
                         .buttonStyle(.plainPointer)
                         .contextMenu {
-                            Button(project.isArchived ? "Unarchive" : "Archive") {
+                            Button {
                                 let archiving = !project.isArchived
                                 project.isArchived = archiving
                                 project.modifiedAt = Date()
@@ -64,11 +64,15 @@ struct ProjectListView: View {
                                 } else {
                                     ArchiveService.unarchiveProjectTasks(project, context: modelContext)
                                 }
+                            } label: {
+                                Label(project.isArchived ? "Unarchive" : "Archive", systemImage: project.isArchived ? "archivebox" : "archivebox.fill")
                             }
                             Divider()
-                            Button("Delete", role: .destructive) {
+                            Button(role: .destructive) {
                                 projectToDelete = project
                                 showDeleteConfirm = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
                         if project.id != projects.last?.id {

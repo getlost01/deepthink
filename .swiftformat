@@ -34,7 +34,7 @@
 --enable enumNamespaces
 --enable genericExtensions
 --enable noExplicitOwnership
---enable redundantProperty
+--enable redundantVariable
 --enable sortDeclarations
 --enable wrapEnumCases
 --enable wrapSwitchCases

@@ -173,6 +173,15 @@ private struct SidebarItem: View {
                     : (isHovered ? DS.Colors.fillSecondary : .clear),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
+            .overlay(alignment: .leading) {
+                if isSelected {
+                    Capsule()
+                        .fill(DS.Colors.accent)
+                        .frame(width: 2.5)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .padding(.leading, 1)
+                }
+            }
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }

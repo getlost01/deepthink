@@ -73,94 +73,100 @@ struct NoteListView: View {
             Divider()
 
             ScrollViewReader { proxy in
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(filteredNotes) { note in
-                        let isSelected = appState.selectedNoteID == note.id
-                        Button {
-                            appState.selectedNoteID = note.id
-                        } label: {
-                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                                HStack(spacing: DS.Spacing.xs) {
-                                    if note.isPinned {
-                                        Image(systemName: "pin.fill")
-                                            .font(.system(size: DS.IconSize.sm))
-                                            .foregroundStyle(DS.Colors.warning)
-                                    }
-                                    if note.isArchived {
-                                        Image(systemName: "archivebox")
-                                            .font(.system(size: DS.IconSize.xs, weight: .medium))
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredNotes) { note in
+                            let isSelected = appState.selectedNoteID == note.id
+                            Button {
+                                appState.selectedNoteID = note.id
+                            } label: {
+                                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                                    HStack(spacing: DS.Spacing.xs) {
+                                        if note.isPinned {
+                                            Image(systemName: "pin.fill")
+                                                .font(.system(size: DS.IconSize.sm))
+                                                .foregroundStyle(DS.Colors.warning)
+                                        }
+                                        if note.isArchived {
+                                            Image(systemName: "archivebox")
+                                                .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                                .foregroundStyle(DS.Colors.textTertiary)
+                                        }
+                                        Text(note.title.isEmpty ? "Untitled" : note.title)
+                                            .font(DS.Font.body)
+                                            .fontWeight(.medium)
+                                            .lineLimit(1)
+                                            .foregroundStyle(DS.Colors.textPrimary)
+                                        Spacer()
+                                        Text(note.modifiedAt.relativeFormatted)
+                                            .font(DS.Font.small)
                                             .foregroundStyle(DS.Colors.textTertiary)
                                     }
-                                    Text(note.title.isEmpty ? "Untitled" : note.title)
-                                        .font(DS.Font.body)
-                                        .fontWeight(.medium)
-                                        .lineLimit(1)
-                                        .foregroundStyle(DS.Colors.textPrimary)
-                                    Spacer()
-                                    Text(note.modifiedAt.relativeFormatted)
-                                        .font(DS.Font.small)
-                                        .foregroundStyle(DS.Colors.textTertiary)
+                                    let preview = note.content
+                                        .components(separatedBy: .newlines)
+                                        .map { $0.trimmingCharacters(in: .whitespaces) }
+                                        .first { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("---") } ?? ""
+                                    if !preview.isEmpty {
+                                        Text(preview)
+                                            .font(DS.Font.small)
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                            .lineLimit(1)
+                                    }
                                 }
-                                let preview = note.content
-                                    .components(separatedBy: .newlines)
-                                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                                    .first { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("---") } ?? ""
-                                if !preview.isEmpty {
-                                    Text(preview)
-                                        .font(DS.Font.small)
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                        .lineLimit(1)
+                                .padding(.vertical, DS.Spacing.sm)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .background(isSelected ? DS.Colors.accentFill : .clear)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plainPointer)
+                            .id(note.id)
+                            .contextMenu {
+                                Button {
+                                    note.isPinned.toggle()
+                                    note.modifiedAt = Date()
+                                    try? modelContext.save()
+                                } label: {
+                                    Label(note.isPinned ? "Unpin" : "Pin", systemImage: note.isPinned ? "pin.slash" : "pin")
+                                }
+                                Button {
+                                    note.isArchived.toggle()
+                                    note.modifiedAt = Date()
+                                    try? modelContext.save()
+                                } label: {
+                                    Label(note.isArchived ? "Unarchive" : "Archive", systemImage: note.isArchived ? "archivebox" : "archivebox.fill")
+                                }
+                                Divider()
+                                Button(role: .destructive) {
+                                    deleteNote(note)
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
                                 }
                             }
-                            .padding(.vertical, DS.Spacing.sm)
-                            .padding(.horizontal, DS.Spacing.sm)
-                            .background(isSelected ? DS.Colors.accentFill : .clear)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plainPointer)
-                        .id(note.id)
-                        .contextMenu {
-                            Button(note.isPinned ? "Unpin" : "Pin") {
-                                note.isPinned.toggle()
-                                note.modifiedAt = Date()
-                                try? modelContext.save()
+                            if note.id != filteredNotes.last?.id {
+                                Divider()
                             }
-                            Button(note.isArchived ? "Unarchive" : "Archive") {
-                                note.isArchived.toggle()
-                                note.modifiedAt = Date()
-                                try? modelContext.save()
-                            }
-                            Divider()
-                            Button("Delete", role: .destructive) {
-                                deleteNote(note)
-                            }
-                        }
-                        if note.id != filteredNotes.last?.id {
-                            Divider()
                         }
                     }
                 }
-            }
-            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
-            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
-            .onKeyPress(.escape) { appState.selectedNoteID = nil; return .handled }
-            .onChange(of: appState.selectedNoteID) { _, id in
-                if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
-            }
-            .overlay {
-                if filteredNotes.isEmpty {
-                    DSEmptyState(
-                        icon: "doc.text",
-                        title: "No Notes Yet",
-                        subtitle: "Notes are great for capturing ideas, meeting notes, or documentation",
-                        hint: "Tip: use [[ inside a note to link to another note, and / to run AI skills",
-                        action: createNote,
-                        actionTitle: "New Note"
-                    )
+                .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+                .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+                .onKeyPress(.escape) { appState.selectedNoteID = nil; return .handled }
+                .onChange(of: appState.selectedNoteID) { _, id in
+                    if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
                 }
-            }
-            }  // ScrollViewReader
+                .overlay {
+                    if filteredNotes.isEmpty {
+                        DSEmptyState(
+                            icon: "doc.text",
+                            title: "No Notes Yet",
+                            subtitle: "Notes are great for capturing ideas, meeting notes, or documentation",
+                            hint: "Tip: use [[ inside a note to link to another note, and / to run AI skills",
+                            action: createNote,
+                            actionTitle: "New Note"
+                        )
+                    }
+                }
+            } // ScrollViewReader
         }
         .onChange(of: searchText) {
             searchTask?.cancel()

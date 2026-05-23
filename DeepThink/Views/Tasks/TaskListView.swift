@@ -195,13 +195,15 @@ struct TaskListView: View {
                                 .buttonStyle(.plainPointer)
                                 .contextMenu {
                                     ForEach(TaskStatus.allCases) { newStatus in
-                                        Button("Mark as \(newStatus.rawValue)") {
+                                        Button {
                                             task.status = newStatus
                                             task.modifiedAt = Date()
+                                        } label: {
+                                            Label("Mark as \(newStatus.rawValue)", systemImage: newStatus.icon)
                                         }
                                     }
                                     Divider()
-                                    Button(task.isArchived ? "Unarchive" : "Archive") {
+                                    Button {
                                         if task.isArchived {
                                             task.isArchived = false
                                             task.manuallyArchived = false
@@ -211,9 +213,13 @@ struct TaskListView: View {
                                         }
                                         task.modifiedAt = Date()
                                         try? modelContext.save()
+                                    } label: {
+                                        Label(task.isArchived ? "Unarchive" : "Archive", systemImage: task.isArchived ? "archivebox" : "archivebox.fill")
                                     }
                                     Divider()
-                                    Button("Delete", role: .destructive) { deleteTask(task) }
+                                    Button(role: .destructive) { deleteTask(task) } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
                                 }
                                 if task.id != tasks.last?.id {
                                     Divider()

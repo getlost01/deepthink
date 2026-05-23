@@ -54,7 +54,7 @@ final class TaskNotificationService {
             content.title = isOverdue ? "Overdue Task" : "Task Due Today"
             content.body = task.title
             content.sound = .default
-            content.categoryIdentifier = "REMINDER"
+            content.categoryIdentifier = "TASK"
 
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
             let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)

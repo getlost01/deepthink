@@ -80,7 +80,7 @@ struct ChatBubble: View {
                             }
                         }
                     }
-                    .padding(.trailing, DS.Spacing.sm)
+                    .padding(.trailing, DS.Spacing.lg)
                     .padding(.bottom, DS.Spacing.xxs)
 
                     Text(message.content)
@@ -92,6 +92,43 @@ struct ChatBubble: View {
                         .frame(maxWidth: 480, alignment: .trailing)
                         .background(DS.Colors.accent.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.xl))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(DS.Opacity.subtle), lineWidth: 1))
+
+                    if let info = branchInfo, info.total > 1 {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "arrow.branch")
+                                .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                .foregroundStyle(DS.Colors.textTertiary)
+
+                            Button {
+                                onSwitchBranch?(info.current - 1)
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.system(size: DS.IconSize.xs, weight: .bold))
+                                    .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                            }
+                            .buttonStyle(.plainPointer)
+                            .disabled(info.current <= 0)
+
+                            Text("\(info.current + 1)/\(info.total)")
+                                .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
+                                .foregroundStyle(DS.Colors.textTertiary)
+
+                            Button {
+                                onSwitchBranch?(info.current + 1)
+                            } label: {
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: DS.IconSize.xs, weight: .bold))
+                                    .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                            }
+                            .buttonStyle(.plainPointer)
+                            .disabled(info.current >= info.total - 1)
+                        }
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, 3)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
+                        .padding(.top, DS.Spacing.xs)
+                    }
                 }
             }
 
@@ -103,49 +140,10 @@ struct ChatBubble: View {
                     .font(.system(size: DS.IconSize.sm, weight: .semibold, design: .rounded))
                     .foregroundStyle(DS.Colors.accent)
             }
-            .padding(.top, DS.Spacing.lg)
+            .padding(.top, DS.Spacing.md)
         }
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.sm)
-        .overlay(alignment: .bottomTrailing) {
-            if let info = branchInfo, info.total > 1 {
-                HStack(spacing: DS.Spacing.xs) {
-                    Image(systemName: "arrow.branch")
-                        .font(.system(size: DS.IconSize.xs, weight: .medium))
-                        .foregroundStyle(DS.Colors.textTertiary)
-
-                    Button {
-                        onSwitchBranch?(info.current - 1)
-                    } label: {
-                        Image(systemName: "chevron.left")
-                            .font(.system(size: DS.IconSize.xs, weight: .bold))
-                            .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
-                    }
-                    .buttonStyle(.plainPointer)
-                    .disabled(info.current <= 0)
-
-                    Text("\(info.current + 1)/\(info.total)")
-                        .font(.system(size: DS.IconSize.xs, weight: .medium, design: .rounded))
-                        .foregroundStyle(DS.Colors.textTertiary)
-
-                    Button {
-                        onSwitchBranch?(info.current + 1)
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: DS.IconSize.xs, weight: .bold))
-                            .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
-                    }
-                    .buttonStyle(.plainPointer)
-                    .disabled(info.current >= info.total - 1)
-                }
-                .padding(.horizontal, DS.Spacing.sm)
-                .padding(.vertical, 3)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
-                .offset(y: DS.Spacing.md)
-                .padding(.trailing, DS.Spacing.xl)
-            }
-        }
     }
 
     private var assistantBubble: some View {
@@ -230,7 +228,7 @@ struct ChatBubble: View {
                             .font(DS.Font.micro)
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
-                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.horizontal, DS.Spacing.md)
                     .padding(.vertical, DS.Spacing.xs + 1)
                 }
             }

@@ -151,18 +151,24 @@ struct KnowledgeBrowserView: View {
                                     selectedEntry = entry
                                 }
                                 .contextMenu {
-                                    Menu("Move to Bucket") {
+                                    Menu {
                                         ForEach(knowledge.buckets, id: \.self) { bucket in
-                                            Button(bucket) {
+                                            Button {
                                                 KnowledgeService.shared.moveEntry(entry, to: bucket)
+                                            } label: {
+                                                Label(bucket, systemImage: "folder")
                                             }
                                             .disabled(entry.bucket == bucket)
                                         }
+                                    } label: {
+                                        Label("Move to Bucket", systemImage: "folder.badge.arrow.up")
                                     }
                                     Divider()
-                                    Button("Delete", role: .destructive) {
+                                    Button(role: .destructive) {
                                         selectedEntry = entry
                                         showDeleteConfirm = true
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
                                 }
                                 if entry.id != visibleEntries.last?.id || hasMore {
@@ -242,8 +248,7 @@ struct KnowledgeBrowserView: View {
     private func captureClipboard() {
         let ok = DataCollectorService.shared.captureClipboard()
         knowledge.reload()
-        if ok { ToastState.shared.show("Clipboard saved to knowledge") }
-        else { ToastState.shared.showError("Clipboard is empty or unsupported") }
+        if ok { ToastState.shared.show("Clipboard saved to knowledge") } else { ToastState.shared.showError("Clipboard is empty or unsupported") }
     }
 
     private func importFiles() {

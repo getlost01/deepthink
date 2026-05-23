@@ -17,149 +17,186 @@ struct CommandPaletteView: View {
                 .ignoresSafeArea()
                 .onTapGesture { dismiss() }
 
-            VStack(spacing: 0) {
-                // Search bar
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: DS.IconSize.md))
-                        .foregroundStyle(DS.Colors.textTertiary)
+            HStack(spacing: 0) {
+                VStack(spacing: 0) {
+                    // Search bar
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: DS.IconSize.md))
+                            .foregroundStyle(DS.Colors.textTertiary)
 
-                    if let prefix = state.activePrefix {
-                        Text(prefixLabel(prefix))
-                            .font(DS.Font.small)
-                            .fontWeight(.medium)
-                            .foregroundStyle(DS.Colors.onAccent)
-                            .padding(.horizontal, DS.Spacing.sm)
-                            .padding(.vertical, 3)
-                            .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    }
-
-                    TextField(placeholderText(state.activePrefix), text: $state.query)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: DS.IconSize.lg))
-                        .focused($isSearchFocused)
-                        .onSubmit {
-                            if state.executeSelected() { dismiss() }
+                        if let prefix = state.activePrefix {
+                            Text(prefixLabel(prefix))
+                                .font(DS.Font.small)
+                                .fontWeight(.medium)
+                                .foregroundStyle(DS.Colors.onAccent)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, 3)
+                                .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
-                        .onKeyPress(.escape) { dismiss(); return .handled }
-                        .onKeyPress(.upArrow) { state.moveUp(); return .handled }
-                        .onKeyPress(.downArrow) { state.moveDown(); return .handled }
 
-                    if !state.query.isEmpty {
-                        Button { state.query = "" } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: DS.IconSize.sm))
-                                .foregroundStyle(DS.Colors.textTertiary)
-                        }
-                        .buttonStyle(.plainPointer)
-                    }
-                }
-                .padding(DS.Spacing.lg)
-                .onHover { hovering in
-                    if hovering { NSCursor.iBeam.push() } else { NSCursor.pop() }
-                }
-
-                Rectangle()
-                    .fill(DS.Colors.border)
-                    .frame(height: 0.5)
-
-                ScrollViewReader { proxy in
-                    ScrollView(showsIndicators: false) {
-                        LazyVStack(alignment: .leading, spacing: 0) {
-                            let sections = state.sections
-                            let flatItems = state.allFlatItems
-
-                            // Recent items in empty state
-                            if state.query.isEmpty {
-                                recentSection
+                        TextField(placeholderText(state.activePrefix), text: $state.query)
+                            .textFieldStyle(.plain)
+                            .font(.system(size: DS.IconSize.lg))
+                            .focused($isSearchFocused)
+                            .onSubmit {
+                                if state.executeSelected() { dismiss() }
                             }
+                            .onKeyPress(.escape) { dismiss(); return .handled }
+                            .onKeyPress(.upArrow) { state.moveUp(); return .handled }
+                            .onKeyPress(.downArrow) { state.moveDown(); return .handled }
 
-                            ForEach(sections) { section in
-                                Text(section.title.uppercased())
-                                    .font(DS.Font.micro)
-                                    .fontWeight(.bold)
+                        if !state.query.isEmpty {
+                            Button { state.query = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.sm))
                                     .foregroundStyle(DS.Colors.textTertiary)
-                                    .padding(.horizontal, DS.Spacing.lg)
-                                    .padding(.top, DS.Spacing.md)
-                                    .padding(.bottom, DS.Spacing.xs)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                    .padding(DS.Spacing.lg)
+                    .onHover { hovering in
+                        if hovering { NSCursor.iBeam.push() } else { NSCursor.pop() }
+                    }
 
-                                ForEach(Array(section.items.enumerated()), id: \.element.id) { _, item in
-                                    let itemIndex = flatItems.firstIndex(where: { $0.id == item.id }) ?? 0
-                                    PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
-                                        .id(item.id)
-                                        .onTapGesture {
-                                            switch item {
-                                            case let .command(cmd): cmd.action()
-                                            case let .workspaceItem(ws): ws.action()
+                    Rectangle()
+                        .fill(DS.Colors.border)
+                        .frame(height: 0.5)
+
+                    ScrollViewReader { proxy in
+                        ScrollView(showsIndicators: false) {
+                            LazyVStack(alignment: .leading, spacing: 0) {
+                                let sections = state.sections
+                                let flatItems = state.allFlatItems
+
+                                // Recent items in empty state
+                                if state.query.isEmpty {
+                                    recentSection
+                                }
+
+                                ForEach(sections) { section in
+                                    Text(section.title.uppercased())
+                                        .font(DS.Font.micro)
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                        .padding(.horizontal, DS.Spacing.lg)
+                                        .padding(.top, DS.Spacing.md)
+                                        .padding(.bottom, DS.Spacing.xs)
+
+                                    ForEach(Array(section.items.enumerated()), id: \.element.id) { _, item in
+                                        let itemIndex = flatItems.firstIndex(where: { $0.id == item.id }) ?? 0
+                                        PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
+                                            .id(item.id)
+                                            .onTapGesture {
+                                                switch item {
+                                                case let .command(cmd): cmd.action()
+                                                case let .workspaceItem(ws): ws.action()
+                                                }
+                                                dismiss()
                                             }
-                                            dismiss()
-                                        }
+                                    }
+                                }
+
+                                if flatItems.isEmpty, !state.query.isEmpty {
+                                    VStack(spacing: DS.Spacing.sm) {
+                                        Image(systemName: "magnifyingglass")
+                                            .font(.system(size: DS.IconSize.xl, weight: .light))
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                        Text("No results for \"\(state.query)\"")
+                                            .font(DS.Font.body)
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(DS.Spacing.xxl)
                                 }
                             }
-
-                            if flatItems.isEmpty, !state.query.isEmpty {
-                                VStack(spacing: DS.Spacing.sm) {
-                                    Image(systemName: "magnifyingglass")
-                                        .font(.system(size: DS.IconSize.xl, weight: .light))
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                    Text("No results for \"\(state.query)\"")
-                                        .font(DS.Font.body)
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(DS.Spacing.xxl)
+                            .padding(.vertical, DS.Spacing.sm)
+                        }
+                        .frame(maxHeight: 420)
+                        .onChange(of: state.selectedIndex) { _, newValue in
+                            let items = state.allFlatItems
+                            if items.indices.contains(newValue) {
+                                proxy.scrollTo(items[newValue].id, anchor: .center)
                             }
                         }
-                        .padding(.vertical, DS.Spacing.sm)
-                    }
-                    .frame(maxHeight: 420)
-                    .onChange(of: state.selectedIndex) { _, newValue in
-                        let items = state.allFlatItems
-                        if items.indices.contains(newValue) {
-                            proxy.scrollTo(items[newValue].id, anchor: .center)
+                        .onChange(of: state.query) {
+                            let items = state.allFlatItems
+                            if let first = items.first {
+                                proxy.scrollTo(first.id, anchor: .top)
+                            }
                         }
                     }
-                    .onChange(of: state.query) {
-                        let items = state.allFlatItems
-                        if let first = items.first {
-                            proxy.scrollTo(first.id, anchor: .top)
+
+                    Rectangle()
+                        .fill(DS.Colors.border)
+                        .frame(height: 0.5)
+
+                    HStack(spacing: DS.Spacing.lg) {
+                        HStack(spacing: DS.Spacing.xs) {
+                            KeyHint("↑↓")
+                            Text("navigate")
                         }
+                        HStack(spacing: DS.Spacing.xs) {
+                            KeyHint("↵")
+                            Text("open")
+                        }
+                        HStack(spacing: DS.Spacing.xs) {
+                            KeyHint("esc")
+                            Text("close")
+                        }
+                        Spacer()
+                        HStack(spacing: DS.Spacing.xs) {
+                            KeyHint(">")
+                            KeyHint("#")
+                            KeyHint("@")
+                            KeyHint("%")
+                        }
+                        Text("filter by type")
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
                 }
+                .frame(width: 540)
 
-                Rectangle()
-                    .fill(DS.Colors.border)
-                    .frame(height: 0.5)
-
-                HStack(spacing: DS.Spacing.lg) {
-                    HStack(spacing: DS.Spacing.xs) {
-                        KeyHint("↑↓")
-                        Text("navigate")
+                // Preview pane
+                if let preview = selectedPreview {
+                    Divider().frame(maxHeight: .infinity)
+                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Image(systemName: preview.icon)
+                                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                                .foregroundStyle(preview.color)
+                                .frame(width: 28, height: 28)
+                                .background(preview.color.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(preview.title)
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(DS.Colors.textPrimary)
+                                    .lineLimit(1)
+                                Text(preview.typeLabel)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                        }
+                        Divider()
+                        Text(preview.body)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                            .lineLimit(12)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+                        Spacer()
                     }
-                    HStack(spacing: DS.Spacing.xs) {
-                        KeyHint("↵")
-                        Text("open")
-                    }
-                    HStack(spacing: DS.Spacing.xs) {
-                        KeyHint("esc")
-                        Text("close")
-                    }
-                    Spacer()
-                    HStack(spacing: DS.Spacing.xs) {
-                        KeyHint(">")
-                        KeyHint("#")
-                        KeyHint("@")
-                        KeyHint("%")
-                    }
-                    Text("filter by type")
-                        .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(DS.Spacing.lg)
+                    .frame(width: 220)
                 }
-                .font(DS.Font.small)
-                .foregroundStyle(DS.Colors.textTertiary)
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.sm)
             }
-            .frame(width: 580)
+            .frame(width: selectedPreview != nil ? 760 : 540)
             .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
@@ -178,6 +215,39 @@ struct CommandPaletteView: View {
         }
         .onChange(of: state.query) {
             state.selectedIndex = 0
+        }
+    }
+
+    private struct PreviewContent {
+        let title: String
+        let typeLabel: String
+        let icon: String
+        let color: Color
+        let body: String
+    }
+
+    private var selectedPreview: PreviewContent? {
+        let items = state.allFlatItems
+        guard items.indices.contains(state.selectedIndex),
+              case let .workspaceItem(ws) = items[state.selectedIndex] else { return nil }
+        switch ws.type {
+        case .note:
+            guard let note = notes.first(where: { $0.id == ws.id }) else { return nil }
+            let body = note.content.isEmpty ? "(empty note)" : String(note.content.prefix(300))
+            return PreviewContent(title: ws.title, typeLabel: "Note", icon: "doc.text", color: DS.Colors.accent, body: body)
+        case .task:
+            guard let task = tasks.first(where: { $0.id == ws.id }) else { return nil }
+            var parts = ["Status: \(task.status.rawValue)"]
+            if let due = task.dueDate { parts.append("Due: \(due.shortFormatted)") }
+            if task.priority != .none { parts.append("Priority: \(task.priority.rawValue)") }
+            if !task.detail.isEmpty { parts.append("\n\(task.detail.prefix(200))") }
+            return PreviewContent(title: ws.title, typeLabel: "Task", icon: task.status.icon, color: DS.Colors.success, body: parts.joined(separator: "\n"))
+        case .project:
+            guard let project = projects.first(where: { $0.id == ws.id }) else { return nil }
+            let body = "\(project.openTaskCount) open tasks · \(project.notes.count) notes\n\(project.tasks.count(where: { $0.status == .done })) done"
+            return PreviewContent(title: ws.title, typeLabel: "Project", icon: "folder", color: DS.Colors.warning, body: body)
+        case .knowledge:
+            return PreviewContent(title: ws.title, typeLabel: "Knowledge", icon: "brain", color: DS.Colors.knowledge, body: ws.subtitle ?? "")
         }
     }
 

@@ -108,7 +108,20 @@ DeepThink is under active development—contributions are welcome and help shape
 
 ## Installing
 
-### Option A — Download from GitHub Releases (zip, unsigned)
+### Option A — Homebrew (recommended)
+
+```bash
+brew tap getlost01/deepthink
+brew install --cask deepthink
+```
+
+First launch: **Right-click → Open**, or clear quarantine manually:
+
+```bash
+xattr -rd com.apple.quarantine /Applications/DeepThink.app
+```
+
+### Option B — Download from GitHub Releases (zip, unsigned)
 
 1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/getlost01/deepthink/releases/latest)
 2. Unzip and drag **DeepThink.app** to Applications
@@ -130,7 +143,7 @@ xattr -cr /Applications/DeepThink.app
 5. Launch DeepThink — the app installs the **CLI** and **MCP** server automatically on first launch
 6. Install Claude CLI from [claude.ai/code](https://claude.ai/code) and run `claude login`
 
-### Option B — Build from source
+### Option C — Build from source
 
 **Prerequisites**
 

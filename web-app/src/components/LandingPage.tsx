@@ -1,6 +1,8 @@
 import {
   ArrowRight,
+  Check,
   Command,
+  Copy,
   Database,
   Download,
   NotebookPen,
@@ -30,6 +32,41 @@ import { useTourHeaderOverlap } from '../hooks/useTourHeaderOverlap'
 import { landingContent } from '../content/landingContent'
 import ExternalLink from './ExternalLink'
 import SiteLayout from './SiteLayout'
+
+const BREW_CMD = 'brew tap getlost01/deepthink && brew install --cask deepthink'
+
+function BrewInstallBlock() {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(BREW_CMD).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 14 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="mt-5 flex w-full max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3"
+    >
+      <span className="select-none text-xs font-medium text-zinc-500">$</span>
+      <code className="flex-1 truncate font-mono text-xs text-zinc-200 sm:text-sm">
+        {BREW_CMD}
+      </code>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label="Copy brew install command"
+        className="cursor-pointer shrink-0 rounded-md p-1.5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+      >
+        {copied ? <Check size={14} /> : <Copy size={14} />}
+      </button>
+    </motion.div>
+  )
+}
 
 const pointerLink = 'cursor-pointer transition'
 
@@ -120,6 +157,8 @@ function HeroSection() {
             <ArrowRight size={16} aria-hidden />
           </Link>
         </div>
+
+        <BrewInstallBlock />
 
         <motion.div
           initial={{ opacity: 0, y: 18 }}
