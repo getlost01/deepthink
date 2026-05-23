@@ -12,7 +12,7 @@
  */
 
 import { join } from "node:path";
-import { type Subprocess, spawn } from "bun";
+import { type Subprocess, type FileSink, spawn } from "bun";
 
 const MCP_BINARY = join(import.meta.dir, "../out/deepthink-mcp");
 
@@ -26,6 +26,7 @@ interface RPCResponse {
 
 class MCPClient {
   private proc: Subprocess;
+  private stdin: FileSink;
   private buf = "";
   private pending = new Map<number, { resolve: (v: any) => void; reject: (e: any) => void }>();
   private nextId = 1;
@@ -37,6 +38,7 @@ class MCPClient {
       stdout: "pipe",
       stderr: "pipe",
     });
+    this.stdin = this.proc.stdin as FileSink;
     this.reader = (this.proc.stdout as ReadableStream<Uint8Array>).getReader();
     this.pump();
   }
@@ -44,7 +46,7 @@ class MCPClient {
   private async pump() {
     const dec = new TextDecoder();
     while (true) {
-      let chunk: ReadableStreamReadResult<Uint8Array>;
+      let chunk: ReadableStreamDefaultReadResult<Uint8Array>;
       try {
         chunk = await this.reader.read();
       } catch {
@@ -80,13 +82,13 @@ class MCPClient {
     return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       const msg = `${JSON.stringify({ jsonrpc: "2.0", id, method, params })}\n`;
-      this.proc.stdin!.write(msg);
+      this.stdin.write(msg);
     });
   }
 
   private notify(method: string, params: any = {}) {
     const msg = `${JSON.stringify({ jsonrpc: "2.0", method, params })}\n`;
-    this.proc.stdin!.write(msg);
+    this.stdin.write(msg);
   }
 
   async initialize() {
@@ -136,7 +138,7 @@ class MCPClient {
   }
 
   async close() {
-    this.proc.stdin?.end();
+    this.stdin.end();
     // Server has a background reconciler timer so it won't exit on EOF alone — kill it.
     await Bun.sleep(200);
     this.proc.kill();
