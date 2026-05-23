@@ -331,16 +331,14 @@ final class MCPService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                            {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String
-                                    {
+                                              let text = delta["text"] as? String {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -402,7 +400,7 @@ final class MCPService {
     private func runClaudeWithMCP(prompt: String, configPath: String, systemPrompt: String?) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
-                let claudePath = "\(NSHomeDirectory())/.local/bin/claude"
+                let claudePath = ClaudeService.shared.claudePath
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -441,6 +439,11 @@ final class MCPService {
 
                 do {
                     try process.run()
+
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeoutWork)
+                    defer { timeoutWork.cancel() }
+
                     process.waitUntilExit()
 
                     let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
@@ -455,8 +458,7 @@ final class MCPService {
                     let output = String(data: outData, encoding: .utf8) ?? ""
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(ClaudeService.CLIResponse.self, from: jsonData),
-                       let result = response.result
-                    {
+                       let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         DispatchQueue.main.async {

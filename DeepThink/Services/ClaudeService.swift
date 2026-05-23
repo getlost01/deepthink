@@ -289,8 +289,7 @@ final class ClaudeService {
 
     private init() {
         if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
-           FileManager.default.isExecutableFile(atPath: saved)
-        {
+           FileManager.default.isExecutableFile(atPath: saved) {
             claudePath = saved
             customCLIPath = saved
         } else {
@@ -298,12 +297,10 @@ final class ClaudeService {
         }
 
         if let savedFamily = UserDefaults.standard.string(forKey: "selectedModelFamily"),
-           let family = ModelFamily(rawValue: savedFamily)
-        {
+           let family = ModelFamily(rawValue: savedFamily) {
             selectedModelFamily = family
             if let savedVersionID = UserDefaults.standard.string(forKey: "selectedModelVersionID"),
-               let version = family.versions.first(where: { $0.id == savedVersionID })
-            {
+               let version = family.versions.first(where: { $0.id == savedVersionID }) {
                 selectedModelVersion = version
             } else {
                 selectedModelVersion = family.latestVersion
@@ -460,8 +457,7 @@ final class ClaudeService {
 
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
-                       let result = response.result
-                    {
+                       let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         let usage = response.usage
@@ -589,16 +585,14 @@ final class ClaudeService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                            {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String
-                                    {
+                                              let text = delta["text"] as? String {
                                         fullText += text
                                         onToken(text)
                                     }

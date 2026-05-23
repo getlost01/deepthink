@@ -191,7 +191,9 @@ final class VectorStore {
                 sqlite3_step(delStmt)
                 sqlite3_finalize(delStmt)
             }
-            for chunk in chunks { upsertChunkUnsafe(chunk) }
+            for chunk in chunks {
+                upsertChunkUnsafe(chunk)
+            }
             exec("COMMIT")
         }
     }
@@ -284,7 +286,8 @@ final class VectorStore {
     func incrementPendingRetry(entryID: String) {
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
-            guard sqlite3_prepare_v2(db, "UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK else { return }
+            guard sqlite3_prepare_v2(db, "UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK
+            else { return }
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
             sqlite3_step(stmt)

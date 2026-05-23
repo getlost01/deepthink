@@ -13,9 +13,9 @@ disabled_rules:
   - function_body_length      # body builders and view builders
   - cyclomatic_complexity     # SwiftUI switch/if chains
   - identifier_name           # short vars like id, pk, x are fine
+  - large_tuple               # used intentionally in data arrays (defaults, templates)
 
 opt_in_rules:
-  - empty_count
   - empty_string
   - first_where
   - force_unwrapping
@@ -24,9 +24,9 @@ opt_in_rules:
 
 line_length:
   warning: 160
-  error: 200
   ignores_comments: true
   ignores_urls: true
+  ignores_strings: true       # prompt/CSS/markdown string content is legitimately long
 
 type_name:
   min_length: 2

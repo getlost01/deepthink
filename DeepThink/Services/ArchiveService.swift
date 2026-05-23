@@ -91,7 +91,7 @@ final class ArchiveService {
     private func scheduleTimer() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
-            guard let self, let container = self.container else { return }
+            guard let self, let container else { return }
             Task { await self.run(container: container) }
         }
     }

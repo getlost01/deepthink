@@ -284,10 +284,22 @@ struct TaskDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: task.title) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task") }
-        .onChange(of: task.detail) { task.modifiedAt = Date(); try? modelContext.save(); scheduleScanDeadLinks(); VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task") }
-        .onChange(of: task.statusRaw) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task") }
-        .onChange(of: task.priorityRaw) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(entryID: "task:\(task.id.uuidString)", entryType: "task") }
+        .onChange(of: task.title) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(
+            entryID: "task:\(task.id.uuidString)",
+            entryType: "task"
+        ) }
+        .onChange(of: task.detail) { task.modifiedAt = Date(); try? modelContext.save(); scheduleScanDeadLinks(); VectorStore.shared.enqueuePendingReindex(
+            entryID: "task:\(task.id.uuidString)",
+            entryType: "task"
+        ) }
+        .onChange(of: task.statusRaw) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(
+            entryID: "task:\(task.id.uuidString)",
+            entryType: "task"
+        ) }
+        .onChange(of: task.priorityRaw) { task.modifiedAt = Date(); try? modelContext.save(); VectorStore.shared.enqueuePendingReindex(
+            entryID: "task:\(task.id.uuidString)",
+            entryType: "task"
+        ) }
         .sheet(isPresented: $showCustomPoints) {
             CustomPointsSheet(points: $task.storyPoints, isPresented: $showCustomPoints)
         }

@@ -704,16 +704,33 @@ private struct RuleInlineEditor: View {
             Divider()
 
             VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                DSFieldLabel(label: "Trigger", hint: "When should this rule activate?")
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.top, DS.Spacing.sm)
+                HStack(alignment: .center, spacing: DS.Spacing.xs) {
+                    DSFieldLabel(label: "Trigger", hint: "When should this rule activate?")
+                    Spacer()
+                    TriggerHelpButton()
+                }
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.top, DS.Spacing.sm)
 
-                TextField("e.g. always, note.tagged.meeting, task.created", text: $trigger)
+                TextField("e.g. always, tag:meeting, content:web", text: $trigger)
                     .textFieldStyle(.plain)
                     .font(DS.Font.mono)
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.vertical, DS.Spacing.xs)
                     .onChange(of: trigger) { scheduleSave() }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DS.Spacing.xs) {
+                        ForEach(TriggerHelpButton.quickPicks, id: \.value) { pick in
+                            TriggerPickChip(label: pick.value) {
+                                trigger = pick.value
+                                scheduleSave()
+                            }
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.xs)
+                }
             }
             .padding(.bottom, DS.Spacing.sm)
 
@@ -759,6 +776,88 @@ private struct RuleInlineEditor: View {
             isDisabled: isDisabled
         )
         RuleFileService.shared.save(rule: updated)
+    }
+}
+
+// MARK: - Trigger Help
+
+private struct TriggerHelpButton: View {
+    @State private var showHelp = false
+
+    static let quickPicks: [(value: String, label: String)] = [
+        ("always", "Always active"),
+        ("tag:meeting", "Tagged: meeting"),
+        ("tag:work", "Tagged: work"),
+        ("content:web", "Web content"),
+        ("event:note_opened", "Note opened"),
+        ("section:tasks", "Tasks section"),
+        ("agent:researcher", "Agent: researcher")
+    ]
+
+    private let patterns: [(pattern: String, description: String, example: String)] = [
+        ("always", "Applies in every AI conversation, no conditions.", "always"),
+        ("tag:<name>", "Fires when a note is tagged with the given name.", "tag:meeting"),
+        ("event:<name>", "Fires when a named event occurs in the app.", "event:note_opened"),
+        ("agent:<name>", "Applies when a specific agent is active.", "agent:researcher"),
+        ("content:<type>", "Targets a specific content type.", "content:web"),
+        ("section:<name>", "Applies when you're inside a named section.", "section:tasks")
+    ]
+
+    var body: some View {
+        Button { showHelp.toggle() } label: {
+            Image(systemName: "info.circle")
+                .font(.system(size: DS.IconSize.sm))
+                .foregroundStyle(DS.Colors.textTertiary)
+        }
+        .buttonStyle(.plainPointer)
+        .help("View trigger reference")
+        .popover(isPresented: $showHelp, arrowEdge: .trailing) {
+            VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                Text("Trigger Reference")
+                    .font(DS.Font.body)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+
+                ForEach(patterns, id: \.pattern) { item in
+                    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Text(item.pattern)
+                                .font(DS.Font.monoSmall)
+                                .foregroundStyle(DS.Colors.info)
+                            Text("e.g. \(item.example)")
+                                .font(DS.Font.micro)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        Text(item.description)
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+                }
+            }
+            .padding(DS.Spacing.lg)
+            .frame(width: 340)
+        }
+    }
+}
+
+private struct TriggerPickChip: View {
+    let label: String
+    let action: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(DS.Font.monoSmall)
+                .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xxs + 1)
+                .background(isHovered ? DS.Colors.accentFill : DS.Colors.fill, in: Capsule())
+                .overlay(Capsule().strokeBorder(isHovered ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
+        }
+        .buttonStyle(.plainPointer)
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 

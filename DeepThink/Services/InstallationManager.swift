@@ -176,71 +176,71 @@ final class InstallationManager {
     }
 
     private static let syncSessionCommandContent = #"""
----
-description: Summarize the current Claude Code session and store it in the DeepThink knowledge base. Captures what was worked on, decisions made, files changed, and open items.
----
+    ---
+    description: Summarize the current Claude Code session and store it in the DeepThink knowledge base. Captures what was worked on, decisions made, files changed, and open items.
+    ---
 
-Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
+    Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
 
-## Step 1 — Derive context
+    ## Step 1 — Derive context
 
-Determine:
-- **project**: the git repo name (from `basename $(git rev-parse --show-toplevel)` if in a repo, else the working directory basename). If `$ARGUMENTS` is non-empty, use it as an override project name.
-- **date**: today in `YYYY-MM-DD` format
-- **working_dir**: current working directory
+    Determine:
+    - **project**: the git repo name (from `basename $(git rev-parse --show-toplevel)` if in a repo, else the working directory basename). If `$ARGUMENTS` is non-empty, use it as an override project name.
+    - **date**: today in `YYYY-MM-DD` format
+    - **working_dir**: current working directory
 
-## Step 2 — Build the session summary
+    ## Step 2 — Build the session summary
 
-Produce a structured markdown document covering this session. Use only what actually happened — do not invent or pad.
+    Produce a structured markdown document covering this session. Use only what actually happened — do not invent or pad.
 
-```
-# Session: <date> — <one-line topic>
+    ```
+    # Session: <date> — <one-line topic>
 
-**Project:** <project>
-**Directory:** <working_dir>
-**Date:** <date>
+    **Project:** <project>
+    **Directory:** <working_dir>
+    **Date:** <date>
 
-## What was worked on
-<bullet list of features, bugs, tasks touched>
+    ## What was worked on
+    <bullet list of features, bugs, tasks touched>
 
-## Key decisions
-<bullet list of architectural/design/approach decisions made>
+    ## Key decisions
+    <bullet list of architectural/design/approach decisions made>
 
-## Files changed
-<bullet list of notable files created or modified, with a short reason>
+    ## Files changed
+    <bullet list of notable files created or modified, with a short reason>
 
-## Outcomes
-<what was completed or resolved>
+    ## Outcomes
+    <what was completed or resolved>
 
-## Open items / follow-ups
-<anything left unresolved, deferred, or flagged for later — "none" if clean>
-```
+    ## Open items / follow-ups
+    <anything left unresolved, deferred, or flagged for later — "none" if clean>
+    ```
 
-Omit any section that has no content (e.g. skip "Files changed" if no files were touched).
+    Omit any section that has no content (e.g. skip "Files changed" if no files were touched).
 
-## Step 3 — Capture to DeepThink
+    ## Step 3 — Capture to DeepThink
 
-Call `mcp__deepthink__knowledge_capture` with:
-- `source`: `"claude-code"`
-- `channel`: the project name from Step 1 (lowercase, spaces as hyphens)
-- `content`: the full markdown document from Step 2
-- `title`: `"Session <date>: <one-line topic>"`
-- `tags`: `["session-log", "<project-slug>", "<date>"]`
+    Call `mcp__deepthink__knowledge_capture` with:
+    - `source`: `"claude-code"`
+    - `channel`: the project name from Step 1 (lowercase, spaces as hyphens)
+    - `content`: the full markdown document from Step 2
+    - `title`: `"Session <date>: <one-line topic>"`
+    - `tags`: `["session-log", "<project-slug>", "<date>"]`
 
-## Step 4 — Confirm
+    ## Step 4 — Confirm
 
-After the tool call succeeds, output a single confirmation line:
+    After the tool call succeeds, output a single confirmation line:
 
-```
-Saved session to DeepThink — claude-code/<channel>: "<title>"
-```
+    ```
+    Saved session to DeepThink — claude-code/<channel>: "<title>"
+    ```
 
-If the capture tool is unavailable, print:
-```
-DeepThink MCP not connected. Session summary:
-```
-followed by the full markdown from Step 2 so nothing is lost.
-"""#
+    If the capture tool is unavailable, print:
+    ```
+    DeepThink MCP not connected. Session summary:
+    ```
+    followed by the full markdown from Step 2 so nothing is lost.
+    """#
 
     // MARK: - PATH setup
 

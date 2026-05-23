@@ -60,10 +60,14 @@ final class AgentFileService {
 
     // MARK: - Build Context
 
-    func buildSystemPrompt(for agent: AgentFile, query: String? = nil) -> String {
+    private static let systemPromptCharBudget = 16000
+
+    func buildSystemPrompt(for agent: AgentFile, query: String? = nil, context: [String: String] = [:]) -> String {
         var prompt = agent.systemPrompt
 
-        let matchedRules = RuleFileService.shared.rulesAsSystemPrompt(for: ["agent": agent.name])
+        var ruleContext = context
+        ruleContext["agent"] = agent.name
+        let matchedRules = RuleFileService.shared.rulesAsSystemPrompt(for: ruleContext)
         if let rules = matchedRules {
             prompt += "\n\n# Active Rules\n\n" + rules
         }
@@ -73,7 +77,7 @@ final class AgentFileService {
                 guard let skill = SkillFileService.shared.skills.first(where: {
                     $0.name == skillName || $0.commandName == skillName
                 }) else { return nil }
-                let desc = skill.systemPrompt.isEmpty ? skill.promptTemplate.prefix(60) : skill.systemPrompt.prefix(60)
+                let desc = skill.systemPrompt.isEmpty ? skill.promptTemplate.prefix(80) : skill.systemPrompt.prefix(80)
                 return "- /\(skill.commandName): \(desc)"
             }
             if !skillLines.isEmpty {
@@ -83,15 +87,17 @@ final class AgentFileService {
         }
 
         if !agent.knowledgeScope.isEmpty {
+            let remaining = Self.systemPromptCharBudget - prompt.count
+            guard remaining > 500 else { return prompt }
+
             if let query {
-                // Smart retrieval: use query + agent scope for targeted context
+                let knowledgeTokenBudget = min(2000, remaining / 4)
                 if let ctx = KnowledgeService.shared.ragContext(
-                    for: query, maxTokens: 2000, agentScope: agent.knowledgeScope
+                    for: query, maxTokens: knowledgeTokenBudget, agentScope: agent.knowledgeScope
                 ) {
-                    prompt += "\n\n" + ctx
+                    prompt += "\n\n" + String(ctx.prefix(remaining - 100))
                 }
             } else {
-                // Fallback: scope-filtered entries
                 let knowledge = KnowledgeService.shared.entries.filter { entry in
                     agent.knowledgeScope.contains { scope in
                         entry.source.contains(scope) || entry.tags.contains(scope) || entry.title.lowercased().contains(scope.lowercased())
@@ -99,8 +105,12 @@ final class AgentFileService {
                 }
                 if !knowledge.isEmpty {
                     prompt += "\n\n# Knowledge Context\n\n"
+                    var budget = remaining - 100
                     for entry in knowledge.prefix(5) {
-                        prompt += "## \(entry.title)\n\(String(entry.content.prefix(400)))\n\n"
+                        let snippet = "## \(entry.title)\n\(String(entry.content.prefix(min(400, budget))))\n\n"
+                        guard budget > 0 else { break }
+                        prompt += snippet
+                        budget -= snippet.count
                     }
                 }
             }

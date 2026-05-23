@@ -1,18 +1,18 @@
 # DeepThink
 
-**Local-first AI workspace for macOS** — projects, notes, tasks, and a personal knowledge base with hybrid RAG. Your data stays on your machine. **MIT licensed** and open to contributions.
+**Agent-agnostic MCP server and CLI with a native macOS workspace** — local-first knowledge base, hybrid RAG, projects, notes, and tasks. Your data stays under `~/DeepThink/`. **MIT licensed** and open to contributions.
 
-DeepThink is one **native SwiftUI** surface for juggling **projects**, **notes**, **tasks**, and **reminders** next to capture-friendly **knowledge**—plus **⌘K** navigation, and a built-in **terminal**. The same workspace backs the **`deepthink` CLI** and the shipped **MCP server**, so terminals and MCP-capable editors can read and update what the app manages. Persistence lives under **`~/DeepThink/`** (SwiftData plus on-disk markdown and embeddings) with local hybrid retrieval (**BM25** + semantic search via Apple **NLEmbedding**).
+DeepThink ships three connected surfaces. The **`deepthink-mcp`** MCP server and **`deepthink`** CLI are the core tools: both are model-agnostic and work with any agent or workflow — Cursor, Claude Code, VS Code Copilot, Windsurf, shell scripts, cron jobs. The **native SwiftUI app** is the complementary interface for managing **projects**, **notes**, **tasks**, **reminders**, and a **knowledge graph** — plus **⌘K** navigation, a built-in **terminal**, and Claude-powered AI chat. All three surfaces share the same **`~/DeepThink/`** store with hybrid retrieval (**BM25** + semantic search via Apple **NLEmbedding**).
 
-> **AI model compatibility — two distinct surfaces:**
+> **AI model compatibility:**
 >
 > | Surface | Works with |
 > |---------|-----------|
-> | **`deepthink-mcp` MCP server** | Any MCP-capable AI agent — Claude Code, Cursor, VS Code Copilot, Windsurf, or any client that speaks the Model Context Protocol |
-> | **`deepthink` CLI** | Any AI agent or shell script — the CLI is model-agnostic; `deepthink ask` uses whatever LLM you wire up |
-> | **In-app AI** (chat, agents, skills, rules) | Requires the **Claude CLI** (`claude login`) — the app's conversational layer is built on Anthropic's Claude and spawns it as a local subprocess |
+> | **`deepthink-mcp`** MCP server | **Any** MCP-capable agent — Claude Code, Cursor, VS Code Copilot, Windsurf, or any host that speaks Model Context Protocol — no Claude required |
+> | **`deepthink`** CLI | **Any** AI agent or shell script — model-agnostic; `deepthink ask` works with whatever LLM you wire up |
+> | **In-app AI** (chat, agents, skills, rules) | Requires **Claude CLI** (`claude login`) — the app's conversational layer spawns Claude as a local subprocess |
 >
-> In short: the workspace, retrieval, and MCP tools are agent-agnostic. The native app's AI chat is Claude-specific.
+> **The MCP server and CLI are the primary, agent-agnostic tools. The macOS app is a complementary interface — its AI chat is Claude-specific, but the workspace data it manages is accessible to any agent.**
 
 DeepThink is under active development—contributions are welcome and help shape it into a more robust workspace ↔ knowledge tool.
 
@@ -79,7 +79,7 @@ DeepThink is under active development—contributions are welcome and help shape
 | | |
 |--|--|
 | **Built-in terminal** | Multi-tab terminal with AI output analysis |
-| **MCP server** | 45-tool MCP server ([integration guide](docs/mcp-integration.md)) — works with **any MCP-capable agent**: Claude Code, Cursor, VS Code Copilot, Windsurf, etc. No Claude required to use MCP tools |
+| **MCP server** | 51-tool MCP server ([integration guide](docs/mcp-integration.md)) — works with **any MCP-capable agent**: Claude Code, Cursor, VS Code Copilot, Windsurf, etc. No Claude required to use MCP tools |
 | **CLI** | `deepthink` in the terminal — model-agnostic workspace access (`context`, `task`, `note`, `knowledge`) — see [CLI docs](docs/cli/README.md) |
 
 ### Fast navigation & discovery
@@ -214,7 +214,7 @@ The MCP server works with **any MCP-compatible AI agent** — it is not Claude-s
 DeepThink/
 ├── DeepThinkApp.swift         # app entry point, service startup, onboarding
 ├── Models/                    # SwiftData models (Note, Task, Project, Reminder, ...)
-├── Services/                  # 23 @Observable singletons
+├── Services/                  # 26 @Observable singletons
 │   ├── ClaudeService          # Claude CLI subprocess + streaming JSON
 │   ├── ContextEngine          # RAG retrieval, workspace context packaging
 │   ├── KnowledgeService       # knowledge entry CRUD + file layout
@@ -233,10 +233,11 @@ DeepThink/
 
 cli/
 ├── src/index.ts               # CLI entrypoint (Bun)
-├── src/mcp-server.ts          # MCP server (stdio transport; tools in src/tools/*)
-├── src/agents/                # research, schedule, insight agents
-├── src/tools/                 # workspace, knowledge, config tools
-└── src/core/                  # db access (reads SwiftData store readonly)
+├── src/mcp-server.ts          # MCP server (stdio transport; 51 tools in src/tools/*)
+├── src/agents/                # 13 autonomous agents (research, planner, react, writer, …)
+├── src/memory/                # agent memory manager + compressor
+├── src/tools/                 # workspace, knowledge, config, analytics, search tools
+└── src/core/                  # db, embedding, vector-store, context-engine, llm
 
 ~/DeepThink/                   # user data directory
 ├── data/deepthink.store       # SwiftData SQLite database

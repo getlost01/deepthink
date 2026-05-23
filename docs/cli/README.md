@@ -1,6 +1,10 @@
 # CLI documentation
 
-The `deepthink` CLI and `deepthink-mcp` MCP server — built with Bun + TypeScript, compiled to standalone binaries. Both install to `~/.local/bin/` on first app launch (see repository [README](../../README.md) for overview).
+The `deepthink` CLI and `deepthink-mcp` MCP server — built with Bun + TypeScript, compiled to standalone binaries. Both install to `~/.local/bin/` on first app launch.
+
+**Both tools are agent-agnostic and model-agnostic.** The MCP server works with any MCP-capable host (Cursor, Claude Code, Windsurf, VS Code Copilot, Continue, etc.). The CLI works with any LLM or shell automation — no Claude required. Only the in-app AI chat (agents, skills, rules) needs the Claude CLI.
+
+See the repository [README](../../README.md) for the full overview and compatibility table.
 
 ## Docs
 

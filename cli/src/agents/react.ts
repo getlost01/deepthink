@@ -54,18 +54,47 @@ interface ReActStep {
   error?: boolean;
 }
 
-function parseStep(text: string): { thought: string; action: string; params: Record<string, any> } | null {
-  const thought = text.match(/THOUGHT:\s*(.+?)(?=ACTION:|$)/s)?.[1]?.trim();
-  const action = text.match(/ACTION:\s*(\S+)/)?.[1]?.trim();
-  const paramsRaw = text.match(/PARAMS:\s*(\{[\s\S]*?\})(?=\n[A-Z]|$)/)?.[1];
-  if (!thought || !action) return null;
-  let params: Record<string, any> = {};
-  if (paramsRaw) {
-    try {
-      params = JSON.parse(paramsRaw);
-    } catch {}
+function extractJson(text: string): Record<string, any> {
+  const start = text.indexOf("{");
+  if (start === -1) return {};
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") {
+      depth--;
+      if (depth === 0) {
+        try {
+          return JSON.parse(text.slice(start, i + 1));
+        } catch {
+          return {};
+        }
+      }
+    }
   }
-  return { thought, action, params };
+  return {};
+}
+
+function parseStep(text: string): { thought: string; action: string; params: Record<string, any> } | null {
+  const normalized = text.trim().replace(/\r\n/g, "\n");
+  const thoughtMatch = normalized.match(/THOUGHT[:\s]+(.+?)(?=\s*ACTION[:\s]|$)/is);
+  const actionMatch = normalized.match(/ACTION[:\s]+(\S+)/i);
+  const paramsMatch = normalized.match(/PARAMS[:\s]+([\s\S]*?)(?=\s*(?:THOUGHT|ACTION)\b|$)/i);
+
+  const action = actionMatch?.[1]?.trim();
+  if (!action) return null;
+
+  const thought = thoughtMatch?.[1]?.trim() ?? "(no thought)";
+  const params = paramsMatch ? extractJson(paramsMatch[1]) : {};
+  const normalizedAction = action.toUpperCase() === "DONE" ? "DONE" : action;
+
+  return { thought, action: normalizedAction, params };
+}
+
+function progressSummary(steps: ReActStep[]): string {
+  const done = steps.filter((s) => !s.error && s.action !== "DONE");
+  if (done.length === 0) return "No steps completed.";
+  const last = done[done.length - 1];
+  return `Completed ${done.length} step(s). Last: ${last.action} → ${last.observation.slice(0, 200)}`;
 }
 
 export class ReactAgent extends Agent {
@@ -77,6 +106,7 @@ ACTION: tool_name_or_DONE
 PARAMS: {"key": "value"}
 
 If ACTION is DONE, set PARAMS to {"summary": "what was accomplished"}.
+If a tool returns an error, try a different approach rather than repeating the same call.
 
 Available tools:
 ${toolDocs()}
@@ -91,30 +121,63 @@ Rules:
     const steps: ReActStep[] = [];
     let history = `Goal: ${goal}`;
     if (context) history += `\n\nContext:\n${context}`;
+    const seen = new Set<string>();
+    let parseFailures = 0;
 
     for (let i = 0; i < maxSteps; i++) {
-      const response = await this.think(`${history}\n\nStep ${i + 1}:`);
+      let response: string;
+      try {
+        response = await this.think(`${history}\n\nStep ${i + 1}:`);
+      } catch (e: any) {
+        const summary = progressSummary(steps);
+        steps.push({
+          thought: "llm error",
+          action: "DONE",
+          params: {},
+          observation: e.message ?? String(e),
+          error: true,
+        });
+        return { steps, result: `LLM error: ${e.message ?? String(e)}. ${summary}` };
+      }
+
       const parsed = parseStep(response);
 
       if (!parsed) {
-        steps.push({ thought: "parse failed", action: "DONE", params: { summary: response }, observation: "" });
-        return { steps, result: response };
+        parseFailures++;
+        if (parseFailures >= 2) {
+          const summary = progressSummary(steps);
+          steps.push({ thought: "parse failed", action: "DONE", params: { summary }, observation: "" });
+          return { steps, result: summary };
+        }
+        history += `\n\nStep ${i + 1}: [Response did not follow the required format. Output exactly:\nTHOUGHT: ...\nACTION: ...\nPARAMS: {...}]`;
+        i--;
+        continue;
       }
 
+      parseFailures = 0;
       const { thought, action, params } = parsed;
 
       if (action === "DONE") {
-        const summary = params.summary ?? "Task completed.";
+        const summary = params.summary ?? progressSummary(steps);
         steps.push({ thought, action, params, observation: summary });
         return { steps, result: summary };
       }
+
+      const callKey = `${action}:${JSON.stringify(params)}`;
+      if (seen.has(callKey)) {
+        const obs = `[Skipped: identical call already made. Choose a different tool or params.]`;
+        steps.push({ thought, action, params, observation: obs, error: true });
+        history += `\n\nStep ${i + 1}:\nTHOUGHT: ${thought}\nACTION: ${action}\nPARAMS: ${JSON.stringify(params)}\nOBSERVATION: ${obs}`;
+        continue;
+      }
+      seen.add(callKey);
 
       const tool = REACT_TOOLS[action];
       let observation: string;
       let isError = false;
 
       if (!tool) {
-        observation = `Error: unknown tool '${action}'`;
+        observation = `Error: unknown tool '${action}'. Available: ${Object.keys(REACT_TOOLS).join(", ")}`;
         isError = true;
       } else {
         try {
@@ -130,6 +193,6 @@ Rules:
       history += `\n\nStep ${i + 1}:\nTHOUGHT: ${thought}\nACTION: ${action}\nPARAMS: ${JSON.stringify(params)}\nOBSERVATION: ${observation}`;
     }
 
-    return { steps, result: "Max steps reached." };
+    return { steps, result: progressSummary(steps) };
   }
 }

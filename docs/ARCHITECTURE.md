@@ -2,26 +2,35 @@
 
 ## System Overview
 
-DeepThink is a two-component system: a macOS SwiftUI app and a CLI/MCP server binary pair. Both components share a local data directory (`~/DeepThink/`) and operate independently — the app can run without the CLI and vice versa.
+DeepThink has three connected surfaces that share one local data directory (`~/DeepThink/`). The **`deepthink-mcp`** MCP server and **`deepthink`** CLI are the primary, agent-agnostic tools — they work with any AI agent or shell workflow with no Claude dependency. The **native macOS app** is the complementary visual interface; its AI chat requires the Claude CLI, but the workspace data it manages is accessible to any surface.
+
+| Surface | Agent requirement |
+|---------|------------------|
+| `deepthink-mcp` MCP server | **None** — works with Cursor, Claude Code, Windsurf, VS Code Copilot, or any MCP-capable host |
+| `deepthink` CLI | **None** — model-agnostic; `deepthink ask` works with whatever LLM you wire up |
+| In-app AI (chat, agents, skills, rules) | **Claude CLI** required — spawned as a local subprocess |
 
 ```text
-┌─────────────────────────────────────┐    ┌──────────────────────────────────┐
-│        macOS App (SwiftUI)          │    │       CLI + MCP Server           │
-│                                     │    │        (Bun/TypeScript)          │
-│  Workspace · Knowledge · AI Chat   │    │                                  │
-│  Terminal · Quick Capture · MCP UI  │    │  deepthink  ·  deepthink-mcp    │
-└──────────────────┬──────────────────┘    └──────────────┬───────────────────┘
-                   │                                       │
-                   └──────────────┬────────────────────────┘
-                                  │ shared data directory
-                   ┌──────────────▼────────────────────────┐
-                   │          ~/DeepThink/                  │
-                   │                                        │
-                   │  data/deepthink.store  (SwiftData)    │
-                   │  data/vectors.db       (embeddings)   │
-                   │  knowledge/            (markdown FS)  │
-                   │  .claude/agents|rules|commands        │
-                   └────────────────────────────────────────┘
+  External AI agents          Shell / scripts          Claude CLI (optional)
+  Cursor · Windsurf           cron · git hooks         in-app AI chat only
+  VS Code Copilot             deepthink CLI                    │
+  Claude Code · any MCP       model-agnostic                   │ subprocess
+        │ MCP stdio                  │                          ▼
+        ▼                            │              ┌────────────────────────────┐
+  deepthink-mcp                      │              │    macOS App (SwiftUI)     │
+  51 tools · any agent               │              │ Workspace · Knowledge      │
+  readonly flag                      │              │ AI Chat · Terminal · ⌘K   │
+        │                            │              └──────────────┬─────────────┘
+        └────────────────────────────┘                             │
+                     │ shared data directory ◄─────────────────────┘
+        ┌────────────▼───────────────────────────────────────────┐
+        │                  ~/DeepThink/                          │
+        │                                                        │
+        │  data/deepthink.store  (SwiftData / SQLite WAL)       │
+        │  data/vectors.db       (embeddings · Float32)         │
+        │  knowledge/            (markdown FS)                  │
+        │  .claude/agents|rules|commands                        │
+        └────────────────────────────────────────────────────────┘
 ```
 
 ## Tech Stack
@@ -216,6 +225,14 @@ Key services in `DeepThink/Services/`:
 | `CollectorScheduler.swift` | Recurring data collection — FSEvents `FolderWatcher` for folder sources, `Timer` for all others |
 | `StorageService.swift` | Directory structure, paths, logging |
 | `TaskNotificationService.swift` | macOS notifications for due/overdue tasks |
+| `BackupService.swift` | Workspace backup snapshots — create, list, restore full data-directory archives |
+| `VersioningService.swift` | Note version history — snapshot on save, diff, restore to any prior version |
+| `ObsidianImportService.swift` | Obsidian vault import — parse `[[wikilinks]]`, tags, and frontmatter into knowledge entries |
+| `DeadLinkScanner.swift` | Scans all notes for broken `[[wikilinks]]` and reports unresolved targets |
+| `MCPCatalogService.swift` | Discovery and management of third-party MCP servers configured in the app |
+| `DeepThinkCLIService.swift` | Wrapper around the `deepthink` CLI binary — runs commands and streams output into the app |
+| `GlobalHotKey.swift` | Registers system-wide Carbon hotkeys for quick-capture and command palette |
+| `UpdateService.swift` | Sparkle-based auto-update checks and in-app update prompts |
 
 ---
 
@@ -234,21 +251,58 @@ Source at `cli/src/`, compiled to `cli/out/deepthink` and `cli/out/deepthink-mcp
 | `core/llm.ts` | Claude CLI wrapper for CLI-side AI queries |
 | `core/sandbox.ts` | Output directory management |
 
-### Tool Modules
+### Tool Modules (MCP)
 
 | File | Role |
 |------|------|
-| `tools/workspace.ts` | Workspace CRUD MCP tools — tasks, notes, projects, reminders, deep links |
+| `tools/workspace.ts` | Workspace CRUD MCP tools — tasks, notes, projects, reminders, deep links, `workspace_reindex` |
 | `tools/knowledge-mcp.ts` | Knowledge base MCP tools — load, save, search, compress, archive, integrations |
 | `tools/smart-mcp.ts` | Smart context MCP tools — `smart_query`, `knowledge_context`, `workspace_context`, `unified_search`, `deepthink_overview` |
 | `tools/config-mcp.ts` | Agent, rule, and skill CRUD MCP tools |
+
+### CLI-Only Tool Modules
+
+| File | Role |
+|------|------|
+| `tools/knowledge.ts` | CLI-side knowledge commands (non-MCP) |
+| `tools/search.ts` | CLI search command |
+| `tools/file.ts` | CLI file-based operations |
+| `tools/analytics.ts` | CLI analytics and stats output |
+| `tools/memory.ts` | CLI memory/compaction helpers |
+
+### Agent System
+
+13 agent modules in `agents/` implement the CLI's autonomous reasoning layer:
+
+| File | Role |
+|------|------|
+| `agents/base.ts` | Base agent class — tool loop, context injection |
+| `agents/research.ts` | Deep-research agent — multi-step knowledge retrieval |
+| `agents/planner.ts` | Task planning and decomposition |
+| `agents/executor.ts` | Task execution with tool use |
+| `agents/react.ts` | ReAct-style reasoning agent |
+| `agents/analyst.ts` | Data analysis and insight generation |
+| `agents/writer.ts` | Long-form writing with workspace context |
+| `agents/insight.ts` | Periodic insight synthesis |
+| `agents/scheduler.ts` | Schedule management agent |
+| `agents/daily-brief.ts` | Morning briefing generation |
+| `agents/stale-task.ts` | Stale task detection and nudges |
+| `agents/workspace.ts` | Workspace-aware agent helper |
+| `agents/memory.ts` | Agent memory access layer |
+
+### Memory Modules
+
+| File | Role |
+|------|------|
+| `memory/manager.ts` | Conversation memory store — persist and retrieve agent memory across sessions |
+| `memory/compressor.ts` | Compress old memory entries to stay within token budgets |
 
 ### Entry Points
 
 | File | Role |
 |------|------|
 | `index.ts` | CLI entry point and command routing |
-| `mcp-server.ts` | MCP server — registers all 45 tools and 8 resources |
+| `mcp-server.ts` | MCP server — registers all 51 tools and 8 resources |
 
 ---
 

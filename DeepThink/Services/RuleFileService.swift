@@ -50,6 +50,7 @@ final class RuleFileService {
 
     func matchingRules(for context: [String: String]) -> [RuleFile] {
         rules.filter { rule in
+            guard !rule.isDisabled else { return false }
             let trigger = rule.trigger
             if trigger == "always" { return true }
 
@@ -136,56 +137,98 @@ final class RuleFileService {
                 "always",
                 "checkmark.shield",
                 "Knowledge",
-                "When saving or editing knowledge entries:\n- Ensure the title is descriptive and searchable\n- Suggest tags if none exist\n- Flag if content is too vague to be useful later\n- Prefer structured formats (headings, bullets) over walls of text"
+                """
+                When saving or editing knowledge entries:
+                - Ensure the title is descriptive and searchable
+                - Suggest tags if none exist
+                - Flag if content is too vague to be useful later
+                - Prefer structured formats (headings, bullets) over walls of text
+                """
             ),
             (
                 "Meeting Notes",
                 "tag:meeting",
                 "person.2",
                 "Productivity",
-                "When working with meeting notes:\n1. Extract action items as a checklist with owners\n2. Highlight key decisions in bold\n3. Note unresolved questions separately\n4. Add a one-line summary at the top"
+                """
+                When working with meeting notes:
+                1. Extract action items as a checklist with owners
+                2. Highlight key decisions in bold
+                3. Note unresolved questions separately
+                4. Add a one-line summary at the top
+                """
             ),
             (
                 "Source Attribution",
                 "content:web",
                 "globe",
                 "Knowledge",
-                "When capturing content from external sources:\n- Always include the source URL\n- Note the date of capture\n- Distinguish between direct quotes and paraphrased content\n- Flag if the source may become outdated quickly"
+                """
+                When capturing content from external sources:
+                - Always include the source URL
+                - Note the date of capture
+                - Distinguish between direct quotes and paraphrased content
+                - Flag if the source may become outdated quickly
+                """
             ),
             (
                 "Date-Stamp Decisions",
                 "always",
                 "calendar.badge.clock",
                 "Knowledge Quality",
-                "When capturing any decision, assumption, or conclusion — always include the date it was made.\nFormat: \"(decided YYYY-MM-DD)\" appended inline.\nApply to: knowledge entries, notes about architecture/design/process, any \"we decided to...\" statement.\nThis prevents stale decisions from being treated as current guidance."
+                """
+                When capturing any decision, assumption, or conclusion — always include the date it was made.
+                Format: "(decided YYYY-MM-DD)" appended inline.
+                Apply to: knowledge entries, notes about architecture/design/process, any "we decided to..." statement.
+                This prevents stale decisions from being treated as current guidance.
+                """
             ),
             (
                 "Tasks Require Project",
                 "always",
                 "folder.badge.plus",
                 "Workspace Hygiene",
-                "Every new task must be assigned to a project.\nIf the user hasn't specified one, ask \"Which project does this belong to?\" before creating.\nDo not create orphan tasks — unassigned tasks become invisible in project views and rot.\nException: tasks explicitly labeled as personal/admin with no project context."
+                """
+                Every new task must be assigned to a project.
+                If the user hasn't specified one, ask "Which project does this belong to?" before creating.
+                Do not create orphan tasks — unassigned tasks become invisible in project views and rot.
+                Exception: tasks explicitly labeled as personal/admin with no project context.
+                """
             ),
             (
                 "Summarize Before Archive",
                 "always",
                 "archivebox",
                 "Knowledge Quality",
-                "Before archiving a project or note, generate a 3-bullet outcome summary covering:\n1. What was accomplished\n2. Key decisions made (with dates if known)\n3. Any unresolved items or follow-ups\nSave this summary as a knowledge entry tagged with the item's name so archived work stays searchable."
+                """
+                Before archiving a project or note, generate a 3-bullet outcome summary covering:
+                1. What was accomplished
+                2. Key decisions made (with dates if known)
+                3. Any unresolved items or follow-ups
+                Save this summary as a knowledge entry tagged with the item's name so archived work stays searchable.
+                """
             ),
             (
                 "Surface Related Context",
                 "always",
                 "link.circle",
                 "Knowledge Discovery",
-                "When a note is opened or created, search the knowledge base for related entries.\nIf 2+ related items are found, surface them as \"Related:\" context.\nHelps prevent duplicate research and connects ideas across the knowledge base."
+                """
+                When a note is opened or created, search the knowledge base for related entries.
+                If 2+ related items are found, surface them as "Related:" context.
+                Helps prevent duplicate research and connects ideas across the knowledge base.
+                """
             ),
             (
                 "Auto-Escalate Overdue",
                 "always",
                 "exclamationmark.triangle",
                 "Task Management",
-                "Any task with a dueDate in the past and status not Done/Cancelled should be flagged.\nEscalate priority one level (Low→Medium→High→Urgent) and note \"Auto-escalated: overdue as of YYYY-MM-DD\".\nNotify the user of escalations so nothing silently rots."
+                """
+                Any task with a dueDate in the past and status not Done/Cancelled should be flagged.
+                Escalate priority one level (Low→Medium→High→Urgent) and note "Auto-escalated: overdue as of YYYY-MM-DD".
+                Notify the user of escalations so nothing silently rots.
+                """
             )
         ]
 

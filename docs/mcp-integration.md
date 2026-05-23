@@ -11,7 +11,24 @@ DeepThink ships a full MCP (Model Context Protocol) server — `deepthink-mcp` �
 
 ## Setup
 
-### Claude Code (recommended)
+### Cursor / VS Code
+
+`.cursor/mcp.json` or `.vscode/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "deepthink": {
+      "command": "deepthink-mcp",
+      "args": []
+    }
+  }
+}
+```
+
+`deepthink-mcp` must be on your `PATH` or referenced by full path. The binary is auto-installed by the DeepThink app on first launch to `~/.local/bin/deepthink-mcp`.
+
+### Claude Code
 
 ```bash
 claude mcp add --transport stdio --scope user deepthink -- ~/.local/bin/deepthink-mcp
@@ -34,29 +51,12 @@ Or from inside the app: **Settings → Claude → Register Global MCP** (runs th
 }
 ```
 
-### Cursor / VS Code
-
-`.cursor/mcp.json` or `.vscode/mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "deepthink": {
-      "command": "deepthink-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-`deepthink-mcp` must be on your `PATH` or referenced by full path. The binary is auto-installed by the DeepThink app on first launch to `~/.local/bin/deepthink-mcp`.
-
 ---
 
 ## How It Works
 
 ```text
-AI client (Claude Code, Cursor, etc.)
+AI client (Cursor · Claude Code · Windsurf · VS Code Copilot · any MCP host)
     │  MCP request (stdio)
     ▼
 deepthink-mcp
@@ -84,7 +84,7 @@ All read-only tools declare `readonly: true` in their tool definition. Mutating 
 
 ---
 
-## Tool Reference (45 tools)
+## Tool Reference (51 tools)
 
 ### Smart / Context Tools
 
@@ -147,11 +147,12 @@ These run hybrid BM25 + semantic retrieval and are the recommended starting poin
 
 URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://project/UUID`, `deepthink://reminder/UUID`, `deepthink://knowledge?id=<id>`.
 
-### Workspace — Summary
+### Workspace — Utility
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_summary` | true | Full workspace snapshot: project/task/note/reminder counts + recent items. |
+| `workspace_reindex` | — | Trigger a full re-embedding of all workspace items into `vectors.db`. Use after bulk imports or when search quality degrades. |
 
 ### Knowledge Base
 

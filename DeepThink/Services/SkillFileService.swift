@@ -313,7 +313,17 @@ final class SkillFileService {
                 "sun.max",
                 "Productivity",
                 "",
-                "You summarize yesterday's completed work and today's planned work from the workspace. Be concise, bullet-pointed, Slack-ready. Group by project. Keep total under 150 words.\n\nGenerate my standup for today. Show:\n- **Yesterday:** tasks moved to Done in the last 24h\n- **Today:** tasks In Progress or To Do, ordered by priority\n- **Blockers:** anything Urgent or explicitly blocked\n\nGroup by project if more than one is active. No preamble, output only the standup.",
+                """
+                You summarize yesterday's completed work and today's planned work from the workspace. \
+                Be concise, bullet-pointed, Slack-ready. Group by project. Keep total under 150 words.
+
+                Generate my standup for today. Show:
+                - **Yesterday:** tasks moved to Done in the last 24h
+                - **Today:** tasks In Progress or To Do, ordered by priority
+                - **Blockers:** anything Urgent or explicitly blocked
+
+                Group by project if more than one is active. No preamble, output only the standup.
+                """,
                 ["tasks", "projects"]
             ),
             (
@@ -321,7 +331,19 @@ final class SkillFileService {
                 "chart.bar.doc.horizontal",
                 "Projects",
                 "",
-                "You analyze a project's task distribution, overdue items, and stalled work. Surface risks and blockers clearly. Be direct — no filler.\n\nAnalyze project \"{{input}}\" and report:\n1. Task breakdown by status (counts + %)\n2. Overdue tasks (past due date, not Done/Cancelled)\n3. Tasks stuck In Progress >7 days\n4. Tasks with no due date and High/Urgent priority\n5. Top 3 risks based on the above\n\nFormat as sections with bullet points.",
+                """
+                You analyze a project's task distribution, overdue items, and stalled work. \
+                Surface risks and blockers clearly. Be direct — no filler.
+
+                Analyze project "{{input}}" and report:
+                1. Task breakdown by status (counts + %)
+                2. Overdue tasks (past due date, not Done/Cancelled)
+                3. Tasks stuck In Progress >7 days
+                4. Tasks with no due date and High/Urgent priority
+                5. Top 3 risks based on the above
+
+                Format as sections with bullet points.
+                """,
                 ["tasks", "projects", "notes"]
             ),
             (
@@ -329,7 +351,19 @@ final class SkillFileService {
                 "questionmark.diamond",
                 "Knowledge",
                 "",
-                "You identify topics mentioned in tasks and notes that lack corresponding knowledge base entries. Surface what's undocumented.\n\nScan my current tasks and notes. Identify topics, decisions, concepts, or tools that are referenced but NOT documented in the knowledge base.\n\nOutput as a ranked list:\n- **Topic** — why it matters, which task/note references it\n- Sort by: how frequently referenced > how recently mentioned\n\nEnd with 3 specific capture prompts the user can act on immediately.",
+                """
+                You identify topics mentioned in tasks and notes that lack corresponding knowledge base entries. \
+                Surface what's undocumented.
+
+                Scan my current tasks and notes. Identify topics, decisions, concepts, or tools \
+                that are referenced but NOT documented in the knowledge base.
+
+                Output as a ranked list:
+                - **Topic** — why it matters, which task/note references it
+                - Sort by: how frequently referenced > how recently mentioned
+
+                End with 3 specific capture prompts the user can act on immediately.
+                """,
                 ["tasks", "notes", "knowledge"]
             )
         ]

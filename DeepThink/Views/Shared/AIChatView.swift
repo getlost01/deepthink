@@ -625,8 +625,7 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
-            {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -652,8 +651,7 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID)
-        {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
             let recent = Array(prior.suffix(4))
             return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }
@@ -813,13 +811,27 @@ struct AIChatView: View {
                 }
 
                 var systemPrompt: String = if let agent = selectedAgent {
-                    AgentFileService.shared.buildSystemPrompt(for: agent, query: text)
+                    AgentFileService.shared.buildSystemPrompt(for: agent, query: text, context: appState.activeContextDictionary)
                 } else if isWorkspace {
-                    "You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list tasks, notes, and projects. When the user asks to create or modify workspace items, USE the workspace tools to do it — don't just describe what you would do. After using a tool, confirm what was done. Be concise. Use markdown formatting."
+                    """
+                    You are DeepThink AI, a workspace assistant with tools to create, update, delete, and list \
+                    tasks, notes, and projects. When the user asks to create or modify workspace items, USE the \
+                    workspace tools to do it — don't just describe what you would do. After using a tool, confirm \
+                    what was done. Be concise. Use markdown formatting.
+                    """
                 } else if isFollowUp {
-                    "You are DeepThink AI. The user is asking a follow-up question — use the conversation history above to answer directly and concisely. Do not re-introduce context already established. Use markdown formatting."
+                    """
+                    You are DeepThink AI. The user is asking a follow-up question — use the conversation history \
+                    above to answer directly and concisely. Do not re-introduce context already established. \
+                    Use markdown formatting.
+                    """
                 } else {
-                    "You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge base which is automatically searched for relevant context. You help with analysis, research, writing, coding, and organization. Be concise and direct. Use markdown formatting. When your answer draws on knowledge base entries, mention which sources informed it."
+                    """
+                    You are DeepThink AI, a powerful knowledge assistant. You have access to the user's knowledge \
+                    base which is automatically searched for relevant context. You help with analysis, research, \
+                    writing, coding, and organization. Be concise and direct. Use markdown formatting. When your \
+                    answer draws on knowledge base entries, mention which sources informed it.
+                    """
                 }
 
                 if selectedAgent == nil, let rulesPrompt = activeRulesSystemPrompt() {
@@ -1085,7 +1097,14 @@ struct AIChatView: View {
         suggestedFollowUps = []
 
         followUpTask = Task {
-            let prompt = "Based on this conversation exchange, suggest exactly 3 short follow-up questions the user might ask next. Each must be under 60 characters. Output ONLY the 3 questions, one per line, no numbering, no bullets, no quotes.\n\nUser: \(userMessage.prefix(300))\nAssistant: \(assistantMessage.prefix(500))"
+            let prompt = """
+                Based on this conversation exchange, suggest exactly 3 short follow-up questions \
+                the user might ask next. Each must be under 60 characters. Output ONLY the 3 questions, \
+                one per line, no numbering, no bullets, no quotes.
+
+                User: \(userMessage.prefix(300))
+                Assistant: \(assistantMessage.prefix(500))
+                """
 
             guard let result = try? await ClaudeService.shared.query(
                 prompt,

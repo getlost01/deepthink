@@ -2,23 +2,26 @@ import { REPO_RELEASES_LATEST_URL } from '../constants/repo'
 
 export const landingContent = {
   hero: {
-    badge: 'macOS 14+ · Open source · Local-first · Bundled CLI & MCP',
+    badge: 'macOS 14+ · Open source · Local-first · MCP for any agent',
     title:
-      'Connected Workspace and Knowledge Base for AI Agents with Hybrid RAG and Native CLI + MCP Support',
+      'Agent-Agnostic MCP Server and CLI for Your Local Knowledge Base with Hybrid RAG and Native macOS App',
     subtitle:
-      'DeepThink keeps your corpus in ~/DeepThink: indexed notes, captures, imports, and linked knowledge. Hybrid retrieval (BM25 + semantic search) powers Claude. The bundled deepthink CLI and MCP server use that same store with no duplicate wiki or hidden uploads.',
+      'DeepThink keeps your corpus in ~/DeepThink: indexed notes, captures, imports, and linked knowledge. Hybrid retrieval (BM25 + semantic search) powers any agent through MCP — Cursor, Claude Code, Windsurf, or any MCP-capable editor. The bundled CLI and MCP server share that same store with no duplicate wiki or hidden uploads.',
     primaryCta: { label: 'Download for macOS', href: REPO_RELEASES_LATEST_URL },
     secondaryCta: { label: 'Documentation', to: '/documentation' },
     stats: [
       { value: '100%', label: 'your vault stays on disk' },
-      { value: 'CLI + MCP', label: 'MCP server — same workspace as the app' },
+      {
+        value: 'CLI + MCP',
+        label: 'agent-agnostic — Cursor, Claude Code, Windsurf',
+      },
       { value: 'BM25 + RRF', label: 'keyword + semantic hybrid retrieval' },
     ],
   },
   snapshot: {
     title: 'What DeepThink delivers',
     intro:
-      'A native macOS workspace for owning context: capture and connect material, inspect relationships through the graph, and run hybrid retrieval grounded in what you saved. Agents in Cursor or the terminal reuse that knowledge through MCP and the CLI instead of rebuilding summaries in disposable chats.',
+      'A robust MCP server and CLI that connects any agent to your local knowledge base — plus a native macOS app for managing workspace and AI chat. Cursor, Claude Code, Windsurf, or shell scripts retrieve structured context from ~/DeepThink through MCP tools and the CLI instead of rebuilding summaries in disposable chats.',
     badges: [
       'Bundled deepthink CLI',
       'deepthink-mcp tools',
@@ -28,19 +31,19 @@ export const landingContent = {
     ],
     pillars: [
       {
-        title: 'Wire agents to your corpus',
+        title: 'Connect any agent to your corpus',
         description:
-          'MCP exposes tools under your control so editors pull specs, bookmarks, and notes from ~/DeepThink with explicit wiring, not a SaaS scraping your repo.',
+          'deepthink-mcp works with Cursor, Claude Code, Windsurf, VS Code Copilot, or any MCP-capable editor — pull specs, notes, and knowledge from ~/DeepThink with explicit wiring, not a SaaS scraping your repo.',
       },
       {
         title: 'Script and automate the same brain',
         description:
-          'The CLI speaks to the live workspace for search, capture, and jobs: cron, git hooks, and headless workflows without exporting a second copy of your notes.',
+          'The model-agnostic CLI speaks to the live workspace for search, capture, and jobs: cron, git hooks, and headless workflows without exporting a second copy of your notes.',
       },
       {
-        title: 'Browse and curate locally',
+        title: 'Browse and curate with the macOS app',
         description:
-          'The SwiftUI app is where you ingest, organize, and preview context so what agents retrieve stays aligned with what you see on disk.',
+          'The complementary SwiftUI app is where you ingest, organize, and preview context — its AI chat requires Claude CLI, but the workspace it manages is accessible to any agent.',
       },
     ],
   },
@@ -67,7 +70,7 @@ export const landingContent = {
     capabilities: {
       title: 'Core capabilities',
       subtitle:
-        'Everything below stays local and feeds the retrieval stack powering Claude, MCP, and the CLI.',
+        'Everything below stays local and feeds the retrieval stack powering any agent through MCP and the CLI.',
     },
     appCliMcp: {
       title: 'App, CLI, and MCP',
@@ -120,19 +123,19 @@ export const landingContent = {
   ],
   platformContext: [
     {
-      title: 'Native app',
+      title: 'Native app (Claude-powered AI chat)',
       description:
-        '~/DeepThink is the source of truth. CLI writes sync live via Darwin notification → CLISyncService → AppState so the UI always reflects the latest state.',
+        '~/DeepThink is the source of truth. CLI and MCP writes sync live via Darwin notification → CLISyncService → AppState. In-app AI chat, agents, skills, and rules require Claude CLI.',
       points: [
-        'SwiftUI on macOS 14+',
+        'SwiftUI on macOS 14+ — complementary interface',
         'Live sync from CLI/MCP writes via Darwin notification',
         'Built-in terminal with AI-focused log review',
       ],
     },
     {
-      title: 'CLI workflow',
+      title: 'CLI — model-agnostic',
       description:
-        'Every CLI write is atomic: snapshot → dt_trash → SQL mutation → dt_audit_log in one transaction. notifyutil fires after commit to sync the app.',
+        'Every CLI write is atomic: snapshot → dt_trash → SQL mutation → dt_audit_log in one transaction. Works with any AI or shell workflow — no Claude required.',
       points: [
         'Shared SwiftData-backed workspace (WAL mode)',
         'Atomic deletes with full row snapshot in dt_trash',
@@ -140,9 +143,9 @@ export const landingContent = {
       ],
     },
     {
-      title: 'MCP integration',
+      title: 'MCP — any agent',
       description:
-        '45 tools across smart, workspace, knowledge, and config categories. Read-only tools carry readonly: true so MCP clients can enforce safe-read boundaries.',
+        '45 tools across smart, workspace, knowledge, and config categories. Works with Cursor, Claude Code, Windsurf, VS Code Copilot, or any MCP-capable host — Claude is not required.',
       points: [
         '45 MCP tools — smart_query, unified_search, workspace_*, knowledge_*',
         'readonly flag distinguishes reads from mutations',
@@ -176,7 +179,7 @@ export const landingContent = {
       {
         title: 'AI assistant',
         description:
-          'Resume threads, use MCP tools, and access live workspace context directly from the assistant.',
+          'Resume threads, use MCP tools, and access live workspace context from the Claude-powered in-app assistant (requires Claude CLI).',
         image: '/images/ai-assistant.png',
       },
       {
@@ -266,9 +269,9 @@ export const landingContent = {
     },
   ],
   finalCta: {
-    title: 'Keep context where MCP and the CLI can reuse it.',
+    title: 'Connect any agent to your local knowledge base.',
     subtitle:
-      'Download the macOS app to access the bundled toolchain, then connect editors and terminal workflows to ~/DeepThink without giving up ownership.',
+      'Download the macOS app to get the bundled MCP server and CLI, then point Cursor, Claude Code, Windsurf, or any editor agent at ~/DeepThink without giving up ownership.',
     primaryLabel: 'Download latest release',
     secondaryLabel: 'Open documentation',
   },

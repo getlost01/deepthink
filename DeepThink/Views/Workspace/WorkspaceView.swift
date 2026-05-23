@@ -45,9 +45,9 @@ struct WorkspaceView: View {
 
     private func tabCount(for tab: WorkspaceTab) -> Int? {
         switch tab {
-        case .projects: return allProjects.count > 0 ? allProjects.count : nil
-        case .notes: return allNotes.count > 0 ? allNotes.count : nil
-        case .tasks: return allTasks.count(where: { $0.parent == nil }) > 0 ? allTasks.count(where: { $0.parent == nil }) : nil
+        case .projects: !allProjects.isEmpty ? allProjects.count : nil
+        case .notes: !allNotes.isEmpty ? allNotes.count : nil
+        case .tasks: allTasks.count(where: { $0.parent == nil }) > 0 ? allTasks.count(where: { $0.parent == nil }) : nil
         }
     }
 

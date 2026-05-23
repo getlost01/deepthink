@@ -1,6 +1,8 @@
 # DeepThink — Full System Flow Diagram
 
-End-to-end data flow across the macOS app, CLI, MCP server, RAG pipeline, and live sync.
+End-to-end data flow across the MCP server (agent-agnostic), CLI (model-agnostic), macOS app, RAG pipeline, and live sync.
+
+> **AI compatibility note:** The MCP server and CLI work with any agent — Cursor, Claude Code, Windsurf, VS Code Copilot, shell scripts, or cron jobs. Claude CLI is only required for in-app AI chat, agents, skills, and rules. The "Claude" node at the bottom of this diagram represents that optional in-app path only.
 
 ```mermaid
 flowchart TB
@@ -122,8 +124,8 @@ flowchart TB
         WIN --> BUDGET --> OUT
     end
 
-    subgraph MCP_TOOLS["MCP Tools (45 total)"]
-        RO_TOOLS["readonly: true\nworkspace_list_* · workspace_get_*\nworkspace_summary\nknowledge_stats · knowledge_list_*\nknowledge_search · knowledge_load_*\nagent/rule/skill list+get"]
+    subgraph MCP_TOOLS["MCP Tools (51 total)"]
+        RO_TOOLS["readonly: true\nworkspace_list_* · workspace_get_*\nworkspace_summary · workspace_reindex\nknowledge_stats · knowledge_list_*\nknowledge_search · knowledge_load_*\nagent/rule/skill list+get"]
         MUT_TOOLS["mutating\nworkspace_create/update/delete_*\nknowledge_save/capture/compress\nagent/rule/skill create+delete\n→ all go through TXN + audit + sync"]
         SMART_TOOLS["smart tools\nsmart_query · unified_search\nknowledge_context\nworkspace_context\ndeepthink_overview\n→ all go through RAG pipeline"]
     end

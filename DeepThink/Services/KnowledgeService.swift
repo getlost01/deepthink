@@ -169,7 +169,7 @@ final class KnowledgeService {
 
         var frontmatter: [String: String] = [:]
         var bodyStartIndex = 1
-        var currentListKey: String? = nil
+        var currentListKey: String?
         var currentListItems: [String] = []
 
         func flushList() {

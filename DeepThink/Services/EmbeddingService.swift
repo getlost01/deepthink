@@ -322,7 +322,7 @@ final class EmbeddingService {
         return denom > 0 ? dot / denom : 0
     }
 
-    // 32-bit djb2 addition over UTF-8 bytes — matches TypeScript's simpleHash exactly.
+    /// 32-bit djb2 addition over UTF-8 bytes — matches TypeScript's simpleHash exactly.
     private func simpleHash(_ text: String) -> UInt64 {
         var hash: UInt32 = 5381
         for byte in text.utf8 {

@@ -109,8 +109,7 @@ final class ContextEngine {
 
             if let project = projectScope {
                 if chunk.title.localizedCaseInsensitiveContains(project) ||
-                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame })
-                {
+                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame }) {
                     score *= 1.5
                 }
             }

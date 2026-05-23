@@ -221,7 +221,7 @@ struct DSTabButton: View {
     let title: String
     var icon: String?
     let isSelected: Bool
-    var count: Int? = nil
+    var count: Int?
     let action: () -> Void
     @State private var isHovered = false
 
@@ -1294,8 +1294,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
                     DispatchQueue.main.async { self.parent.onContentSettled?() }
                 }
             } else if message.name == "linkClicked", let urlStr = message.body as? String,
-                      let url = URL(string: urlStr)
-            {
+                      let url = URL(string: urlStr) {
                 DispatchQueue.main.async { self.onLinkClick?(url) }
             } else if message.name == "requestLinkInsert", let type = message.body as? String {
                 DispatchQueue.main.async { self.onRequestLinkInsert?(type) }
@@ -1307,8 +1306,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateWikiLinks(_ map: [String: String]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setWikiLinks(\(json))")
             }
         }
@@ -1316,8 +1314,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateLinkPreviews(_ map: [String: [String: String]]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setLinkPreviews(\(json))")
             }
         }
@@ -1325,8 +1322,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateDeadLinks(_ uuids: Set<String>) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: Array(uuids)),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setDeadLinkUUIDs(\(json))")
             }
         }

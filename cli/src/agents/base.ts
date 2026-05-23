@@ -15,13 +15,22 @@ export abstract class Agent {
   saveOutput: boolean = false;
   log: LogEntry[] = [];
 
-  async think(prompt: string): Promise<string> {
+  async think(prompt: string, retries = 1): Promise<string> {
     const memCtx = buildMemoryContext(this.name);
     const sys = memCtx ? `${this.systemPrompt}\n\n${memCtx}` : this.systemPrompt;
-    const response = await query(prompt, sys);
-    this.record(prompt, response);
-    appendObservation(this.name, `${prompt.slice(0, 80)} → ${response.slice(0, 120)}`);
-    return response;
+    let lastError: unknown;
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const response = await query(prompt, sys);
+        this.record(prompt, response);
+        appendObservation(this.name, `${prompt.slice(0, 80)} → ${response.slice(0, 120)}`);
+        return response;
+      } catch (e) {
+        lastError = e;
+        if (attempt < retries) await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      }
+    }
+    throw lastError;
   }
 
   private record(prompt: string, response: string): void {

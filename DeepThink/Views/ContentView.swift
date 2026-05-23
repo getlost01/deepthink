@@ -177,7 +177,6 @@ struct ContentRouter: View {
             }
         }
         .onChange(of: appState.externalSyncToken) { _, _ in
-            modelContext.refreshAllObjects()
             listRefreshID += 1
         }
     }
