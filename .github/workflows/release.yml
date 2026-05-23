@@ -49,6 +49,11 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             | xcpretty --color 2>/dev/null || cat
 
+      - name: Ad-hoc sign app
+        run: |
+          APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
+          codesign --force --deep --sign - "$APP_PATH"
+
       - name: Package zip
         run: |
           APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
