@@ -75,18 +75,16 @@ final class CollectorScheduler {
     private func syncSource(id: UUID) {
         guard let container else { return }
 
-        DispatchQueue.global(qos: .utility).async {
+        Task.detached(priority: .utility) { [weak self] in
             let context = ModelContext(container)
             let descriptor = FetchDescriptor<DataSource>(predicate: #Predicate<DataSource> { $0.id == id })
             guard let source = try? context.fetch(descriptor).first else { return }
 
-            Task {
-                await DataCollectorService.shared.sync(source: source, container: container)
+            await DataCollectorService.shared.sync(source: source, container: container)
 
-                await MainActor.run {
-                    self.activeSources[id] = Date()
-                    try? context.save()
-                }
+            try? context.save()
+            await MainActor.run {
+                self?.activeSources[id] = Date()
             }
         }
     }

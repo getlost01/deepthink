@@ -47,7 +47,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            | xcpretty --color 2>/dev/null || cat
+            | xcpretty --color || true; exit "${PIPESTATUS[0]}"
 
       - name: Ad-hoc sign app
         run: |
