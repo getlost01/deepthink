@@ -14,7 +14,6 @@
 		08BC8620EF79F498A7638158 /* editor.bundle.js in Resources */ = {isa = PBXBuildFile; fileRef = 6E5D80FD3C638E1DDAD6961D /* editor.bundle.js */; };
 		09A5B19621F51B4465925EFD /* DataSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AC481A9BCCB447E8BB39804 /* DataSource.swift */; };
 		0CE09CA803E5FFF48104D2A4 /* MarkdownEditorWithToggle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A06408E820810B6F96C2F747 /* MarkdownEditorWithToggle.swift */; };
-		0C1A2B3C4D5E6F7081929AAA /* CLISyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */; };
 		0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */; };
 		0F6DE790355F98D52B88A16E /* Note.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36CF5F5545352A9E8C751ED3 /* Note.swift */; };
 		0FF2A86195CF7229784E1974 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 306A8A7284D41C7FA40818BB /* NoteEditorView.swift */; };
@@ -66,6 +65,7 @@
 		8B94A2A274C1F4D160B9C3FB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D7A4EF57F552986078971D26 /* Assets.xcassets */; };
 		8BBBEEC83A0299ED6C484E3E /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FD6E3C699838F6B6313A2D /* Enums.swift */; };
 		9356DECAB0CFE77A9A4D6BF5 /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */; };
+		93A785642AA8FB650B2F89E9 /* CLISyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E425ADB9CED0B98F528774FB /* CLISyncService.swift */; };
 		99AAF612C230A61EE4498BF1 /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49DACC2342FDEA5CD1242861 /* NoteListView.swift */; };
 		A36E6427AE6B21AAC6D69B29 /* ActiveRulesBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B46F832E2500CF5FFF86747 /* ActiveRulesBar.swift */; };
 		A45A891DECB1D74EF2A5B2FD /* ObsidianImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630747ACA3A0EFBE8FB35A77 /* ObsidianImportView.swift */; };
@@ -121,7 +121,6 @@
 		05F1A0F50C47FEEFD23BB385 /* ChatBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBubble.swift; sourceTree = "<group>"; };
 		0600BB6D0E20A8A684ED8D07 /* MCPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPService.swift; sourceTree = "<group>"; };
 		0784749C45091B5719161924 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
-		0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLISyncService.swift; sourceTree = "<group>"; };
 		0C223BF79E3501B2849D0061 /* KnowledgeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeView.swift; sourceTree = "<group>"; };
 		1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeExtractionService.swift; sourceTree = "<group>"; };
 		15F1316DBB5604DCB63BED10 /* SkillFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFile.swift; sourceTree = "<group>"; };
@@ -211,6 +210,7 @@
 		DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalSession.swift; sourceTree = "<group>"; };
 		E24730C11D122CF0AEB59686 /* AgentListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentListView.swift; sourceTree = "<group>"; };
 		E3F4FB3354B14BF6E35411D4 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
+		E425ADB9CED0B98F528774FB /* CLISyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLISyncService.swift; sourceTree = "<group>"; };
 		E6D4DBF219661F83A81948C4 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
 		ECD984C2D8AA7167A72F4992 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		EE3B3F89EA7F9BAF3FD80471 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
@@ -271,13 +271,6 @@
 				F49D6DB09D27EE629FACCADE /* TerminalView.swift */,
 			);
 			path = Terminal;
-			sourceTree = "<group>";
-		};
-		25E962E33F99CAB988BD7F17 /* DeepSearch */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = DeepSearch;
 			sourceTree = "<group>";
 		};
 		292EC46B8FE94D04A767D8B3 /* Recent */ = {
@@ -358,8 +351,8 @@
 				6EC64CBB4FA445B4649AE1E0 /* ArchiveService.swift */,
 				DBC2A1370697934F16E2AF9D /* BacklinkService.swift */,
 				C0FA0B0EF4EF57C609BFC6DA /* BackupService.swift */,
-				0C1A2B3C4D5E6F7081929BBB /* CLISyncService.swift */,
 				D1E8AF65F4E530324FE84B2D /* ClaudeService.swift */,
+				E425ADB9CED0B98F528774FB /* CLISyncService.swift */,
 				7E4A3172FFA3BA5390144D09 /* CollectorScheduler.swift */,
 				4812F0BAB761C0C2D9EC1324 /* ContextEngine.swift */,
 				84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */,
@@ -398,11 +391,8 @@
 				85913E0C3242EC5DDD5A16AC /* ContentView.swift */,
 				364FB929789B66DF8D4F8E19 /* Agents */,
 				BF44C7D40BE76179DAFE4AB1 /* AI */,
-				6ED08336360BCCD0737C580C /* Automation */,
 				2BC602B94B476971CAA885C7 /* Chat */,
 				EF7FA233F182B3FCB79197F0 /* CommandPalette */,
-				25E962E33F99CAB988BD7F17 /* DeepSearch */,
-				9C567DD7169A411E9B316110 /* Docs */,
 				BF16D63BAF179FEA3133D853 /* Knowledge */,
 				0DA13E31242007EA05FF001C /* KnowledgeGraph */,
 				BB62AE060EB91288CD0D701B /* Notes */,
@@ -422,13 +412,6 @@
 			path = Views;
 			sourceTree = "<group>";
 		};
-		6ED08336360BCCD0737C580C /* Automation */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Automation;
-			sourceTree = "<group>";
-		};
 		6FD9C3393140DC6D26AA4CCE /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -445,13 +428,6 @@
 				4F275DFF4FDCF5E5906CA86E /* DeepThink.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		9C567DD7169A411E9B316110 /* Docs */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = Docs;
 			sourceTree = "<group>";
 		};
 		AE3C4AB48A9AE3413110EAA7 /* Shared */ = {
@@ -667,15 +643,11 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
-				"$(SRCROOT)/cli/out/deepthink",
-				"$(SRCROOT)/cli/out/deepthink-mcp",
 			);
 			name = "Bundle DeepThink CLI + MCP";
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/deepthink-cli",
-				"$(BUILT_PRODUCTS_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/deepthink-mcp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -701,11 +673,11 @@
 				7ED7DBC593FCF26DA5BD8DB9 /* ArchiveService.swift in Sources */,
 				4A43D1155AA1270927CCF924 /* BacklinkService.swift in Sources */,
 				EF9A2AD94F0AF6BBDB7FE98D /* BackupService.swift in Sources */,
+				93A785642AA8FB650B2F89E9 /* CLISyncService.swift in Sources */,
 				81D50A098EF35CD8F47578C3 /* ChatBubble.swift in Sources */,
 				C46E34B2FFBEC78E725C4F98 /* ChatComponents.swift in Sources */,
 				ADD2B6A0C5CDF057A6C73230 /* ChatHistorySidebar.swift in Sources */,
 				2E47277475F632844BA34247 /* ChatMarkdownView.swift in Sources */,
-				0C1A2B3C4D5E6F7081929AAA /* CLISyncService.swift in Sources */,
 				0D270293F3D54E7F29B169E0 /* ClaudeService.swift in Sources */,
 				7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */,
 				FA6AE2D7E94BBABE2D6EAFAD /* CollectorScheduler.swift in Sources */,
