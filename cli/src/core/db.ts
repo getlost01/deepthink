@@ -431,7 +431,9 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
 }
 
 export function listSubtaskIds(parentPk: number): string[] {
-  const rows = getDB().query("SELECT hex(ZID) as id FROM ZTASKITEM WHERE ZPARENT = ?").all(parentPk) as { id: string }[];
+  const rows = getDB().query("SELECT hex(ZID) as id FROM ZTASKITEM WHERE ZPARENT = ?").all(parentPk) as {
+    id: string;
+  }[];
   return rows.map((r) => r.id);
 }
 

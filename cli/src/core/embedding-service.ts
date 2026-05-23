@@ -331,23 +331,70 @@ export function drainPendingReindex(): { processed: number; failed: number } {
 
       if (row.entryType === "task") {
         const t = taskMap.get(row.entryId);
-        if (!t) { deletePendingReindex(row.entryId); continue; }
-        entry = { id: row.entryId, type: "task", title: t.title, content: taskContent(t.title, t.detail, t.status, t.isArchived), tags: [], source: t.isArchived ? "archive" : "task", importedAt: t.modifiedAt };
+        if (!t) {
+          deletePendingReindex(row.entryId);
+          continue;
+        }
+        entry = {
+          id: row.entryId,
+          type: "task",
+          title: t.title,
+          content: taskContent(t.title, t.detail, t.status, t.isArchived),
+          tags: [],
+          source: t.isArchived ? "archive" : "task",
+          importedAt: t.modifiedAt,
+        };
       } else if (row.entryType === "note") {
         const n = noteMap.get(row.entryId);
-        if (!n) { deletePendingReindex(row.entryId); continue; }
-        entry = { id: row.entryId, type: "note", title: n.title, content: noteContent(n.title, n.content, n.isArchived), tags: [], source: n.isArchived ? "archive" : "note", importedAt: n.modifiedAt };
+        if (!n) {
+          deletePendingReindex(row.entryId);
+          continue;
+        }
+        entry = {
+          id: row.entryId,
+          type: "note",
+          title: n.title,
+          content: noteContent(n.title, n.content, n.isArchived),
+          tags: [],
+          source: n.isArchived ? "archive" : "note",
+          importedAt: n.modifiedAt,
+        };
       } else if (row.entryType === "reminder") {
         const r = reminderMap.get(row.entryId);
-        if (!r) { deletePendingReindex(row.entryId); continue; }
-        entry = { id: row.entryId, type: "reminder", title: r.title, content: reminderContent(r.title, r.notes, r.isCompleted), tags: [], source: "reminder", importedAt: r.modifiedAt };
+        if (!r) {
+          deletePendingReindex(row.entryId);
+          continue;
+        }
+        entry = {
+          id: row.entryId,
+          type: "reminder",
+          title: r.title,
+          content: reminderContent(r.title, r.notes, r.isCompleted),
+          tags: [],
+          source: "reminder",
+          importedAt: r.modifiedAt,
+        };
       } else if (row.entryType === "project") {
         const p = projectMap.get(row.entryId);
-        if (!p) { deletePendingReindex(row.entryId); continue; }
-        entry = { id: row.entryId, type: "project", title: p.name, content: projectContent(p.name, p.summary, p.isArchived), tags: [], source: p.isArchived ? "archive" : "project", importedAt: p.modifiedAt };
+        if (!p) {
+          deletePendingReindex(row.entryId);
+          continue;
+        }
+        entry = {
+          id: row.entryId,
+          type: "project",
+          title: p.name,
+          content: projectContent(p.name, p.summary, p.isArchived),
+          tags: [],
+          source: p.isArchived ? "archive" : "project",
+          importedAt: p.modifiedAt,
+        };
       }
 
-      if (!entry) { deletePendingReindex(row.entryId); continue; }
+      if (!entry) {
+        deletePendingReindex(row.entryId);
+        continue;
+      }
 
       indexEntryCore(entry);
       deletePendingReindex(row.entryId);
@@ -364,7 +411,11 @@ export function drainPendingReindex(): { processed: number; failed: number } {
 
 // Start a 30-second background reconciler that drains the pending_reindex queue.
 export function startReconciler(): void {
-  setInterval(() => { try { drainPendingReindex(); } catch {} }, 30_000);
+  setInterval(() => {
+    try {
+      drainPendingReindex();
+    } catch {}
+  }, 30_000);
 }
 
 // MARK: - Content string builders (canonical format — keep in sync with Swift side)

@@ -23,9 +23,10 @@ final class InstallationManager {
     var mcpState: StepState = .pending
     var pathState: StepState = .pending
     var mcpRegisterState: StepState = .pending
+    var commandsState: StepState = .pending
 
     var isComplete: Bool {
-        cliState.isDone && mcpState.isDone && pathState.isDone && mcpRegisterState.isDone
+        cliState.isDone && mcpState.isDone && pathState.isDone && mcpRegisterState.isDone && commandsState.isDone
     }
 
     private var didRun = false
@@ -66,6 +67,11 @@ final class InstallationManager {
             self.setState(\.pathState, .running)
             Self.ensureLocalBinInPath()
             self.setState(\.pathState, .done)
+
+            // ── Claude Code slash commands ────────────────────────────────────
+            self.setState(\.commandsState, .running)
+            Self.installClaudeCommands()
+            self.setState(\.commandsState, .done)
 
             StorageService.shared.writeLog("Installation complete", to: "app")
         }
@@ -148,6 +154,93 @@ final class InstallationManager {
         process.waitUntilExit()
         return process.terminationStatus == 0
     }
+
+    // MARK: - Claude Code slash commands
+
+    private static func installClaudeCommands() {
+        let commandsDir = NSHomeDirectory() + "/.claude/commands/deepthink"
+        try? FileManager.default.createDirectory(atPath: commandsDir, withIntermediateDirectories: true)
+
+        let commands: [(filename: String, content: String)] = [
+            ("sync-session.md", syncSessionCommandContent)
+        ]
+
+        for command in commands {
+            let path = commandsDir + "/" + command.filename
+            let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
+            guard existing != command.content else { continue }
+            try? command.content.write(toFile: path, atomically: true, encoding: .utf8)
+        }
+
+        StorageService.shared.writeLog("Claude Code commands installed → \(commandsDir)", to: "app")
+    }
+
+    private static let syncSessionCommandContent = #"""
+---
+description: Summarize the current Claude Code session and store it in the DeepThink knowledge base. Captures what was worked on, decisions made, files changed, and open items.
+---
+
+Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
+
+## Step 1 — Derive context
+
+Determine:
+- **project**: the git repo name (from `basename $(git rev-parse --show-toplevel)` if in a repo, else the working directory basename). If `$ARGUMENTS` is non-empty, use it as an override project name.
+- **date**: today in `YYYY-MM-DD` format
+- **working_dir**: current working directory
+
+## Step 2 — Build the session summary
+
+Produce a structured markdown document covering this session. Use only what actually happened — do not invent or pad.
+
+```
+# Session: <date> — <one-line topic>
+
+**Project:** <project>
+**Directory:** <working_dir>
+**Date:** <date>
+
+## What was worked on
+<bullet list of features, bugs, tasks touched>
+
+## Key decisions
+<bullet list of architectural/design/approach decisions made>
+
+## Files changed
+<bullet list of notable files created or modified, with a short reason>
+
+## Outcomes
+<what was completed or resolved>
+
+## Open items / follow-ups
+<anything left unresolved, deferred, or flagged for later — "none" if clean>
+```
+
+Omit any section that has no content (e.g. skip "Files changed" if no files were touched).
+
+## Step 3 — Capture to DeepThink
+
+Call `mcp__deepthink__knowledge_capture` with:
+- `source`: `"claude-code"`
+- `channel`: the project name from Step 1 (lowercase, spaces as hyphens)
+- `content`: the full markdown document from Step 2
+- `title`: `"Session <date>: <one-line topic>"`
+- `tags`: `["session-log", "<project-slug>", "<date>"]`
+
+## Step 4 — Confirm
+
+After the tool call succeeds, output a single confirmation line:
+
+```
+Saved session to DeepThink — claude-code/<channel>: "<title>"
+```
+
+If the capture tool is unavailable, print:
+```
+DeepThink MCP not connected. Session summary:
+```
+followed by the full markdown from Step 2 so nothing is lost.
+"""#
 
     // MARK: - PATH setup
 

@@ -1,6 +1,13 @@
 import * as db from "../core/db";
 import { hexToUUID, listSubtaskIds } from "../core/db";
-import { indexEntry, noteContent, projectContent, reindexWorkspace, reminderContent, taskContent } from "../core/embedding-service";
+import {
+  indexEntry,
+  noteContent,
+  projectContent,
+  reindexWorkspace,
+  reminderContent,
+  taskContent,
+} from "../core/embedding-service";
 import { deleteChunksForEntry } from "../core/vector-store";
 
 export interface WorkspaceTool {

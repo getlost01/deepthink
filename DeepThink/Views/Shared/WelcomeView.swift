@@ -302,6 +302,8 @@ private struct SetupStepView: View {
                 InstallRow(label: "Register MCP with Claude", state: installer.mcpRegisterState)
                 Divider().padding(.leading, 52)
                 InstallRow(label: "Add ~/.local/bin to shell PATH", state: installer.pathState)
+                Divider().padding(.leading, 52)
+                InstallRow(label: "Claude Code commands  →  ~/.claude/commands/deepthink/", state: installer.commandsState)
             }
             .frame(maxWidth: 440)
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.lg))

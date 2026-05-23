@@ -381,7 +381,11 @@ export interface PendingReindexRow {
   retryCount: number;
 }
 
-export function enqueuePendingReindex(entryId: string, entryType: string, operation: "upsert" | "delete" = "upsert"): void {
+export function enqueuePendingReindex(
+  entryId: string,
+  entryType: string,
+  operation: "upsert" | "delete" = "upsert"
+): void {
   getDB().run(
     `INSERT INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count)
      VALUES (?, ?, ?, ?, 0)
@@ -399,7 +403,9 @@ export function deleteExhaustedPendingReindex(maxRetries = 3): void {
 
 export function getPendingReindex(maxRetries = 3): PendingReindexRow[] {
   const rows = getDB()
-    .query("SELECT entry_id, entry_type, operation, queued_at, retry_count FROM pending_reindex WHERE retry_count < ? ORDER BY queued_at ASC")
+    .query(
+      "SELECT entry_id, entry_type, operation, queued_at, retry_count FROM pending_reindex WHERE retry_count < ? ORDER BY queued_at ASC"
+    )
     .all(maxRetries) as any[];
   return rows.map((r) => ({
     entryId: r.entry_id,
