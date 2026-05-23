@@ -129,6 +129,13 @@ struct TaskListView: View {
                 }
                 .padding(.horizontal, DS.Spacing.md)
             }
+            .mask(
+                HStack(spacing: 0) {
+                    Rectangle().frame(maxWidth: .infinity)
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: DS.Spacing.xl)
+                }
+            )
             .padding(.bottom, DS.Spacing.sm)
 
             if let projectName = filterProjectName {
@@ -221,6 +228,17 @@ struct TaskListView: View {
                                     .font(DS.Font.caption)
                                     .fontWeight(.medium)
                                 DSPill(text: "\(tasks.count)", color: status.color)
+                                Spacer()
+                                Button {
+                                    let newTask = createTaskWithStatus(status)
+                                    appState.selectedTaskID = newTask
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                                .buttonStyle(.plainPointer)
+                                .help("Add task with status \(status.rawValue)")
                             }
                             .padding(.horizontal, DS.Spacing.md)
                             .padding(.vertical, DS.Spacing.xs)
@@ -263,6 +281,14 @@ struct TaskListView: View {
         let task = TaskItem(title: "New Task")
         modelContext.insert(task)
         appState.selectedTaskID = task.id
+    }
+
+    @discardableResult
+    private func createTaskWithStatus(_ status: TaskStatus) -> UUID {
+        let task = TaskItem(title: "New Task")
+        task.status = status
+        modelContext.insert(task)
+        return task.id
     }
 
     private func deleteTask(_ task: TaskItem) {

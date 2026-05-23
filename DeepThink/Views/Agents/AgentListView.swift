@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AgentListView: View {
     @Environment(AppState.self) private var appState
+    @AppStorage("hint_assistants_dismissed") private var bannerDismissed = false
     @State private var selectedAgent: AgentFile?
     @State private var showDeleteConfirm = false
     @State private var showTemplates = false
@@ -20,90 +21,102 @@ struct AgentListView: View {
     }
 
     var body: some View {
-        ResizableSplitView(minLeftWidth: 280, minRightWidth: 400) {
-            VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.sm) {
-                    DSSearchField(text: $searchText, placeholder: "Search assistants...")
-                    DSAddButton {
-                        createNewAgent()
-                    }
-                }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.sm)
-
+        VStack(spacing: 0) {
+            if !bannerDismissed {
+                DSSectionBanner(
+                    icon: "person.2.circle",
+                    title: "Assistants",
+                    subtitle: "Custom AI personas with tailored knowledge and personality",
+                    color: DS.Colors.purple,
+                    onDismiss: { bannerDismissed = true }
+                )
                 Divider()
+            }
+            ResizableSplitView(minLeftWidth: 280, minRightWidth: 400) {
+                VStack(spacing: 0) {
+                    HStack(spacing: DS.Spacing.sm) {
+                        DSSearchField(text: $searchText, placeholder: "Search assistants...")
+                        DSAddButton {
+                            createNewAgent()
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
 
-                if agentService.agents.isEmpty {
-                    DSEmptyState(
-                        icon: "person.2.circle",
-                        title: "Create Your First Assistant",
-                        subtitle: "Assistants are AI helpers tailored for specific tasks — like a writing coach, research buddy, or task planner.",
-                        hint: "Try starting with a template, then customize it to fit your needs",
-                        action: { showTemplates = true },
-                        actionTitle: "Browse Templates"
-                    )
-                } else if filteredAgents.isEmpty {
-                    DSEmptyState(
-                        icon: "magnifyingglass",
-                        title: "No Results",
-                        subtitle: "No assistants match \"\(searchText)\""
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredAgents) { agent in
-                                AgentRow(
-                                    agent: agent,
-                                    isSelected: selectedAgent?.id == agent.id,
-                                    action: { selectedAgent = agent },
-                                    onChat: {
-                                        selectedAgent = agent
-                                        appState.selectedAgentPath = agent.filePath.path
-                                        appState.selectedSection = .aiAssistant
-                                    },
-                                    onDelete: {
-                                        selectedAgent = agent
-                                        showDeleteConfirm = true
+                    Divider()
+
+                    if agentService.agents.isEmpty {
+                        DSEmptyState(
+                            icon: "person.2.circle",
+                            title: "Create Your First Assistant",
+                            subtitle: "Assistants are AI helpers tailored for specific tasks — like a writing coach, research buddy, or task planner.",
+                            hint: "Try starting with a template, then customize it to fit your needs",
+                            action: { showTemplates = true },
+                            actionTitle: "Browse Templates"
+                        )
+                    } else if filteredAgents.isEmpty {
+                        DSEmptyState(
+                            icon: "magnifyingglass",
+                            title: "No Results",
+                            subtitle: "No assistants match \"\(searchText)\""
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(filteredAgents) { agent in
+                                    AgentRow(
+                                        agent: agent,
+                                        isSelected: selectedAgent?.id == agent.id,
+                                        action: { selectedAgent = agent },
+                                        onChat: {
+                                            selectedAgent = agent
+                                            appState.selectedAgentPath = agent.filePath.path
+                                            appState.selectedSection = .aiAssistant
+                                        },
+                                        onDelete: {
+                                            selectedAgent = agent
+                                            showDeleteConfirm = true
+                                        }
+                                    )
+                                    if agent.id != filteredAgents.last?.id {
+                                        Divider()
                                     }
-                                )
-                                if agent.id != filteredAgents.last?.id {
-                                    Divider()
                                 }
                             }
                         }
                     }
                 }
-            }
-        } right: {
-            if let agent = selectedAgent {
-                AgentDetailEditor(agent: agent) {
-                    appState.selectedAgentPath = agent.filePath.path
-                    appState.selectedSection = .aiAssistant
-                } onDelete: {
-                    showDeleteConfirm = true
-                }
-            } else {
-                DSEmptyState(
-                    icon: "person.2.circle",
-                    title: "Select an Assistant",
-                    subtitle: "Choose an assistant from the list to customize its personality, expertise, and what it knows about."
-                )
-            }
-        }
-        .onAppear { agentService.reload() }
-        .confirmationDialog("Delete Assistant?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
+            } right: {
                 if let agent = selectedAgent {
-                    agentService.delete(agent: agent)
-                    selectedAgent = nil
+                    AgentDetailEditor(agent: agent) {
+                        appState.selectedAgentPath = agent.filePath.path
+                        appState.selectedSection = .aiAssistant
+                    } onDelete: {
+                        showDeleteConfirm = true
+                    }
+                } else {
+                    DSEmptyState(
+                        icon: "person.2.circle",
+                        title: "Select an Assistant",
+                        subtitle: "Choose an assistant from the list to customize its personality, expertise, and what it knows about."
+                    )
                 }
             }
-        } message: {
-            Text("This will permanently delete \"\(selectedAgent?.name ?? "")\".")
-        }
-        .sheet(isPresented: $showTemplates) {
-            AgentTemplateSheet { template in
-                createFromTemplate(template)
+            .onAppear { agentService.reload() }
+            .confirmationDialog("Delete Assistant?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    if let agent = selectedAgent {
+                        agentService.delete(agent: agent)
+                        selectedAgent = nil
+                    }
+                }
+            } message: {
+                Text("This will permanently delete \"\(selectedAgent?.name ?? "")\".")
+            }
+            .sheet(isPresented: $showTemplates) {
+                AgentTemplateSheet { template in
+                    createFromTemplate(template)
+                }
             }
         }
     }
@@ -346,7 +359,7 @@ private struct AgentRow: View {
 
                 Spacer()
 
-                if let _ = agent.model {
+                if agent.model != nil {
                     Text(agent.modelDisplayName)
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.accent)

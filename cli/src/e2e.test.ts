@@ -12,7 +12,7 @@
  */
 
 import { join } from "node:path";
-import { type Subprocess, type FileSink, spawn } from "bun";
+import { type FileSink, type Subprocess, spawn } from "bun";
 
 const MCP_BINARY = join(import.meta.dir, "../out/deepthink-mcp");
 

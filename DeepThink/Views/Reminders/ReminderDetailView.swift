@@ -9,8 +9,6 @@ struct ReminderDetailView: View {
     @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasksForScan: [TaskItem]
     @Query private var allRemindersForScan: [Reminder]
-    @State private var showCalendar = false
-    @State private var showTimePicker = false
     @State private var linkPickerType: String?
     @State private var linkInsertRequest: DeepLinkInsertRequest?
     @State private var hasDeadLinks = false
@@ -50,77 +48,71 @@ struct ReminderDetailView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.sm) {
-                    Button { showCalendar.toggle() } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(dateChipColor)
+                        DatePicker(
+                            "",
+                            selection: Binding(
+                                get: { reminder.reminderDate ?? Date() },
+                                set: { newDate in
+                                    reminder.reminderDate = newDate
+                                    reminder.modifiedAt = Date()
+                                    try? modelContext.save()
+                                    scheduleNotification(for: reminder)
+                                }
+                            ),
+                            displayedComponents: .date
+                        )
+                        .labelsHidden()
+                        .datePickerStyle(.compact)
+                        .colorMultiply(dateChipColor)
+                        if reminder.reminderDate != nil {
+                            Button {
+                                reminder.reminderDate = nil
+                                cancelNotification(for: reminder)
+                                reminder.modifiedAt = Date()
+                                try? modelContext.save()
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: DS.IconSize.nano, weight: .semibold))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            .buttonStyle(.plainPointer)
+                        }
+                    }
+                    .font(DS.Font.caption)
+                    .padding(.horizontal, DS.Spacing.sm2)
+                    .padding(.vertical, DS.Spacing.xs2)
+                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                    if reminder.reminderDate != nil {
                         HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "calendar")
+                            Image(systemName: "clock")
                                 .font(.system(size: DS.IconSize.sm))
                                 .foregroundStyle(dateChipColor)
-                            Text(reminder.reminderDate?.shortFormatted ?? "Add date")
-                                .foregroundStyle(reminder.reminderDate == nil ? DS.Colors.textTertiary : dateChipColor)
+                            DatePicker(
+                                "",
+                                selection: Binding(
+                                    get: { reminder.reminderDate ?? Date() },
+                                    set: { newDate in
+                                        reminder.reminderDate = newDate
+                                        reminder.modifiedAt = Date()
+                                        try? modelContext.save()
+                                        scheduleNotification(for: reminder)
+                                    }
+                                ),
+                                displayedComponents: .hourAndMinute
+                            )
+                            .labelsHidden()
+                            .datePickerStyle(.compact)
+                            .colorMultiply(dateChipColor)
                         }
                         .font(DS.Font.caption)
                         .padding(.horizontal, DS.Spacing.sm2)
                         .padding(.vertical, DS.Spacing.xs2)
                         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    }
-                    .buttonStyle(.plainPointer)
-                    .popover(isPresented: $showCalendar) {
-                        DSCalendarPicker(
-                            selectedDate: Binding(
-                                get: { reminder.reminderDate },
-                                set: { newDate in
-                                    if let newDate {
-                                        let existing = reminder.reminderDate
-                                        let cal = Calendar.current
-                                        let hour = existing.map { cal.component(.hour, from: $0) } ?? cal.component(
-                                            .hour,
-                                            from: cal.date(byAdding: .hour, value: 1, to: Date())!
-                                        )
-                                        let minute = existing.map { cal.component(.minute, from: $0) } ?? 0
-                                        var comps = cal.dateComponents([.year, .month, .day], from: newDate)
-                                        comps.hour = hour
-                                        comps.minute = minute
-                                        reminder.reminderDate = cal.date(from: comps) ?? newDate
-                                    } else {
-                                        reminder.reminderDate = nil
-                                        cancelNotification(for: reminder)
-                                    }
-                                    reminder.modifiedAt = Date()
-                                    try? modelContext.save()
-                                }
-                            ),
-                            isPresented: $showCalendar
-                        )
-                    }
-
-                    if reminder.reminderDate != nil {
-                        Button { showTimePicker.toggle() } label: {
-                            HStack(spacing: DS.Spacing.xs) {
-                                Image(systemName: "clock")
-                                    .font(.system(size: DS.IconSize.sm))
-                                    .foregroundStyle(dateChipColor)
-                                Text(reminder.reminderDate!.formatted(date: .omitted, time: .shortened))
-                                    .foregroundStyle(dateChipColor)
-                            }
-                            .font(DS.Font.caption)
-                            .padding(.horizontal, DS.Spacing.sm2)
-                            .padding(.vertical, DS.Spacing.xs2)
-                            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                        }
-                        .buttonStyle(.plainPointer)
-                        .popover(isPresented: $showTimePicker) {
-                            ReminderTimePicker(
-                                date: Binding(
-                                    get: { reminder.reminderDate! },
-                                    set: { newDate in
-                                        reminder.reminderDate = newDate
-                                        reminder.modifiedAt = Date()
-                                        try? modelContext.save()
-                                    }
-                                ),
-                                isPresented: $showTimePicker
-                            )
-                        }
                     }
 
                     if reminder.isOverdue {
@@ -199,12 +191,6 @@ struct ReminderDetailView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onChange(of: reminder.notes) { reminder.modifiedAt = Date(); try? modelContext.save(); scheduleScanDeadLinks() }
         .onAppear { scheduleScanDeadLinks() }
-        .onChange(of: showCalendar) {
-            if !showCalendar { scheduleNotification(for: reminder) }
-        }
-        .onChange(of: showTimePicker) {
-            if !showTimePicker { scheduleNotification(for: reminder) }
-        }
     }
 
     private func scheduleScanDeadLinks() {

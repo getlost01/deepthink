@@ -170,10 +170,9 @@ final class CommandPaletteState {
         if t.contains(q) { return true }
         var qIdx = q.startIndex
         for char in t {
-            if char == q[qIdx] {
-                qIdx = q.index(after: qIdx)
-                if qIdx == q.endIndex { return true }
-            }
+            guard char == q[qIdx] else { continue }
+            qIdx = q.index(after: qIdx)
+            if qIdx == q.endIndex { return true }
         }
         return false
     }

@@ -30,9 +30,55 @@ Never use bare `.buttonStyle(.plain)` or `.borderless` — they lack the pointer
 ## Component Patterns
 - Section headers: `DSSectionHeader(title:)`
 - Stat cards: `UsageStatCard(title:value:icon:color:)`
+- Dismissible hint banners: `DSSectionBanner(icon:title:subtitle:color:onDismiss:)` — pass `onDismiss` to show an `×` button; persist dismissed state with `@AppStorage`
 - Reusable components live in `DeepThink/Views/Shared/`
 - Use `DS.Colors.fill` / `DS.Colors.fillSecondary` for card backgrounds
 - Use `DS.Colors.border` / `DS.Colors.borderHover` for strokes
+
+### Scroll fade mask
+Horizontal filter pill rows should fade out at the trailing edge so overflow is implied rather than cut off:
+```swift
+ScrollView(.horizontal, showsIndicators: false) { ... }
+    .mask(
+        HStack(spacing: 0) {
+            Rectangle().frame(maxWidth: .infinity)
+            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(width: DS.Spacing.xl)
+        }
+    )
+```
+
+### Resizable sidebars
+Use `DSSplitHandle` + drag gesture instead of a fixed frame when a panel should be user-resizable:
+```swift
+@State private var panelWidth: CGFloat = 240
+
+DSSplitHandle(axis: .vertical)
+    .gesture(DragGesture(minimumDistance: 1).onChanged { value in
+        panelWidth = min(max(panelWidth - value.translation.width, minW), maxW)
+    })
+SomePanel().frame(width: panelWidth)
+```
+
+### Infinite scroll
+Replace "Load More" buttons with a `ProgressView` that increments the count on `.onAppear`:
+```swift
+if hasMore {
+    ProgressView()
+        .controlSize(.small)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, DS.Spacing.md)
+        .onAppear { displayedCount += pageSize }
+}
+```
+
+### Inline date/time pickers
+Use native `.compact` `DatePicker` inside chip-styled `HStack` containers instead of custom popover pickers:
+```swift
+DatePicker("", selection: $date, displayedComponents: .date)
+    .labelsHidden()
+    .datePickerStyle(.compact)
+```
 
 ## Architecture
 - Services in `DeepThink/Services/` — singletons via `.shared`, `@Observable`

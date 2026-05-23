@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - Skills List View
 
 struct SkillsListView: View {
+    @AppStorage("hint_skills_dismissed") private var bannerDismissed = false
     @State private var selectedSkill: SkillFile?
     @State private var skillToRun: SkillFile?
     @State private var showDeleteConfirm = false
@@ -21,84 +22,96 @@ struct SkillsListView: View {
     }
 
     var body: some View {
-        ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
-            VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.sm) {
-                    DSSearchField(text: $searchText, placeholder: "Search skills...")
-                    DSAddButton {
-                        createNewSkill()
-                    }
-                }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.sm)
-
+        VStack(spacing: 0) {
+            if !bannerDismissed {
+                DSSectionBanner(
+                    icon: "sparkles",
+                    title: "Skills",
+                    subtitle: "Reusable AI actions you can trigger anytime with one click",
+                    color: DS.Colors.gold,
+                    onDismiss: { bannerDismissed = true }
+                )
                 Divider()
+            }
+            ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
+                VStack(spacing: 0) {
+                    HStack(spacing: DS.Spacing.sm) {
+                        DSSearchField(text: $searchText, placeholder: "Search skills...")
+                        DSAddButton {
+                            createNewSkill()
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
 
-                if skillService.skills.isEmpty {
-                    DSEmptyState(
-                        icon: "sparkles",
-                        title: "No Skills Yet",
-                        subtitle: "Skills are reusable AI actions — like saved prompts you can run anytime with one click.",
-                        hint: "Example: \"Summarize this text\", \"Write a thank-you email\", \"Extract key points\"",
-                        action: { createNewSkill() },
-                        actionTitle: "Create Skill"
-                    )
-                } else if filteredSkills.isEmpty {
-                    DSEmptyState(
-                        icon: "magnifyingglass",
-                        title: "No Results",
-                        subtitle: "No skills match \"\(searchText)\""
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredSkills) { skill in
-                                SkillRow(
-                                    skill: skill,
-                                    isSelected: selectedSkill?.id == skill.id,
-                                    action: { selectedSkill = skill },
-                                    onRun: { skillToRun = skill },
-                                    onDelete: {
-                                        selectedSkill = skill
-                                        showDeleteConfirm = true
+                    Divider()
+
+                    if skillService.skills.isEmpty {
+                        DSEmptyState(
+                            icon: "sparkles",
+                            title: "No Skills Yet",
+                            subtitle: "Skills are reusable AI actions — like saved prompts you can run anytime with one click.",
+                            hint: "Example: \"Summarize this text\", \"Write a thank-you email\", \"Extract key points\"",
+                            action: { createNewSkill() },
+                            actionTitle: "Create Skill"
+                        )
+                    } else if filteredSkills.isEmpty {
+                        DSEmptyState(
+                            icon: "magnifyingglass",
+                            title: "No Results",
+                            subtitle: "No skills match \"\(searchText)\""
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(filteredSkills) { skill in
+                                    SkillRow(
+                                        skill: skill,
+                                        isSelected: selectedSkill?.id == skill.id,
+                                        action: { selectedSkill = skill },
+                                        onRun: { skillToRun = skill },
+                                        onDelete: {
+                                            selectedSkill = skill
+                                            showDeleteConfirm = true
+                                        }
+                                    )
+                                    if skill.id != filteredSkills.last?.id {
+                                        Divider()
                                     }
-                                )
-                                if skill.id != filteredSkills.last?.id {
-                                    Divider()
                                 }
                             }
                         }
                     }
                 }
-            }
-        } right: {
-            if let skill = selectedSkill {
-                SkillInlineEditor(skill: skill) {
-                    skillToRun = skill
-                } onDelete: {
-                    showDeleteConfirm = true
-                }
-            } else {
-                DSEmptyState(
-                    icon: "sparkles",
-                    title: "Select a Skill",
-                    subtitle: "Pick a skill from the list to customize what it does. Changes save automatically."
-                )
-            }
-        }
-        .onAppear { skillService.reload() }
-        .sheet(item: $skillToRun) { skill in
-            SkillRunSheet(skill: skill)
-        }
-        .confirmationDialog("Delete Skill?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
+            } right: {
                 if let skill = selectedSkill {
-                    skillService.delete(skill: skill)
-                    selectedSkill = nil
+                    SkillInlineEditor(skill: skill) {
+                        skillToRun = skill
+                    } onDelete: {
+                        showDeleteConfirm = true
+                    }
+                } else {
+                    DSEmptyState(
+                        icon: "sparkles",
+                        title: "Select a Skill",
+                        subtitle: "Pick a skill from the list to customize what it does. Changes save automatically."
+                    )
                 }
             }
-        } message: {
-            Text("This will permanently delete \"\(selectedSkill?.name ?? "")\".")
+            .onAppear { skillService.reload() }
+            .sheet(item: $skillToRun) { skill in
+                SkillRunSheet(skill: skill)
+            }
+            .confirmationDialog("Delete Skill?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    if let skill = selectedSkill {
+                        skillService.delete(skill: skill)
+                        selectedSkill = nil
+                    }
+                }
+            } message: {
+                Text("This will permanently delete \"\(selectedSkill?.name ?? "")\".")
+            }
         }
     }
 
@@ -120,6 +133,7 @@ struct SkillsListView: View {
 // MARK: - Rules List View
 
 struct RulesListView: View {
+    @AppStorage("hint_rules_dismissed") private var bannerDismissed = false
     @State private var selectedRule: RuleFile?
     @State private var showDeleteConfirm = false
     @State private var searchText = ""
@@ -137,78 +151,90 @@ struct RulesListView: View {
     }
 
     var body: some View {
-        ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
-            VStack(spacing: 0) {
-                HStack(spacing: DS.Spacing.sm) {
-                    DSSearchField(text: $searchText, placeholder: "Search rules...")
-                    DSAddButton {
-                        createNewRule()
-                    }
-                }
-                .padding(.horizontal, DS.Spacing.lg)
-                .padding(.vertical, DS.Spacing.sm)
-
+        VStack(spacing: 0) {
+            if !bannerDismissed {
+                DSSectionBanner(
+                    icon: "bolt",
+                    title: "Rules",
+                    subtitle: "Automatic instructions AI always follows — set once, applied every time",
+                    color: DS.Colors.amber,
+                    onDismiss: { bannerDismissed = true }
+                )
                 Divider()
+            }
+            ResizableSplitView(minLeftWidth: 260, minRightWidth: 380) {
+                VStack(spacing: 0) {
+                    HStack(spacing: DS.Spacing.sm) {
+                        DSSearchField(text: $searchText, placeholder: "Search rules...")
+                        DSAddButton {
+                            createNewRule()
+                        }
+                    }
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
 
-                if ruleService.rules.isEmpty {
-                    DSEmptyState(
-                        icon: "bolt",
-                        title: "No Rules Yet",
-                        subtitle: "Rules are automatic instructions for AI — they kick in when certain conditions are met, so you don't have to repeat yourself.",
-                        hint: "Example: \"Always use bullet points\" or \"Keep replies under 200 words\"",
-                        action: { createNewRule() },
-                        actionTitle: "Create Rule"
-                    )
-                } else if filteredRules.isEmpty {
-                    DSEmptyState(
-                        icon: "magnifyingglass",
-                        title: "No Results",
-                        subtitle: "No rules match \"\(searchText)\""
-                    )
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(filteredRules) { rule in
-                                RuleRow(
-                                    rule: rule,
-                                    isSelected: selectedRule?.id == rule.id,
-                                    action: { selectedRule = rule },
-                                    onDelete: {
-                                        selectedRule = rule
-                                        showDeleteConfirm = true
+                    Divider()
+
+                    if ruleService.rules.isEmpty {
+                        DSEmptyState(
+                            icon: "bolt",
+                            title: "No Rules Yet",
+                            subtitle: "Rules are automatic instructions for AI — they kick in when certain conditions are met, so you don't have to repeat yourself.",
+                            hint: "Example: \"Always use bullet points\" or \"Keep replies under 200 words\"",
+                            action: { createNewRule() },
+                            actionTitle: "Create Rule"
+                        )
+                    } else if filteredRules.isEmpty {
+                        DSEmptyState(
+                            icon: "magnifyingglass",
+                            title: "No Results",
+                            subtitle: "No rules match \"\(searchText)\""
+                        )
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(filteredRules) { rule in
+                                    RuleRow(
+                                        rule: rule,
+                                        isSelected: selectedRule?.id == rule.id,
+                                        action: { selectedRule = rule },
+                                        onDelete: {
+                                            selectedRule = rule
+                                            showDeleteConfirm = true
+                                        }
+                                    )
+                                    if rule.id != filteredRules.last?.id {
+                                        Divider()
                                     }
-                                )
-                                if rule.id != filteredRules.last?.id {
-                                    Divider()
                                 }
                             }
                         }
                     }
                 }
-            }
-        } right: {
-            if let rule = selectedRule {
-                RuleInlineEditor(rule: rule) {
-                    showDeleteConfirm = true
-                }
-            } else {
-                DSEmptyState(
-                    icon: "bolt",
-                    title: "Select a Rule",
-                    subtitle: "Pick a rule from the list to edit when it activates and what it tells AI to do. Changes save automatically."
-                )
-            }
-        }
-        .onAppear { ruleService.reload() }
-        .confirmationDialog("Delete Rule?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
+            } right: {
                 if let rule = selectedRule {
-                    ruleService.delete(rule: rule)
-                    selectedRule = nil
+                    RuleInlineEditor(rule: rule) {
+                        showDeleteConfirm = true
+                    }
+                } else {
+                    DSEmptyState(
+                        icon: "bolt",
+                        title: "Select a Rule",
+                        subtitle: "Pick a rule from the list to edit when it activates and what it tells AI to do. Changes save automatically."
+                    )
                 }
             }
-        } message: {
-            Text("This will permanently delete \"\(selectedRule?.name ?? "")\".")
+            .onAppear { ruleService.reload() }
+            .confirmationDialog("Delete Rule?", isPresented: $showDeleteConfirm) {
+                Button("Delete", role: .destructive) {
+                    if let rule = selectedRule {
+                        ruleService.delete(rule: rule)
+                        selectedRule = nil
+                    }
+                }
+            } message: {
+                Text("This will permanently delete \"\(selectedRule?.name ?? "")\".")
+            }
         }
     }
 

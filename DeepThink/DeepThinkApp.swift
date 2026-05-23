@@ -336,38 +336,48 @@ struct DeepThinkApp: App {
             Command(title: "Knowledge", icon: "brain", shortcut: "⌘2", section: "Navigate") {
                 appState.navigate(to: .knowledge)
             },
+            Command(title: "Context Graph", icon: "point.3.connected.trianglepath.dotted", shortcut: "⌘3", section: "Navigate") {
+                appState.navigate(to: .contextGraph)
+            },
+            Command(title: "AI Assistant", icon: "message.and.waveform", shortcut: "⌘4", section: "Navigate") {
+                appState.navigate(to: .aiAssistant)
+            },
+            Command(title: "Reminders", icon: "bell", shortcut: "⌘5", section: "Navigate") {
+                appState.navigate(to: .reminders)
+            },
+            Command(title: "Integrations", icon: "puzzlepiece.extension", shortcut: "⌘6", section: "Navigate") {
+                appState.navigate(to: .integrations)
+            },
+            Command(title: "Terminal", icon: "terminal", shortcut: "⌘7", section: "Navigate") {
+                appState.navigate(to: .terminal)
+            },
+            Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {
+                appState.navigate(to: .settings)
+            },
+            Command(title: "Daily Brief", icon: "sun.horizon", shortcut: "⌘D", section: "Navigate") {
+                NotificationCenter.default.post(name: .showDailyBrief, object: nil)
+            },
+
+            // Assistants / Skills / Rules
+            Command(title: "Assistants", icon: "person.2.circle", shortcut: nil, section: "Integrations") {
+                appState.agentConfigTab = .agents
+                appState.navigate(to: .integrations)
+            },
+            Command(title: "Skills", icon: "sparkles", shortcut: nil, section: "Integrations") {
+                appState.agentConfigTab = .skills
+                appState.navigate(to: .integrations)
+            },
+            Command(title: "Rules", icon: "bolt", shortcut: nil, section: "Integrations") {
+                appState.agentConfigTab = .rules
+                appState.navigate(to: .integrations)
+            },
+
+            // Knowledge
             Command(title: "Reload Knowledge", icon: "arrow.clockwise", shortcut: nil, section: "Knowledge") {
                 KnowledgeService.shared.reload()
             },
             Command(title: "Capture to Knowledge", icon: "brain.filled.head.profile", shortcut: nil, section: "Knowledge") {
                 appState.navigate(to: .knowledge)
-            },
-            Command(title: "AI Assistant", icon: "message.and.waveform", shortcut: "⌘3", section: "Navigate") {
-                appState.navigate(to: .aiAssistant)
-            },
-            Command(title: "Integrations", icon: "cable.connector", shortcut: "⌘4", section: "Navigate") {
-                appState.navigate(to: .integrations)
-            },
-            Command(title: "Reminders", icon: "bell", shortcut: "⌘5", section: "Navigate") {
-                appState.navigate(to: .reminders)
-            },
-            Command(title: "Assistants", icon: "person.2.circle", shortcut: nil, section: "Navigate") {
-                appState.agentConfigTab = .agents
-                appState.navigate(to: .integrations)
-            },
-            Command(title: "Skills", icon: "sparkles", shortcut: nil, section: "Navigate") {
-                appState.agentConfigTab = .skills
-                appState.navigate(to: .integrations)
-            },
-            Command(title: "Rules", icon: "bolt", shortcut: nil, section: "Navigate") {
-                appState.agentConfigTab = .rules
-                appState.navigate(to: .integrations)
-            },
-            Command(title: "Terminal", icon: "terminal", shortcut: "⌘6", section: "Navigate") {
-                appState.navigate(to: .terminal)
-            },
-            Command(title: "Settings", icon: "gear", shortcut: "⌘,", section: "Navigate") {
-                appState.navigate(to: .settings)
             }
         ])
     }
@@ -461,11 +471,9 @@ struct DeepThinkApp: App {
                     )
                 ]
 
-                for (name, command, args, category, desc) in defaults {
-                    if !existing.contains(where: { $0.name == name }) {
-                        let server = MCPServer(name: name, command: command, args: args, category: category, description: desc)
-                        context.insert(server)
-                    }
+                for (name, command, args, category, desc) in defaults where !existing.contains(where: { $0.name == name }) {
+                    let server = MCPServer(name: name, command: command, args: args, category: category, description: desc)
+                    context.insert(server)
                 }
 
                 do {
@@ -494,4 +502,5 @@ extension Notification.Name {
     static let createNewReminder = Notification.Name("createNewReminder")
     static let quickCaptureReset = Notification.Name("quickCaptureReset")
     static let quickCapturePrefill = Notification.Name("quickCapturePrefill")
+    static let showDailyBrief = Notification.Name("showDailyBrief")
 }

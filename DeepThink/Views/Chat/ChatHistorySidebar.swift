@@ -42,8 +42,6 @@ struct ChatHistorySidebar: View {
             }
     }
 
-    private let pad: CGFloat = 12
-
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -57,7 +55,7 @@ struct ChatHistorySidebar: View {
                     }
                 }
             }
-            .padding(.horizontal, pad)
+            .padding(.horizontal, DS.Spacing.lg)
             .frame(height: DS.Layout.toolbarHeight)
 
             Divider()
@@ -71,10 +69,10 @@ struct ChatHistorySidebar: View {
                     .font(DS.Font.caption)
             }
             .padding(.horizontal, DS.Spacing.sm)
-            .padding(.vertical, DS.Spacing.xs)
+            .padding(.vertical, DS.Spacing.xs2)
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-            .padding(.horizontal, pad)
-            .padding(.vertical, DS.Spacing.sm)
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
 
             if filtered.isEmpty {
                 Spacer()
@@ -89,16 +87,16 @@ struct ChatHistorySidebar: View {
                 Spacer()
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                         ForEach(sections) { section in
                             Text(section.title)
                                 .font(DS.Font.micro)
                                 .fontWeight(.bold)
                                 .foregroundStyle(DS.Colors.textTertiary)
                                 .textCase(.uppercase)
-                                .padding(.horizontal, pad)
-                                .padding(.top, DS.Spacing.md)
-                                .padding(.bottom, DS.Spacing.xs)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.top, DS.Spacing.lg)
+                                .padding(.bottom, DS.Spacing.xs2)
 
                             ForEach(section.items) { conv in
                                 HistoryRow(
@@ -113,8 +111,8 @@ struct ChatHistorySidebar: View {
                             }
                         }
                     }
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.bottom, DS.Spacing.sm)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.bottom, DS.Spacing.md)
                 }
             }
         }
@@ -137,7 +135,7 @@ private struct HistoryRow: View {
                     .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
                     .frame(width: DS.IconSize.md)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                     Text(conversation.title.isEmpty ? "Untitled" : conversation.title)
                         .font(DS.Font.caption)
                         .fontWeight(isSelected ? .semibold : .regular)
@@ -169,7 +167,7 @@ private struct HistoryRow: View {
                 }
             }
             .padding(.horizontal, DS.Spacing.sm)
-            .padding(.vertical, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm2)
             .background(
                 isSelected ? DS.Colors.accentFill :
                     (isHovered ? DS.Colors.fillSecondary : .clear),

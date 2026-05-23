@@ -194,10 +194,8 @@ final class StorageService {
             workspaceURL, notesExportURL, projectsExportURL
         ]
 
-        for url in dirs {
-            if !fm.fileExists(atPath: url.path) {
-                try? fm.createDirectory(at: url, withIntermediateDirectories: true)
-            }
+        for url in dirs where !fm.fileExists(atPath: url.path) {
+            try? fm.createDirectory(at: url, withIntermediateDirectories: true)
         }
 
         ensureKnowledgeIndex()

@@ -126,6 +126,13 @@ struct ReminderListView: View {
                 }
                 .padding(.horizontal, DS.Spacing.lg)
             }
+            .mask(
+                HStack(spacing: 0) {
+                    Rectangle().frame(maxWidth: .infinity)
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: DS.Spacing.xl)
+                }
+            )
             .padding(.bottom, DS.Spacing.sm)
 
             if !allReminders.isEmpty {
@@ -226,31 +233,43 @@ struct ReminderListView: View {
 
 private struct NotificationPermissionBanner: View {
     var body: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: "bell.slash.fill")
-                .font(.system(size: DS.IconSize.md))
-                .foregroundStyle(DS.Colors.warning)
+        HStack(spacing: DS.Spacing.md) {
+            ZStack {
+                Circle()
+                    .fill(DS.Colors.warning.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "bell.slash.fill")
+                    .font(.system(size: DS.IconSize.lg))
+                    .foregroundStyle(DS.Colors.warning)
+            }
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text("Notifications Disabled")
-                    .font(DS.Font.bodySmall)
-                    .fontWeight(.semibold)
+                    .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
                 Text("Reminders won't alert you. Enable notifications in System Settings.")
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
 
-            Button("Open Settings") {
+            Button {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+            } label: {
+                Text("Open Settings")
+                    .font(DS.Font.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.onAccent)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .background(DS.Colors.warning, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
-            .buttonStyle(.dsSecondary)
-            .controlSize(.small)
+            .buttonStyle(.plainPointer)
         }
-        .padding(DS.Spacing.sm)
-        .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.3), lineWidth: 1))
+        .padding(DS.Spacing.md)
+        .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
     }
 }

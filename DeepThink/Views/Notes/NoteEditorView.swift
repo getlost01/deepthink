@@ -18,7 +18,7 @@ struct NoteEditorView: View {
     @State private var hasDeadLinks = false
     @State private var deadLinkUUIDs: Set<String> = []
     @State private var cleanDeadLinksRequest: UUID?
-    @State private var showBacklinks = false
+    @State private var showBacklinks = true
     @State private var cachedLinkPreviews: [String: [String: String]] = [:]
 
     var body: some View {
@@ -172,17 +172,33 @@ struct NoteEditorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if note.content.isEmpty, !note.isArchived {
-                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                         Text("Start writing…")
                             .font(DS.Font.body)
                             .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
-                        HStack(spacing: DS.Spacing.lg) {
-                            Label("/ for skills", systemImage: "sparkles")
-                            Label("[[ to link notes", systemImage: "link")
-                            Label("**bold**, _italic_", systemImage: "textformat")
+                        HStack(spacing: DS.Spacing.xs) {
+                            ForEach([
+                                ("sparkles", "/ for skills"),
+                                ("link", "[[ to link"),
+                                ("bold", "**bold**"),
+                                ("italic", "_italic_")
+                            ], id: \.0) { icon, label in
+                                HStack(spacing: DS.Spacing.xxs) {
+                                    Image(systemName: icon)
+                                        .font(.system(size: DS.IconSize.nano))
+                                    Text(label)
+                                        .font(DS.Font.micro)
+                                }
+                                .foregroundStyle(DS.Colors.textTertiary)
+                                .padding(.horizontal, DS.Spacing.xs2)
+                                .padding(.vertical, DS.Spacing.xxs)
+                                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                        .strokeBorder(DS.Colors.border, lineWidth: 0.5)
+                                )
+                            }
                         }
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary.opacity(0.45))
                     }
                     .padding(.horizontal, DS.Spacing.xl)
                     .padding(.top, DS.Spacing.md)

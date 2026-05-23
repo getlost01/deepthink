@@ -40,7 +40,7 @@ struct QuickCaptureView: View {
         }
         .frame(width: 720, height: 620)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+        .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.xl)
                 .strokeBorder(DS.Colors.borderHover, lineWidth: 1)

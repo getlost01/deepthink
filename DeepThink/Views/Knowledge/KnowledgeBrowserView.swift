@@ -170,16 +170,11 @@ struct KnowledgeBrowserView: View {
                                 }
                             }
                             if hasMore {
-                                Button {
-                                    displayedCount += pageSize
-                                } label: {
-                                    Text("Load \(min(pageSize, filteredEntries.count - displayedCount)) more")
-                                        .font(DS.Font.caption)
-                                        .foregroundStyle(DS.Colors.textSecondary)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, DS.Spacing.md)
-                                }
-                                .buttonStyle(.plainPointer)
+                                ProgressView()
+                                    .controlSize(.small)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, DS.Spacing.md)
+                                    .onAppear { displayedCount += pageSize }
                             }
                         }
                     }

@@ -68,6 +68,12 @@ Basic substring matching across title, content, and tags. Used for the search ba
 ### Smart Retrieval (RAG)
 BM25 + semantic hybrid search via `ContextEngine.retrieveContextHybrid()`. Used for AI chat context injection. See [RAG Pipeline](../rag-pipeline.md).
 
+## Browser UI
+
+- Full-text search across title and content
+- Filter by bucket, source type
+- **Infinite scroll** — the entry list loads progressively as you scroll; a spinner appears at the bottom when more results are available and the next page loads automatically
+
 ## Bucket Management
 
 - Create custom buckets in Knowledge UI

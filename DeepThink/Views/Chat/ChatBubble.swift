@@ -89,7 +89,7 @@ struct ChatBubble: View {
                         .textSelection(.enabled)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.md)
-                        .frame(maxWidth: 560, alignment: .trailing)
+                        .frame(maxWidth: 480, alignment: .trailing)
                         .background(DS.Colors.accent.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.xl))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(DS.Opacity.subtle), lineWidth: 1))
                 }
@@ -110,6 +110,10 @@ struct ChatBubble: View {
         .overlay(alignment: .bottomTrailing) {
             if let info = branchInfo, info.total > 1 {
                 HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: "arrow.branch")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .foregroundStyle(DS.Colors.textTertiary)
+
                     Button {
                         onSwitchBranch?(info.current - 1)
                     } label: {

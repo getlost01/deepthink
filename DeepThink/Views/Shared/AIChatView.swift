@@ -23,6 +23,7 @@ struct AIChatView: View {
     @State private var chatTask: Task<Void, Never>?
     @State private var lastFailedMessage: String?
     @State private var showHistory = false
+    @State private var historyWidth: CGFloat = 240
     @State private var isScrolledUp = false
     @FocusState private var inputFocused: Bool
 
@@ -61,7 +62,14 @@ struct AIChatView: View {
             }
 
             if showHistory {
-                Divider()
+                DSSplitHandle(axis: .vertical)
+                    .gesture(
+                        DragGesture(minimumDistance: 1)
+                            .onChanged { value in
+                                let proposed = historyWidth - value.translation.width
+                                historyWidth = min(max(proposed, 180), 400)
+                            }
+                    )
                 ChatHistorySidebar(
                     conversations: conversations.filter { !$0.isArchived },
                     currentID: currentConversation?.id,
@@ -76,7 +84,7 @@ struct AIChatView: View {
                         withAnimation(DS.Animation.standard) { showHistory = false }
                     }
                 )
-                .frame(width: 240)
+                .frame(width: historyWidth)
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
@@ -302,7 +310,7 @@ struct AIChatView: View {
 
                             Color.clear.frame(height: 1).id("bottom")
                         }
-                        .frame(maxWidth: 860)
+                        .frame(maxWidth: 720)
                         .frame(maxWidth: .infinity)
                     }
                     .padding(.bottom, DS.Spacing.lg)
@@ -1098,13 +1106,13 @@ struct AIChatView: View {
 
         followUpTask = Task {
             let prompt = """
-                Based on this conversation exchange, suggest exactly 3 short follow-up questions \
-                the user might ask next. Each must be under 60 characters. Output ONLY the 3 questions, \
-                one per line, no numbering, no bullets, no quotes.
+            Based on this conversation exchange, suggest exactly 3 short follow-up questions \
+            the user might ask next. Each must be under 60 characters. Output ONLY the 3 questions, \
+            one per line, no numbering, no bullets, no quotes.
 
-                User: \(userMessage.prefix(300))
-                Assistant: \(assistantMessage.prefix(500))
-                """
+            User: \(userMessage.prefix(300))
+            Assistant: \(assistantMessage.prefix(500))
+            """
 
             guard let result = try? await ClaudeService.shared.query(
                 prompt,

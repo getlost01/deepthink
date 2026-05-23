@@ -84,7 +84,7 @@ final class BacklinkService {
             if note.content.lowercased().contains(entryTitleLower), entryTitleLower.count > 4 { return true }
             if entry.content.lowercased().contains(titleLower), titleLower.count > 4 { return true }
             let entryWords = Set(entry.tags.map { $0.lowercased() })
-            if !entryWords.isEmpty, !entryWords.intersection(contentWords).isEmpty { return true }
+            if !entryWords.isEmpty, !entryWords.isDisjoint(with: contentWords) { return true }
             return false
         }
     }
@@ -107,7 +107,7 @@ final class BacklinkService {
                     .components(separatedBy: .whitespacesAndNewlines)
                     .filter { $0.count > 3 }
             )
-            if !entryTags.isEmpty, !entryTags.intersection(noteWords).isEmpty { return true }
+            if !entryTags.isEmpty, !entryTags.isDisjoint(with: noteWords) { return true }
             return false
         }
     }

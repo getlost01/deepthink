@@ -715,6 +715,7 @@ struct DSSectionBanner: View {
     let title: String
     let subtitle: String
     var color: Color = DS.Colors.accent
+    var onDismiss: (() -> Void)?
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -735,6 +736,18 @@ struct DSSectionBanner: View {
                         .foregroundStyle(DS.Colors.textTertiary)
                         .lineLimit(1)
                 }
+            }
+
+            if let onDismiss {
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 20, height: 20)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
             }
         }
         .padding(.horizontal, DS.Spacing.lg)

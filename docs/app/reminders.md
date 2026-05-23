@@ -32,6 +32,8 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 - Clicking notification opens the app and navigates to that reminder
 - Optional project assignment
 - Sort by date, completion status
+- Filter pills (All, Today, This Week, No Date) with trailing fade on scroll
+- **Inline date/time pickers** — date and time chips use native compact `DatePicker` that expands in-place on click; `×` button on the date chip clears the scheduled date
 
 ## Navigation
 

@@ -15,15 +15,11 @@ struct TaskInspectorView: View {
             if let task = selectedTask {
                 TaskInspectorContent(task: task)
             } else {
-                VStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "checklist")
-                        .font(.system(size: DS.IconSize.xxl, weight: .light))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Text("Select a task")
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .font(DS.Font.caption)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DSEmptyState(
+                    icon: "checklist",
+                    title: "Select a Task",
+                    subtitle: "Choose a task from the list to view its status, priority, dates, and metadata."
+                )
             }
         }
     }

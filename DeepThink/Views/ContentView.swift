@@ -17,7 +17,7 @@ struct ContentView: View {
         } else if !isReady {
             SplashView()
                 .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         withAnimation(.easeOut(duration: 0.3)) {
                             isReady = true
                         }
@@ -66,7 +66,7 @@ private struct GlobalHeader: View {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: DS.IconSize.xs, weight: .medium))
                         .foregroundStyle(DS.Colors.textTertiary)
-                    Text("Quick Spotlight Search")
+                    Text("Search")
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textSecondary)
                     HStack(spacing: 1) {
@@ -109,12 +109,16 @@ private struct GlobalHeader: View {
                 .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
             }
             .buttonStyle(.plainPointer)
+            .keyboardShortcut("d", modifiers: .command)
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
         .background(DS.Colors.surface)
         .sheet(isPresented: $showDailyBrief) {
             DailyBriefModal(refreshID: $dailyBriefRefreshID)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showDailyBrief)) { _ in
+            showDailyBrief = true
         }
     }
 

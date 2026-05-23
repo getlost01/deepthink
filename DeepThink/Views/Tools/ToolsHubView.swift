@@ -12,6 +12,7 @@ struct ToolsHubView: View {
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
+    @AppStorage("hint_mcp_dismissed") private var bannerDismissed = false
     @State private var selectedCategory = "All"
 
     private var filteredServers: [MCPServer] {
@@ -21,14 +22,16 @@ struct ToolsHubView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            DSSectionBanner(
-                icon: "puzzlepiece.extension",
-                title: "MCP Servers",
-                subtitle: "Connect external tools and services for AI to use",
-                color: DS.Colors.teal
-            )
-
-            Divider()
+            if !bannerDismissed {
+                DSSectionBanner(
+                    icon: "puzzlepiece.extension",
+                    title: "MCP Servers",
+                    subtitle: "Connect external tools and services for AI to use",
+                    color: DS.Colors.teal,
+                    onDismiss: { bannerDismissed = true }
+                )
+                Divider()
+            }
 
             HStack(spacing: DS.Spacing.sm) {
                 Text("\(servers.filter(\.isEnabled).count) active")

@@ -120,13 +120,18 @@ struct WelcomeView: View {
 
     private var bottomBar: some View {
         VStack(spacing: DS.Spacing.lg) {
-            HStack(spacing: DS.Spacing.sm) {
-                ForEach(0..<totalSteps, id: \.self) { index in
-                    Capsule()
-                        .fill(index == currentStep ? DS.Colors.accent : DS.Colors.border)
-                        .frame(width: index == currentStep ? 20 : 8, height: 8)
-                        .animation(DS.Animation.quick, value: currentStep)
+            VStack(spacing: DS.Spacing.xs) {
+                HStack(spacing: DS.Spacing.sm) {
+                    ForEach(0..<totalSteps, id: \.self) { index in
+                        Capsule()
+                            .fill(index == currentStep ? DS.Colors.accent : DS.Colors.border)
+                            .frame(width: index == currentStep ? 20 : 8, height: 8)
+                            .animation(DS.Animation.quick, value: currentStep)
+                    }
                 }
+                Text("Step \(currentStep + 1) of \(totalSteps)")
+                    .font(DS.Font.micro)
+                    .foregroundStyle(DS.Colors.textTertiary)
             }
 
             HStack(spacing: DS.Spacing.lg) {

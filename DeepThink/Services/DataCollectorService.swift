@@ -405,9 +405,11 @@ final class DataCollectorService {
 
     func scrapeURLs(_ urls: [String]) async -> Int {
         var success = 0
+        // swiftlint:disable for_where
         for url in urls {
             if await scrapeURL(url) { success += 1 }
         }
+        // swiftlint:enable for_where
         return success
     }
 

@@ -174,8 +174,8 @@ final class ContextEngine {
 
         let chunks = store.allChunks(entryType: "knowledge", scope: agentScope, excludeArchive: true)
         var chunkByEntryID: [String: VectorChunk] = [:]
-        for c in chunks {
-            if chunkByEntryID[c.entryID] == nil { chunkByEntryID[c.entryID] = c }
+        for c in chunks where chunkByEntryID[c.entryID] == nil {
+            chunkByEntryID[c.entryID] = c
         }
 
         let k = 60.0

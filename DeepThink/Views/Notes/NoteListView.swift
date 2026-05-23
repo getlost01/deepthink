@@ -104,8 +104,7 @@ struct NoteListView: View {
                                 let preview = note.content
                                     .components(separatedBy: .newlines)
                                     .map { $0.trimmingCharacters(in: .whitespaces) }
-                                    .filter { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("---") }
-                                    .first ?? ""
+                                    .first { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("---") } ?? ""
                                 if !preview.isEmpty {
                                     Text(preview)
                                         .font(DS.Font.small)

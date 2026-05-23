@@ -15,15 +15,11 @@ struct ProjectInspectorView: View {
             if let project = selectedProject {
                 ProjectInspectorContent(project: project)
             } else {
-                VStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "folder")
-                        .font(.system(size: DS.IconSize.xxl, weight: .light))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Text("Select a project")
-                        .foregroundStyle(DS.Colors.textSecondary)
-                        .font(DS.Font.caption)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DSEmptyState(
+                    icon: "folder",
+                    title: "Select a Project",
+                    subtitle: "Choose a project from the list to view stats, progress, color, and settings."
+                )
             }
         }
     }

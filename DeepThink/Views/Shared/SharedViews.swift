@@ -9,8 +9,8 @@ struct StoryPointsBadge: View {
             .font(DS.Font.small)
             .fontWeight(.semibold)
             .foregroundStyle(DS.Colors.accent)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .padding(.horizontal, DS.Spacing.xs2)
+            .padding(.vertical, DS.Spacing.xxs)
             .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 }

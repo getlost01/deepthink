@@ -20,7 +20,7 @@ struct TaskDetailView: View {
     @State private var deadLinkUUIDs: Set<String> = []
     @State private var cleanDeadLinksRequest: UUID?
     @State private var deadLinkTask: Task<Void, Never>?
-    @State private var showTaskBacklinks = false
+    @State private var showTaskBacklinks = true
     @State private var hoveredSubtaskID: UUID?
 
     var body: some View {

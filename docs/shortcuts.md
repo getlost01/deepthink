@@ -6,6 +6,7 @@
 |----------|--------|
 | `Cmd+K` | **Quick Search** (command palette) |
 | `Option+Space` | Quick Search alias (app-only) |
+| `Cmd+D` | **Daily Brief** — AI summary of today's tasks, reminders, and notes |
 
 ## Navigation
 
@@ -17,8 +18,9 @@
 | `Cmd+3` | Context Graph |
 | `Cmd+4` | AI Assistant |
 | `Cmd+5` | Reminders |
-| `Cmd+6` | Integration |
+| `Cmd+6` | Integrations |
 | `Cmd+7` | Terminal |
+| `Cmd+,` | Settings |
 
 ## Workspace
 

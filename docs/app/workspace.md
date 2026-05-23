@@ -69,6 +69,9 @@ Rich markdown notes with backlinks, versioning, and AI integration.
 - `NoteVersion` model: `noteID`, `versionNumber`, `title`, `content`, `createdAt`
 - Browse and restore previous versions
 
+**Editor placeholder hints:**
+- When content is empty, shows chip-style hints for `/` (skills), `[[` (link notes), `**bold**`, and `_italic_` — disappears on first keypress
+
 **AI Integration:**
 - Note content available as `{{note_content}}` template variable in skills
 - Notes auto-analyzed for knowledge extraction when >30 words
@@ -131,9 +134,9 @@ Each status has an associated color and icon.
 
 ### Views
 
-- **Task List** — sortable by status, priority, due date
+- **Task List** — tasks grouped by status; filter pills (All, Today, Upcoming, Overdue) with trailing fade; `+` button in each status header to add a task directly in that status; `⌘T` shortcut
 - **Task Board** — kanban columns (Backlog, Todo, In Progress, Done)
-- **Task Detail** — edit all fields, manage subtasks, rich markdown detail with deep links
+- **Task Detail** — edit all fields, manage subtasks, rich markdown detail with deep links; backlinks panel expanded by default
 - **Task Inspector** — sidebar with metadata and project assignment
 
 ## Navigation
