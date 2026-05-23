@@ -51,18 +51,15 @@ export const landingContent = {
     points: [
       {
         title: 'Ownership you can verify',
-        body:
-          'Open ~/DeepThink, diff it, encrypt it, or sync it with tools you already trust instead of handing your graph to another vendor.',
+        body: 'Open ~/DeepThink, diff it, encrypt it, or sync it with tools you already trust instead of handing your graph to another vendor.',
       },
       {
         title: 'Retrieval without extra latency',
-        body:
-          'Indexes stay beside your documents so assistants remain responsive even when upstream APIs slow down or quotas hit.',
+        body: 'Indexes stay beside your documents so assistants remain responsive even when upstream APIs slow down or quotas hit.',
       },
       {
         title: 'One workspace with consistent surfaces',
-        body:
-          'The GUI, MCP tools, and CLI all operate on the same workspace with no drift between dashboards and terminal workflows.',
+        body: 'The GUI, MCP tools, and CLI all operate on the same workspace with no drift between dashboards and terminal workflows.',
       },
     ],
   },

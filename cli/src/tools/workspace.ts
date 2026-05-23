@@ -124,6 +124,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       if (!t) throw new Error(`task not found: ${p.ref}`);
       if (t.isArchived) throw new Error(`task is archived and cannot be edited. Unarchive it first.`);
       const { ref, ...fields } = p;
+      if (fields.dueDate === "none") fields.dueDate = null;
       db.updateTask(t.pk, fields);
       const updated = db.getTask(t.pk.toString());
       if (updated)

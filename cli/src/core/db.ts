@@ -166,6 +166,7 @@ export function getProject(nameOrPk: string): ProjectRow | null {
       noteCount: row.noteCount,
     };
   }
+  if (!nameOrPk) return null;
   const projects = listProjects();
   const lower = nameOrPk.toLowerCase();
   return (
@@ -251,6 +252,7 @@ export interface TaskRow {
   priority: string;
   storyPoints: number | null;
   dueDate: Date | null;
+  completedAt: Date | null;
   projectPk: number | null;
   projectName: string | null;
   isArchived: boolean;
@@ -284,7 +286,7 @@ export function listTasks(
   const rows = db
     .query(`
     SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
-           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
+           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZCOMPLETEDAT, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
            p.ZNAME as projectName
     FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
     WHERE ${where}
@@ -300,6 +302,7 @@ export function listTasks(
     priority: r.ZPRIORITYRAW,
     storyPoints: r.ZSTORYPOINTS,
     dueDate: r.ZDUEDATE ? fromCD(r.ZDUEDATE) : null,
+    completedAt: r.ZCOMPLETEDAT ? fromCD(r.ZCOMPLETEDAT) : null,
     projectPk: r.ZPROJECT,
     projectName: r.projectName ?? null,
     isArchived: !!r.ZISARCHIVED,
@@ -309,6 +312,7 @@ export function listTasks(
 }
 
 export function getTask(pkStr: string): TaskRow | null {
+  if (!pkStr) return null;
   const tasks = listTasks();
   const byPk = tasks.find((t) => t.pk.toString() === pkStr);
   if (byPk) return byPk;
@@ -513,6 +517,7 @@ export function listNotes(opts: { project?: string; pinned?: boolean; excludeArc
 }
 
 export function getNote(pkStr: string): NoteRow | null {
+  if (!pkStr) return null;
   const notes = listNotes();
   const byPk = notes.find((n) => n.pk.toString() === pkStr);
   if (byPk) return byPk;
@@ -654,6 +659,7 @@ export function listReminders(opts: { completed?: boolean } = {}): ReminderRow[]
 }
 
 export function getReminder(pkStr: string): ReminderRow | null {
+  if (!pkStr) return null;
   const reminders = listReminders();
   const byPk = reminders.find((r) => r.pk.toString() === pkStr);
   if (byPk) return byPk;

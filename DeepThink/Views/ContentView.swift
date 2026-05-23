@@ -158,19 +158,27 @@ private struct SplashView: View {
 
 struct ContentRouter: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
+    @State private var listRefreshID = 0
 
     var body: some View {
-        switch appState.selectedSection {
-        case .recent: RecentView()
-        case .workspace: WorkspaceView()
-        case .knowledge: KnowledgeView()
-        case .aiAssistant: AIView()
-        case .reminders: ReminderListView()
-        case .integrations: IntegrationsView()
-        case .terminal: DeepThinkTerminalView()
-        case .contextGraph: ContextGraphView()
-        case .settings: SettingsView()
-        case nil: RecentView()
+        Group {
+            switch appState.selectedSection {
+            case .recent: RecentView().id(listRefreshID)
+            case .workspace: WorkspaceView().id(listRefreshID)
+            case .knowledge: KnowledgeView()
+            case .aiAssistant: AIView()
+            case .reminders: ReminderListView().id(listRefreshID)
+            case .integrations: IntegrationsView()
+            case .terminal: DeepThinkTerminalView()
+            case .contextGraph: ContextGraphView()
+            case .settings: SettingsView()
+            case nil: RecentView().id(listRefreshID)
+            }
+        }
+        .onChange(of: appState.externalSyncToken) { _, _ in
+            modelContext.refreshAllObjects()
+            listRefreshID += 1
         }
     }
 }

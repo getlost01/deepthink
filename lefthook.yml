@@ -22,3 +22,11 @@ pre-commit:
     ts-check:
       glob: "cli/src/**/*.ts"
       run: cd cli && bunx biome check --write src/ && git -C .. add cli/src/
+
+    secret-scan:
+      run: |
+        if which gitleaks > /dev/null; then
+          gitleaks protect --staged --redact --exit-code 1
+        else
+          echo "warning: gitleaks not installed — run 'brew install gitleaks'"
+        fi

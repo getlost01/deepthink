@@ -8,6 +8,14 @@ updates:
       - dependencies
       - cli
 
+  - package-ecosystem: npm
+    directory: "/web-app"
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - web
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

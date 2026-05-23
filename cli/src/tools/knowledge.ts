@@ -1,7 +1,14 @@
+import { execSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { query } from "../core/llm";
+
+function notifyAppSync(): void {
+  try {
+    execSync("notifyutil -p com.deepthink.workspace.changed 2>/dev/null || true", { stdio: "ignore" });
+  } catch {}
+}
 
 function slugify(s: string): string {
   return s
@@ -210,6 +217,7 @@ export async function compressKnowledge(source: string, channel: string): Promis
     } catch {}
   }
 
+  notifyAppSync();
   return archiveFile;
 }
 
@@ -248,6 +256,7 @@ export async function archiveProject(project: string): Promise<string> {
   const archiveFile = join(KNOWLEDGE_DIRS.archive, `${slugify(project)}_${timestamp()}.md`);
   const content = `# Archived: ${project}\n${new Date().toISOString()}\n\n${compressed}`;
   writeFileSync(archiveFile, content, "utf-8");
+  notifyAppSync();
   return archiveFile;
 }
 
@@ -275,6 +284,7 @@ function updateIndex(project?: string): void {
   index.stats.lastUpdated = new Date().toISOString();
 
   writeFileSync(indexFile, JSON.stringify(index, null, 2), "utf-8");
+  notifyAppSync();
 }
 
 export function searchIntegrationData(

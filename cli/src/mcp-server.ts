@@ -40,7 +40,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
   try {
-    const result = tool.execute(request.params.arguments ?? {});
+    const result = await tool.execute(request.params.arguments ?? {});
     return {
       content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
     };
