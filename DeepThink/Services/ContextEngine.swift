@@ -249,6 +249,26 @@ final class ContextEngine {
         return result
     }
 
+    // MARK: - In-memory BM25 search (no VectorStore required)
+
+    func scoreEntries(for query: String) -> [String: Double] {
+        let queryTerms = tokenize(query)
+        guard !queryTerms.isEmpty, documentCount > 0 else { return [:] }
+        let queryTF = computeTF(queryTerms)
+        var scores: [String: Double] = [:]
+        for (docID, docTF) in documentTerms {
+            var score = 0.0
+            for (term, queryFreq) in queryTF {
+                let df = Double(documentFrequency[term] ?? 0)
+                let idf = log((Double(documentCount) - df + 0.5) / (df + 0.5) + 1.0)
+                let tf = docTF[term] ?? 0
+                score += idf * tf * queryFreq
+            }
+            if score > 0 { scores[docID] = score }
+        }
+        return scores
+    }
+
     // MARK: - Similarity Graph
 
     func similarityEdges(threshold: Double = 0.15) -> [(String, String, Double)] {

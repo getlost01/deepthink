@@ -1186,11 +1186,9 @@ struct ContextGraphView: View {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
             queryScores = [:]; return
         }
-        let bundle = ContextEngine.shared.retrieveContext(for: query, maxTokens: 99999)
-        let maxScore = bundle.parts.map(\.relevanceScore).max() ?? 1
-        queryScores = Dictionary(uniqueKeysWithValues:
-            bundle.parts.map { ($0.id, $0.relevanceScore / maxScore) }
-        )
+        let scores = ContextEngine.shared.scoreEntries(for: query)
+        let maxScore = scores.values.max() ?? 1
+        queryScores = scores.mapValues { $0 / maxScore }
     }
 }
 

@@ -310,7 +310,7 @@ struct AIChatView: View {
 
                             Color.clear.frame(height: 1).id("bottom")
                         }
-                        .frame(maxWidth: 840)
+                        .frame(maxWidth: 880)
                         .frame(maxWidth: .infinity)
                     }
                     .padding(.bottom, DS.Spacing.lg)
@@ -504,7 +504,7 @@ struct AIChatView: View {
                 .frame(width: 280)
             }
         }
-        .frame(maxWidth: 840)
+        .frame(maxWidth: 880)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.md)

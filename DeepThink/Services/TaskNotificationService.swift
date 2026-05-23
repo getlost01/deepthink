@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import SwiftData
 import UserNotifications
@@ -18,9 +19,18 @@ final class TaskNotificationService {
 
     func start(container: ModelContainer) {
         self.container = container
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, _ in
-            self?.authorized = granted
-            if granted { self?.scheduleCheck() }
+        checkAuthorization()
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.checkAuthorization()
+        }
+    }
+
+    private func checkAuthorization() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            let wasAuthorized = self?.authorized ?? false
+            let isAuthorized = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
+            self?.authorized = isAuthorized
+            if isAuthorized, !wasAuthorized { self?.scheduleCheck() }
         }
     }
 

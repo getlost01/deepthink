@@ -198,7 +198,10 @@ struct ReminderListView: View {
                                 Button {
                                     toggleCompletion(reminder)
                                 } label: {
-                                    Label(reminder.isCompleted ? "Mark Active" : "Mark Completed", systemImage: reminder.isCompleted ? "circle" : "checkmark.circle.fill")
+                                    Label(
+                                        reminder.isCompleted ? "Mark Active" : "Mark Completed",
+                                        systemImage: reminder.isCompleted ? "circle" : "checkmark.circle.fill"
+                                    )
                                 }
                                 Divider()
                                 Button(role: .destructive) { deleteReminder(reminder) } label: {

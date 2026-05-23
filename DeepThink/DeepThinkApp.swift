@@ -134,7 +134,6 @@ struct DeepThinkApp: App {
                     NotificationDelegate.registerCategories()
                     let center = UNUserNotificationCenter.current()
                     center.delegate = notificationDelegate
-                    center.requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
                     UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
                     registerCommands()
                     UpdateService.shared.checkForUpdatesOnLaunchIfNeeded()
