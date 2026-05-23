@@ -72,6 +72,7 @@ struct NoteListView: View {
 
             Divider()
 
+            ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(filteredNotes) { note in
@@ -118,6 +119,7 @@ struct NoteListView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plainPointer)
+                        .id(note.id)
                         .contextMenu {
                             Button(note.isPinned ? "Unpin" : "Pin") {
                                 note.isPinned.toggle()
@@ -143,6 +145,9 @@ struct NoteListView: View {
             .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
             .onKeyPress(.downArrow) { moveSelection(1); return .handled }
             .onKeyPress(.escape) { appState.selectedNoteID = nil; return .handled }
+            .onChange(of: appState.selectedNoteID) { _, id in
+                if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+            }
             .overlay {
                 if filteredNotes.isEmpty {
                     DSEmptyState(
@@ -155,6 +160,7 @@ struct NoteListView: View {
                     )
                 }
             }
+            }  // ScrollViewReader
         }
         .onChange(of: searchText) {
             searchTask?.cancel()

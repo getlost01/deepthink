@@ -90,6 +90,11 @@ struct ReminderListView: View {
 
     private var listPane: some View {
         VStack(spacing: 0) {
+            if notificationStatus == .denied {
+                NotificationPermissionBanner()
+                Divider()
+            }
+
             HStack(spacing: DS.Spacing.sm) {
                 DSSearchField(text: $searchText, placeholder: "Search reminders...")
                 DSAddButton {
@@ -99,12 +104,6 @@ struct ReminderListView: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
-
-            if notificationStatus == .denied {
-                NotificationPermissionBanner()
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.bottom, DS.Spacing.sm)
-            }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
@@ -234,23 +233,21 @@ struct ReminderListView: View {
 private struct NotificationPermissionBanner: View {
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
-            ZStack {
-                Circle()
-                    .fill(DS.Colors.warning.opacity(0.15))
-                    .frame(width: 36, height: 36)
-                Image(systemName: "bell.slash.fill")
-                    .font(.system(size: DS.IconSize.lg))
-                    .foregroundStyle(DS.Colors.warning)
-            }
+            Image(systemName: "bell.slash.fill")
+                .font(.system(size: DS.IconSize.md, weight: .medium))
+                .foregroundStyle(DS.Colors.warning)
+                .frame(width: 28, height: 28)
+                .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+            HStack(spacing: DS.Spacing.xs) {
                 Text("Notifications Disabled")
-                    .font(DS.Font.heading)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                Text("Reminders won't alert you. Enable notifications in System Settings.")
                     .font(DS.Font.caption)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("(reminders won't alert you)")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .lineLimit(1)
             }
 
             Spacer()
@@ -259,17 +256,18 @@ private struct NotificationPermissionBanner: View {
                 NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
             } label: {
                 Text("Open Settings")
-                    .font(DS.Font.caption)
+                    .font(DS.Font.small)
                     .fontWeight(.semibold)
-                    .foregroundStyle(DS.Colors.onAccent)
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
-                    .background(DS.Colors.warning, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .foregroundStyle(DS.Colors.warning)
+                    .frame(height: 20)
+                    .padding(.horizontal, DS.Spacing.xs2)
+                    .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
             .buttonStyle(.plainPointer)
         }
-        .padding(DS.Spacing.md)
-        .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.Colors.fill)
     }
 }

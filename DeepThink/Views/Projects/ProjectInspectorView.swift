@@ -29,7 +29,7 @@ private struct ProjectInspectorContent: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
 
-    private let colorOptions = ["#007AFF", "#FF3B30", "#FF9500", "#34C759", "#5856D6", "#AF52DE", "#FF2D55", "#A2845E"]
+    private let colorOptions = DS.Colors.projectColorHexes
 
     var body: some View {
         Form {

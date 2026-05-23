@@ -42,6 +42,10 @@ struct ContentView: View {
                         .transition(.opacity.combined(with: .scale(scale: 0.95)))
                 }
             }
+            .overlay(alignment: .bottom) {
+                DSToastView()
+                    .padding(.bottom, DS.Spacing.xl)
+            }
             .transition(.opacity)
         }
     }

@@ -170,11 +170,15 @@ struct KnowledgeBrowserView: View {
                                 }
                             }
                             if hasMore {
-                                ProgressView()
-                                    .controlSize(.small)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, DS.Spacing.md)
-                                    .onAppear { displayedCount += pageSize }
+                                HStack(spacing: DS.Spacing.xs) {
+                                    ProgressView().controlSize(.small)
+                                    Text("Loading more…")
+                                        .font(DS.Font.small)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, DS.Spacing.md)
+                                .onAppear { displayedCount += pageSize }
                             }
                         }
                     }
@@ -214,8 +218,10 @@ struct KnowledgeBrowserView: View {
         .confirmationDialog("Delete Entry?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
                 if let entry = selectedEntry {
+                    let title = entry.title
                     KnowledgeService.shared.deleteEntry(entry)
                     selectedEntry = nil
+                    ToastState.shared.show("\(title) deleted", icon: "trash", color: DS.Colors.danger)
                 }
             }
         } message: {
@@ -234,8 +240,10 @@ struct KnowledgeBrowserView: View {
     }
 
     private func captureClipboard() {
-        _ = DataCollectorService.shared.captureClipboard()
+        let ok = DataCollectorService.shared.captureClipboard()
         knowledge.reload()
+        if ok { ToastState.shared.show("Clipboard saved to knowledge") }
+        else { ToastState.shared.showError("Clipboard is empty or unsupported") }
     }
 
     private func importFiles() {
@@ -245,15 +253,17 @@ struct KnowledgeBrowserView: View {
         panel.allowedContentTypes = [UTType(filenameExtension: "md")!, .plainText]
         panel.begin { response in
             guard response == .OK else { return }
+            var count = 0
             for url in panel.urls {
                 var isDir: ObjCBool = false
                 if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
-                    _ = DataCollectorService.shared.importFolder(at: url.path)
+                    count += DataCollectorService.shared.importFolder(at: url.path)
                 } else {
-                    _ = DataCollectorService.shared.importFile(at: url)
+                    if DataCollectorService.shared.importFile(at: url) { count += 1 }
                 }
             }
             knowledge.reload()
+            ToastState.shared.show("\(count) file\(count == 1 ? "" : "s") imported to knowledge")
         }
     }
 
@@ -264,8 +274,9 @@ struct KnowledgeBrowserView: View {
         panel.message = "Select a folder to import markdown files from"
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
-            _ = DataCollectorService.shared.importFolder(at: url.path)
+            let count = DataCollectorService.shared.importFolder(at: url.path)
             knowledge.reload()
+            ToastState.shared.show("\(count) file\(count == 1 ? "" : "s") imported to knowledge")
         }
     }
 }
@@ -296,6 +307,7 @@ private struct EntryRow: View {
                             .fontWeight(.medium)
                             .foregroundStyle(DS.Colors.textPrimary)
                             .lineLimit(1)
+                            .help(entry.title)
                         Spacer()
                         Text(entry.importedAt.relativeFormatted)
                             .font(DS.Font.small)

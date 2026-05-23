@@ -105,8 +105,10 @@ struct SkillsListView: View {
             .confirmationDialog("Delete Skill?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     if let skill = selectedSkill {
+                        let name = skill.name
                         skillService.delete(skill: skill)
                         selectedSkill = nil
+                        ToastState.shared.show("\(name) deleted", icon: "trash", color: DS.Colors.danger)
                     }
                 }
             } message: {
@@ -126,6 +128,7 @@ struct SkillsListView: View {
         )
         if skillService.skills.count > countBefore {
             selectedSkill = skillService.skills.last
+            ToastState.shared.show("New skill created")
         }
     }
 }
@@ -228,8 +231,10 @@ struct RulesListView: View {
             .confirmationDialog("Delete Rule?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     if let rule = selectedRule {
+                        let name = rule.name
                         ruleService.delete(rule: rule)
                         selectedRule = nil
+                        ToastState.shared.show("\(name) deleted", icon: "trash", color: DS.Colors.danger)
                     }
                 }
             } message: {
@@ -249,6 +254,7 @@ struct RulesListView: View {
         )
         if ruleService.rules.count > countBefore {
             selectedRule = ruleService.rules.last
+            ToastState.shared.show("New rule created")
         }
     }
 }
@@ -490,8 +496,10 @@ private struct SkillInlineEditor: View {
                         color: duplicated ? DS.Colors.success : DS.Colors.textSecondary,
                         size: DS.IconSize.sm
                     ) {
+                        guard !duplicated else { return }
                         onDuplicate()
                         duplicated = true
+                        ToastState.shared.show("Skill duplicated")
                         Task {
                             try? await Task.sleep(for: .seconds(1.5))
                             await MainActor.run { duplicated = false }

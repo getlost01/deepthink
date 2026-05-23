@@ -98,6 +98,11 @@ enum DS {
         static let modalShadow = Color.black.opacity(0.25)
         static let subtleShadow = Color.black.opacity(0.10)
         static let overlayBg = Color.black.opacity(Opacity.overlayBg)
+
+        static let projectColorHexes = [
+            "#007AFF", "#FF3B30", "#FF9500", "#34C759",
+            "#5856D6", "#AF52DE", "#FF2D55", "#A2845E"
+        ]
     }
 
     enum Opacity {
@@ -1349,5 +1354,57 @@ struct RichMarkdownEditor: NSViewRepresentable {
 struct RichEditorToolbar: View {
     var body: some View {
         EmptyView()
+    }
+}
+
+// MARK: - Toast
+
+@Observable
+final class ToastState {
+    static let shared = ToastState()
+    var message: String = ""
+    var icon: String = "checkmark.circle.fill"
+    var color: Color = DS.Colors.success
+    var isShowing = false
+    private var dismissTask: Task<Void, Never>?
+
+    func show(_ text: String, icon: String = "checkmark.circle.fill", color: Color = DS.Colors.success) {
+        dismissTask?.cancel()
+        message = text
+        self.icon = icon
+        self.color = color
+        withAnimation(DS.Animation.standard) { isShowing = true }
+        dismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.5))
+            withAnimation(DS.Animation.standard) { self.isShowing = false }
+        }
+    }
+
+    func showError(_ text: String) {
+        show(text, icon: "xmark.circle.fill", color: DS.Colors.danger)
+    }
+}
+
+struct DSToastView: View {
+    @State private var toast = ToastState.shared
+
+    var body: some View {
+        if toast.isShowing {
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: toast.icon)
+                    .font(.system(size: DS.IconSize.sm, weight: .medium))
+                    .foregroundStyle(toast.color)
+                Text(toast.message)
+                    .font(DS.Font.caption)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DS.Colors.textPrimary)
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+            .shadow(color: DS.Colors.subtleShadow, radius: 8, y: 4)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 }

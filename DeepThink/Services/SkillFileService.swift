@@ -256,8 +256,19 @@ final class SkillFileService {
         let dir = StorageService.shared.skillsConfigURL
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
-        let existing = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil))?.count ?? 0
-        guard existing == 0 else { reload(); return }
+        let versionFile = dir.appendingPathComponent(".version")
+        let currentVersion = "2"
+        if (try? String(contentsOf: versionFile, encoding: .utf8)) == currentVersion {
+            reload(); return
+        }
+
+        if let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) {
+            for file in files where file.pathExtension == "md" {
+                if let text = try? String(contentsOf: file, encoding: .utf8), text.contains("built_in: true") {
+                    try? fm.removeItem(at: file)
+                }
+            }
+        }
 
         let defaults: [(String, String, String, String, String, [String])] = [
             (
@@ -301,14 +312,6 @@ final class SkillFileService {
                 []
             ),
             (
-                "Weekly Review",
-                "calendar",
-                "Productivity",
-                "Generate a structured weekly review. Sections: Accomplished, In Progress, Blocked, Next Week Priorities. Be concise.",
-                "Based on these items from the past week, generate a weekly review:\n\n{{input}}",
-                []
-            ),
-            (
                 "Daily Standup",
                 "sun.max",
                 "Productivity",
@@ -325,46 +328,6 @@ final class SkillFileService {
                 Group by project if more than one is active. No preamble, output only the standup.
                 """,
                 ["tasks", "projects"]
-            ),
-            (
-                "Project Health Check",
-                "chart.bar.doc.horizontal",
-                "Projects",
-                "",
-                """
-                You analyze a project's task distribution, overdue items, and stalled work. \
-                Surface risks and blockers clearly. Be direct — no filler.
-
-                Analyze project "{{input}}" and report:
-                1. Task breakdown by status (counts + %)
-                2. Overdue tasks (past due date, not Done/Cancelled)
-                3. Tasks stuck In Progress >7 days
-                4. Tasks with no due date and High/Urgent priority
-                5. Top 3 risks based on the above
-
-                Format as sections with bullet points.
-                """,
-                ["tasks", "projects", "notes"]
-            ),
-            (
-                "Find Knowledge Gaps",
-                "questionmark.diamond",
-                "Knowledge",
-                "",
-                """
-                You identify topics mentioned in tasks and notes that lack corresponding knowledge base entries. \
-                Surface what's undocumented.
-
-                Scan my current tasks and notes. Identify topics, decisions, concepts, or tools \
-                that are referenced but NOT documented in the knowledge base.
-
-                Output as a ranked list:
-                - **Topic** — why it matters, which task/note references it
-                - Sort by: how frequently referenced > how recently mentioned
-
-                End with 3 specific capture prompts the user can act on immediately.
-                """,
-                ["tasks", "notes", "knowledge"]
             )
         ]
 
@@ -375,14 +338,11 @@ final class SkillFileService {
             var md = "---\nname: \(name)\ntrigger: manual\nicon: \(icon)\ncategory: \(category)\n"
             if !scope.isEmpty { md += "knowledge_scope: [\(scope.joined(separator: ", "))]\n" }
             md += "built_in: true\n---\n\n"
-            if system.isEmpty {
-                md += prompt
-            } else {
-                md += system + "\n\n---\n\n" + prompt
-            }
+            if system.isEmpty { md += prompt } else { md += system + "\n\n---\n\n" + prompt }
             try? md.write(to: url, atomically: true, encoding: .utf8)
         }
 
+        try? currentVersion.write(to: versionFile, atomically: true, encoding: .utf8)
         reload()
     }
 }

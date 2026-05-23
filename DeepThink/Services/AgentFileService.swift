@@ -159,8 +159,20 @@ final class AgentFileService {
 
     func installDefaultAgents() {
         try? fm.createDirectory(at: agentsDir, withIntermediateDirectories: true)
-        let existing = (try? fm.contentsOfDirectory(at: agentsDir, includingPropertiesForKeys: nil))?.count ?? 0
-        guard existing == 0 else { reload(); return }
+
+        let versionFile = agentsDir.appendingPathComponent(".version")
+        let currentVersion = "2"
+        if (try? String(contentsOf: versionFile, encoding: .utf8)) == currentVersion {
+            reload(); return
+        }
+
+        if let files = try? fm.contentsOfDirectory(at: agentsDir, includingPropertiesForKeys: nil) {
+            for file in files where file.pathExtension == "md" {
+                if let text = try? String(contentsOf: file, encoding: .utf8), text.contains("built_in: true") {
+                    try? fm.removeItem(at: file)
+                }
+            }
+        }
 
         let defaults: [(String, String, String, String?, String, [String])] = [
             (
@@ -194,23 +206,6 @@ final class AgentFileService {
                 5. Flag anything that seems stale or forgotten
 
                 Keep it concise — this should be scannable in under 60 seconds. Use bullet points and bold for key items.
-                """,
-                []
-            ),
-            (
-                "Knowledge Curator",
-                "Captures, tags, and organizes information",
-                "brain",
-                nil,
-                """
-                You are a knowledge curation assistant. Help the user:
-                1. When given raw text, URLs, or pasted content — extract the key information worth saving
-                2. Suggest accurate tags and categorization
-                3. Identify connections to existing knowledge entries
-                4. Rewrite messy captures into clean, searchable notes
-                5. Spot duplicate or overlapping entries and suggest merging
-
-                Your goal is to keep the knowledge base clean, well-tagged, and interconnected. Prefer quality over quantity.
                 """,
                 []
             ),
@@ -251,52 +246,6 @@ final class AgentFileService {
                 After the JSON, add a brief plain-English summary of what you organized and any clarifying questions.
                 """,
                 ["tasks", "projects"]
-            ),
-            (
-                "Planner",
-                "Break goals into ordered, concrete steps",
-                "list.bullet.clipboard",
-                "claude-sonnet-4-6",
-                """
-                You are a planning agent. Given a goal or project, you decompose it into an ordered execution plan with concrete steps.
-
-                For each step, specify:
-                - What to do (specific action, not vague)
-                - Which workspace tool to use if applicable (workspace_create_task, workspace_create_note, etc.)
-                - Dependencies on previous steps
-                - Time estimate
-
-                Check existing workspace tasks and projects before planning — avoid duplicating work already in progress.
-
-                Output format:
-                1. **Step title** (tool: `tool_name` | est: Xh | depends: #N)
-                   Details about what specifically to do.
-
-                End with: total estimated time, critical path, and first thing to do right now.
-                """,
-                ["tasks", "projects", "knowledge"]
-            ),
-            (
-                "Standup",
-                "Generate daily async standup from workspace state",
-                "person.wave.2",
-                "claude-haiku-4-5-20251001",
-                """
-                You are a standup assistant. Pull workspace state and generate a crisp daily standup.
-
-                Format (always):
-                **Yesterday:** (tasks completed in last 24h, grouped by project)
-                **Today:** (In Progress + highest priority To Do items)
-                **Blockers:** (Urgent tasks, anything explicitly flagged as blocked)
-
-                Rules:
-                - Under 150 words total
-                - Group by project when >1 project active
-                - If no completed tasks yesterday, say "No completions — carried over from previous day"
-                - Bold project names
-                - Never add preamble or closing remarks — output only the standup block
-                """,
-                ["tasks", "projects"]
             )
         ]
 
@@ -311,6 +260,7 @@ final class AgentFileService {
             try? md.write(to: url, atomically: true, encoding: .utf8)
         }
 
+        try? currentVersion.write(to: versionFile, atomically: true, encoding: .utf8)
         reload()
     }
 }

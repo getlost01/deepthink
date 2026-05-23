@@ -9,6 +9,8 @@ struct ToolsHubView: View {
     @State private var selectedServer: MCPServer?
     @State private var testResult: String?
     @State private var isTesting = false
+    @State private var serverToDelete: MCPServer?
+    @State private var showDeleteConfirm = false
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
@@ -101,7 +103,10 @@ struct ToolsHubView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 400), spacing: DS.Spacing.md)], spacing: DS.Spacing.md) {
                         ForEach(filteredServers) { server in
-                            ToolCard(server: server, onTest: { testServer(server) }, onDelete: { deleteServer(server) })
+                            ToolCard(server: server, onTest: { testServer(server) }, onDelete: {
+                                serverToDelete = server
+                                showDeleteConfirm = true
+                            })
                         }
                     }
                     .padding(DS.Spacing.lg)
@@ -128,12 +133,22 @@ struct ToolsHubView: View {
         .sheet(isPresented: $showAddSheet) {
             AddServerSheet { server in
                 modelContext.insert(server)
+                ToastState.shared.show("MCP server added")
             }
         }
         .sheet(isPresented: $showPresets) {
             PresetServersSheet { server in
                 modelContext.insert(server)
+                ToastState.shared.show("MCP server added")
             }
+        }
+        .confirmationDialog("Remove Server?", isPresented: $showDeleteConfirm, presenting: serverToDelete) { server in
+            Button("Remove \"\(server.name)\"", role: .destructive) {
+                deleteServer(server)
+                serverToDelete = nil
+            }
+        } message: { server in
+            Text("This will remove \"\(server.name)\" from your MCP connections.")
         }
         .dsPage()
     }
@@ -158,6 +173,8 @@ struct ToolsHubView: View {
                     isTesting = false
                 }
             }
+            try? await Task.sleep(for: .seconds(3))
+            await MainActor.run { testResult = nil }
         }
     }
 
