@@ -54,6 +54,7 @@ jobs:
           APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
           VERSION="${GITHUB_REF_NAME#v}"
           ZIP_NAME="DeepThink-${VERSION}.zip"
+          mkdir -p dist
           ditto -c -k --keepParent "$APP_PATH" "dist/$ZIP_NAME"
           echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
@@ -91,3 +92,20 @@ jobs:
             ---
             **SHA256:** `${{ env.SHA256 }}`
           files: dist/${{ env.ZIP_NAME }}
+
+      - name: Update Homebrew cask
+        if: ${{ !contains(github.ref_name, '-') }}
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/getlost01/homebrew-deepthink.git" /tmp/tap --depth=1
+          cd /tmp/tap
+          sed -i '' \
+            -e "s/version \"[^\"]*\"/version \"${{ env.VERSION }}\"/" \
+            -e "s/sha256 \"[^\"]*\"/sha256 \"${{ env.SHA256 }}\"/" \
+            Casks/deepthink.rb
+          git add Casks/deepthink.rb
+          git diff --cached --quiet || git commit -m "chore: release v${{ env.VERSION }}"
+          git push
