@@ -6,6 +6,7 @@ struct GeneralSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 UpdatesSettingsSection()
+                ArchiveSettingsSection()
                 BackupSettingsSection()
             }
             .padding(DS.Spacing.xl)
@@ -203,6 +204,72 @@ private struct UpdatesSettingsSection: View {
             .buttonStyle(.dsSecondary)
         }
         .padding(.vertical, DS.Spacing.xs)
+    }
+}
+
+// MARK: - Archive Settings Section
+
+private struct ArchiveSettingsSection: View {
+    @AppStorage("autoArchiveTasks") private var autoArchive: Bool = true
+    @AppStorage("archiveDaysThreshold") private var threshold: Int = 3
+
+    private let options = [1, 2, 3, 4, 7, 14, 30]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "Auto-Archive")
+
+            VStack(spacing: 0) {
+                toggleRow
+                if autoArchive {
+                    Divider().padding(.leading, DS.Spacing.lg)
+                    thresholdRow
+                }
+            }
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+        }
+    }
+
+    private var toggleRow: some View {
+        HStack(spacing: DS.Spacing.md) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Auto-archive completed tasks")
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("Tasks are moved to the archive after they've been done for the configured number of days.")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+            Spacer()
+            Toggle("", isOn: $autoArchive)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+        .padding(DS.Spacing.lg)
+    }
+
+    private var thresholdRow: some View {
+        HStack(spacing: DS.Spacing.md) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                Text("Archive after")
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text("How long a completed task stays visible before being archived.")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textTertiary)
+            }
+            Spacer()
+            Picker("", selection: $threshold) {
+                ForEach(options, id: \.self) { days in
+                    Text(days == 1 ? "1 day" : "\(days) days").tag(days)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: 110)
+        }
+        .padding(DS.Spacing.lg)
     }
 }
 

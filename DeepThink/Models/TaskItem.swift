@@ -19,7 +19,7 @@ final class TaskItem {
     var project: Project?
     var tags: [Tag] = []
     var parent: TaskItem?
-    @Relationship(inverse: \TaskItem.parent) var subtasks: [TaskItem] = []
+    @Relationship(deleteRule: .cascade, inverse: \TaskItem.parent) var subtasks: [TaskItem] = []
 
     var status: TaskStatus {
         get { TaskStatus(rawValue: statusRaw) ?? .todo }

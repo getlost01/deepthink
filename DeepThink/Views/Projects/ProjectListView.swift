@@ -4,7 +4,7 @@ import SwiftUI
 struct ProjectListView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppState.self) private var appState
-    @Query(sort: \Project.modifiedAt, order: .reverse) private var allProjects: [Project]
+    @Query(sort: \Project.createdAt, order: .reverse) private var allProjects: [Project]
     @State private var searchText = ""
     @State private var debouncedSearch = ""
     @State private var searchTask: Task<Void, Never>?
@@ -122,7 +122,7 @@ struct ProjectListView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(projectToDelete?.name ?? "")\" and all its notes and tasks.")
+            Text("This will permanently delete \"\(projectToDelete?.name ?? "")\" and all its notes, tasks, and reminders.")
         }
     }
 
@@ -166,8 +166,8 @@ private struct ProjectCard: View {
                 }
                 if !project.summary.isEmpty {
                     Text(project.summary)
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.textSecondary)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
                         .lineLimit(1)
                 }
             }

@@ -75,12 +75,25 @@ actor ArchiveActor {
 final class ArchiveService {
     static let shared = ArchiveService()
 
+    private var container: ModelContainer?
+    private var timer: Timer?
+
     func start(container: ModelContainer) {
+        self.container = container
         Task { await run(container: container) }
+        scheduleTimer()
     }
 
     func triggerRun(container: ModelContainer) {
         Task { await run(container: container) }
+    }
+
+    private func scheduleTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: true) { [weak self] _ in
+            guard let self, let container = self.container else { return }
+            Task { await self.run(container: container) }
+        }
     }
 
     private func run(container: ModelContainer) async {

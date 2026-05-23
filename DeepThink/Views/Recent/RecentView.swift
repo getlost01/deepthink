@@ -132,31 +132,36 @@ struct RecentView: View {
                         value: "\(projects.count)",
                         label: "Projects",
                         icon: "folder",
-                        color: DS.Colors.accent
+                        color: DS.Colors.accent,
+                        action: { appState.navigate(to: .workspace) }
                     )
                     quickStat(
                         value: "\(tasks.count(where: { $0.status == .inProgress }))",
                         label: "In Progress",
                         icon: "circle.lefthalf.filled",
-                        color: DS.Colors.amber
+                        color: DS.Colors.amber,
+                        action: { appState.navigate(to: .workspace); appState.workspaceTab = .tasks }
                     )
                     quickStat(
                         value: "\(tasks.count(where: { $0.isOverdue }))",
                         label: "Overdue",
                         icon: "exclamationmark.triangle",
-                        color: DS.Colors.danger
+                        color: DS.Colors.danger,
+                        action: { appState.navigate(to: .workspace); appState.workspaceTab = .tasks }
                     )
                     quickStat(
                         value: "\(todayItems.count(where: { $0.kind == .task && $0.detail == "Completed" }))",
                         label: "Done Today",
                         icon: "checkmark.circle",
-                        color: DS.Colors.success
+                        color: DS.Colors.success,
+                        action: { appState.navigate(to: .workspace); appState.workspaceTab = .tasks }
                     )
                     quickStat(
                         value: "\(todayRemindersCount)",
                         label: "Reminders",
                         icon: "bell",
-                        color: DS.Colors.purple
+                        color: DS.Colors.purple,
+                        action: { appState.navigate(to: .reminders) }
                     )
                 }
 
@@ -200,33 +205,36 @@ struct RecentView: View {
         return "\(timeOfDay) — \(dateStr)"
     }
 
-    private func quickStat(value: String, label: String, icon: String, color: Color) -> some View {
-        VStack(spacing: DS.Spacing.sm) {
-            HStack(spacing: DS.Spacing.xs) {
-                Image(systemName: icon)
-                    .font(.system(size: DS.IconSize.sm, weight: .medium))
-                    .foregroundStyle(color)
-                Text(value)
-                    .font(.system(size: DS.IconSize.xl, weight: .bold))
-                    .foregroundStyle(DS.Colors.textPrimary)
+    private func quickStat(value: String, label: String, icon: String, color: Color, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: DS.Spacing.sm) {
+                HStack(spacing: DS.Spacing.xs) {
+                    Image(systemName: icon)
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(color)
+                    Text(value)
+                        .font(.system(size: DS.IconSize.xl, weight: .bold))
+                        .foregroundStyle(DS.Colors.textPrimary)
+                }
+                Text(label)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
             }
-            Text(label)
-                .font(DS.Font.small)
-                .foregroundStyle(DS.Colors.textTertiary)
+            .frame(maxWidth: .infinity)
+            .padding(DS.Spacing.md)
+            .background(
+                LinearGradient(
+                    colors: [color.opacity(0.06), color.opacity(0.02)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ),
+                in: RoundedRectangle(cornerRadius: DS.Radius.md)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(color.opacity(0.12), lineWidth: 1)
+            )
         }
-        .frame(maxWidth: .infinity)
-        .padding(DS.Spacing.md)
-        .background(
-            LinearGradient(
-                colors: [color.opacity(0.06), color.opacity(0.02)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: DS.Radius.md)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.md)
-                .strokeBorder(color.opacity(0.12), lineWidth: 1)
-        )
+        .buttonStyle(.plainPointer)
     }
 
     @ViewBuilder

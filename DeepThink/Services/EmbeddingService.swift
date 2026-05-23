@@ -14,6 +14,7 @@ final class EmbeddingService {
     private let store = VectorStore.shared
     private let embedQueue = DispatchQueue(label: "com.deepthink.embedding.nlp")
     private let drainQueue = DispatchQueue(label: "com.deepthink.embedding.drain", qos: .utility)
+    private let indexQueue = DispatchQueue(label: "com.deepthink.embedding.index", qos: .utility)
     private var reconcilerTask: Task<Void, Never>?
 
     private init() {
@@ -136,6 +137,12 @@ final class EmbeddingService {
         store.replaceChunksForEntry(id, with: vectorChunks)
     }
 
+    func scheduleIndexEntries(_ entries: [KnowledgeEntry]) {
+        indexQueue.async {
+            self.indexEntries(entries)
+        }
+    }
+
     func indexWorkspaceItems(_ items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)]) {
         DispatchQueue.main.async { self.isIndexing = true }
         defer {
@@ -232,6 +239,7 @@ final class EmbeddingService {
                 }
             }
 
+            VectorStore.shared.deleteExhaustedPendingReindex()
             let count = VectorStore.shared.embeddedCount()
             DispatchQueue.main.async { self.indexedCount = count }
         }

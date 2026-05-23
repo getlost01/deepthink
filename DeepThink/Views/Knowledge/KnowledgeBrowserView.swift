@@ -307,13 +307,6 @@ private struct EntryRow: View {
                             .foregroundStyle(DS.Colors.textTertiary)
                     }
 
-                    if !entry.preview.isEmpty {
-                        Text(entry.preview)
-                            .font(DS.Font.small)
-                            .foregroundStyle(DS.Colors.textSecondary)
-                            .lineLimit(1)
-                    }
-
                     HStack(spacing: DS.Spacing.xs) {
                         if !bucketFiltered {
                             Text(entry.bucket)

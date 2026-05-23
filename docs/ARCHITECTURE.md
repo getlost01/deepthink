@@ -62,7 +62,9 @@ Additional tables managed by Core Data:
 
 Shared SQLite database at `~/DeepThink/data/vectors.db`. Both the Swift app (`VectorStore.swift`) and CLI (`vector-store.ts`) read and write to this file. WAL mode enabled. Float32 BLOB embeddings from Apple NLEmbedding.
 
-Schema — `chunks` table:
+Schema — `chunks` table (primary data store):
+
+
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -78,6 +80,18 @@ Schema — `chunks` table:
 | `total_chunks` | INTEGER | Total chunks for entry |
 | `content_hash` | INTEGER | djb2 hash for change detection |
 | `embedding` | BLOB | Float32 array (~512 dims, Apple NLEmbedding) |
+
+Schema — `pending_reindex` table (durable retry queue):
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `entry_id` | TEXT | Primary key — one row per entry awaiting (re)index |
+| `entry_type` | TEXT | `knowledge`, `task`, `note`, `reminder` |
+| `operation` | TEXT | `upsert` or `delete` |
+| `queued_at` | INTEGER | Unix timestamp when enqueued |
+| `retry_count` | INTEGER | Incremented on failure; `retry_count` is preserved on re-enqueue so keystroke-driven re-queuing does not reset the cap |
+
+Entries with `retry_count >= 3` are pruned by `deleteExhaustedPendingReindex()` at the end of each reconciler drain cycle.
 
 ### Knowledge Filesystem
 
@@ -168,6 +182,10 @@ All read-only MCP tools carry `readonly: true` in their tool definition. Mutatin
 
 Read-only tools: `workspace_list_tasks`, `workspace_get_task`, `workspace_list_notes`, `workspace_get_note`, `workspace_list_projects`, `workspace_get_project`, `workspace_list_reminders`, `workspace_get_reminder`, `workspace_summary`, and all smart/context query tools.
 
+### SwiftData Cascade Deletes
+
+`Project` carries `deleteRule: .cascade` on its `notes`, `tasks`, and `reminders` relationships. `TaskItem` carries `deleteRule: .cascade` on its `subtasks` relationship. Deleting a project from SwiftData automatically deletes all owned notes, tasks, reminders, and nested subtasks — no manual cleanup needed.
+
 ### Vector Cascade Delete
 
 When an entity is deleted (task, note, project, reminder, knowledge entry), all associated chunks in `vectors.db` are deleted via a cascade query keyed on `entry_id`. Projects also cascade-delete all chunks for entries belonging to that project.
@@ -182,19 +200,20 @@ Key services in `DeepThink/Services/`:
 |---------|------|
 | `ClaudeService.swift` | Claude CLI wrapper — query, model selection, streaming, cost tracking |
 | `ContextEngine.swift` | BM25 index, hybrid RRF retrieval, chunk dedup, token budget management |
-| `EmbeddingService.swift` | NLEmbedding vectors, SemanticChunker, incremental indexing, NaN guard |
-| `VectorStore.swift` | SQLite CRUD for `vectors.db` — parameterized queries, WAL mode, Float32 BLOB |
+| `EmbeddingService.swift` | NLEmbedding vectors, SemanticChunker, incremental indexing, NaN guard, `pending_reindex` reconciler |
+| `VectorStore.swift` | SQLite CRUD for `vectors.db` — thread-safe `queue.sync` reads, WAL mode, Float32 BLOB, `pending_reindex` table |
 | `CLISyncService.swift` | Darwin notification listener, bridges CLI writes to SwiftUI refresh |
-| `KnowledgeService.swift` | Knowledge FS CRUD, search, RAG context formatting, reload triggers |
+| `KnowledgeService.swift` | Knowledge FS CRUD, incremental scanning (changed-since `lastScanAt`), multi-line YAML frontmatter, collision-safe archive move |
 | `MCPService.swift` | MCP server config generation, keyword detection, tool-augmented query dispatch |
 | `InstallationManager.swift` | CLI binary installation to `~/.local/bin/`, version checks |
 | `AgentFileService.swift` | Agent CRUD, context-aware prompt building |
 | `SkillFileService.swift` | Skill CRUD, template interpolation, execution |
 | `RuleFileService.swift` | Rule CRUD, trigger matching, prompt injection |
+| `ArchiveService.swift` | Auto-archives completed tasks after threshold (configurable); runs at startup and hourly via `Timer` |
 | `DataCollectorService.swift` | URL scraping, RSS, clipboard, folders, scripts |
 | `KnowledgeExtractionService.swift` | Auto-extract facts, auto-tag, chat→knowledge |
 | `BacklinkService.swift` | Wiki-link parsing, note↔knowledge cross-linking |
-| `CollectorScheduler.swift` | Timer-based recurring data collection |
+| `CollectorScheduler.swift` | Recurring data collection — FSEvents `FolderWatcher` for folder sources, `Timer` for all others |
 | `StorageService.swift` | Directory structure, paths, logging |
 | `TaskNotificationService.swift` | macOS notifications for due/overdue tasks |
 
@@ -211,7 +230,7 @@ Source at `cli/src/`, compiled to `cli/out/deepthink` and `cli/out/deepthink-mcp
 | `core/db.ts` | Parameterized SQLite access — all reads and writes to `deepthink.store`; populates `dt_audit_log` and `dt_trash`; fires `notifyutil` after mutations |
 | `core/context-engine.ts` | BM25 index build and query, hybrid RRF retrieval, workspace context assembly, archive exclusion |
 | `core/embedding-service.ts` | Query embedding via `embed-helper` Swift binary, cosine similarity, incremental indexing, NaN/Infinite validation |
-| `core/vector-store.ts` | SQLite CRUD for `vectors.db` — parameterized queries, chunk management, `chunksForEntryIds()` optimization |
+| `core/vector-store.ts` | SQLite CRUD for `vectors.db` — parameterized queries, chunk management, `chunksForEntryIds()` optimization, `pending_reindex` queue |
 | `core/llm.ts` | Claude CLI wrapper for CLI-side AI queries |
 | `core/sandbox.ts` | Output directory management |
 

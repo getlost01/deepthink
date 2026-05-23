@@ -11,8 +11,9 @@ final class Project {
     var modifiedAt: Date = Date()
     var isArchived: Bool = false
 
-    @Relationship(inverse: \Note.project) var notes: [Note] = []
-    @Relationship(inverse: \TaskItem.project) var tasks: [TaskItem] = []
+    @Relationship(deleteRule: .cascade, inverse: \Note.project) var notes: [Note] = []
+    @Relationship(deleteRule: .cascade, inverse: \TaskItem.project) var tasks: [TaskItem] = []
+    @Relationship(deleteRule: .cascade, inverse: \Reminder.project) var reminders: [Reminder] = []
 
     init(name: String, summary: String = "", color: String = "#007AFF") {
         id = UUID()

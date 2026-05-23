@@ -9,7 +9,7 @@ enum SidebarSection: String, Identifiable {
     case knowledge = "Knowledge"
     case aiAssistant = "AI Assistant"
     case reminders = "Reminders"
-    case integrations = "Integration"
+    case integrations = "Integrations"
     case terminal = "Terminal"
     case contextGraph = "Context Graph"
     case settings = "Settings"

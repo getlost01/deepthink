@@ -9,6 +9,7 @@ final class KnowledgeService {
     var isLoading = false
 
     private let fm = FileManager.default
+    private var lastScanAt: Date?
 
     private init() {}
 
@@ -16,35 +17,78 @@ final class KnowledgeService {
 
     func reload() {
         isLoading = true
-        defer { isLoading = false }
+        let scanStart = Date()
+        let since = lastScanAt
 
-        let baseURL = StorageService.shared.knowledgeURL
-        entries = scanDirectory(baseURL)
-            .sorted { $0.importedAt > $1.importedAt }
+        DispatchQueue.global(qos: .userInitiated).async {
+            let knowledgeURL = StorageService.shared.knowledgeURL
 
-        let snapshot = entries
-        ContextEngine.shared.indexQueue.async {
-            ContextEngine.shared.rebuildIndex(with: snapshot)
-        }
+            if let since {
+                let changed = self.scanDirectory(knowledgeURL, changedSince: since)
+                let allPaths = Set(self.allFilePaths(in: knowledgeURL))
 
-        DispatchQueue.global(qos: .utility).async {
-            EmbeddingService.shared.indexEntries(snapshot)
+                DispatchQueue.main.async {
+                    self.entries.removeAll { !allPaths.contains($0.filePath) }
+                    for entry in changed {
+                        if let idx = self.entries.firstIndex(where: { $0.filePath == entry.filePath }) {
+                            self.entries[idx] = entry
+                        } else {
+                            self.entries.append(entry)
+                        }
+                    }
+                    self.entries.sort { $0.importedAt > $1.importedAt }
+                    self.lastScanAt = scanStart
+                    let snapshot = self.entries
+                    ContextEngine.shared.indexQueue.async { ContextEngine.shared.rebuildIndex(with: snapshot) }
+                    EmbeddingService.shared.scheduleIndexEntries(changed)
+                    self.isLoading = false
+                }
+            } else {
+                let scanned = self.scanDirectory(knowledgeURL).sorted { $0.importedAt > $1.importedAt }
+                ContextEngine.shared.indexQueue.async { ContextEngine.shared.rebuildIndex(with: scanned) }
+                EmbeddingService.shared.scheduleIndexEntries(scanned)
+                DispatchQueue.main.async {
+                    self.entries = scanned
+                    self.lastScanAt = scanStart
+                    self.isLoading = false
+                }
+            }
         }
     }
 
-    private func scanDirectory(_ url: URL) -> [KnowledgeEntry] {
-        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey, .creationDateKey], options: [.skipsHiddenFiles])
-        else { return [] }
+    private func scanDirectory(_ url: URL, changedSince since: Date? = nil) -> [KnowledgeEntry] {
+        guard let enumerator = fm.enumerator(
+            at: url,
+            includingPropertiesForKeys: [.fileSizeKey, .creationDateKey, .contentModificationDateKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
 
+        let boundary = since.map { $0.addingTimeInterval(-1) }
         var results: [KnowledgeEntry] = []
         while let fileURL = enumerator.nextObject() as? URL {
             guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" else { continue }
             if fileURL.path.contains("/integrations/agent/") { continue }
+            if let boundary {
+                let modDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
+                if modDate < boundary { continue }
+            }
             if let entry = parseEntry(at: fileURL) {
                 results.append(entry)
             }
         }
         return results
+    }
+
+    private func allFilePaths(in url: URL) -> [URL] {
+        guard let enumerator = fm.enumerator(at: url, includingPropertiesForKeys: [], options: [.skipsHiddenFiles])
+        else { return [] }
+        var paths: [URL] = []
+        while let fileURL = enumerator.nextObject() as? URL {
+            guard fileURL.pathExtension == "md" || fileURL.pathExtension == "markdown" else { continue }
+            if fileURL.path.contains("/integrations/agent/") { continue }
+            paths.append(fileURL)
+        }
+        return paths
     }
 
     // MARK: - Parse
@@ -125,20 +169,43 @@ final class KnowledgeService {
 
         var frontmatter: [String: String] = [:]
         var bodyStartIndex = 1
+        var currentListKey: String? = nil
+        var currentListItems: [String] = []
+
+        func flushList() {
+            if let key = currentListKey, !currentListItems.isEmpty {
+                frontmatter[key] = "[\(currentListItems.joined(separator: ", "))]"
+            }
+            currentListKey = nil
+            currentListItems = []
+        }
 
         for i in 1..<lines.count {
-            let line = lines[i].trimmingCharacters(in: .whitespaces)
-            if line == "---" {
+            let line = lines[i]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed == "---" {
+                flushList()
                 bodyStartIndex = i + 1
                 break
             }
+            // Collect multi-line list items (e.g. "  - tag1")
+            if trimmed.hasPrefix("- "), currentListKey != nil {
+                currentListItems.append(String(trimmed.dropFirst(2)).trimmingCharacters(in: .whitespaces))
+                continue
+            }
+            flushList()
             let parts = line.split(separator: ":", maxSplits: 1)
             if parts.count == 2 {
                 let key = String(parts[0]).trimmingCharacters(in: .whitespaces)
                 let value = String(parts[1]).trimmingCharacters(in: .whitespaces)
-                frontmatter[key] = value
+                if value.isEmpty {
+                    currentListKey = key
+                } else {
+                    frontmatter[key] = value
+                }
             }
         }
+        flushList()
 
         let body = lines[bodyStartIndex...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         return (frontmatter, body)
@@ -172,11 +239,9 @@ final class KnowledgeService {
         try? md.write(to: fileURL, atomically: true, encoding: .utf8)
         reload()
 
-        if tags.isEmpty {
+        if tags.isEmpty, let entry = parseEntry(at: fileURL) {
             Task {
-                if let entry = self.entries.first(where: { $0.filePath == fileURL }) {
-                    await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: entry)
-                }
+                await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: entry)
             }
         }
     }
@@ -230,8 +295,17 @@ final class KnowledgeService {
         }
         md += "---\n\n\(body)"
 
-        guard !fm.fileExists(atPath: destURL.path) else { return }
-        try? md.write(to: destURL, atomically: true, encoding: .utf8)
+        var finalDestURL = destURL
+        if fm.fileExists(atPath: finalDestURL.path) {
+            let base = destURL.deletingPathExtension().lastPathComponent
+            let ext = destURL.pathExtension
+            var counter = 2
+            repeat {
+                finalDestURL = destDir.appendingPathComponent("\(base)-\(counter).\(ext)")
+                counter += 1
+            } while fm.fileExists(atPath: finalDestURL.path)
+        }
+        try? md.write(to: finalDestURL, atomically: true, encoding: .utf8)
         try? fm.removeItem(at: entry.filePath)
         reload()
     }

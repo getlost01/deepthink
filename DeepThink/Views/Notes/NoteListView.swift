@@ -79,7 +79,7 @@ struct NoteListView: View {
                         Button {
                             appState.selectedNoteID = note.id
                         } label: {
-                            VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                 HStack(spacing: DS.Spacing.xs) {
                                     if note.isPinned {
                                         Image(systemName: "pin.fill")
@@ -96,16 +96,21 @@ struct NoteListView: View {
                                         .fontWeight(.medium)
                                         .lineLimit(1)
                                         .foregroundStyle(DS.Colors.textPrimary)
-                                }
-                                HStack {
-                                    Text(note.firstLine)
-                                        .font(DS.Font.caption)
-                                        .foregroundStyle(DS.Colors.textSecondary)
-                                        .lineLimit(1)
                                     Spacer()
                                     Text(note.modifiedAt.relativeFormatted)
                                         .font(DS.Font.small)
                                         .foregroundStyle(DS.Colors.textTertiary)
+                                }
+                                let preview = note.content
+                                    .components(separatedBy: .newlines)
+                                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                                    .filter { !$0.isEmpty && !$0.hasPrefix("#") && !$0.hasPrefix("---") }
+                                    .first ?? ""
+                                if !preview.isEmpty {
+                                    Text(preview)
+                                        .font(DS.Font.small)
+                                        .foregroundStyle(DS.Colors.textTertiary)
+                                        .lineLimit(1)
                                 }
                             }
                             .padding(.vertical, DS.Spacing.sm)
@@ -145,6 +150,7 @@ struct NoteListView: View {
                         icon: "doc.text",
                         title: "No Notes Yet",
                         subtitle: "Notes are great for capturing ideas, meeting notes, or documentation",
+                        hint: "Tip: use [[ inside a note to link to another note, and / to run AI skills",
                         action: createNote,
                         actionTitle: "New Note"
                     )

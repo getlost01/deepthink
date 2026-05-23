@@ -119,6 +119,37 @@ This makes incremental indexing cheap — only changed content triggers NLEmbedd
 
 ---
 
+## Durable Retry Queue (pending_reindex)
+
+Embeddings that fail (NLEmbedding returns nil, NaN guard fires, or the process is interrupted) are written to a `pending_reindex` SQLite table in `vectors.db`. A background reconciler retries them on the next cycle.
+
+**Key behaviors:**
+
+- Re-enqueuing an already-queued entry (`ON CONFLICT DO UPDATE`) updates the operation and timestamp but **preserves `retry_count`** — rapid content edits do not reset the cap.
+- `retry_count` is incremented on failure; entries with `retry_count >= 3` are pruned by `deleteExhaustedPendingReindex()` at the end of each drain, preventing infinite retry loops.
+- Both the Swift `EmbeddingService` and TypeScript `embedding-service.ts` implement the same queue/drain logic so the behavior is consistent regardless of which side does the indexing.
+
+---
+
+## Incremental Knowledge Scanning
+
+`KnowledgeService.reload()` tracks `lastScanAt`. On subsequent reloads it only rescans files with `contentModificationDate > lastScanAt - 1s`, then diffs the full path list to detect deletions. The first reload (or after app restart) always does a full scan.
+
+Detected changes are passed to `EmbeddingService.scheduleIndexEntries()` which dispatches embedding on a dedicated utility-QoS queue, keeping the main thread free.
+
+---
+
+## Thread Safety in VectorStore
+
+All read and write operations in `VectorStore.swift` are serialized through a concurrent `DispatchQueue` with barrier writes:
+
+- Reads: `queue.sync { … }` — concurrent, multiple readers allowed
+- Writes: `queue.async(flags: .barrier) { … }` or `queue.sync(flags: .barrier) { … }` — exclusive
+
+Prior to this, read methods (`contentHash`, `allChunks`, `chunksWithEmbeddings`, `chunkCount`, `entryCount`, `embeddedCount`, `getMeta`, `allEntryIDs`) were called without queue protection, risking SQLite "database is locked" errors under concurrent embedding and search workloads.
+
+---
+
 ## Chunk Cascade Delete
 
 When any entity is deleted — task, note, project, reminder, or knowledge entry — all associated chunks in `vectors.db` are removed:
@@ -170,7 +201,7 @@ deepthink context query "auth flow" --bm25      # keyword-only, skip semantic
 | `Services/VectorStore.swift` | SQLite CRUD for `vectors.db`, Float32 BLOB read/write, parameterized queries |
 | `Services/EmbeddingService.swift` | NLEmbedding calls, SemanticChunker, incremental indexing, NaN guard, workspace item indexing |
 | `Services/ContextEngine.swift` | `retrieveContextHybrid()` — merges BM25 + semantic via RRF |
-| `Services/KnowledgeService.swift` | Triggers `EmbeddingService.indexEntries()` on knowledge reload |
+| `Services/KnowledgeService.swift` | Incremental scan via `lastScanAt`; triggers `EmbeddingService.scheduleIndexEntries()` for changed files only |
 | `cli/src/core/vector-store.ts` | CLI SQLite layer, `semanticChunk`, shared schema, `chunksForEntryIds()` |
 | `cli/src/core/embedding-service.ts` | Query embedding via embed-helper, cosine similarity, indexing, NaN guard |
 | `cli/src/core/context-engine.ts` | CLI `retrieveContextHybrid()` — BM25 + semantic RRF fusion |

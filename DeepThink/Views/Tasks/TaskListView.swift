@@ -195,7 +195,13 @@ struct TaskListView: View {
                                     }
                                     Divider()
                                     Button(task.isArchived ? "Unarchive" : "Archive") {
-                                        task.isArchived.toggle()
+                                        if task.isArchived {
+                                            task.isArchived = false
+                                            task.manuallyArchived = false
+                                        } else {
+                                            task.isArchived = true
+                                            task.manuallyArchived = true
+                                        }
                                         task.modifiedAt = Date()
                                         try? modelContext.save()
                                     }

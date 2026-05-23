@@ -202,7 +202,7 @@ Token-budgeted injection into the Claude system prompt:
 | `Services/ContextEngine.swift` | BM25 index build, `retrieveContextHybrid()`, RRF fusion, token budgeting |
 | `Services/EmbeddingService.swift` | NLEmbedding, SemanticChunker, incremental indexing, NaN guard |
 | `Services/VectorStore.swift` | SQLite CRUD, `chunksForEntryIds()`, Float32 BLOB |
-| `Services/KnowledgeService.swift` | Knowledge FS reload, context formatting |
+| `Services/KnowledgeService.swift` | Knowledge FS reload (incremental via `lastScanAt`), YAML frontmatter parsing, context formatting |
 
 ### CLI
 
@@ -210,5 +210,5 @@ Token-budgeted injection into the Claude system prompt:
 |------|------|
 | `cli/src/core/context-engine.ts` | BM25 index, `retrieveContextHybrid()`, archive exclusion, workspace context |
 | `cli/src/core/embedding-service.ts` | Query embedding via embed-helper, cosine similarity, indexing |
-| `cli/src/core/vector-store.ts` | SQLite layer, `chunksForEntryIds()`, shared schema |
+| `cli/src/core/vector-store.ts` | SQLite layer, `chunksForEntryIds()`, shared schema, `pending_reindex` queue |
 | `cli/src/tools/smart-mcp.ts` | MCP tools: `smart_query`, `knowledge_context`, `workspace_context`, `unified_search` |

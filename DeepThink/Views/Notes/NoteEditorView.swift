@@ -151,23 +151,44 @@ struct NoteEditorView: View {
                 .compactMap { link in allNotes.first { $0.id == link.sourceNoteID } }
                 .filter { $0.id != note.id }
 
-            RichMarkdownEditor(
-                text: $note.content,
-                isReadOnly: note.isArchived,
-                onLinkClick: { url in appState.handleDeepLink(url) },
-                onRequestLinkInsert: { type in linkPickerType = type },
-                onWikiLinkClick: { title in
-                    guard !title.isEmpty,
-                          let target = allNotes.first(where: { $0.title.lowercased() == title.lowercased() }) else { return }
-                    appState.navigateToNote(target.id)
-                },
-                linkInsertRequest: linkInsertRequest,
-                wikiLinks: Dictionary(allNotes.filter { !$0.title.isEmpty }.map { ($0.title, $0.id.uuidString) }, uniquingKeysWith: { first, _ in first }),
-                linkPreviews: cachedLinkPreviews,
-                deadLinkUUIDs: deadLinkUUIDs,
-                onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
-                cleanDeadLinksRequest: cleanDeadLinksRequest
-            )
+            ZStack(alignment: .topLeading) {
+                RichMarkdownEditor(
+                    text: $note.content,
+                    isReadOnly: note.isArchived,
+                    onLinkClick: { url in appState.handleDeepLink(url) },
+                    onRequestLinkInsert: { type in linkPickerType = type },
+                    onWikiLinkClick: { title in
+                        guard !title.isEmpty,
+                              let target = allNotes.first(where: { $0.title.lowercased() == title.lowercased() }) else { return }
+                        appState.navigateToNote(target.id)
+                    },
+                    linkInsertRequest: linkInsertRequest,
+                    wikiLinks: Dictionary(allNotes.filter { !$0.title.isEmpty }.map { ($0.title, $0.id.uuidString) }, uniquingKeysWith: { first, _ in first }),
+                    linkPreviews: cachedLinkPreviews,
+                    deadLinkUUIDs: deadLinkUUIDs,
+                    onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
+                    cleanDeadLinksRequest: cleanDeadLinksRequest
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if note.content.isEmpty, !note.isArchived {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Start writing…")
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
+                        HStack(spacing: DS.Spacing.lg) {
+                            Label("/ for skills", systemImage: "sparkles")
+                            Label("[[ to link notes", systemImage: "link")
+                            Label("**bold**, _italic_", systemImage: "textformat")
+                        }
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary.opacity(0.45))
+                    }
+                    .padding(.horizontal, DS.Spacing.xl)
+                    .padding(.top, DS.Spacing.md)
+                    .allowsHitTesting(false)
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
             .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {

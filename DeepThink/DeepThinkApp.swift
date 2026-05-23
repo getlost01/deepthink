@@ -345,7 +345,7 @@ struct DeepThinkApp: App {
             Command(title: "AI Assistant", icon: "message.and.waveform", shortcut: "⌘3", section: "Navigate") {
                 appState.navigate(to: .aiAssistant)
             },
-            Command(title: "Integration", icon: "cable.connector", shortcut: "⌘4", section: "Navigate") {
+            Command(title: "Integrations", icon: "cable.connector", shortcut: "⌘4", section: "Navigate") {
                 appState.navigate(to: .integrations)
             },
             Command(title: "Reminders", icon: "bell", shortcut: "⌘5", section: "Navigate") {

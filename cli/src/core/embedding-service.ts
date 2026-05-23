@@ -8,6 +8,7 @@ import {
   batchContentHashes,
   chunksWithEmbeddings,
   deleteChunksForEntry,
+  deleteExhaustedPendingReindex,
   deletePendingReindex,
   embeddedCount,
   enqueuePendingReindex,
@@ -357,6 +358,7 @@ export function drainPendingReindex(): { processed: number; failed: number } {
     }
   }
 
+  deleteExhaustedPendingReindex();
   return { processed, failed };
 }
 

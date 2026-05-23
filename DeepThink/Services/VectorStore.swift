@@ -232,7 +232,15 @@ final class VectorStore {
     func enqueuePendingReindex(entryID: String, entryType: String, operation: String = "upsert") {
         queue.async(flags: .barrier) { [weak self] in
             guard let self else { return }
-            let sql = "INSERT OR REPLACE INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count) VALUES (?, ?, ?, ?, 0)"
+            // Preserve retry_count on re-enqueue so the cap isn't reset by every keystroke
+            let sql = """
+                INSERT INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count)
+                VALUES (?, ?, ?, ?, 0)
+                ON CONFLICT(entry_id) DO UPDATE SET
+                    entry_type = excluded.entry_type,
+                    operation  = excluded.operation,
+                    queued_at  = excluded.queued_at
+            """
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
@@ -283,16 +291,28 @@ final class VectorStore {
         }
     }
 
+    func deleteExhaustedPendingReindex(maxRetries: Int = 3) {
+        queue.sync(flags: .barrier) {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, "DELETE FROM pending_reindex WHERE retry_count >= ?", -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_int(stmt, 1, Int32(maxRetries))
+            sqlite3_step(stmt)
+        }
+    }
+
     // MARK: - Query
 
     func contentHash(forEntry entryID: String) -> UInt64? {
-        var stmt: OpaquePointer?
-        let sql = "SELECT content_hash FROM chunks WHERE entry_id = ? LIMIT 1"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
-        return UInt64(bitPattern: sqlite3_column_int64(stmt, 0))
+        queue.sync {
+            var stmt: OpaquePointer?
+            let sql = "SELECT content_hash FROM chunks WHERE entry_id = ? LIMIT 1"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+            return UInt64(bitPattern: sqlite3_column_int64(stmt, 0))
+        }
     }
 
     func allChunks(
@@ -322,31 +342,33 @@ final class VectorStore {
             sql += " WHERE " + conditions.joined(separator: " AND ")
         }
 
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
-        defer { sqlite3_finalize(stmt) }
+        return queue.sync {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(stmt) }
 
-        for (i, param) in params.enumerated() {
-            sqlite3_bind_text(stmt, Int32(i + 1), param.cString, -1, SQLITE_TRANSIENT_PTR)
-        }
-
-        var results: [VectorChunk] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            let chunk = readChunkRow(stmt)
-
-            if let scope, !scope.isEmpty {
-                let matches = scope.contains { s in
-                    let sl = s.lowercased()
-                    return chunk.source.lowercased().contains(sl) ||
-                        chunk.tags.contains { $0.lowercased().contains(sl) } ||
-                        chunk.title.lowercased().contains(sl)
-                }
-                if !matches { continue }
+            for (i, param) in params.enumerated() {
+                sqlite3_bind_text(stmt, Int32(i + 1), param.cString, -1, SQLITE_TRANSIENT_PTR)
             }
 
-            results.append(chunk)
+            var results: [VectorChunk] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let chunk = readChunkRow(stmt)
+
+                if let scope, !scope.isEmpty {
+                    let matches = scope.contains { s in
+                        let sl = s.lowercased()
+                        return chunk.source.lowercased().contains(sl) ||
+                            chunk.tags.contains { $0.lowercased().contains(sl) } ||
+                            chunk.title.lowercased().contains(sl)
+                    }
+                    if !matches { continue }
+                }
+
+                results.append(chunk)
+            }
+            return results
         }
-        return results
     }
 
     func chunksWithEmbeddings(
@@ -365,104 +387,118 @@ final class VectorStore {
             "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding FROM chunks WHERE " +
             conditions.joined(separator: " AND ")
 
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
-        defer { sqlite3_finalize(stmt) }
+        return queue.sync {
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(stmt) }
 
-        for (i, param) in params.enumerated() {
-            sqlite3_bind_text(stmt, Int32(i + 1), param.cString, -1, SQLITE_TRANSIENT_PTR)
-        }
-
-        var results: [(chunk: VectorChunk, embedding: [Double])] = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            let chunk = readChunkRow(stmt)
-
-            guard let embedding = chunk.embedding else { continue }
-
-            if let scope, !scope.isEmpty {
-                let matches = scope.contains { s in
-                    let sl = s.lowercased()
-                    return chunk.source.lowercased().contains(sl) ||
-                        chunk.tags.contains { $0.lowercased().contains(sl) } ||
-                        chunk.title.lowercased().contains(sl)
-                }
-                if !matches { continue }
+            for (i, param) in params.enumerated() {
+                sqlite3_bind_text(stmt, Int32(i + 1), param.cString, -1, SQLITE_TRANSIENT_PTR)
             }
 
-            results.append((chunk, embedding))
+            var results: [(chunk: VectorChunk, embedding: [Double])] = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let chunk = readChunkRow(stmt)
+
+                guard let embedding = chunk.embedding else { continue }
+
+                if let scope, !scope.isEmpty {
+                    let matches = scope.contains { s in
+                        let sl = s.lowercased()
+                        return chunk.source.lowercased().contains(sl) ||
+                            chunk.tags.contains { $0.lowercased().contains(sl) } ||
+                            chunk.title.lowercased().contains(sl)
+                    }
+                    if !matches { continue }
+                }
+
+                results.append((chunk, embedding))
+            }
+            return results
         }
-        return results
     }
 
     func chunkCount(entryType: String? = nil) -> Int {
-        let sql = entryType != nil
-            ? "SELECT COUNT(*) FROM chunks WHERE entry_type = ?"
-            : "SELECT COUNT(*) FROM chunks"
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
-        defer { sqlite3_finalize(stmt) }
-        if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-        return Int(sqlite3_column_int(stmt, 0))
+        queue.sync {
+            let sql = entryType != nil
+                ? "SELECT COUNT(*) FROM chunks WHERE entry_type = ?"
+                : "SELECT COUNT(*) FROM chunks"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+            defer { sqlite3_finalize(stmt) }
+            if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
     }
 
     func entryCount(entryType: String? = nil) -> Int {
-        let sql = entryType != nil
-            ? "SELECT COUNT(DISTINCT entry_id) FROM chunks WHERE entry_type = ?"
-            : "SELECT COUNT(DISTINCT entry_id) FROM chunks"
-        var stmt: OpaquePointer?
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
-        defer { sqlite3_finalize(stmt) }
-        if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-        return Int(sqlite3_column_int(stmt, 0))
+        queue.sync {
+            let sql = entryType != nil
+                ? "SELECT COUNT(DISTINCT entry_id) FROM chunks WHERE entry_type = ?"
+                : "SELECT COUNT(DISTINCT entry_id) FROM chunks"
+            var stmt: OpaquePointer?
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+            defer { sqlite3_finalize(stmt) }
+            if let entryType { sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
     }
 
     func embeddedCount() -> Int {
-        var stmt: OpaquePointer?
-        let sql = "SELECT COUNT(DISTINCT entry_id) FROM chunks WHERE embedding IS NOT NULL"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
-        defer { sqlite3_finalize(stmt) }
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
-        return Int(sqlite3_column_int(stmt, 0))
+        queue.sync {
+            var stmt: OpaquePointer?
+            let sql = "SELECT COUNT(DISTINCT entry_id) FROM chunks WHERE embedding IS NOT NULL"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+            defer { sqlite3_finalize(stmt) }
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
+            return Int(sqlite3_column_int(stmt, 0))
+        }
     }
 
     // MARK: - Meta
 
     func getMeta(_ key: String) -> String? {
-        var stmt: OpaquePointer?
-        let sql = "SELECT value FROM meta WHERE key = ?"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
-        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
-        return String(cString: sqlite3_column_text(stmt, 0))
+        queue.sync {
+            var stmt: OpaquePointer?
+            let sql = "SELECT value FROM meta WHERE key = ?"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
+            guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+            return String(cString: sqlite3_column_text(stmt, 0))
+        }
     }
 
     func setMeta(_ key: String, _ value: String) {
-        var stmt: OpaquePointer?
-        let sql = "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
-        sqlite3_bind_text(stmt, 2, value.cString, -1, SQLITE_TRANSIENT_PTR)
-        sqlite3_step(stmt)
+        queue.sync(flags: .barrier) {
+            var stmt: OpaquePointer?
+            let sql = "INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_bind_text(stmt, 2, value.cString, -1, SQLITE_TRANSIENT_PTR)
+            sqlite3_step(stmt)
+        }
     }
 
     // MARK: - Helpers
 
     private func allEntryIDs(forType entryType: String) -> Set<String> {
-        var stmt: OpaquePointer?
-        let sql = "SELECT DISTINCT entry_id FROM chunks WHERE entry_type = ?"
-        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
-        defer { sqlite3_finalize(stmt) }
-        sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR)
+        queue.sync {
+            var stmt: OpaquePointer?
+            let sql = "SELECT DISTINCT entry_id FROM chunks WHERE entry_type = ?"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [] }
+            defer { sqlite3_finalize(stmt) }
+            sqlite3_bind_text(stmt, 1, entryType.cString, -1, SQLITE_TRANSIENT_PTR)
 
-        var ids: Set<String> = []
-        while sqlite3_step(stmt) == SQLITE_ROW {
-            ids.insert(String(cString: sqlite3_column_text(stmt, 0)))
+            var ids: Set<String> = []
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                ids.insert(String(cString: sqlite3_column_text(stmt, 0)))
+            }
+            return ids
         }
-        return ids
     }
 
     private func readChunkRow(_ stmt: OpaquePointer?) -> VectorChunk {

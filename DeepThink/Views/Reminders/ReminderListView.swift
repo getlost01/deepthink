@@ -61,15 +61,14 @@ struct ReminderListView: View {
                 ReminderDetailView(reminder: reminder)
                     .id(reminder.id)
             } else {
-                VStack(spacing: DS.Spacing.md) {
-                    Image(systemName: "bell")
-                        .font(.system(size: DS.IconSize.hero))
-                        .foregroundStyle(DS.Colors.textTertiary)
-                    Text("Select a reminder")
-                        .font(DS.Font.body)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DSEmptyState(
+                    icon: "bell",
+                    title: "Select a Reminder",
+                    subtitle: "Pick a reminder from the list to see details, or create a new one.",
+                    hint: "Tip: set a date and time to get a native macOS notification",
+                    action: createReminder,
+                    actionTitle: "New Reminder"
+                )
             }
         }
         .onChange(of: searchText) {

@@ -3,9 +3,9 @@ import SwiftUI
 
 struct WorkspaceView: View {
     @Environment(AppState.self) private var appState
-    @Query private var allNotes: [Note]
-    @Query private var allTasks: [TaskItem]
-    @Query private var allProjects: [Project]
+    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
+    @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasks: [TaskItem]
+    @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
 
     private var selectedProject: Project? {
         guard let id = appState.selectedProjectID else { return nil }
@@ -22,6 +22,7 @@ struct WorkspaceView: View {
                         title: tab.rawValue,
                         icon: tab.icon,
                         isSelected: appState.workspaceTab == tab,
+                        count: tabCount(for: tab),
                         action: { appState.workspaceTab = tab }
                     )
                 }
@@ -39,6 +40,14 @@ struct WorkspaceView: View {
             case .tasks:
                 AllTasksView()
             }
+        }
+    }
+
+    private func tabCount(for tab: WorkspaceTab) -> Int? {
+        switch tab {
+        case .projects: return allProjects.count > 0 ? allProjects.count : nil
+        case .notes: return allNotes.count > 0 ? allNotes.count : nil
+        case .tasks: return allTasks.count(where: { $0.parent == nil }) > 0 ? allTasks.count(where: { $0.parent == nil }) : nil
         }
     }
 

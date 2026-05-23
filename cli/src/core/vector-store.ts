@@ -383,9 +383,18 @@ export interface PendingReindexRow {
 
 export function enqueuePendingReindex(entryId: string, entryType: string, operation: "upsert" | "delete" = "upsert"): void {
   getDB().run(
-    "INSERT OR REPLACE INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count) VALUES (?, ?, ?, ?, 0)",
+    `INSERT INTO pending_reindex (entry_id, entry_type, operation, queued_at, retry_count)
+     VALUES (?, ?, ?, ?, 0)
+     ON CONFLICT(entry_id) DO UPDATE SET
+       entry_type = excluded.entry_type,
+       operation  = excluded.operation,
+       queued_at  = excluded.queued_at`,
     [entryId, entryType, operation, Date.now()]
   );
+}
+
+export function deleteExhaustedPendingReindex(maxRetries = 3): void {
+  getDB().run("DELETE FROM pending_reindex WHERE retry_count >= ?", [maxRetries]);
 }
 
 export function getPendingReindex(maxRetries = 3): PendingReindexRow[] {

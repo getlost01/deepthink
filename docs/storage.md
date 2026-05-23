@@ -51,6 +51,8 @@ SwiftData uses Core Data's SQLite backend. Table names follow Core Data conventi
 | `ZSTORYPOINTSVALUE` | INTEGER | Story points, nullable |
 | `ZUPDATEDAT` | REAL | Unix timestamp |
 | `ZCREATEDAT` | REAL | Unix timestamp |
+| `ZISARCHIVED` | INTEGER | Boolean (0/1) — set by auto-archive or manually |
+| `ZMANUALLYARCHIVED` | INTEGER | Boolean (0/1) — 1 when user explicitly archived; prevents auto-archive from overriding |
 
 ### ZNOTE
 
@@ -86,6 +88,7 @@ SwiftData uses Core Data's SQLite backend. Table names follow Core Data conventi
 | `ZDUEDATE` | REAL | Unix timestamp, nullable |
 | `ZCOMPLETED` | INTEGER | Boolean (0/1) |
 | `ZCREATEDAT` | REAL | Unix timestamp |
+| `ZPROJECT` | INTEGER | FK to ZPROJECT, nullable — cascade-deleted when project is deleted |
 
 ### Z_PRIMARYKEY
 
@@ -138,6 +141,16 @@ Single table: `chunks`.
 | `embedding` | BLOB | Float32 array (~512 dims, Apple NLEmbedding), little-endian |
 
 Indexes: `entry_id` for cascade deletes and `chunksForEntryIds()` lookups; `entry_type` for type-filtered queries.
+
+`vectors.db` also contains a `pending_reindex` table — a durable retry queue for embeddings that failed or were skipped:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `entry_id` | TEXT | Primary key |
+| `entry_type` | TEXT | `knowledge`, `task`, `note`, `reminder` |
+| `operation` | TEXT | `upsert` or `delete` |
+| `queued_at` | INTEGER | Unix timestamp |
+| `retry_count` | INTEGER | Preserved on re-enqueue; entries with `retry_count >= 3` are pruned after each drain |
 
 ---
 

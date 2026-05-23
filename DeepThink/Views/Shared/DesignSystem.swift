@@ -221,6 +221,7 @@ struct DSTabButton: View {
     let title: String
     var icon: String?
     let isSelected: Bool
+    var count: Int? = nil
     let action: () -> Void
     @State private var isHovered = false
 
@@ -235,6 +236,15 @@ struct DSTabButton: View {
                     Text(title)
                         .font(DS.Font.caption)
                         .fontWeight(isSelected ? .semibold : .regular)
+                    if let count, count > 0 {
+                        Text("\(count)")
+                            .font(DS.Font.micro)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.textTertiary)
+                            .padding(.horizontal, DS.Spacing.xs)
+                            .padding(.vertical, 1)
+                            .background(isSelected ? DS.Colors.accent : DS.Colors.fillSecondary, in: Capsule())
+                    }
                 }
                 .foregroundStyle(isSelected ? DS.Colors.textPrimary : (isHovered ? DS.Colors.textPrimary : DS.Colors.textSecondary))
                 .padding(.horizontal, DS.Spacing.md)
