@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Release
+    runs-on: macos-15
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Select Xcode 16
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: latest
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Build CLI + MCP
+        working-directory: cli
+        run: bash build.sh
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build app (Release, unsigned)
+        run: |
+          xcodebuild build \
+            -project DeepThink.xcodeproj \
+            -scheme DeepThink \
+            -configuration Release \
+            -destination "platform=macOS" \
+            -derivedDataPath build/derivedData \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            | xcpretty --color 2>/dev/null || cat
+
+      - name: Package zip
+        run: |
+          APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
+          VERSION="${GITHUB_REF_NAME#v}"
+          ZIP_NAME="DeepThink-${VERSION}.zip"
+          ditto -c -k --keepParent "$APP_PATH" "dist/$ZIP_NAME"
+          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+
+      - name: Compute SHA256
+        run: |
+          SHA=$(shasum -a 256 "dist/$ZIP_NAME" | awk '{print $1}')
+          echo "SHA256=$SHA" >> "$GITHUB_ENV"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          name: "DeepThink ${{ env.VERSION }}"
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body: |
+            ## DeepThink ${{ env.VERSION }}
+
+            ### Install via Homebrew
+            ```bash
+            brew tap getlost01/deepthink
+            brew install --cask deepthink
+            ```
+
+            ### Manual install
+            Download `DeepThink-${{ env.VERSION }}.zip`, unzip, drag to `/Applications`.
+            Then run once to clear quarantine:
+            ```bash
+            xattr -rd com.apple.quarantine /Applications/DeepThink.app
+            ```
+
+            ---
+            **SHA256:** `${{ env.SHA256 }}`
+          files: dist/${{ env.ZIP_NAME }}

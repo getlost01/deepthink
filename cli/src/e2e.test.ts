@@ -46,7 +46,7 @@ class MCPClient {
   private async pump() {
     const dec = new TextDecoder();
     while (true) {
-      let chunk: ReadableStreamDefaultReadResult<Uint8Array>;
+      let chunk: Awaited<ReturnType<typeof this.reader.read>>;
       try {
         chunk = await this.reader.read();
       } catch {
