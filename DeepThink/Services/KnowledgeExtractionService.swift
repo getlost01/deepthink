@@ -38,12 +38,14 @@ final class KnowledgeExtractionService {
                 systemPrompt: "You extract structured knowledge from notes. Be concise. Output only the extraction, no preamble."
             )
 
-            KnowledgeService.shared.createEntry(
-                title: "Extracted: \(title)",
-                content: result,
-                source: "manual",
-                tags: ["auto-extracted", "note"]
-            )
+            await MainActor.run {
+                KnowledgeService.shared.createEntry(
+                    title: "Extracted: \(title)",
+                    content: result,
+                    source: "manual",
+                    tags: ["auto-extracted", "note"]
+                )
+            }
         } catch {
             StorageService.shared.writeLog("Knowledge extraction failed: \(error.localizedDescription)", to: "extraction")
         }
@@ -74,7 +76,7 @@ final class KnowledgeExtractionService {
         guard !tags.isEmpty else { return }
 
         updateEntryTags(entry: entry, tags: tags)
-        KnowledgeService.shared.reload()
+        await MainActor.run { KnowledgeService.shared.reload() }
     }
 
     private func updateEntryTags(entry: KnowledgeEntry, tags: [String]) {
@@ -141,12 +143,14 @@ final class KnowledgeExtractionService {
                 entryTitle = "Chat: \(snippet) — \(Date().formatted(date: .abbreviated, time: .omitted))"
             }
 
-            KnowledgeService.shared.createEntry(
-                title: String(entryTitle.prefix(100)),
-                content: result,
-                source: "manual",
-                tags: ["chat-extracted", "conversation"]
-            )
+            await MainActor.run {
+                KnowledgeService.shared.createEntry(
+                    title: String(entryTitle.prefix(100)),
+                    content: result,
+                    source: "manual",
+                    tags: ["chat-extracted", "conversation"]
+                )
+            }
             return true
         } catch {
             StorageService.shared.writeLog("Chat extraction failed: \(error.localizedDescription)", to: "extraction")

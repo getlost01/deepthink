@@ -28,7 +28,7 @@ test.describe('Marketing site', () => {
     )
 
     const repo = page
-      .locator('a[href="https://github.com/aagam-headout/deepthink"]')
+      .locator('a[href="https://github.com/getlost01/deepthink"]')
       .filter({ visible: true })
       .first()
     await expect(repo).toBeVisible()
@@ -40,7 +40,7 @@ test.describe('Marketing site', () => {
       .first()
     await expect(download).toHaveAttribute(
       'href',
-      /github\.com\/aagam-headout\/deepthink\/releases/,
+      /github\.com\/getlost01\/deepthink\/releases/,
     )
     await expect(download).toHaveAttribute('target', '_blank')
 

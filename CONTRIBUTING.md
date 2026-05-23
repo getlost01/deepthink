@@ -16,7 +16,7 @@
 ## Build from Source
 
 ```bash
-git clone https://github.com/aagam-headout/deepthink
+git clone https://github.com/getlost01/deepthink
 cd deepthink
 
 # 1. Install git hooks

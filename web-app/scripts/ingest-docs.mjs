@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const webAppRoot = path.join(__dirname, '..')
 
-const owner = process.env.DOCS_REPO_OWNER ?? 'aagam-headout'
+const owner = process.env.DOCS_REPO_OWNER ?? 'getlost01'
 const repo = process.env.DOCS_REPO_NAME ?? 'deepthink'
 const branch = process.env.DOCS_REPO_BRANCH ?? 'main'
 

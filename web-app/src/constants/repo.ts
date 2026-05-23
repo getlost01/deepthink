@@ -1,4 +1,4 @@
-export const REPO_OWNER = 'aagam-headout'
+export const REPO_OWNER = 'getlost01'
 export const REPO_NAME = 'deepthink'
 export const REPO_FULL_NAME = `${REPO_OWNER}/${REPO_NAME}`
 export const REPO_URL = `https://github.com/${REPO_FULL_NAME}`

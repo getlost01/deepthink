@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Report security vulnerabilities via [GitHub private advisory](https://github.com/aagam-headout/deepthink/security/advisories/new) — do not open a public issue.
+Report security vulnerabilities via [GitHub private advisory](https://github.com/getlost01/deepthink/security/advisories/new) — do not open a public issue.
 
 Include:
 - Description of the vulnerability

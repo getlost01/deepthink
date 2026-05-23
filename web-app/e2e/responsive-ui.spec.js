@@ -63,7 +63,7 @@ test.describe('Responsive layout', () => {
 
     await expect(
       header
-        .locator('a[href="https://github.com/aagam-headout/deepthink"]')
+        .locator('a[href="https://github.com/getlost01/deepthink"]')
         .filter({ visible: true }),
     ).toHaveCount(1)
     await expect(

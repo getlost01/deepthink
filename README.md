@@ -16,12 +16,12 @@ DeepThink is one **native SwiftUI** surface for juggling **projects**, **notes**
 
 DeepThink is under active development—contributions are welcome and help shape it into a more robust workspace ↔ knowledge tool.
 
-[![CI](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml/badge.svg)](https://github.com/aagam-headout/deepthink/actions/workflows/ci.yml?query=branch%3Amain)
-[![Latest release](https://img.shields.io/github/v/release/aagam-headout/deepthink?logo=github)](https://github.com/aagam-headout/deepthink/releases/latest)
+[![CI](https://github.com/getlost01/deepthink/actions/workflows/ci.yml/badge.svg)](https://github.com/getlost01/deepthink/actions/workflows/ci.yml?query=branch%3Amain)
+[![Latest release](https://img.shields.io/github/v/release/getlost01/deepthink?logo=github)](https://github.com/getlost01/deepthink/releases/latest)
 [![License: MIT](https://img.shields.io/badge/license-MIT-7cb342)](LICENSE)
 [![Contributing](https://img.shields.io/badge/contributing-CONTRIBUTING-0366d6)](CONTRIBUTING.md)
 
-> **Download:** [Latest release →](https://github.com/aagam-headout/deepthink/releases/latest) (unsigned `.zip`; first launch: **Right-click → Open**) · macOS **14+**
+> **Download:** [Latest release →](https://github.com/getlost01/deepthink/releases/latest) (unsigned `.zip`; first launch: **Right-click → Open**) · macOS **14+**
 
 <p align="center">
   <img src="web-app/public/images/settings.png" alt="DeepThink settings" width="720" />
@@ -110,7 +110,7 @@ DeepThink is under active development—contributions are welcome and help shape
 
 ### Option A — Download from GitHub Releases (zip, unsigned)
 
-1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/aagam-headout/deepthink/releases/latest)
+1. Download **`DeepThink-macOS.zip`** (or the release zip) from [Releases](https://github.com/getlost01/deepthink/releases/latest)
 2. Unzip and drag **DeepThink.app** to Applications
 3. First launch: **Right-click → Open** (macOS may warn about unidentified developer)
 4. If macOS still blocks opening, clear quarantine in Terminal:
@@ -143,7 +143,7 @@ xattr -cr /Applications/DeepThink.app
 **Build**
 
 ```bash
-git clone https://github.com/aagam-headout/deepthink
+git clone https://github.com/getlost01/deepthink
 cd deepthink
 
 # Build CLI + MCP binaries
@@ -271,7 +271,7 @@ Contributions are welcome. DeepThink is **open source (MIT)**. Please read [CONT
 **Quick contributor setup:**
 
 ```bash
-git clone https://github.com/aagam-headout/deepthink
+git clone https://github.com/getlost01/deepthink
 cd deepthink
 cd cli && bash build.sh && cd ..
 xcodegen generate
@@ -286,7 +286,7 @@ brew install swiftformat swiftlint
 
 The design system is in `DeepThink/Views/Shared/DesignSystem.swift`. All new UI must use `DS.*` tokens — no raw colors, fonts, or spacing values. See [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md).
 
-**Issues & good first issues:** [github.com/aagam-headout/deepthink/issues](https://github.com/aagam-headout/deepthink/issues)
+**Issues & good first issues:** [github.com/getlost01/deepthink/issues](https://github.com/getlost01/deepthink/issues)
 
 ---
 
