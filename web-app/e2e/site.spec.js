@@ -1,17 +1,18 @@
 import { expect, test } from '@playwright/test'
 
 test.describe('Marketing site', () => {
-  test('home loads with open-source stats link', async ({ page }) => {
+  test('home loads with hero and key sections', async ({ page }) => {
     await page.goto('/')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('CLI')
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('MCP')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'AI-assisted work',
+    )
 
     await expect(
-      page.getByRole('heading', { name: 'Why local-first is important' }),
+      page.getByRole('heading', { name: 'Why local-first matters' }),
     ).toBeVisible()
     await expect(page.getByRole('heading', { name: 'FAQ' })).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: 'Core capabilities' }),
+      page.getByRole('heading', { name: 'Capabilities at a glance' }),
     ).toBeVisible()
 
     const footerNav = page.getByRole('navigation', { name: 'Footer links' })

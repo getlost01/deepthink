@@ -1,8 +1,8 @@
-# DeepThink — Full System Flow Diagram
+# DeepThink - Full System Flow Diagram
 
 End-to-end data flow across the MCP server (agent-agnostic), CLI (model-agnostic), macOS app, RAG pipeline, and live sync.
 
-> **AI compatibility note:** The MCP server and CLI work with any agent — Cursor, Claude Code, Windsurf, VS Code Copilot, shell scripts, or cron jobs. Claude CLI is only required for in-app AI chat, agents, skills, and rules. The "Claude" node at the bottom of this diagram represents that optional in-app path only.
+> **AI compatibility note:** The MCP server and CLI work with any agent - Cursor, Claude Code, Windsurf, VS Code Copilot, shell scripts, or cron jobs. Claude CLI is only required for in-app AI chat, agents, skills, and rules. The "Claude" node at the bottom of this diagram represents that optional in-app path only.
 
 ```mermaid
 flowchart TB
@@ -13,7 +13,7 @@ flowchart TB
         AI["AI Agent\nClaude / any MCP client"]
     end
 
-    subgraph DISK["~/DeepThink/ — Shared Data Directory"]
+    subgraph DISK["~/DeepThink/ - Shared Data Directory"]
         subgraph STORE["deepthink.store (SQLite WAL)"]
             ENTITIES["ZTASKITEM · ZNOTE\nZPROJECT · ZREMINDER\nZ_PRIMARYKEY"]
             AUDIT["dt_audit_log\nentity_type · entity_pk\noperation · snapshot · changed_at"]
@@ -49,7 +49,7 @@ flowchart TB
 
         DBT["db.ts\ngetWriteDB()"]
 
-        subgraph TXN["db.transaction() — atomic"]
+        subgraph TXN["db.transaction() - atomic"]
             T1["1 · SELECT snapshot\n(before delete only)"]
             T2["2 · INSERT dt_trash\n(delete only)"]
             T3["3 · INSERT / UPDATE / DELETE\nparameterized SQL"]

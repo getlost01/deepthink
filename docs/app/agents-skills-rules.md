@@ -46,7 +46,7 @@ When a user chats with an agent, `AgentFileService.buildSystemPrompt()`:
 4. Retrieves knowledge filtered by `knowledge_scope` + user query
 5. Combines into full system prompt
 
-When **MCP is enabled** for that chat, the UI appends one more block: **`mcp__deepthink__*` tools apply to every agent (and to the default assistant)**—you never have to duplicate that in YAML. That is the same routing surface area as **`/deepthink`** in Claude Code; the slash skill is an optional Claude Code UX layer, while the app wires tools into the system prompt whenever the DeepThink server is attached.
+When **MCP is enabled** for that chat, the UI appends one more block: **`mcp__deepthink__*` tools apply to every agent (and to the default assistant)**-you never have to duplicate that in YAML. That is the same routing surface area as **`/deepthink`** in Claude Code; the slash skill is an optional Claude Code UX layer, while the app wires tools into the system prompt whenever the DeepThink server is attached.
 
 ### Skills in Agents
 
@@ -65,15 +65,15 @@ The agent can then suggest `/summarize` when the user asks to condense something
 
 Reusable AI actions invokable via `/slash-commands` in chat.
 
-### `/deepthink` — Claude Code slash vs in-app (default for agents)
+### `/deepthink` - Claude Code slash vs in-app (default for agents)
 
 There are **two** ways you see the same “route everything through DeepThink” behavior:
 
-**In the DeepThink macOS app (default behavior):** Leave **MCP** on with the bundled DeepThink server. **Every conversation—Researcher, Standup, or a custom agent—automatically inherits the full `mcp__deepthink__*` toolbelt.** You do *not* add `/deepthink` to each agent’s `skills:` list; MCP is wired per chat, so agents act as personas *on top of* shared workspace tools, not instead of them. Optional YAML skills (`Summarize`, `Extract Action Items`, …) are *additional* slash commands stored under `~/DeepThink/.claude/commands/`.
+**In the DeepThink macOS app (default behavior):** Leave **MCP** on with the bundled DeepThink server. **Every conversation-Researcher, Standup, or a custom agent-automatically inherits the full `mcp__deepthink__*` toolbelt.** You do *not* add `/deepthink` to each agent’s `skills:` list; MCP is wired per chat, so agents act as personas *on top of* shared workspace tools, not instead of them. Optional YAML skills (`Summarize`, `Extract Action Items`, …) are *additional* slash commands stored under `~/DeepThink/.claude/commands/`.
 
-**In [Claude Code](https://claude.com/claude-code):** DeepThink installs a **global slash command** at **`~/.claude/commands/deepthink.md`** so you can type `/deepthink …` after the **`deepthink` MCP server** is registered (`claude mcp add …` — see [MCP Integration](../mcp-integration.md)). That file encodes how to decide which MCP tool to call when wording is vague (search vs capture vs tasks vs summaries, …).
+**In [Claude Code](https://claude.com/claude-code):** DeepThink installs a **global slash command** at **`~/.claude/commands/deepthink.md`** so you can type `/deepthink …` after the **`deepthink` MCP server** is registered (`claude mcp add …` - see [MCP Integration](../mcp-integration.md)). That file encodes how to decide which MCP tool to call when wording is vague (search vs capture vs tasks vs summaries, …).
 
-Install or refresh `deepthink.md` from **Settings → Claude / Integrations** (the app shows status next to CLI and MCP). Slash skills you edit under **Agents & Skills** remain separate—they are workspace-local commands under `~/DeepThink/.claude/commands/`.
+Install or refresh `deepthink.md` from **Settings → Claude / Integrations** (the app shows status next to CLI and MCP). Slash skills you edit under **Agents & Skills** remain separate-they are workspace-local commands under `~/DeepThink/.claude/commands/`.
 
 ### Structure
 

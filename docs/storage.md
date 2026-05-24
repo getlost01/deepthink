@@ -51,8 +51,8 @@ SwiftData uses Core Data's SQLite backend. Table names follow Core Data conventi
 | `ZSTORYPOINTSVALUE` | INTEGER | Story points, nullable |
 | `ZUPDATEDAT` | REAL | Unix timestamp |
 | `ZCREATEDAT` | REAL | Unix timestamp |
-| `ZISARCHIVED` | INTEGER | Boolean (0/1) — set by auto-archive or manually |
-| `ZMANUALLYARCHIVED` | INTEGER | Boolean (0/1) — 1 when user explicitly archived; prevents auto-archive from overriding |
+| `ZISARCHIVED` | INTEGER | Boolean (0/1) - set by auto-archive or manually |
+| `ZMANUALLYARCHIVED` | INTEGER | Boolean (0/1) - 1 when user explicitly archived; prevents auto-archive from overriding |
 
 ### ZNOTE
 
@@ -88,11 +88,11 @@ SwiftData uses Core Data's SQLite backend. Table names follow Core Data conventi
 | `ZDUEDATE` | REAL | Unix timestamp, nullable |
 | `ZCOMPLETED` | INTEGER | Boolean (0/1) |
 | `ZCREATEDAT` | REAL | Unix timestamp |
-| `ZPROJECT` | INTEGER | FK to ZPROJECT, nullable — cascade-deleted when project is deleted |
+| `ZPROJECT` | INTEGER | FK to ZPROJECT, nullable - cascade-deleted when project is deleted |
 
 ### Z_PRIMARYKEY
 
-Core Data sequence counters — one row per entity type. Used internally by Core Data to generate primary keys. Do not modify directly.
+Core Data sequence counters - one row per entity type. Used internally by Core Data to generate primary keys. Do not modify directly.
 
 ### dt_audit_log
 
@@ -127,7 +127,7 @@ Single table: `chunks`.
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | TEXT | `{entry_id}:{chunk_index}` — primary key |
+| `id` | TEXT | `{entry_id}:{chunk_index}` - primary key |
 | `entry_id` | TEXT | Source entry identifier |
 | `entry_type` | TEXT | `knowledge`, `task`, `note`, `reminder` |
 | `title` | TEXT | Entry title (denormalized for fast retrieval) |
@@ -137,12 +137,12 @@ Single table: `chunks`.
 | `imported_at` | REAL | Unix timestamp |
 | `chunk_index` | INTEGER | Zero-based position within the entry |
 | `total_chunks` | INTEGER | Total number of chunks for this entry |
-| `content_hash` | INTEGER | djb2 hash of chunk content — used for change detection |
+| `content_hash` | INTEGER | djb2 hash of chunk content - used for change detection |
 | `embedding` | BLOB | Float32 array (~512 dims, Apple NLEmbedding), little-endian |
 
 Indexes: `entry_id` for cascade deletes and `chunksForEntryIds()` lookups; `entry_type` for type-filtered queries.
 
-`vectors.db` also contains a `pending_reindex` table — a durable retry queue for embeddings that failed or were skipped:
+`vectors.db` also contains a `pending_reindex` table - a durable retry queue for embeddings that failed or were skipped:
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -221,7 +221,7 @@ To reset embeddings only (forces full re-index on next launch):
 rm ~/DeepThink/data/vectors.db
 ```
 
-To reset the entire workspace (destructive — removes all tasks, notes, projects, knowledge):
+To reset the entire workspace (destructive - removes all tasks, notes, projects, knowledge):
 ```bash
 rm -rf ~/DeepThink/
 ```

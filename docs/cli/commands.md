@@ -36,9 +36,9 @@ deepthink ask "Explain this error" --file ./error.log
 ```
 
 Options:
-- `--recall` — include workspace context
-- `--project <name>` — scope to project
-- `--file <path>` — include file content
+- `--recall` - include workspace context
+- `--project <name>` - scope to project
+- `--file <path>` - include file content
 
 ### Multi-Step Task Execution
 
@@ -47,9 +47,9 @@ deepthink run "Analyze the codebase and create a migration plan" --project MyPro
 ```
 
 Uses an agent pipeline:
-1. **Planner** — breaks task into JSON step array with tool assignments
-2. **Executor** — runs each step, calling tools as needed
-3. **Writer** — produces markdown summary of results
+1. **Planner** - breaks task into JSON step array with tool assignments
+2. **Executor** - runs each step, calling tools as needed
+3. **Writer** - produces markdown summary of results
 
 ### Workspace Management
 
@@ -166,16 +166,16 @@ The CLI has its own hybrid retrieval engine matching the Swift app's capabilitie
 - **Boosting:** title match ×1.5, tag match ×1.3, recency decay e^(-days/90), project scope ×1.5
 - **Threshold:** scores ≤0.1 discarded before fusion
 - **Archive exclusion:** entries with `source == 'archive'` excluded from retrieval
-- **Index caching:** built in RAM, rebuilt only when content version changes — not per query
+- **Index caching:** built in RAM, rebuilt only when content version changes - not per query
 - **Token estimation:** budget management for context assembly
 
 ### Semantic Search (`cli/src/core/embedding-service.ts`)
 
-- **Shared DB:** reads and writes to `~/DeepThink/data/vectors.db` — the same file used by the Swift app
-- **Query embedding:** compiled Swift helper at `~/DeepThink/.cache/embed-helper` using Apple `NLEmbedding.sentenceEmbedding(.english)` — identical model to the app
+- **Shared DB:** reads and writes to `~/DeepThink/data/vectors.db` - the same file used by the Swift app
+- **Query embedding:** compiled Swift helper at `~/DeepThink/.cache/embed-helper` using Apple `NLEmbedding.sentenceEmbedding(.english)` - identical model to the app
 - **Input format:** `"{title}. {content.prefix(500)}"` for both indexing and queries
 - **NaN/Infinite guard:** all embedding vectors validated before storage; corrupt vectors discarded
-- **Cosine similarity threshold:** 0.3 minimum — results below discarded
+- **Cosine similarity threshold:** 0.3 minimum - results below discarded
 - **Top-k:** 20 results returned before fusion
 - **Incremental indexing:** `content_hash` (djb2) per chunk; unchanged chunks skipped on re-index
 - **Independent operation:** CLI can index entries without the Swift app running
@@ -187,12 +187,12 @@ The CLI has its own hybrid retrieval engine matching the Swift app's capabilitie
 - K=60; no penalty for an entry missing from one of the two lists
 - Falls back to BM25-only if `vectors.db` has no embeddings
 - Default for `context query` and MCP `smart_query` / `knowledge_context` tools
-- Uses `chunksForEntryIds()` to load only chunks for entries that passed ranking — no full table scan of `vectors.db`
+- Uses `chunksForEntryIds()` to load only chunks for entries that passed ranking - no full table scan of `vectors.db`
 
 ### unified_search
 
 - Searches all four entity types simultaneously: `knowledge`, `task`, `note`, `reminder`
-- Content field fully populated for workspace items (tasks, notes, reminders) — not truncated or empty
+- Content field fully populated for workspace items (tasks, notes, reminders) - not truncated or empty
 - Single semantic search pass shared across workspace and knowledge retrieval to avoid duplicate embedding lookups
 - Archive entries excluded by default
 

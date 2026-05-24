@@ -33,12 +33,12 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 - Optional project assignment
 - Sort by date, completion status
 - Filter pills (All, Today, This Week, No Date) with trailing fade on scroll
-- **Inline date/time pickers** — date and time chips use native compact `DatePicker` that expands in-place on click; `×` button on the date chip clears the scheduled date
+- **Inline date/time pickers** - date and time chips use native compact `DatePicker` that expands in-place on click; `×` button on the date chip clears the scheduled date
 
 ## Navigation
 
-- `Cmd+5` — go to Reminders section
-- `Shift+Cmd+R` — create new reminder
+- `Cmd+5` - go to Reminders section
+- `Shift+Cmd+R` - create new reminder
 - Also accessible via Command Palette (`Cmd+K` → "New Reminder")
 - MCP tools: `workspace_create_reminder`, `workspace_list_reminders`, etc.
 

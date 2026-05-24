@@ -2,7 +2,7 @@
 
 Documentation for the macOS app (`DeepThink.xcodeproj`). For a concise feature overview and screenshots context, see the [repository README](../../README.md).
 
-DeepThink is **local-first**: data lives under `~/DeepThink/` (see [storage](../storage.md)). **MIT licensed** — contributions welcome via [CONTRIBUTING](../../CONTRIBUTING.md).
+DeepThink is **local-first**: data lives under `~/DeepThink/` (see [storage](../storage.md)). **MIT licensed** - contributions welcome via [CONTRIBUTING](../../CONTRIBUTING.md).
 
 ## Highlights
 
@@ -17,7 +17,7 @@ DeepThink is **local-first**: data lives under `~/DeepThink/` (see [storage](../
 
 | Doc | What it covers |
 |-----|---------------|
-| [Workspace](workspace.md) | Projects, notes, tasks — kanban, backlinks, version history |
+| [Workspace](workspace.md) | Projects, notes, tasks - kanban, backlinks, version history |
 | [Reminders](reminders.md) | Scheduled reminders with macOS notifications |
 | [Command palette](command-palette.md) | `Cmd+K` launcher, fuzzy search; navigation shortcuts mirror the menu bar |
 | [Terminal](terminal.md) | Built-in multi-tab terminal with AI output analysis |

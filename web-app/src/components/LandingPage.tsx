@@ -1,13 +1,16 @@
 import {
   ArrowRight,
+  Calendar,
   Check,
   Command,
   Copy,
   Database,
   Download,
+  ListTodo,
   NotebookPen,
   Search,
   ShieldCheck,
+  Terminal,
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -17,6 +20,7 @@ import {
   useMotionValueEvent,
   useReducedMotion,
   useScroll,
+  useTransform,
   type Variants,
 } from 'framer-motion'
 import {
@@ -30,12 +34,19 @@ import { Link } from 'react-router-dom'
 import { REPO_RELEASES_LATEST_URL } from '../constants/repo'
 import { useTourHeaderOverlap } from '../hooks/useTourHeaderOverlap'
 import { landingContent } from '../content/landingContent'
+import {
+  AnimatedStatValue,
+  GlowCard,
+  HeroBackdrop,
+  SectionLabel,
+} from './landing/landingMotion'
+import { fadeUpItem, fadeUpStagger } from './landing/landingMotionVariants'
 import ExternalLink from './ExternalLink'
 import SiteLayout from './SiteLayout'
 
 const BREW_CMD = 'brew tap getlost01/deepthink && brew install --cask deepthink'
 
-function BrewInstallBlock() {
+function BrewInstallBlock({ className = '' }: { className?: string }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(() => {
@@ -50,7 +61,7 @@ function BrewInstallBlock() {
       initial={{ opacity: 0, y: 14 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      className="mt-5 flex w-full max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3"
+      className={`mt-5 flex w-full max-w-xl items-center gap-3 rounded-xl border border-white/10 bg-black/40 px-4 py-3 ${className}`.trim()}
     >
       <span className="select-none text-xs font-medium text-zinc-500">$</span>
       <code className="flex-1 truncate font-mono text-xs text-zinc-200 sm:text-sm">
@@ -77,100 +88,131 @@ const iconMap: Record<string, LucideIcon> = {
   Search,
   NotebookPen,
   ShieldCheck,
+  ListTodo,
+  Calendar,
+  Terminal,
 }
 
-const fadeUpStagger: Variants = {
+const heroStagger: Variants = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.07, delayChildren: 0.04 },
+    transition: { staggerChildren: 0.12, delayChildren: 0.08 },
   },
 }
 
-const fadeUpItem: Variants = {
-  hidden: { opacity: 0, y: 16 },
+const heroItem: Variants = {
+  hidden: { opacity: 0, y: 22 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
   },
 }
 
 function HeroSection() {
   const { hero } = landingContent
+  const prefersReducedMotion = useReducedMotion()
+  const heroRef = useRef<HTMLElement | null>(null)
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ['start start', 'end start'],
+  })
+  const screenshotY = useTransform(scrollYProgress, [0, 1], [0, 48])
+  const screenshotScale = useTransform(scrollYProgress, [0, 1], [1, 0.96])
+  const screenshotOpacity = useTransform(scrollYProgress, [0, 0.85], [1, 0.75])
 
   return (
-    <section className="relative overflow-hidden px-4 pb-16 pt-20 sm:px-6 md:pb-20 md:pt-24">
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.25),rgba(9,9,11,0.2)_30%,rgba(9,9,11,1)_70%)]" />
+    <section
+      ref={heroRef}
+      data-testid="hero-section"
+      className="relative overflow-hidden px-4 pb-16 pt-20 sm:px-6 md:pb-20 md:pt-24"
+    >
+      <HeroBackdrop />
       <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -right-24 top-16 h-80 w-80 rounded-full bg-purple-500/25 blur-3xl md:-right-32"
-        animate={{ opacity: [0.35, 0.55, 0.35], scale: [1, 1.06, 1] }}
-        transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <motion.div
-        aria-hidden
-        className="pointer-events-none absolute -left-20 bottom-0 h-64 w-64 rounded-full bg-cyan-500/15 blur-3xl"
-        animate={{ opacity: [0.25, 0.45, 0.25], x: [0, 12, 0] }}
-        transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
-      />
-      <div className="mx-auto max-w-6xl">
+        className="mx-auto max-w-6xl"
+        variants={heroStagger}
+        initial="hidden"
+        animate="show"
+      >
         <motion.span
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="inline-flex rounded-full border border-purple-400/40 bg-purple-500/10 px-4 py-1 text-xs font-medium text-purple-200"
+          variants={heroItem}
+          className="inline-flex rounded-full border border-purple-400/40 bg-purple-500/10 px-4 py-1 text-xs font-medium text-purple-200 backdrop-blur-sm"
         >
           {hero.badge}
         </motion.span>
         <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          variants={heroItem}
           className="mt-6 max-w-4xl text-pretty text-3xl font-semibold leading-tight tracking-tight text-white md:text-4xl lg:text-5xl"
         >
-          {hero.title}
+          {hero.titleLead}{' '}
+          <span className="landing-shimmer-text">{hero.titleAccent}</span>
         </motion.h1>
         <motion.p
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-6 max-w-2xl text-sm text-zinc-300 md:text-base"
+          variants={heroItem}
+          className="mt-6 max-w-2xl text-sm leading-relaxed text-zinc-300 md:text-base"
         >
           {hero.subtitle}
         </motion.p>
 
-        <div className="mt-8 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-4">
-          <ExternalLink
-            href={hero.primaryCta.href}
-            className={`btn inline-flex min-h-11 w-full items-center justify-center gap-2 border-none bg-white text-black hover:bg-zinc-200 sm:w-auto ${pointerLink}`}
-            withIcon={false}
-          >
-            <Download size={16} aria-hidden />
-            {hero.primaryCta.label}
-          </ExternalLink>
-          <Link
-            to={hero.secondaryCta.to}
-            className={`btn inline-flex min-h-11 w-full items-center justify-center gap-2 border border-white/20 bg-white/5 text-white hover:bg-white/10 sm:w-auto ${pointerLink}`}
-          >
-            {hero.secondaryCta.label}
-            <ArrowRight size={16} aria-hidden />
-          </Link>
-        </div>
+        <motion.div
+          variants={heroItem}
+          className="mt-8 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:flex-wrap sm:gap-4"
+        >
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+            <ExternalLink
+              href={hero.primaryCta.href}
+              className={`landing-cta-primary btn inline-flex min-h-11 w-full items-center justify-center gap-2 border-none bg-white text-black hover:bg-zinc-200 sm:w-auto ${pointerLink}`}
+              withIcon={false}
+            >
+              <Download size={16} aria-hidden />
+              {hero.primaryCta.label}
+            </ExternalLink>
+          </motion.div>
+          <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              to={hero.secondaryCta.to}
+              className={`btn inline-flex min-h-11 w-full items-center justify-center gap-2 border border-white/20 bg-white/5 text-white backdrop-blur-sm hover:bg-white/10 sm:w-auto ${pointerLink}`}
+            >
+              {hero.secondaryCta.label}
+              <ArrowRight size={16} aria-hidden />
+            </Link>
+          </motion.div>
+        </motion.div>
 
-        <BrewInstallBlock />
+        <motion.div variants={heroItem}>
+          <BrewInstallBlock />
+        </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-10 overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-2"
+          variants={heroItem}
+          style={
+            prefersReducedMotion
+              ? undefined
+              : {
+                  y: screenshotY,
+                  scale: screenshotScale,
+                  opacity: screenshotOpacity,
+                }
+          }
+          className="landing-float mt-10 overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-2 shadow-[0_32px_80px_-24px_rgba(124,58,237,0.35)]"
+          data-testid="hero-screenshot"
         >
-          <img
-            src="/images/settings.png"
-            alt="DeepThink workspace overview"
-            className="h-auto w-full rounded-xl object-cover"
-          />
+          <motion.div
+            className="relative overflow-hidden rounded-xl"
+            whileHover={prefersReducedMotion ? undefined : { scale: 1.01 }}
+            transition={{ duration: 0.35 }}
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            />
+            <img
+              src="/images/workspace.png"
+              alt="DeepThink workspace - projects, notes, and tasks"
+              className="h-auto w-full rounded-xl object-cover"
+            />
+          </motion.div>
         </motion.div>
 
         <motion.div
@@ -180,18 +222,149 @@ function HeroSection() {
           whileInView="show"
           viewport={{ once: true, margin: '-40px' }}
         >
-          {hero.stats.map((stat) => (
-            <motion.div
-              key={stat.label}
-              variants={fadeUpItem}
-              whileHover={{ y: -3, transition: { duration: 0.2 } }}
-              className="rounded-2xl border border-white/10 bg-white/5 p-5 transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10"
-            >
-              <p className="text-2xl font-semibold text-white">{stat.value}</p>
-              <p className="mt-1 text-sm text-zinc-300">{stat.label}</p>
-            </motion.div>
+          {hero.stats.map((stat, i) => (
+            <GlowCard key={stat.label} delay={i * 0.06} className="rounded-2xl">
+              <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
+                <AnimatedStatValue value={stat.value} />
+                <p className="mt-1 text-sm text-zinc-300">{stat.label}</p>
+              </article>
+            </GlowCard>
           ))}
         </motion.div>
+      </motion.div>
+    </section>
+  )
+}
+function PersonasSection() {
+  const { personas } = landingContent
+
+  return (
+    <section className="px-4 py-14 sm:px-6 md:py-20">
+      <motion.div
+        className="mx-auto max-w-6xl"
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <SectionLabel>Use cases</SectionLabel>
+        <h2 className="mt-4 text-2xl font-semibold text-white md:text-4xl">
+          {personas.title}
+        </h2>
+        <p className="mt-4 max-w-2xl text-zinc-400">{personas.subtitle}</p>
+        <motion.ul
+          className="mt-10 grid list-none gap-4 p-0 sm:grid-cols-2"
+          variants={fadeUpStagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+        >
+          {personas.items.map((item, i) => (
+            <motion.li key={item.title} variants={fadeUpItem}>
+              <GlowCard delay={i * 0.05} className="h-full rounded-2xl">
+                <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-6 transition-colors duration-300 hover:border-purple-400/25">
+                  <h3 className="text-lg font-semibold text-white">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-zinc-400">
+                    {item.description}
+                  </p>
+                </article>
+              </GlowCard>
+            </motion.li>
+          ))}
+        </motion.ul>
+      </motion.div>
+    </section>
+  )
+}
+
+function AgentShowcaseSection() {
+  const { agentShowcase } = landingContent
+
+  return (
+    <section
+      data-testid="agent-showcase"
+      className="relative border-y border-white/10 bg-white/[0.02] px-4 py-14 sm:px-6 md:py-20"
+    >
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px origin-left bg-gradient-to-r from-transparent via-purple-400/30 to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-px origin-left bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent"
+        initial={{ scaleX: 0 }}
+        whileInView={{ scaleX: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1.2, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      />
+      <div className="relative mx-auto max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <SectionLabel>Quick start</SectionLabel>
+          <h2 className="mt-4 text-2xl font-semibold text-white md:text-4xl">
+            {agentShowcase.title}
+          </h2>
+          <p className="mt-4 max-w-2xl text-zinc-400">
+            {agentShowcase.subtitle}
+          </p>
+        </motion.div>
+        <motion.div
+          className="relative mt-10 grid gap-4 md:grid-cols-3"
+          variants={fadeUpStagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-40px' }}
+        >
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute left-[16%] right-[16%] top-7 hidden h-px origin-left bg-gradient-to-r from-purple-400/50 via-cyan-300/40 to-purple-400/50 md:block"
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          />
+          {agentShowcase.steps.map((step, i) => (
+            <GlowCard key={step.label} delay={i * 0.08} className="rounded-2xl">
+              <article className="rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm">
+                <p className="text-xs font-semibold tracking-widest text-purple-300">
+                  {String(i + 1).padStart(2, '0')} · {step.label}
+                </p>
+                <pre className="mt-4 overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/80 p-3">
+                  <code className="font-mono text-xs leading-relaxed text-zinc-200">
+                    {step.code}
+                  </code>
+                </pre>
+              </article>
+            </GlowCard>
+          ))}
+        </motion.div>
+        <motion.ul
+          className="mt-8 grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3"
+          variants={fadeUpStagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true }}
+        >
+          {agentShowcase.tools.map((tool) => (
+            <motion.li
+              key={tool}
+              variants={fadeUpItem}
+              className="rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-xs text-zinc-300"
+            >
+              {tool}
+            </motion.li>
+          ))}
+        </motion.ul>
       </div>
     </section>
   )
@@ -210,9 +383,7 @@ function WhyLocalFirstSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-purple-300">
-            Design principles
-          </p>
+          <SectionLabel>Design principles</SectionLabel>
           <h2 className="text-2xl font-semibold text-white md:text-4xl">
             {whyLocalFirst.title}
           </h2>
@@ -259,9 +430,7 @@ function SnapshotSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          <p className="text-xs font-semibold uppercase tracking-widest text-purple-300">
-            {snapshot.title}
-          </p>
+          <SectionLabel>{snapshot.title}</SectionLabel>
           <p className="mt-4 max-w-3xl text-lg leading-relaxed text-zinc-300 md:text-xl">
             {snapshot.intro}
           </p>
@@ -336,30 +505,31 @@ function FeaturesSection() {
           whileInView="show"
           viewport={{ once: true, margin: '-40px' }}
         >
-          {features.map((feature) => {
+          {features.map((feature, i) => {
             const Icon = iconMap[feature.icon] ?? Zap
 
             return (
-              <motion.article
+              <GlowCard
                 key={feature.title}
-                variants={fadeUpItem}
-                whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-black/40"
+                delay={i * 0.05}
+                className="rounded-2xl"
               >
-                <motion.span
-                  className="inline-flex rounded-lg border border-white/10 bg-black/30 p-2 text-purple-300"
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 20 }}
-                >
-                  <Icon size={18} aria-hidden />
-                </motion.span>
-                <h3 className="mt-4 text-lg font-medium text-white">
-                  {feature.title}
-                </h3>
-                <p className="mt-2 text-sm text-zinc-400">
-                  {feature.description}
-                </p>
-              </motion.article>
+                <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
+                  <motion.span
+                    className="inline-flex rounded-lg border border-white/10 bg-black/30 p-2 text-purple-300"
+                    whileHover={{ scale: 1.08, rotate: 3 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 20 }}
+                  >
+                    <Icon size={18} aria-hidden />
+                  </motion.span>
+                  <h3 className="mt-4 text-lg font-medium text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-zinc-400">
+                    {feature.description}
+                  </p>
+                </article>
+              </GlowCard>
             )
           })}
         </motion.div>
@@ -576,7 +746,7 @@ function ProductTourSection() {
       id="tour"
       ref={sectionRef}
       className="relative scroll-mt-24 px-4 py-12 sm:scroll-mt-28 sm:px-6 md:py-20"
-      style={{ height: `${tourLength * 100}vh` }}
+      style={{ height: `${tourLength * 85}vh` }}
     >
       {tourChrome}
       <div className="mx-auto max-w-6xl">
@@ -613,7 +783,7 @@ function ProductTourSection() {
                   ? { duration: 0.18 }
                   : { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
               }
-              className="flex flex-col gap-5 rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.045] to-white/[0.015] p-4 shadow-[0_28px_90px_-36px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-6 md:p-6"
+              className="flex flex-col gap-3 rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.045] to-white/[0.015] p-4 shadow-[0_28px_90px_-36px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-4 md:p-5"
             >
               <p className="max-w-2xl text-xs leading-relaxed text-zinc-300 md:text-sm">
                 {activeItem.description}
@@ -622,7 +792,7 @@ function ProductTourSection() {
                 <div className="relative rounded-[1.125rem] border border-white/[0.08] bg-zinc-950/45 p-1.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] md:p-2">
                   <motion.div
                     layout
-                    className="relative flex min-h-[min(48dvh,520px)] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-zinc-900/98 to-zinc-950 ring-1 ring-white/[0.06]"
+                    className="relative flex min-h-[min(28dvh,280px)] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-zinc-900/98 to-zinc-950 ring-1 ring-white/[0.06]"
                     initial={{ opacity: prefersReducedMotion ? 1 : 0.94 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: prefersReducedMotion ? 0 : 0.35 }}
@@ -638,7 +808,7 @@ function ProductTourSection() {
                     <motion.img
                       src={activeItem.image}
                       alt={`${activeItem.title}, app screenshot`}
-                      className="relative z-[1] mx-auto block h-auto w-full max-h-[min(76dvh,920px)] max-w-full object-contain object-center"
+                      className="relative z-[1] mx-auto block h-auto w-full max-h-[min(42dvh,420px)] max-w-full object-contain object-center"
                       loading={activeIndex === 0 ? 'eager' : 'lazy'}
                       decoding="async"
                       fetchPriority={activeIndex === 0 ? 'high' : 'low'}
@@ -688,43 +858,63 @@ function ProductTourSection() {
 
 function WorkflowSection() {
   return (
-    <section className="px-4 py-14 sm:px-6 md:py-20">
+    <section
+      className="px-4 py-14 sm:px-6 md:py-20"
+      data-testid="workflow-section"
+    >
       <motion.div
-        className="mx-auto max-w-6xl rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 md:p-12"
+        className="relative mx-auto max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-6 sm:p-8 md:p-12"
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
       >
-        <h2 className="text-2xl font-semibold text-white md:text-3xl">
+        <motion.div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-purple-500/10 blur-3xl"
+          animate={{ opacity: [0.3, 0.6, 0.3], scale: [1, 1.1, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        <h2 className="relative text-2xl font-semibold text-white md:text-3xl">
           {landingContent.sections.workflow.title}
         </h2>
-        <p className="mt-3 max-w-xl text-zinc-400">
+        <p className="relative mt-3 max-w-xl text-zinc-400">
           {landingContent.sections.workflow.subtitle}
         </p>
-        <motion.div
-          className="mt-8 grid gap-4 md:grid-cols-3"
-          variants={fadeUpStagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-        >
-          {landingContent.workflow.map((item) => (
-            <motion.article
-              key={item.step}
-              variants={fadeUpItem}
-              className="rounded-xl border border-white/10 bg-black/30 p-5"
-            >
-              <p className="text-xs font-semibold tracking-widest text-purple-300">
-                {item.step}
-              </p>
-              <h3 className="mt-3 text-lg font-semibold text-white">
-                {item.title}
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">{item.description}</p>
-            </motion.article>
-          ))}
-        </motion.div>
+        <div className="relative mt-8">
+          <motion.div
+            aria-hidden
+            className="pointer-events-none absolute left-[16%] right-[16%] top-8 hidden h-px origin-left bg-gradient-to-r from-purple-400/40 via-cyan-300/50 to-purple-400/40 md:block"
+            initial={{ scaleX: 0 }}
+            whileInView={{ scaleX: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          />
+          <motion.div
+            className="grid gap-4 md:grid-cols-3"
+            variants={fadeUpStagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+          >
+            {landingContent.workflow.map((item) => (
+              <motion.article
+                key={item.step}
+                variants={fadeUpItem}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm transition-colors hover:border-purple-400/25"
+              >
+                <p className="text-xs font-semibold tracking-widest text-purple-300">
+                  {item.step}
+                </p>
+                <h3 className="mt-3 text-lg font-semibold text-white">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm text-zinc-400">{item.description}</p>
+              </motion.article>
+            ))}
+          </motion.div>
+        </div>
       </motion.div>
     </section>
   )
@@ -797,13 +987,15 @@ function FinalCtaSection() {
           animate={{ opacity: [0.45, 0.75, 0.45] }}
           transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         />
-        <div className="relative space-y-4">
-          <h2 className="text-2xl font-semibold text-white md:text-4xl">
+        <div className="relative flex flex-col items-center space-y-4 text-center">
+          <h2 className="max-w-2xl text-balance text-2xl font-semibold text-white md:text-4xl">
             {finalCta.title}
           </h2>
-          <p className="mx-auto max-w-xl text-zinc-300">{finalCta.subtitle}</p>
+          <p className="max-w-xl text-pretty text-zinc-300">
+            {finalCta.subtitle}
+          </p>
         </div>
-        <div className="relative mt-8 flex w-full flex-col flex-wrap justify-center gap-3 sm:flex-row sm:gap-4">
+        <div className="relative mt-8 flex w-full flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
             <ExternalLink
               href={REPO_RELEASES_LATEST_URL}
@@ -824,8 +1016,8 @@ function FinalCtaSection() {
             </Link>
           </motion.div>
         </div>
-        <div className="relative mt-6">
-          <BrewInstallBlock />
+        <div className="relative mt-6 flex w-full justify-center">
+          <BrewInstallBlock className="mx-auto mt-0" />
         </div>
       </motion.div>
     </section>
@@ -837,6 +1029,8 @@ export default function LandingPage() {
     <SiteLayout>
       <HeroSection />
       <SnapshotSection />
+      <PersonasSection />
+      <AgentShowcaseSection />
       <WhyLocalFirstSection />
       <FeaturesSection />
       <PlatformContextSection />

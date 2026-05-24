@@ -12,11 +12,11 @@ Sessions are managed in `AppState.terminalSessions` with `activeTerminalSessionI
 
 ### Session Lifecycle
 
-1. **Create** — click "+" or `Cmd+T` when the Terminal section is active
-2. **Start** — initializes zsh/bash process with inherited environment
-3. **Use** — full terminal emulation via SwiftTerm's `LocalProcessTerminalView`
-4. **Analyze** — click "Analyze" to send output to Claude
-5. **Terminate** — close tab (`Cmd+W`) or quit app
+1. **Create** - click "+" or `Cmd+T` when the Terminal section is active
+2. **Start** - initializes zsh/bash process with inherited environment
+3. **Use** - full terminal emulation via SwiftTerm's `LocalProcessTerminalView`
+4. **Analyze** - click "Analyze" to send output to Claude
+5. **Terminate** - close tab (`Cmd+W`) or quit app
 
 ### Starting Directory
 
@@ -56,7 +56,7 @@ Click "Analyze" on any terminal tab:
 
 ### Scrollback Extraction
 
-`TerminalSession.getAllText()` reads from the scrollback buffer using `getScrollInvariantLine`, so "Analyze" and search see the full session history — not just the visible rows. For very long sessions where the user has scrolled far up, it falls back to the visible rows.
+`TerminalSession.getAllText()` reads from the scrollback buffer using `getScrollInvariantLine`, so "Analyze" and search see the full session history - not just the visible rows. For very long sessions where the user has scrolled far up, it falls back to the visible rows.
 
 ## Key Files
 

@@ -1,8 +1,8 @@
 # CLI documentation
 
-The `deepthink` CLI and `deepthink-mcp` MCP server — built with Bun + TypeScript, compiled to standalone binaries. Both install to `~/.local/bin/` on first app launch.
+The `deepthink` CLI and `deepthink-mcp` MCP server - built with Bun + TypeScript, compiled to standalone binaries. Both install to `~/.local/bin/` on first app launch.
 
-**Both tools are agent-agnostic and model-agnostic.** The MCP server works with any MCP-capable host (Cursor, Claude Code, Windsurf, VS Code Copilot, Continue, etc.). The CLI works with any LLM or shell automation — no Claude required. Only the in-app AI chat (agents, skills, rules) needs the Claude CLI.
+**Both tools are agent-agnostic and model-agnostic.** The MCP server works with any MCP-capable host (Cursor, Claude Code, Windsurf, VS Code Copilot, Continue, etc.). The CLI works with any LLM or shell automation - no Claude required. Only the in-app AI chat (agents, skills, rules) needs the Claude CLI.
 
 See the repository [README](../../README.md) for the full overview and compatibility table.
 
@@ -17,7 +17,7 @@ See the repository [README](../../README.md) for the full overview and compatibi
 | Doc | What it covers |
 |-----|---------------|
 | [MCP Integration](../mcp-integration.md) | MCP server tools, resources, external client config |
-| [RAG Pipeline](../rag-pipeline.md) | Hybrid retrieval — used by both CLI context engine and app |
+| [RAG Pipeline](../rag-pipeline.md) | Hybrid retrieval - used by both CLI context engine and app |
 | [Semantic Search](../semantic-search.md) | Shared `vectors.db`, embedding generation |
 | [Storage](../storage.md) | Shared data directory layout |
 

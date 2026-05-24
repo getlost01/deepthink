@@ -8,7 +8,7 @@ import { DEEPTHINK_ROOT } from "./config";
 import { retrieveContext, retrieveContextHybrid, workspaceContext } from "./core/context-engine";
 import * as db from "./core/db";
 import { hexToUUID } from "./core/db";
-import { indexEntry, semanticSearch, embeddingStats } from "./core/embedding-service";
+import { embeddingStats, indexEntry, semanticSearch } from "./core/embedding-service";
 import { findClaudePath, query } from "./core/llm";
 import { initSandbox, listFiles } from "./core/sandbox";
 import { deleteChunksForEntry } from "./core/vector-store";

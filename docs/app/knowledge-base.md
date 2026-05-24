@@ -1,6 +1,6 @@
 # Knowledge Base
 
-Multi-source knowledge capture, storage, and retrieval system. Everything stored as markdown files with YAML frontmatter — human-readable, version-control friendly, portable.
+Multi-source knowledge capture, storage, and retrieval system. Everything stored as markdown files with YAML frontmatter - human-readable, version-control friendly, portable.
 
 ## Sources
 
@@ -56,9 +56,9 @@ We use rotating refresh tokens with 15-minute access token TTL...
 
 Three-layer system prevents redundant entries:
 
-1. **Hash fingerprint** — exact content match, O(1) lookup
-2. **Jaccard similarity** — near-duplicate detection (>75% term overlap)
-3. **Incremental sync** — folder watcher only copies new/modified files
+1. **Hash fingerprint** - exact content match, O(1) lookup
+2. **Jaccard similarity** - near-duplicate detection (>75% term overlap)
+3. **Incremental sync** - folder watcher only copies new/modified files
 
 ## Search
 
@@ -72,7 +72,7 @@ BM25 + semantic hybrid search via `ContextEngine.retrieveContextHybrid()`. Used 
 
 - Full-text search across title and content
 - Filter by bucket, source type
-- **Infinite scroll** — the entry list loads progressively as you scroll; a spinner appears at the bottom when more results are available and the next page loads automatically
+- **Infinite scroll** - the entry list loads progressively as you scroll; a spinner appears at the bottom when more results are available and the next page loads automatically
 
 ## Bucket Management
 

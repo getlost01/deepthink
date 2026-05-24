@@ -1,13 +1,13 @@
 # MCP Integration
 
-DeepThink ships a full MCP (Model Context Protocol) server — `deepthink-mcp` — giving **any AI agent** access to your workspace, knowledge base, agents, skills, and rules through a standardized protocol.
+DeepThink ships a full MCP (Model Context Protocol) server - `deepthink-mcp` - giving **any AI agent** access to your workspace, knowledge base, agents, skills, and rules through a standardized protocol.
 
 > **Agent compatibility**
 >
 > `deepthink-mcp` is **not Claude-specific**. Any MCP-capable client works:
 > Claude Code, Cursor, VS Code Copilot, Windsurf, Continue, or any host that speaks MCP over stdio.
 >
-> The **in-app AI** (chat, agents, skills, rules) is the only part that requires the **Claude CLI** — it spawns Claude as a local subprocess. Everything exposed through MCP and the CLI is model-agnostic: any agent can read and write your workspace, run hybrid retrieval, and query the knowledge base without Claude.
+> The **in-app AI** (chat, agents, skills, rules) is the only part that requires the **Claude CLI** - it spawns Claude as a local subprocess. Everything exposed through MCP and the CLI is model-agnostic: any agent can read and write your workspace, run hybrid retrieval, and query the knowledge base without Claude.
 
 ## Setup
 
@@ -98,47 +98,47 @@ These run hybrid BM25 + semantic retrieval and are the recommended starting poin
 | `unified_search` | true | Single call across all four types (knowledge, task, note, reminder); content field fully populated for workspace items; supports type filter |
 | `deepthink_overview` | true | Compact system overview ~200 tokens: project count, task counts by status, note count, knowledge stats, recent activity |
 
-### Workspace — Tasks
+### Workspace - Tasks
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_list_tasks` | true | List tasks with filters: status, priority, project, due date. Paginated (50/page). |
 | `workspace_get_task` | true | Get a single task by ID or fuzzy name match. |
-| `workspace_create_task` | — | Create a task: title, status, priority, due date, project. Logs to dt_audit_log. |
-| `workspace_update_task` | — | Update task fields. Only provided fields changed. Logs to dt_audit_log. |
-| `workspace_delete_task` | — | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
+| `workspace_create_task` | - | Create a task: title, status, priority, due date, project. Logs to dt_audit_log. |
+| `workspace_update_task` | - | Update task fields. Only provided fields changed. Logs to dt_audit_log. |
+| `workspace_delete_task` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
 
-### Workspace — Notes
+### Workspace - Notes
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_list_notes` | true | List notes with optional project/pinned filters. Paginated. |
 | `workspace_get_note` | true | Get a note by ID or name. Returns full markdown content. |
-| `workspace_create_note` | — | Create a note: title, content (markdown), project, tags, pinned. Logs to dt_audit_log. |
-| `workspace_update_note` | — | Update note fields. Only provided fields changed. Logs to dt_audit_log. |
-| `workspace_delete_note` | — | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
+| `workspace_create_note` | - | Create a note: title, content (markdown), project, tags, pinned. Logs to dt_audit_log. |
+| `workspace_update_note` | - | Update note fields. Only provided fields changed. Logs to dt_audit_log. |
+| `workspace_delete_note` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
 
-### Workspace — Projects
+### Workspace - Projects
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_list_projects` | true | List all projects with task and note counts. Paginated. |
 | `workspace_get_project` | true | Get a project by ID or name with full stats. |
-| `workspace_create_project` | — | Create a project: name, summary, color. Logs to dt_audit_log. |
-| `workspace_update_project` | — | Update project fields including archive status. Logs to dt_audit_log. |
-| `workspace_delete_project` | — | Soft-snapshot to dt_trash, then hard delete. Tasks and notes become unassigned. Cascade-deletes all project vector chunks. |
+| `workspace_create_project` | - | Create a project: name, summary, color. Logs to dt_audit_log. |
+| `workspace_update_project` | - | Update project fields including archive status. Logs to dt_audit_log. |
+| `workspace_delete_project` | - | Soft-snapshot to dt_trash, then hard delete. Tasks and notes become unassigned. Cascade-deletes all project vector chunks. |
 
-### Workspace — Reminders
+### Workspace - Reminders
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_list_reminders` | true | List reminders, optionally filter by completion status. |
 | `workspace_get_reminder` | true | Get a reminder by ID or fuzzy title match. |
-| `workspace_create_reminder` | — | Create a reminder: title, notes, optional due date/time. Logs to dt_audit_log. |
-| `workspace_update_reminder` | — | Update reminder fields. Logs to dt_audit_log. |
-| `workspace_delete_reminder` | — | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
+| `workspace_create_reminder` | - | Create a reminder: title, notes, optional due date/time. Logs to dt_audit_log. |
+| `workspace_update_reminder` | - | Update reminder fields. Logs to dt_audit_log. |
+| `workspace_delete_reminder` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
 
-### Workspace — Deep Links
+### Workspace - Deep Links
 
 | Tool | readonly | Description |
 |------|----------|-------------|
@@ -147,12 +147,12 @@ These run hybrid BM25 + semantic retrieval and are the recommended starting poin
 
 URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://project/UUID`, `deepthink://reminder/UUID`, `deepthink://knowledge?id=<id>`.
 
-### Workspace — Utility
+### Workspace - Utility
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `workspace_summary` | true | Full workspace snapshot: project/task/note/reminder counts + recent items. |
-| `workspace_reindex` | — | Trigger a full re-embedding of all workspace items into `vectors.db`. Use after bulk imports or when search quality degrades. |
+| `workspace_reindex` | - | Trigger a full re-embedding of all workspace items into `vectors.db`. Use after bulk imports or when search quality degrades. |
 
 ### Knowledge Base
 
@@ -161,40 +161,40 @@ URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://proje
 | `knowledge_stats` | true | Overview: project count, integration channels, archive count. |
 | `knowledge_list_projects` | true | List all knowledge projects (slugs, titles). |
 | `knowledge_load_project` | true | Load all knowledge for a project: context.md, decisions.md, and artifacts. |
-| `knowledge_save_project` | — | Save to a project. Types: `context`, `decision`, `artifact`. |
+| `knowledge_save_project` | - | Save to a project. Types: `context`, `decision`, `artifact`. |
 | `knowledge_search` | true | Keyword search across integration data and captured entries. |
 | `knowledge_list_integrations` | true | List all integration sources and their channels. |
 | `knowledge_load_integration` | true | Load recent entries from an integration source/channel. |
-| `knowledge_capture` | — | Capture data from an external source into the knowledge base. |
-| `knowledge_compress` | — | Compress an integration channel's entries into a dense archive. |
-| `knowledge_archive_project` | — | Archive a project's knowledge into a compressed summary file. |
+| `knowledge_capture` | - | Capture data from an external source into the knowledge base. |
+| `knowledge_compress` | - | Compress an integration channel's entries into a dense archive. |
+| `knowledge_archive_project` | - | Archive a project's knowledge into a compressed summary file. |
 
-### Config — Agents
+### Config - Agents
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `agent_list` | true | List all agents: roles, icons, models, knowledge scopes. |
 | `agent_get` | true | Get full agent details including system prompt. |
-| `agent_create` | — | Create an agent: name, role, system prompt, knowledge scope. |
-| `agent_delete` | — | Delete an agent by name. |
+| `agent_create` | - | Create an agent: name, role, system prompt, knowledge scope. |
+| `agent_delete` | - | Delete an agent by name. |
 
-### Config — Rules
+### Config - Rules
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `rule_list` | true | List all rules: triggers, categories, instructions. |
 | `rule_get` | true | Get full rule details including instruction text. |
-| `rule_create` | — | Create a rule: trigger, category, priority, instructions. |
-| `rule_delete` | — | Delete a rule by name. |
+| `rule_create` | - | Create a rule: trigger, category, priority, instructions. |
+| `rule_delete` | - | Delete a rule by name. |
 
-### Config — Skills
+### Config - Skills
 
 | Tool | readonly | Description |
 |------|----------|-------------|
 | `skill_list` | true | List all slash-command skills: categories, triggers. |
 | `skill_get` | true | Get full skill details including system prompt and template. |
-| `skill_create` | — | Create a skill: name, category, system prompt, template variables. |
-| `skill_delete` | — | Delete a skill by name. |
+| `skill_create` | - | Create a skill: name, category, system prompt, template variables. |
+| `skill_delete` | - | Delete a skill by name. |
 
 ---
 

@@ -38,6 +38,88 @@ body {
   overscroll-behavior-y: none;
 }
 
+@keyframes landing-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.landing-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #fafafa 0%,
+    #e9d5ff 35%,
+    #a5f3fc 50%,
+    #e9d5ff 65%,
+    #fafafa 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: landing-shimmer 6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-shimmer-text {
+    animation: none;
+    background: none;
+    color: #fafafa;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+  }
+
+  .landing-float {
+    animation: none !important;
+  }
+}
+
+.landing-float {
+  animation: landing-float 5s ease-in-out infinite;
+}
+
+.landing-cta-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.landing-cta-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 60%
+  );
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+
+.landing-cta-primary:hover::after {
+  transform: translateX(120%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-cta-primary::after {
+    display: none;
+  }
+}
+
 a[href]:not([tabindex='-1']),
 button:not(:disabled),
 summary,

@@ -93,8 +93,8 @@ Check: never synced OR (now - lastSyncAt) > interval?
 ## Deduplication
 
 Before creating any entry:
-1. `ContextEngine.isDuplicate(content:)` — exact hash match
-2. `ContextEngine.isDuplicateOrSimilar(content:, threshold: 0.75)` — Jaccard similarity check
+1. `ContextEngine.isDuplicate(content:)` - exact hash match
+2. `ContextEngine.isDuplicateOrSimilar(content:, threshold: 0.75)` - Jaccard similarity check
 3. Duplicate → skipped, logged to "collector" log
 
 ## Configuration

@@ -3,21 +3,22 @@ import { REPO_RELEASES_LATEST_URL } from '../constants/repo'
 export const landingContent = {
   hero: {
     badge: 'macOS 14+ · Open source · Local-first · Works with any AI agent',
-    title: 'Local-first workspace and AI memory layer.',
+    titleLead: 'Persistent context for',
+    titleAccent: 'AI-assisted work.',
     subtitle:
-      'Native macOS app for notes, tasks, projects, and a knowledge graph — backed by a 51-tool MCP server and CLI that plug Cursor, Claude Code, Windsurf, or any agent into your corpus. Your data lives in ~/DeepThink. No cloud, no upload, no lock-in.',
+      'DeepThink is a native macOS workspace for notes, tasks, projects, and knowledge-backed by a 51-tool MCP server and CLI. Connect Cursor, Claude Code, or Windsurf once; each session can draw on an indexed corpus under ~/DeepThink. On-device indexing. No required cloud account.',
     primaryCta: { label: 'Download for macOS', href: REPO_RELEASES_LATEST_URL },
     secondaryCta: { label: 'Documentation', to: '/documentation' },
     stats: [
-      { value: '51', label: 'MCP tools — any agent, no Claude required' },
-      { value: '100%', label: 'on-device — BM25 + semantic, no cloud index' },
-      { value: '3 surfaces', label: 'app · CLI · MCP server — one shared store' },
+      { value: '51', label: 'MCP tools for structured workspace access' },
+      { value: '100%', label: 'on-device hybrid search (BM25 + semantic)' },
+      { value: '3 surfaces', label: 'app · CLI · MCP - one ~/DeepThink store' },
     ],
   },
   snapshot: {
-    title: 'What DeepThink delivers',
+    title: 'What DeepThink provides',
     intro:
-      'One tool for both halves of the job: a beautiful macOS workspace where you capture, organize, and think — and a production-grade MCP server and CLI that give any AI agent structured, searchable context from that same workspace.',
+      'DeepThink combines a native workspace for capture and organization with agent-ready retrieval: the same indexed corpus is available in the app, terminal, and any MCP-connected editor.',
     badges: [
       'Native SwiftUI app',
       'Hybrid RAG (BM25 + semantic)',
@@ -28,93 +29,164 @@ export const landingContent = {
     ],
     pillars: [
       {
-        title: 'Give every agent a persistent memory',
+        title: 'Persistent agent context',
         description:
-          'Connect deepthink-mcp once. Cursor, Claude Code, Windsurf, or VS Code Copilot call knowledge_context or smart_query instead of starting cold each session — no manual copy-paste, no disposable chat summaries.',
+          'Connect deepthink-mcp once. Supported hosts can call smart_query or knowledge_context to load project notes, tasks, and decisions-without manual context assembly each session.',
       },
       {
         title: 'Capture once, retrieve everywhere',
         description:
-          'URLs, files, Obsidian vaults, RSS feeds, and clipboard clips land in ~/DeepThink and are instantly indexed. The same corpus powers in-app search, the CLI, and every MCP-connected agent.',
+          'URLs, files, Obsidian vaults, RSS feeds, and clipboard entries are stored under ~/DeepThink and indexed for search. The same corpus powers the app, CLI, scheduled jobs, and MCP tools.',
       },
       {
-        title: 'A workspace that actually thinks with you',
+        title: 'Integrated macOS workspace',
         description:
-          'Projects, notes with wiki backlinks, Kanban tasks, reminders, and a force-directed context graph — all managed from a native macOS app with Claude-powered AI chat, custom agents, and slash-command skills.',
+          'Projects, wiki-linked notes, Kanban tasks, reminders, daily brief, and a context graph-plus Claude-powered chat, configurable agents, and slash-command skills.',
       },
+    ],
+  },
+  personas: {
+    title: 'Designed for AI-assisted workflows',
+    subtitle:
+      'Whether you work primarily in an MCP-enabled editor, manage a product solo, or maintain a local knowledge base-DeepThink keeps context durable and queryable.',
+    items: [
+      {
+        title: 'Developers using Cursor, Claude Code, or Windsurf',
+        description:
+          'Agents access project notes, open tasks, and recorded decisions through MCP-reducing repeated context setup at the start of each session.',
+      },
+      {
+        title: 'Knowledge workers and researchers',
+        description:
+          'Import articles and vaults, explore semantic relationships in the context graph, and run hybrid search or Deep Search for complex questions.',
+      },
+      {
+        title: 'Solo founders and product managers',
+        description:
+          'Kanban with story points, native reminders, daily brief (⌘D), and slash skills such as /standup-all available to terminal and agent workflows.',
+      },
+      {
+        title: 'Automation and privacy-focused teams',
+        description:
+          'Run the CLI from cron, git hooks, or CI. Data remains under ~/DeepThink on disk, with audit logging and trash snapshots on mutations.',
+      },
+    ],
+  },
+  agentShowcase: {
+    title: 'Connect in three steps',
+    subtitle:
+      'Install the app, register the MCP server with your editor, and query workspace context from the CLI or any connected agent.',
+    steps: [
+      {
+        label: 'Install',
+        code: 'brew tap getlost01/deepthink && brew install --cask deepthink',
+      },
+      {
+        label: 'Connect MCP',
+        code: 'claude mcp add deepthink -- ~/.local/bin/deepthink-mcp',
+      },
+      {
+        label: 'Query from anywhere',
+        code: 'deepthink ask "what is blocked on the API project?"',
+      },
+    ],
+    tools: [
+      'smart_query - token-budgeted context retrieval',
+      'unified_search - hybrid BM25 + semantic across workspace',
+      'workspace_task_* - create, list, and update tasks',
+      'knowledge_capture - ingest URLs and files into the index',
+      'agent_* / skill_* / rule_* - manage AI configuration as files',
     ],
   },
   whyLocalFirst: {
     title: 'Why local-first matters',
     subtitle:
-      'Your knowledge base is not a SaaS dashboard. It is a file on your disk that you can diff, encrypt, and sync however you like. DeepThink keeps it that way.',
+      'Your knowledge base is a directory on disk-not a hosted dashboard. DeepThink is built to keep it that way.',
     points: [
       {
         title: 'You own the data',
-        body: 'Open ~/DeepThink in Finder, diff it, back it up, or sync it with your existing tools. Nothing leaves your machine unless you choose.',
+        body: 'Open ~/DeepThink in Finder, version it, back it up, or sync it with your existing tools. Nothing leaves your machine unless you choose.',
       },
       {
-        title: 'Fast retrieval, always',
-        body: 'BM25 and Apple NLEmbedding indexes live next to your documents. Search stays instant even when upstream APIs are slow or rate-limited.',
+        title: 'Consistent retrieval',
+        body: 'BM25 and Apple NLEmbedding indexes live alongside your documents, so search stays responsive even when external APIs are slow or unavailable.',
       },
       {
         title: 'One store, every surface',
-        body: 'The macOS app, MCP server, and CLI all read and write the same ~/DeepThink workspace — no drift between your GUI and terminal workflows.',
+        body: 'The macOS app, MCP server, and CLI read and write the same ~/DeepThink workspace-no drift between GUI and terminal workflows.',
       },
     ],
   },
   sections: {
     capabilities: {
-      title: 'Everything in one place',
+      title: 'Capabilities at a glance',
       subtitle:
-        'Workspace, knowledge, AI, and automation — local, connected, and queryable by any agent.',
+        'Hybrid search, structured capture, task management, and agent governance-local, connected, and accessible from any MCP host.',
     },
     appCliMcp: {
       title: 'App, CLI, and MCP',
       subtitle:
-        'Use the interface that fits the moment. All three share the same on-disk workspace and hybrid index.',
+        'Use the interface that fits the workflow. All three share the same on-disk workspace and hybrid index.',
     },
     workflow: {
       title: 'How context flows',
       subtitle:
-        'Capture once, connect it through the graph, and retrieve it anywhere — app, terminal, or agent.',
+        'Capture once, connect entries through the graph, and retrieve them from the app, terminal, or an agent.',
     },
   },
   features: [
     {
-      title: 'Hybrid RAG — on-device, instant',
+      title: 'Hybrid RAG - on-device',
       description:
-        'BM25 keyword search and Apple NLEmbedding semantic vectors fused via Reciprocal Rank Fusion. Every search runs fully on-device — no cloud index, no latency, no quota limits.',
+        'BM25 keyword search and Apple NLEmbedding semantic vectors fused with Reciprocal Rank Fusion. Indexing and search run on your Mac-no cloud index required.',
       icon: 'Search',
     },
     {
-      title: 'Knowledge base & smart capture',
+      title: 'Knowledge base and capture',
       description:
-        'Ingest URLs, files, RSS feeds, Obsidian vaults, and clipboard clips in one flow. Entries are deduplicated, tagged, and structured into summaries and facts your agents can retrieve.',
+        'Ingest URLs, files, RSS feeds, Obsidian vaults, and clipboard content in one flow. Collectors keep sources current; entries are deduplicated, tagged, and indexed for retrieval.',
       icon: 'Database',
     },
     {
       title: 'Context graph',
       description:
-        'A force-directed graph that maps semantic relationships and wiki-link connections across all your notes, projects, and knowledge — so you discover what is related before you need to ask.',
+        'A force-directed view of semantic relationships and wiki-link connections across notes, projects, and knowledge-useful for discovery before you search or query.',
       icon: 'Zap',
     },
     {
-      title: 'AI agents, skills & rules',
+      title: 'Workspace - projects, notes, tasks',
       description:
-        'Build custom agent personas with scoped knowledge and assigned slash commands. Rules auto-inject instructions into every Claude conversation — consistent tone and format without manual prompting.',
+        'Kanban with priorities, story points, and due dates. TipTap markdown with wiki backlinks and version history. Items are queryable through MCP and the CLI.',
+      icon: 'ListTodo',
+    },
+    {
+      title: 'AI agents, skills, and rules',
+      description:
+        'Agent personas with scoped knowledge and assigned slash commands. Rules inject consistent instructions into Claude conversations without repeating prompts manually.',
       icon: 'NotebookPen',
     },
     {
-      title: '⌘K command palette & quick capture',
+      title: 'Reminders and daily brief',
       description:
-        'Jump to any note, project, task, or skill from anywhere in the app. Quick capture floats above every window so ideas land in your workspace before the moment passes.',
+        'Reminders with native macOS notifications and filters (Today, This Week, and more). Press ⌘D for an AI-generated summary of recent workspace activity.',
+      icon: 'Calendar',
+    },
+    {
+      title: '⌘K command palette and quick capture',
+      description:
+        'Navigate to any note, project, task, or skill from anywhere in the app. Quick capture records notes, knowledge entries, or tasks without leaving your current view.',
       icon: 'Command',
+    },
+    {
+      title: 'Built-in terminal',
+      description:
+        'Multi-tab SwiftTerm sessions with AI-assisted output analysis. Run Claude, the deepthink CLI, and shell tools in one place, with shared workspace context.',
+      icon: 'Terminal',
     },
     {
       title: 'Private by design',
       description:
-        'Core data stays in ~/DeepThink. Cloud integrations are opt-in. The MCP server shares only what you explicitly expose, and the CLI writes go through a full audit log.',
+        'Core data stays in ~/DeepThink. Cloud integrations are opt-in. MCP exposes only what configured tools request. CLI writes are logged and snapshotted.',
       icon: 'ShieldCheck',
     },
   ],
@@ -122,73 +194,79 @@ export const landingContent = {
     {
       title: 'Native macOS app',
       description:
-        'Projects, notes, tasks, reminders, AI chat, custom agents, and a built-in terminal — all in a SwiftUI app that syncs live with CLI and MCP writes via Darwin notification.',
+        'Projects, notes, tasks, reminders, AI chat, agents, context graph, and terminal-SwiftUI with live sync when the CLI or MCP updates the store.',
       points: [
-        '⌘K command palette — jump anywhere instantly',
-        'Claude-powered AI chat with workspace awareness',
-        'Built-in terminal with AI log analysis',
+        '⌘K command palette for fast navigation',
+        'Claude-powered AI chat with workspace context',
+        'Daily brief (⌘D) and Obsidian vault import',
       ],
     },
     {
-      title: 'CLI — model-agnostic',
+      title: 'CLI - model-agnostic',
       description:
-        'Every write is atomic: snapshot → trash → SQL mutation → audit log in one transaction. Works with any AI or shell workflow — Cursor, git hooks, cron jobs — Claude not required.',
+        'Writes are atomic: snapshot, trash, SQL mutation, and audit log in one transaction. Suitable for shell scripts, git hooks, cron, and CI-Claude is not required.',
       points: [
-        'deepthink ask, note, task, search, context',
+        'deepthink ask, run, react, research, schedule',
         'Shared SwiftData-backed workspace (WAL mode)',
-        'Full audit log on every create / update / delete',
+        'Audit log on every create, update, and delete',
       ],
     },
     {
-      title: 'MCP server — any agent',
+      title: 'MCP server - any compatible host',
       description:
-        '51 tools across smart, workspace, knowledge, and config categories. Works with Claude Code, Cursor, Windsurf, VS Code Copilot, or any MCP-capable host. Claude is not required.',
+        '51 tools across smart, workspace, knowledge, and config namespaces. Works with Claude Code, Cursor, Windsurf, VS Code Copilot, and other MCP-capable clients.',
       points: [
-        '51 tools — smart_query, unified_search, workspace_*, knowledge_*',
-        'readonly flag on every tool — safe reads vs. mutations',
-        'All writes audited and synced to the app in real time',
+        'smart_query, unified_search, workspace_*, knowledge_*',
+        'readonly flag on each tool - reads vs. mutations',
+        'Writes audited and synced to the app when it is open',
       ],
     },
   ],
   productTour: {
-    title: 'See DeepThink in action',
+    title: 'Product overview',
     subtitle:
-      'From workspace and knowledge capture to AI agents and the built-in terminal — scroll through to see how the surfaces connect.',
+      'Workspace, knowledge capture, agents, and terminal-how the main surfaces connect in a single local store.',
     steps: [
       {
         title: 'Workspace',
         description:
-          'Projects group your notes, tasks, and context. Kanban board with priorities, story points, and due dates. Every item is queryable through the MCP server and CLI — not just visible in the GUI.',
+          'Projects group notes, tasks, and context. Kanban supports priorities, story points, and due dates. Items are available to MCP and CLI queries-not only in the UI.',
         image: '/images/workspace.png',
       },
       {
         title: 'Knowledge base',
         description:
-          'Capture URLs, files, Obsidian vaults, and RSS feeds in one flow. Each entry is structured into summaries, facts, and entities — indexed with BM25 and semantic search so retrieval is precise whether you ask from the app, CLI, or an agent.',
+          'Capture URLs, files, Obsidian vaults, and RSS feeds. Entries are structured and indexed with BM25 and semantic search for use in the app, CLI, or agents.',
         image: '/images/knowledge.png',
       },
       {
         title: 'Context graph',
         description:
-          'A force-directed graph that maps semantic relationships and wiki-link connections across your entire workspace. Discover what is related before you need to ask — and let agents traverse the graph for richer context.',
+          'Maps semantic relationships and wiki links across the corpus-useful for exploration and for agents that traverse related material.',
         image: '/images/context-graph.png',
       },
       {
         title: 'AI assistant',
         description:
-          'Streaming Claude with full workspace awareness, branch edits, and session compaction. Build custom agent personas with scoped knowledge, assign slash-command skills, and auto-inject rules so every conversation stays consistent.',
+          'Streaming Claude with workspace context, edit branching, and session compaction. Configure agents, skills, and rules for repeatable conversation patterns.',
         image: '/images/ai-assistant.png',
       },
       {
         title: 'Integrations',
         description:
-          'Manage MCP servers, custom agents, skills, and rules from one unified panel. Add a deepthink-mcp connection to Cursor, Claude Code, or Windsurf once — then every agent session starts with your full corpus already loaded.',
+          'Manage MCP servers, agents, skills, and rules in one panel. Add deepthink-mcp to your editor so sessions can use the indexed workspace.',
         image: '/images/integrations.png',
+      },
+      {
+        title: 'Reminders',
+        description:
+          'Timed reminders with native notifications and calendar-style filters. Tasks remain in sync between the app and agent-facing tools.',
+        image: '/images/reminders.png',
       },
       {
         title: 'Built-in terminal',
         description:
-          'Multi-tab terminal with AI-powered output analysis. Run Claude, the deepthink CLI, and your shell tools side by side — all sharing the same workspace context and MCP integration.',
+          'Multi-tab terminal with AI-assisted analysis of output. Run Claude, deepthink, and shell commands alongside the same workspace data.',
         image: '/images/terminal.png',
       },
     ],
@@ -196,79 +274,79 @@ export const landingContent = {
   workflow: [
     {
       step: '01',
-      title: 'Capture with intention',
+      title: 'Capture deliberately',
       description:
-        'Bring URLs, files, vault imports, snippets, tasks, and reminders into ~/DeepThink through one ingestion flow. Everything lands in one indexed, searchable store.',
+        'Add URLs, files, vault imports, snippets, tasks, and reminders into ~/DeepThink through a single ingestion path. Everything is indexed in one store.',
     },
     {
       step: '02',
-      title: 'Connect through the graph',
+      title: 'Structure and connect',
       description:
-        'Add wiki backlinks, browse semantic neighbors in the context graph, and organize into buckets and projects. Structure your corpus so retrieval finds the right context — not just the nearest keyword.',
+        'Use wiki backlinks, the context graph, and project buckets so retrieval surfaces the right material-not only the closest keyword match.',
     },
     {
       step: '03',
-      title: 'Retrieve anywhere — app, CLI, or agent',
+      title: 'Retrieve from app, CLI, or agent',
       description:
-        'Hybrid search answers inside the app. The same corpus powers your terminal scripts and editor agents through the MCP server. Capture once, reuse everywhere.',
+        'Search in the app; script against the CLI; query through MCP from your editor. One corpus, multiple interfaces.',
     },
   ],
   faqs: [
     {
       question: 'Does the MCP server require Claude?',
       answer:
-        'No. deepthink-mcp works with any MCP-capable AI agent — Claude Code, Cursor, VS Code Copilot, Windsurf, Continue, or any host that speaks MCP over stdio. Only the in-app AI chat, agents, skills, and rules require the Claude CLI, because the app spawns Claude as a local subprocess.',
+        'No. deepthink-mcp works with any MCP-capable client-Claude Code, Cursor, VS Code Copilot, Windsurf, Continue, or other stdio hosts. In-app AI chat, agents, skills, and rules use the Claude CLI because the app invokes Claude as a local subprocess.',
     },
     {
       question: 'Can the CLI or MCP server run without the app open?',
       answer:
-        'Yes. Both deepthink and deepthink-mcp read and write ~/DeepThink directly over SQLite (WAL mode) — the app does not need to be running. When the app is open, CLI and MCP writes sync to it automatically via Darwin notification. Changes persist to disk either way.',
+        'Yes. Both deepthink and deepthink-mcp read and write ~/DeepThink over SQLite (WAL mode). When the app is running, disk changes sync via Darwin notification; persistence does not depend on the GUI being open.',
     },
     {
       question: 'What does "hybrid RAG" mean in practice?',
       answer:
-        'When you or an agent calls knowledge_context or unified_search, DeepThink runs a BM25 keyword query and an Apple NLEmbedding semantic vector query in parallel, then fuses the ranked results with Reciprocal Rank Fusion. This catches exact-match terms BM25 is good at and conceptually related content semantic search surfaces — all fully on-device with no cloud index.',
+        'Calls such as knowledge_context or unified_search run BM25 keyword search and Apple NLEmbedding semantic search in parallel, then fuse rankings with Reciprocal Rank Fusion-on-device, without a cloud index.',
     },
     {
       question: 'How do I import an Obsidian vault or files?',
       answer:
-        'Open the Knowledge section in the app and use the importer — it supports vault folders, Markdown files, attachments, URLs, RSS feeds, clipboard captures, and scripted collectors. Everything lands in the same hybrid index the MCP and CLI query.',
+        'Use the Knowledge section importer for vault folders, Markdown, attachments, URLs, RSS, clipboard captures, and scripted collectors. Imported material shares the same index as MCP and CLI queries.',
     },
     {
       question: 'Does DeepThink require cloud sync?',
       answer:
-        'No. Data and embeddings stay under ~/DeepThink unless you add your own sync solution. The core workflow does not depend on any hosted infrastructure.',
+        'No. Data and embeddings remain under ~/DeepThink unless you add your own sync. The default workflow does not require hosted infrastructure.',
     },
     {
       question: 'What are agents, skills, and rules?',
       answer:
-        'Agents are custom Claude personas with a scoped knowledge set and assigned skills. Skills are slash commands (/standup, /summarize, custom templates) that inject context before sending to Claude. Rules are always-on instructions — per-project tone, format, or constraints — auto-injected into every conversation without manual prompting.',
+        'Agents are Claude personas with scoped knowledge and assigned skills. Skills are slash commands (/standup, /summarize, custom templates) that inject context before a prompt. Rules are standing instructions-tone, format, or constraints-applied automatically per project or globally.',
     },
     {
       question: 'How do I connect Cursor or Windsurf to DeepThink?',
       answer:
-        'Point your MCP host at ~/.local/bin/deepthink-mcp (installed automatically on first app launch). In Cursor or VS Code, add a deepthink entry to your mcpServers config. In Claude Code, run: claude mcp add deepthink -- ~/.local/bin/deepthink-mcp. The editor then sees all 51 workspace tools.',
+        'Point your MCP host at ~/.local/bin/deepthink-mcp (installed on first app launch). In Cursor or VS Code, add a deepthink entry under mcpServers. For Claude Code: claude mcp add deepthink -- ~/.local/bin/deepthink-mcp.',
     },
     {
       question: 'Does DeepThink upload my notes or code?',
       answer:
-        'No. Indexing only reads content you imported into ~/DeepThink on your machine. MCP shares only what configured tools explicitly expose. No telemetry, no account required for offline use.',
+        'No. Indexing uses content you store under ~/DeepThink on your machine. MCP exposes only what configured tools request. No account is required for offline use.',
     },
     {
       question: 'What platform does DeepThink support?',
       answer:
-        'DeepThink is a native SwiftUI app for macOS 14+. The MCP server and CLI are bundled with the app and share the same local workspace. There is no web or mobile version.',
+        'DeepThink is a native SwiftUI application for macOS 14+. The MCP server and CLI ship with the app and use the same local workspace. There is no web or mobile client.',
     },
     {
       question: 'Is there a CLI without the app?',
       answer:
-        'The CLI and MCP server are installed by the app on first launch to ~/.local/bin/. They operate independently — the app does not need to be running. You can use the CLI from cron, git hooks, CI, or any shell script without opening the GUI.',
+        'The CLI and MCP binaries are installed to ~/.local/bin/ on first launch and operate independently of the GUI. You can use them from cron, git hooks, or CI without opening the app.',
     },
   ],
   finalCta: {
-    title: 'Your workspace. Your agents. Your data.',
+    title: 'Install DeepThink for macOS',
     subtitle:
-      'Install via Homebrew and get the native macOS app, 51-tool MCP server, and model-agnostic CLI — all sharing one local knowledge base that any agent can query.',
+      'Homebrew install includes the native app, 51-tool MCP server, and model-agnostic CLI-sharing one local knowledge base across interfaces.',
     primaryLabel: 'Download latest release',
     secondaryLabel: 'Read the docs',
   },

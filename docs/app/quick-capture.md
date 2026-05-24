@@ -62,13 +62,13 @@ Global shortcut support is currently for app Quick Search behavior only. For cap
 
 Uses `NSPanel` (not `NSWindow`) with these properties:
 
-- `.nonactivatingPanel` — does not steal focus from the current app
-- `.hudWindow` — no close/minimize/maximize chrome
-- `.fullSizeContentView` — custom chrome
-- `.floating` level — stays above other windows
-- `becomesKeyOnlyIfNeeded = false` — accepts keyboard input immediately
-- `canJoinAllSpaces` — visible on all Spaces
-- `.ultraThickMaterial` background — frosted glass appearance
+- `.nonactivatingPanel` - does not steal focus from the current app
+- `.hudWindow` - no close/minimize/maximize chrome
+- `.fullSizeContentView` - custom chrome
+- `.floating` level - stays above other windows
+- `becomesKeyOnlyIfNeeded = false` - accepts keyboard input immediately
+- `canJoinAllSpaces` - visible on all Spaces
+- `.ultraThickMaterial` background - frosted glass appearance
 
 ### Shortcut integration
 

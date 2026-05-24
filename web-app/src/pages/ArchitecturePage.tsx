@@ -52,7 +52,7 @@ export default function ArchitecturePage() {
             className="mx-auto mt-3 max-w-2xl text-sm text-zinc-400 md:text-base md:leading-relaxed"
           >
             One diagram: three surfaces, one disk, hybrid RAG. MCP and CLI are
-            agent-agnostic — Claude is only needed for in-app AI chat. Zoom and
+            agent-agnostic - Claude is only needed for in-app AI chat. Zoom and
             drag; the labels are the documentation.
           </motion.p>
           <motion.div

@@ -92,7 +92,7 @@ function MobileFlow() {
         </div>
       </div>
 
-      {/* Row 1 — interfaces */}
+      {/* Row 1 - interfaces */}
       <div className="flex gap-2">
         {interfaceCards.map((c) => (
           <div
@@ -157,7 +157,7 @@ function MobileFlow() {
         </div>
       </div>
 
-      {/* Arrow down — RAG */}
+      {/* Arrow down - RAG */}
       <div className="flex flex-col items-center py-1">
         <div className="h-5 w-px bg-zinc-600" />
         <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
@@ -172,7 +172,7 @@ function MobileFlow() {
       {/* RAG pipeline */}
       <div className="rounded-xl border border-fuchsia-400/35 bg-zinc-900/80 px-3 py-2.5">
         <div className="font-mono text-[9px] uppercase tracking-wider text-fuchsia-300/80 text-center">
-          Hybrid RAG — shared App · CLI · MCP
+          Hybrid RAG - shared App · CLI · MCP
         </div>
         <div className="mt-2 flex flex-col gap-1.5">
           {ragSteps.map((s) => (
@@ -191,7 +191,7 @@ function MobileFlow() {
         </div>
       </div>
 
-      {/* Arrow down — Claude */}
+      {/* Arrow down - Claude */}
       <div className="flex flex-col items-center py-1">
         <div className="h-5 w-px bg-zinc-600" />
         <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
@@ -427,7 +427,7 @@ function RAGNode() {
         className="!h-2 !w-2 !border-0 !bg-fuchsia-400/50"
       />
       <div className="text-center font-mono text-[9px] uppercase tracking-wider text-fuchsia-300/80">
-        Hybrid RAG — shared by App · CLI · MCP
+        Hybrid RAG - shared by App · CLI · MCP
       </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-4">
         {cols.map((c) => (
@@ -582,7 +582,7 @@ function DesktopFlow() {
         type: 'tier',
         position: { x: 640, y: 20 },
         data: {
-          zone: 'MCP — any agent',
+          zone: 'MCP - any agent',
           title: 'deepthink-mcp',
           line: '51 tools · stdio · readonly flag on reads',
           tier: 'mcp',

@@ -45,7 +45,7 @@ User query
 
 ---
 
-## Step 1 — Tokenize + Stem
+## Step 1 - Tokenize + Stem
 
 Applied to both the query and all indexed content at build time.
 
@@ -57,7 +57,7 @@ Applied to both the query and all indexed content at build time.
 
 ---
 
-## Step 2 — BM25 Keyword Scoring
+## Step 2 - BM25 Keyword Scoring
 
 **Parameters:** k1=1.5, b=0.75
 
@@ -79,7 +79,7 @@ score(d, q) = Σ IDF(t) × (TF(t,d) × (k1+1)) / (TF(t,d) + k1×(1 - b + b×(|d|
 |-------|--------|-----------|
 | Title match | ×1.5 | Query terms found in entry title |
 | Tag match | ×1.3 | Query terms found in entry tags |
-| Recency decay | e^(-days/90) | Applied as: `score × (0.7 + 0.3 × decay)` — min 0.7× |
+| Recency decay | e^(-days/90) | Applied as: `score × (0.7 + 0.3 × decay)` - min 0.7× |
 | Project scope | ×1.5 | Entry belongs to the scoped project |
 
 **Threshold:** Scores ≤0.1 are discarded before fusion.
@@ -90,9 +90,9 @@ score(d, q) = Σ IDF(t) × (TF(t,d) × (k1+1)) / (TF(t,d) + k1×(1 - b + b×(|d|
 
 ---
 
-## Step 3 — Semantic Search
+## Step 3 - Semantic Search
 
-**Model:** Apple `NLEmbedding.sentenceEmbedding(for: .english)` — on-device, ~512 dimensions, no API key required.
+**Model:** Apple `NLEmbedding.sentenceEmbedding(for: .english)` - on-device, ~512 dimensions, no API key required.
 
 **Input format (standardized):**
 
@@ -114,11 +114,11 @@ similarity(a, b) = dot(a, b) / (|a| × |b|)
 
 **NaN/Infinite guard:** All embedding vectors are validated before storage. Any vector containing NaN or Infinite values is rejected and not written to `vectors.db`.
 
-**Archive exclusion:** Same as BM25 — `source == 'archive'` entries excluded from semantic retrieval.
+**Archive exclusion:** Same as BM25 - `source == 'archive'` entries excluded from semantic retrieval.
 
 ---
 
-## Step 4 — RRF Fusion
+## Step 4 - RRF Fusion
 
 Reciprocal Rank Fusion merges BM25 and semantic result lists without requiring score normalization.
 
@@ -139,7 +139,7 @@ Falls back to BM25-only if no embeddings are available in `vectors.db`.
 
 ---
 
-## Step 5 — chunksForEntryIds() Optimization
+## Step 5 - chunksForEntryIds() Optimization
 
 After RRF produces a ranked list of `entry_id` values, the system loads only the chunks for those specific entries:
 
@@ -151,13 +151,13 @@ This avoids a full table scan of `vectors.db`. The chunk content, title, tags, a
 
 ---
 
-## Step 6 — Window Extraction
+## Step 6 - Window Extraction
 
 For multi-chunk entries, a sliding window selects the region of highest query-term density rather than naively truncating from the front. This ensures the most relevant portion of a long entry is surfaced even if it appears mid-document.
 
 ---
 
-## Step 7 — Context Assembly
+## Step 7 - Context Assembly
 
 Token-budgeted injection into the Claude system prompt:
 
@@ -171,11 +171,11 @@ Token-budgeted injection into the Claude system prompt:
 
 ---
 
-## unified_search — All Four Types
+## unified_search - All Four Types
 
 `unified_search` runs hybrid retrieval across all entity types simultaneously: `knowledge`, `task`, `note`, `reminder`. Key behaviors:
 
-- The `content` field is fully populated for workspace items (tasks, notes, reminders) — not empty or truncated
+- The `content` field is fully populated for workspace items (tasks, notes, reminders) - not empty or truncated
 - Semantic search runs once and is shared across knowledge and workspace retrieval to avoid duplicate embedding lookups
 - Results carry a `type` label so callers know what kind of item each result is
 - Archive entries excluded by default; pass explicit source filter to include them

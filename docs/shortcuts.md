@@ -6,7 +6,7 @@
 |----------|--------|
 | `Cmd+K` | **Quick Search** (command palette) |
 | `Option+Space` | Quick Search alias (app-only) |
-| `Cmd+D` | **Daily Brief** — AI summary of today's tasks, reminders, and notes |
+| `Cmd+D` | **Daily Brief** - AI summary of today's tasks, reminders, and notes |
 
 ## Navigation
 
