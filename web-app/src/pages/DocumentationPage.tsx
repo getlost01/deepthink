@@ -10,6 +10,7 @@ import {
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import DeepThinkLoader from '../components/DeepThinkLoader'
 import SiteLayout from '../components/SiteLayout'
 import {
   REPO_DEFAULT_BRANCH,
@@ -558,16 +559,12 @@ export default function DocumentationPage() {
 
             <AnimatePresence mode="wait">
               {isInitialDocLoading ? (
-                <motion.p
+                <DeepThinkLoader
                   key="doc-loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-sm text-zinc-400"
-                >
-                  Rendering markdown...
-                </motion.p>
+                  variant="inline"
+                  message="Rendering documentation…"
+                  label="Loading documentation"
+                />
               ) : (
                 <motion.div
                   key={activeDocPath}

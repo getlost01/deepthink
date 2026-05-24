@@ -93,7 +93,7 @@ export function GlowCard({
 
   return (
     <motion.div
-      className={`group relative ${className}`.trim()}
+      className={`group relative h-full ${className}`.trim()}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}

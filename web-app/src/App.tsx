@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import DeepThinkLoader from './components/DeepThinkLoader'
 import LandingPage from './components/LandingPage'
 
 const DocumentationPage = lazy(() => import('./pages/DocumentationPage'))
@@ -22,11 +23,7 @@ function ScrollToHash() {
 }
 
 function RouteFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-sm text-zinc-400">
-      Loading…
-    </div>
-  )
+  return <DeepThinkLoader />
 }
 
 export default function App() {

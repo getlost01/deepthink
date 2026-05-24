@@ -68,7 +68,7 @@ export const landingContent = {
       {
         title: 'Automation and privacy-focused teams',
         description:
-          'Run the CLI from cron, git hooks, or CI. Data remains under ~/DeepThink on disk, with audit logging and trash snapshots on mutations.',
+          'Run the CLI from cron, git hooks, or CI. Data remains under ~/DeepThink on disk, with audit logging and trash snapshots when agents change your data.',
       },
     ],
   },
@@ -217,7 +217,7 @@ export const landingContent = {
         '51 tools across smart, workspace, knowledge, and config namespaces. Works with Claude Code, Cursor, Windsurf, VS Code Copilot, and other MCP-capable clients.',
       points: [
         'smart_query, unified_search, workspace_*, knowledge_*',
-        'readonly flag on each tool - reads vs. mutations',
+        'Some tools only search; others create or edit tasks, notes, and knowledge',
         'Writes audited and synced to the app when it is open',
       ],
     },

@@ -11,6 +11,7 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useReactFlow,
   type Edge,
   type Node,
   type NodeProps,
@@ -81,139 +82,148 @@ function MobileFlow() {
   ]
 
   return (
-    <div className="flex flex-col gap-0 px-3 py-4 text-[11px]">
-      {/* AI clients banner */}
-      <div className="mb-1.5 rounded-lg border border-sky-400/25 bg-sky-500/8 px-3 py-1.5">
-        <div className="text-[9px] font-semibold text-sky-200">
-          AI Agents → MCP (no Claude required)
+    <div
+      data-testid="architecture-mobile-flow"
+      className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-[0_24px_80px_-32px_rgba(124,58,237,0.25)]"
+    >
+      <div className="flex flex-col gap-0 px-3 py-4 text-[11px]">
+        {/* AI clients banner */}
+        <div className="mb-1.5 rounded-lg border border-sky-400/25 bg-sky-500/8 px-3 py-1.5">
+          <div className="text-[9px] font-semibold text-sky-200">
+            AI Agents → MCP (no Claude required)
+          </div>
+          <div className="mt-0.5 text-[9px] text-zinc-400">
+            Claude Code · Cursor · Windsurf · VS Code Copilot · any MCP host
+          </div>
         </div>
-        <div className="mt-0.5 text-[9px] text-zinc-400">
-          Claude Code · Cursor · Windsurf · VS Code Copilot · any MCP host
-        </div>
-      </div>
 
-      {/* Row 1 - interfaces */}
-      <div className="flex gap-2">
-        {interfaceCards.map((c) => (
-          <div
-            key={c.label}
-            className={`flex-1 rounded-xl border px-2 py-2 ${c.color}`}
-          >
-            <div className={`font-mono font-semibold ${c.text}`}>{c.label}</div>
-            {c.lines.map((l) => (
+        {/* Row 1 - interfaces */}
+        <div className="flex gap-2">
+          {interfaceCards.map((c) => (
+            <div
+              key={c.label}
+              className={`flex-1 rounded-xl border px-2 py-2 ${c.color}`}
+            >
+              <div className={`font-mono font-semibold ${c.text}`}>
+                {c.label}
+              </div>
+              {c.lines.map((l) => (
+                <div
+                  key={l}
+                  className="mt-0.5 text-[9px] text-zinc-400 leading-tight"
+                >
+                  {l}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {/* Arrow down */}
+        <div className="flex flex-col items-center py-2.5">
+          <div className="h-5 w-px bg-zinc-600" />
+          <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
+            writes (atomic tx)
+          </div>
+          <div className="h-1 w-px bg-zinc-600" />
+          <svg width="10" height="6" className="text-zinc-500">
+            <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
+          </svg>
+        </div>
+
+        {/* ~/DeepThink storage */}
+        <div className="rounded-xl border-2 border-cyan-400/40 bg-zinc-900/80 px-3 py-2.5">
+          <div className="font-mono text-[11px] font-semibold text-cyan-200">
+            ~/DeepThink/
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5">
+            {storageRows.map((r) => (
               <div
-                key={l}
-                className="mt-0.5 text-[9px] text-zinc-400 leading-tight"
+                key={r.file}
+                className="rounded-lg border border-white/5 bg-black/30 px-2 py-1.5"
               >
-                {l}
+                <div className="font-mono text-[9px] text-cyan-100">
+                  {r.file}
+                </div>
+                <div className="mt-0.5 text-[9px] text-zinc-500 leading-tight">
+                  {r.desc}
+                </div>
               </div>
             ))}
           </div>
-        ))}
-      </div>
-
-      {/* Arrow down */}
-      <div className="flex flex-col items-center py-1">
-        <div className="h-5 w-px bg-zinc-600" />
-        <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
-          writes (atomic tx)
         </div>
-        <div className="h-1 w-px bg-zinc-600" />
-        <svg width="10" height="6" className="text-zinc-500">
-          <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
-        </svg>
-      </div>
 
-      {/* ~/DeepThink storage */}
-      <div className="rounded-xl border-2 border-cyan-400/40 bg-zinc-900/80 px-3 py-2.5">
-        <div className="font-mono text-[11px] font-semibold text-cyan-200">
-          ~/DeepThink/
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
-          {storageRows.map((r) => (
-            <div
-              key={r.file}
-              className="rounded-lg border border-white/5 bg-black/30 px-2 py-1.5"
-            >
-              <div className="font-mono text-[9px] text-cyan-100">{r.file}</div>
-              <div className="mt-0.5 text-[9px] text-zinc-500 leading-tight">
-                {r.desc}
-              </div>
+        {/* Darwin sync */}
+        <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-orange-400/30 bg-orange-500/8 px-3 py-1.5">
+          <span className="text-orange-300 text-[9px]">⟳</span>
+          <div>
+            <div className="text-[9px] font-semibold text-orange-200">
+              Darwin sync → App
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Darwin sync */}
-      <div className="mt-1.5 flex items-center gap-2 rounded-lg border border-orange-400/30 bg-orange-500/8 px-3 py-1.5">
-        <span className="text-orange-300 text-[9px]">⟳</span>
-        <div>
-          <div className="text-[9px] font-semibold text-orange-200">
-            Darwin sync → App
-          </div>
-          <div className="text-[9px] text-zinc-500">
-            notifyutil · CLISyncService · externalSyncToken → @Query refresh
+            <div className="text-[9px] text-zinc-500">
+              notifyutil · CLISyncService · externalSyncToken → @Query refresh
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Arrow down - RAG */}
-      <div className="flex flex-col items-center py-1">
-        <div className="h-5 w-px bg-zinc-600" />
-        <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
-          hydrate chunks + entries
+        {/* Arrow down - RAG */}
+        <div className="flex flex-col items-center py-2.5">
+          <div className="h-5 w-px bg-zinc-600" />
+          <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
+            hydrate chunks + entries
+          </div>
+          <div className="h-1 w-px bg-zinc-600" />
+          <svg width="10" height="6" className="text-zinc-500">
+            <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
+          </svg>
         </div>
-        <div className="h-1 w-px bg-zinc-600" />
-        <svg width="10" height="6" className="text-zinc-500">
-          <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
-        </svg>
-      </div>
 
-      {/* RAG pipeline */}
-      <div className="rounded-xl border border-fuchsia-400/35 bg-zinc-900/80 px-3 py-2.5">
-        <div className="font-mono text-[9px] uppercase tracking-wider text-fuchsia-300/80 text-center">
-          Hybrid RAG - shared App · CLI · MCP
-        </div>
-        <div className="mt-2 flex flex-col gap-1.5">
-          {ragSteps.map((s) => (
-            <div
-              key={s.label}
-              className="flex gap-2 rounded-lg border border-white/5 bg-black/30 px-2 py-1.5"
-            >
-              <div className="shrink-0 font-mono text-[9px] font-semibold text-fuchsia-200 w-16">
-                {s.label}
+        {/* RAG pipeline */}
+        <div className="rounded-xl border border-fuchsia-400/35 bg-zinc-900/80 px-3 py-2.5">
+          <div className="font-mono text-[9px] uppercase tracking-wider text-fuchsia-300/80 text-center">
+            Hybrid RAG - shared App · CLI · MCP
+          </div>
+          <div className="mt-2 flex flex-col gap-1.5">
+            {ragSteps.map((s) => (
+              <div
+                key={s.label}
+                className="flex gap-2 rounded-lg border border-white/5 bg-black/30 px-2 py-1.5"
+              >
+                <div className="shrink-0 font-mono text-[9px] font-semibold text-fuchsia-200 w-16">
+                  {s.label}
+                </div>
+                <div className="text-[9px] text-zinc-400 leading-tight">
+                  {s.desc}
+                </div>
               </div>
-              <div className="text-[9px] text-zinc-400 leading-tight">
-                {s.desc}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Arrow down - Claude */}
-      <div className="flex flex-col items-center py-1">
-        <div className="h-5 w-px bg-zinc-600" />
-        <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
-          token-budgeted context packs
+        {/* Arrow down - Claude */}
+        <div className="flex flex-col items-center py-2.5">
+          <div className="h-5 w-px bg-zinc-600" />
+          <div className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] text-zinc-400">
+            token-budgeted context packs
+          </div>
+          <div className="h-1 w-px bg-zinc-600" />
+          <svg width="10" height="6" className="text-zinc-500">
+            <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
+          </svg>
         </div>
-        <div className="h-1 w-px bg-zinc-600" />
-        <svg width="10" height="6" className="text-zinc-500">
-          <path d="M5 6 L0 0 L10 0Z" fill="currentColor" />
-        </svg>
-      </div>
 
-      {/* Claude */}
-      <div className="rounded-xl border-2 border-amber-400/40 bg-zinc-900/80 px-3 py-2.5 text-center">
-        <div className="font-mono text-[9px] uppercase tracking-wider text-amber-200/70">
-          Anthropic · local subprocess
-        </div>
-        <div className="mt-0.5 text-[14px] font-semibold text-white">
-          Claude Code CLI
-        </div>
-        <div className="mt-1 text-[9px] text-zinc-500">
-          In-app AI chat + CLI agents only · MCP tools need no Claude · nothing
-          leaves your Mac except authorised API calls
+        {/* Claude */}
+        <div className="rounded-xl border-2 border-amber-400/40 bg-zinc-900/80 px-3 py-2.5 text-center">
+          <div className="font-mono text-[9px] uppercase tracking-wider text-amber-200/70">
+            Anthropic · local subprocess
+          </div>
+          <div className="mt-0.5 text-[14px] font-semibold text-white">
+            Claude Code CLI
+          </div>
+          <div className="mt-1 text-[9px] text-zinc-500">
+            In-app AI chat + CLI agents only · MCP tools need no Claude ·
+            nothing leaves your Mac except authorised API calls
+          </div>
         </div>
       </div>
     </div>
@@ -516,13 +526,26 @@ const eb = {
   labelBgBorderRadius: 4,
 }
 
+function FitViewOnMount() {
+  const { fitView } = useReactFlow()
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      fitView({ padding: 0.22, maxZoom: 0.82, minZoom: 0.28, duration: 350 })
+    }, 80)
+    return () => window.clearTimeout(timer)
+  }, [fitView])
+
+  return null
+}
+
 function DesktopFlow() {
   const initialNodes = useMemo(
     (): Node[] => [
       {
         id: 'clients',
         type: 'externalClients',
-        position: { x: 630, y: -230 },
+        position: { x: 420, y: -220 },
         data: {},
       },
       {
@@ -554,7 +577,7 @@ function DesktopFlow() {
       {
         id: 'cli',
         type: 'tier',
-        position: { x: 320, y: 20 },
+        position: { x: 310, y: 20 },
         data: {
           zone: 'Terminal · 13 agents',
           title: 'deepthink CLI',
@@ -580,11 +603,11 @@ function DesktopFlow() {
       {
         id: 'mcp',
         type: 'tier',
-        position: { x: 640, y: 20 },
+        position: { x: 620, y: 20 },
         data: {
           zone: 'MCP - any agent',
           title: 'deepthink-mcp',
-          line: '51 tools · stdio · readonly flag on reads',
+          line: '51 tools · stdio · search or edit',
           tier: 'mcp',
           targetTop: true,
           tags: [
@@ -602,19 +625,19 @@ function DesktopFlow() {
       {
         id: 'data',
         type: 'dataPlane',
-        position: { x: 60, y: 380 },
+        position: { x: 80, y: 360 },
         data: {},
       },
       {
         id: 'rag',
         type: 'ragBridge',
-        position: { x: 110, y: 700 },
+        position: { x: 110, y: 640 },
         data: {},
       },
       {
         id: 'claude',
         type: 'claude',
-        position: { x: 295, y: 1000 },
+        position: { x: 280, y: 880 },
         data: {},
       },
     ],
@@ -743,7 +766,10 @@ function DesktopFlow() {
   const [edges, , onEdgesChange] = useEdgesState(initialEdges)
 
   return (
-    <div className="h-[min(90dvh,1060px)] w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 [&_.react-flow\_\_attribution]:hidden">
+    <div
+      data-testid="architecture-flow"
+      className="h-[min(88dvh,980px)] w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-[0_24px_80px_-32px_rgba(124,58,237,0.25)] ring-1 ring-purple-500/10 [&_.react-flow\_\_attribution]:hidden"
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -751,7 +777,7 @@ function DesktopFlow() {
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={{
-          type: 'default',
+          type: 'smoothstep',
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 14,
@@ -760,7 +786,7 @@ function DesktopFlow() {
           },
         }}
         fitView
-        fitViewOptions={{ padding: 0.28, maxZoom: 0.85, minZoom: 0.12 }}
+        fitViewOptions={{ padding: 0.22, maxZoom: 0.82, minZoom: 0.28 }}
         minZoom={0.1}
         maxZoom={1.4}
         nodesConnectable={false}
@@ -769,6 +795,7 @@ function DesktopFlow() {
         colorMode="dark"
         className="!bg-zinc-950"
       >
+        <FitViewOnMount />
         <Background
           id="arch-bg"
           variant={BackgroundVariant.Dots}

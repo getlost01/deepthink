@@ -84,7 +84,7 @@ deepthink context --query "authentication decisions"
 
 | Feature | What it does |
 |---|---|
-| **51-tool MCP server** | `smart_query`, `unified_search`, `workspace_*`, `knowledge_*`, agents, skills, rules - with a `readonly` flag on every tool |
+| **51-tool MCP server** | `smart_query`, `unified_search`, `workspace_*`, `knowledge_*`, agents, skills, rules - search tools and edit tools, clearly separated |
 | **Model-agnostic CLI** | `deepthink ask`, `run`, `react`, `research`, `schedule` - works without Claude; full audit log on writes |
 | **Live sync** | CLI and MCP mutations sync to the running app instantly via Darwin notification |
 | **Token-budgeted retrieval** | `smart_query` and `deepthink_overview` return ~200 tokens of the *right* context, not raw dumps |
@@ -267,7 +267,7 @@ claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
 }
 ```
 
-The MCP server works with **any MCP-compatible AI agent** - Claude is not required. 51 tools across `smart_query`, `unified_search`, `workspace_*`, and `knowledge_*` namespaces, each carrying a `readonly` flag so agents can distinguish safe reads from mutations.
+The MCP server works with **any MCP-compatible AI agent** - Claude is not required. 51 tools across `smart_query`, `unified_search`, `workspace_*`, and `knowledge_*` namespaces: some only search your workspace, others create or edit items. Every change is audited and synced to the app.
 
 Full tool reference: [docs/mcp-integration.md](docs/mcp-integration.md)
 

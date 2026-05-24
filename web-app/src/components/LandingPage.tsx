@@ -216,7 +216,7 @@ function HeroSection() {
         </motion.div>
 
         <motion.div
-          className="mt-8 grid gap-4 sm:grid-cols-3"
+          className="mt-8 grid items-stretch gap-4 sm:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -224,9 +224,11 @@ function HeroSection() {
         >
           {hero.stats.map((stat, i) => (
             <GlowCard key={stat.label} delay={i * 0.06} className="rounded-2xl">
-              <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
+              <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
                 <AnimatedStatValue value={stat.value} />
-                <p className="mt-1 text-sm text-zinc-300">{stat.label}</p>
+                <p className="mt-1 flex-1 text-sm text-zinc-300">
+                  {stat.label}
+                </p>
               </article>
             </GlowCard>
           ))}
@@ -253,15 +255,19 @@ function PersonasSection() {
         </h2>
         <p className="mt-4 max-w-2xl text-zinc-400">{personas.subtitle}</p>
         <motion.ul
-          className="mt-10 grid list-none gap-4 p-0 sm:grid-cols-2"
+          className="mt-10 grid list-none items-stretch gap-4 p-0 sm:grid-cols-2"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, margin: '-40px' }}
         >
           {personas.items.map((item, i) => (
-            <motion.li key={item.title} variants={fadeUpItem}>
-              <GlowCard delay={i * 0.05} className="h-full rounded-2xl">
+            <motion.li
+              key={item.title}
+              variants={fadeUpItem}
+              className="h-full"
+            >
+              <GlowCard delay={i * 0.05} className="rounded-2xl">
                 <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-6 transition-colors duration-300 hover:border-purple-400/25">
                   <h3 className="text-lg font-semibold text-white">
                     {item.title}
@@ -319,7 +325,7 @@ function AgentShowcaseSection() {
           </p>
         </motion.div>
         <motion.div
-          className="relative mt-10 grid gap-4 md:grid-cols-3"
+          className="relative mt-10 grid items-stretch gap-4 md:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -335,11 +341,11 @@ function AgentShowcaseSection() {
           />
           {agentShowcase.steps.map((step, i) => (
             <GlowCard key={step.label} delay={i * 0.08} className="rounded-2xl">
-              <article className="rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm">
+              <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm">
                 <p className="text-xs font-semibold tracking-widest text-purple-300">
                   {String(i + 1).padStart(2, '0')} · {step.label}
                 </p>
-                <pre className="mt-4 overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/80 p-3">
+                <pre className="mt-4 flex-1 overflow-x-auto rounded-lg border border-white/10 bg-zinc-950/80 p-3">
                   <code className="font-mono text-xs leading-relaxed text-zinc-200">
                     {step.code}
                   </code>
@@ -349,7 +355,7 @@ function AgentShowcaseSection() {
           ))}
         </motion.div>
         <motion.ul
-          className="mt-8 grid list-none gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-8 grid list-none items-stretch gap-2 p-0 sm:grid-cols-2 lg:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -359,7 +365,7 @@ function AgentShowcaseSection() {
             <motion.li
               key={tool}
               variants={fadeUpItem}
-              className="rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-xs text-zinc-300"
+              className="flex h-full items-center rounded-lg border border-white/10 bg-black/30 px-4 py-3 text-xs text-zinc-300"
             >
               {tool}
             </motion.li>
@@ -392,14 +398,18 @@ function WhyLocalFirstSection() {
           </p>
         </motion.div>
         <motion.ul
-          className="grid list-none gap-4 p-0 md:grid-cols-3"
+          className="grid list-none items-stretch gap-4 p-0 md:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true }}
         >
           {whyLocalFirst.points.map((point) => (
-            <motion.li key={point.title} variants={fadeUpItem}>
+            <motion.li
+              key={point.title}
+              variants={fadeUpItem}
+              className="h-full"
+            >
               <article className="group flex h-full flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-6 transition-colors duration-300 hover:border-purple-400/30">
                 <div className="h-1 w-10 rounded-full bg-gradient-to-r from-purple-300 to-cyan-300 opacity-80 transition-opacity group-hover:opacity-100" />
                 <h3 className="mt-5 text-lg font-semibold text-white">
@@ -451,7 +461,7 @@ function SnapshotSection() {
           </motion.ul>
         </motion.header>
         <motion.ul
-          className="m-0 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6"
+          className="m-0 grid list-none items-stretch gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -460,10 +470,10 @@ function SnapshotSection() {
           {snapshot.pillars.map((pillar) => (
             <motion.li
               key={pillar.title}
-              className="min-w-0"
+              className="h-full min-w-0"
               variants={fadeUpItem}
             >
-              <article className="flex h-full min-h-[10.5rem] flex-col rounded-2xl border border-white/10 bg-zinc-900/40 p-6 transition-colors duration-300 hover:border-white/18">
+              <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-zinc-900/40 p-6 transition-colors duration-300 hover:border-white/18">
                 <h2 className="text-lg font-semibold leading-snug text-white">
                   {pillar.title}
                 </h2>
@@ -499,7 +509,7 @@ function FeaturesSection() {
           </p>
         </motion.div>
         <motion.div
-          className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+          className="mt-10 grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -514,7 +524,7 @@ function FeaturesSection() {
                 delay={i * 0.05}
                 className="rounded-2xl"
               >
-                <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
+                <article className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 backdrop-blur-sm transition-shadow duration-300 hover:border-white/15 hover:shadow-lg hover:shadow-purple-500/10">
                   <motion.span
                     className="inline-flex rounded-lg border border-white/10 bg-black/30 p-2 text-purple-300"
                     whileHover={{ scale: 1.08, rotate: 3 }}
@@ -525,7 +535,7 @@ function FeaturesSection() {
                   <h3 className="mt-4 text-lg font-medium text-white">
                     {feature.title}
                   </h3>
-                  <p className="mt-2 text-sm text-zinc-400">
+                  <p className="mt-2 flex-1 text-sm text-zinc-400">
                     {feature.description}
                   </p>
                 </article>
@@ -571,7 +581,7 @@ function PlatformContextSection() {
           </motion.div>
         </motion.div>
         <motion.div
-          className="mt-8 grid gap-4 md:grid-cols-3"
+          className="mt-8 grid items-stretch gap-4 md:grid-cols-3"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -581,10 +591,12 @@ function PlatformContextSection() {
             <motion.article
               key={item.title}
               variants={fadeUpItem}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors duration-300 hover:border-purple-400/25"
+              className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors duration-300 hover:border-purple-400/25"
             >
               <h3 className="text-lg font-semibold text-white">{item.title}</h3>
-              <p className="mt-3 text-sm text-zinc-400">{item.description}</p>
+              <p className="mt-3 flex-1 text-sm text-zinc-400">
+                {item.description}
+              </p>
               <ul className="mt-4 space-y-2">
                 {item.points.map((point) => (
                   <li
@@ -746,7 +758,7 @@ function ProductTourSection() {
       id="tour"
       ref={sectionRef}
       className="relative scroll-mt-24 px-4 py-12 sm:scroll-mt-28 sm:px-6 md:py-20"
-      style={{ height: `${tourLength * 85}vh` }}
+      style={{ height: `${tourLength * 95}vh` }}
     >
       {tourChrome}
       <div className="mx-auto max-w-6xl">
@@ -783,7 +795,7 @@ function ProductTourSection() {
                   ? { duration: 0.18 }
                   : { duration: 0.42, ease: [0.22, 1, 0.36, 1] }
               }
-              className="flex flex-col gap-3 rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.045] to-white/[0.015] p-4 shadow-[0_28px_90px_-36px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-4 md:p-5"
+              className="flex flex-col gap-4 rounded-3xl border border-white/[0.09] bg-gradient-to-b from-white/[0.045] to-white/[0.015] p-4 shadow-[0_28px_90px_-36px_rgba(0,0,0,0.75),0_0_0_1px_rgba(255,255,255,0.04)_inset] md:gap-5 md:p-6"
             >
               <p className="max-w-2xl text-xs leading-relaxed text-zinc-300 md:text-sm">
                 {activeItem.description}
@@ -792,7 +804,7 @@ function ProductTourSection() {
                 <div className="relative rounded-[1.125rem] border border-white/[0.08] bg-zinc-950/45 p-1.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] md:p-2">
                   <motion.div
                     layout
-                    className="relative flex min-h-[min(28dvh,280px)] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-zinc-900/98 to-zinc-950 ring-1 ring-white/[0.06]"
+                    className="relative flex min-h-[min(42dvh,460px)] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-b from-zinc-900/98 to-zinc-950 ring-1 ring-white/[0.06]"
                     initial={{ opacity: prefersReducedMotion ? 1 : 0.94 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: prefersReducedMotion ? 0 : 0.35 }}
@@ -808,7 +820,7 @@ function ProductTourSection() {
                     <motion.img
                       src={activeItem.image}
                       alt={`${activeItem.title}, app screenshot`}
-                      className="relative z-[1] mx-auto block h-auto w-full max-h-[min(42dvh,420px)] max-w-full object-contain object-center"
+                      className="relative z-[1] mx-auto block h-auto w-full max-h-[min(64dvh,640px)] max-w-full object-contain object-center"
                       loading={activeIndex === 0 ? 'eager' : 'lazy'}
                       decoding="async"
                       fetchPriority={activeIndex === 0 ? 'high' : 'low'}
@@ -891,7 +903,7 @@ function WorkflowSection() {
             transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           />
           <motion.div
-            className="grid gap-4 md:grid-cols-3"
+            className="grid items-stretch gap-4 md:grid-cols-3"
             variants={fadeUpStagger}
             initial="hidden"
             whileInView="show"
@@ -902,7 +914,7 @@ function WorkflowSection() {
                 key={item.step}
                 variants={fadeUpItem}
                 whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                className="rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm transition-colors hover:border-purple-400/25"
+                className="flex h-full flex-col rounded-xl border border-white/10 bg-black/30 p-5 backdrop-blur-sm transition-colors hover:border-purple-400/25"
               >
                 <p className="text-xs font-semibold tracking-widest text-purple-300">
                   {item.step}
@@ -910,7 +922,9 @@ function WorkflowSection() {
                 <h3 className="mt-3 text-lg font-semibold text-white">
                   {item.title}
                 </h3>
-                <p className="mt-2 text-sm text-zinc-400">{item.description}</p>
+                <p className="mt-2 flex-1 text-sm text-zinc-400">
+                  {item.description}
+                </p>
               </motion.article>
             ))}
           </motion.div>
@@ -937,7 +951,7 @@ function FAQSection() {
           FAQ
         </motion.h2>
         <motion.div
-          className="grid gap-4 md:grid-cols-2"
+          className="grid items-stretch gap-4 md:grid-cols-2"
           variants={fadeUpStagger}
           initial="hidden"
           whileInView="show"
@@ -947,7 +961,7 @@ function FAQSection() {
             <motion.details
               key={faq.question}
               variants={fadeUpItem}
-              className="group rounded-xl border border-white/10 bg-white/[0.03] p-5 transition-colors open:border-purple-400/25"
+              className="group flex h-full flex-col rounded-xl border border-white/10 bg-white/[0.03] p-5 transition-colors open:border-purple-400/25"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-base font-medium text-white [&::-webkit-details-marker]:hidden">
                 <span>{faq.question}</span>
