@@ -57,7 +57,7 @@ struct TaskRowView: View {
                 }
             }
             .padding(.vertical, DS.Spacing.xs)
-            .padding(.leading, CGFloat(depth) * 24)
+            .padding(.leading, CGFloat(depth) * DS.Spacing.xl)
         }
     }
 }

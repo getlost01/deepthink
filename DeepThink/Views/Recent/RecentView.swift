@@ -607,8 +607,7 @@ private struct AgentsSection: View {
     private func loadState() {
         let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
         if let data = try? Data(contentsOf: url),
-           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data)
-        {
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
             lastRun = state.lastRun
         }
         loadOutputs()
@@ -651,8 +650,7 @@ private struct AgentsSection: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // If content is a JSON object, extract "suggestion" or "result" field
         if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        {
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             if let s = json["suggestion"] as? String { return s }
             if let s = json["result"] as? String { return s }
             if let s = json["message"] as? String { return s }
@@ -666,8 +664,7 @@ private struct AgentsSection: View {
                 .joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            {
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                 if let s = json["suggestion"] as? String { return s }
                 if let s = json["result"] as? String { return s }
                 return ""

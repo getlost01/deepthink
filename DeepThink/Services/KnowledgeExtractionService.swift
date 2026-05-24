@@ -6,6 +6,7 @@ final class KnowledgeExtractionService {
 
     var isExtracting = false
     private var recentlyProcessedNotes: Set<UUID> = []
+    private var activeTaggingEntries: Set<String> = []
 
     private init() {}
 
@@ -16,6 +17,7 @@ final class KnowledgeExtractionService {
               content.split(whereSeparator: \.isWhitespace).count >= 30,
               !recentlyProcessedNotes.contains(id) else { return }
 
+        if recentlyProcessedNotes.count >= 500 { recentlyProcessedNotes.removeAll() }
         recentlyProcessedNotes.insert(id)
 
         await MainActor.run { isExtracting = true }
@@ -58,7 +60,8 @@ final class KnowledgeExtractionService {
 
         do {
             let result = try await ClaudeService.shared.query(
-                "Generate 3-5 short, specific tags for this content. Output only comma-separated tags, nothing else.\n\nTitle: \(entry.title)\n\n\(String(entry.content.prefix(2000)))",
+                "Generate 3-5 short, specific tags for this content. Output only comma-separated tags, nothing else." +
+                    "\n\nTitle: \(entry.title)\n\n\(String(entry.content.prefix(2000)))",
                 systemPrompt: "Output only comma-separated lowercase tags. No explanations. No numbering."
             )
 
@@ -72,6 +75,10 @@ final class KnowledgeExtractionService {
     }
 
     func autoTagAndUpdate(entry: KnowledgeEntry) async {
+        guard !activeTaggingEntries.contains(entry.id) else { return }
+        activeTaggingEntries.insert(entry.id)
+        defer { activeTaggingEntries.remove(entry.id) }
+
         let tags = await autoTag(entry: entry)
         guard !tags.isEmpty else { return }
 
@@ -85,10 +92,14 @@ final class KnowledgeExtractionService {
 
         let (frontmatter, body) = KnowledgeService.shared.parseFrontmatter(text)
         var updated = frontmatter
-        updated["tags"] = "[\(tags.joined(separator: ", "))]"
+        updated["tags"] = "[\(tags.map { "\"\($0)\"" }.joined(separator: ", "))]"
 
+        let orderedKeys = ["title", "source", "bucket", "url", "tags", "imported_at"]
         var md = "---\n"
-        for (key, value) in updated {
+        for key in orderedKeys {
+            if let value = updated[key] { md += "\(key): \(value)\n" }
+        }
+        for (key, value) in updated where !orderedKeys.contains(key) {
             md += "\(key): \(value)\n"
         }
         md += "---\n\n"
@@ -110,7 +121,8 @@ final class KnowledgeExtractionService {
         do {
             let result = try await ClaudeService.shared.query(
                 """
-                Extract knowledge from this conversation. Be concise but preserve all specifics — exact names, numbers, code, paths, commands, and error messages. No fluff, no paraphrasing technical terms.
+                Extract knowledge from this conversation. Be concise but preserve all specifics —
+                exact names, numbers, code, paths, commands, and error messages. No fluff, no paraphrasing technical terms.
 
                 Capture:
                 - Technical details (code, configs, commands, file paths)
@@ -120,12 +132,16 @@ final class KnowledgeExtractionService {
                 - Action items, data points, metrics
 
                 Use short markdown headers by topic. Use code blocks for code/commands. Bullet points, not paragraphs.
-                At the end, add a "## Related" section listing topic names or keywords from the conversation that connect to other areas (e.g. "Related: Proto project, knowledge stats bug, kanban board"). This helps link entries without extra lookups.
+                At the end, add a "## Related" section listing topic names or keywords from the conversation
+                that connect to other areas (e.g. "Related: Proto project, knowledge stats bug, kanban board").
+                This helps link entries without extra lookups.
 
                 Conversation:
                 \(String(conversationText.prefix(8000)))
                 """,
-                systemPrompt: "Extract knowledge from conversations as concise structured markdown. Keep every specific detail (names, numbers, code, paths) but cut filler words and redundancy. Dense and scannable, not verbose."
+                systemPrompt: "Extract knowledge from conversations as concise structured markdown. " +
+                    "Keep every specific detail (names, numbers, code, paths) but cut filler words and redundancy. " +
+                    "Dense and scannable, not verbose."
             )
 
             let entryTitle: String

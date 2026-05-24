@@ -148,7 +148,9 @@ final class BackupService {
 
         let alert = NSAlert()
         alert.messageText = "Restore Staged"
-        alert.informativeText = "Quit DeepThink now to apply the restore from \(formattedDate(snapshot.date)). Your current workspace will be replaced on next launch."
+        alert.informativeText =
+            "Quit DeepThink now to apply the restore from \(formattedDate(snapshot.date)). " +
+            "Your current workspace will be replaced on next launch."
         alert.addButton(withTitle: "Quit Now")
         alert.addButton(withTitle: "Later")
         alert.alertStyle = .warning

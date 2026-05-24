@@ -89,8 +89,7 @@ final class InstallationManager {
 
         var sourcePath: String?
         if let bundled = Bundle.main.resourceURL?.appendingPathComponent(bundleName).path,
-           fm.isExecutableFile(atPath: bundled)
-        {
+           fm.isExecutableFile(atPath: bundled) {
             sourcePath = bundled
         } else {
             let devBase = Bundle.main.bundlePath
@@ -110,8 +109,7 @@ final class InstallationManager {
         if sourceSize == destSize,
            let srcData = try? Data(contentsOf: URL(fileURLWithPath: source)),
            let dstData = try? Data(contentsOf: URL(fileURLWithPath: installPath)),
-           SHA256.hash(data: srcData) == SHA256.hash(data: dstData)
-        {
+           SHA256.hash(data: srcData) == SHA256.hash(data: dstData) {
             return true
         }
 
@@ -203,7 +201,8 @@ final class InstallationManager {
 
     ## Step 2 — Build the summary
 
-    Use conversation history as the primary source; use git output to fill gaps or verify file names. Include only what actually happened — do not pad or invent.
+    Use conversation history as the primary source; use git output to fill gaps or verify file names.
+    Include only what actually happened — do not pad or invent.
 
     ```
     # Session: <date> — <one-line topic>

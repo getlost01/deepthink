@@ -7,6 +7,7 @@ final class KnowledgeService {
 
     var entries: [KnowledgeEntry] = []
     var isLoading = false
+    var lastModifiedAt: Date = .distantPast
 
     private let fm = FileManager.default
     private var lastScanAt: Date?
@@ -38,6 +39,8 @@ final class KnowledgeService {
                     }
                     self.entries.sort { $0.importedAt > $1.importedAt }
                     self.lastScanAt = scanStart
+                    self.lastModifiedAt = Date()
+                    self.refreshBuckets()
                     let snapshot = self.entries
                     ContextEngine.shared.indexQueue.async { ContextEngine.shared.rebuildIndex(with: snapshot) }
                     EmbeddingService.shared.scheduleIndexEntries(changed)
@@ -50,6 +53,8 @@ final class KnowledgeService {
                 DispatchQueue.main.async {
                     self.entries = scanned
                     self.lastScanAt = scanStart
+                    self.lastModifiedAt = Date()
+                    self.refreshBuckets()
                     self.isLoading = false
                 }
             }
@@ -113,7 +118,7 @@ final class KnowledgeService {
             tags = tagStr
                 .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
                 .components(separatedBy: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces) }
+                .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "\"'")) }
                 .filter { !$0.isEmpty }
         }
 
@@ -223,15 +228,23 @@ final class KnowledgeService {
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
             .prefix(60)
-        let filename = "\(slug)-\(hash).md"
-        let fileURL = dir.appendingPathComponent(String(filename))
+        var filename = "\(slug)-\(hash).md"
+        var fileURL = dir.appendingPathComponent(filename)
+        if fm.fileExists(atPath: fileURL.path) {
+            var counter = 2
+            repeat {
+                filename = "\(slug)-\(hash)-\(counter).md"
+                fileURL = dir.appendingPathComponent(filename)
+                counter += 1
+            } while fm.fileExists(atPath: fileURL.path)
+        }
 
         var md = "---\n"
         md += "title: \(title)\n"
         md += "source: \(source)\n"
         md += "bucket: \(bucket)\n"
         if let url = sourceURL { md += "url: \(url)\n" }
-        if !tags.isEmpty { md += "tags: [\(tags.joined(separator: ", "))]\n" }
+        if !tags.isEmpty { md += "tags: [\(tags.map { "\"\($0)\"" }.joined(separator: ", "))]\n" }
         md += "imported_at: \(ISO8601DateFormatter().string(from: Date()))\n"
         md += "---\n\n"
         md += content
@@ -248,9 +261,10 @@ final class KnowledgeService {
 
     // MARK: - Bucket Management
 
-    var buckets: [String] {
+    private(set) var buckets: [String] = ["General"]
+
+    private func refreshBuckets() {
         var all = Set(entries.map(\.bucket))
-        // Include empty bucket directories so newly created buckets appear immediately
         let base = StorageService.shared.knowledgeURL
         if let dirs = try? fm.contentsOfDirectory(at: base, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) {
             for dir in dirs {
@@ -260,7 +274,7 @@ final class KnowledgeService {
         }
         var result = all.sorted()
         if !result.contains("General") { result.insert("General", at: 0) }
-        return result
+        buckets = result
     }
 
     func createBucket(named name: String) {
@@ -305,7 +319,7 @@ final class KnowledgeService {
                 counter += 1
             } while fm.fileExists(atPath: finalDestURL.path)
         }
-        try? md.write(to: finalDestURL, atomically: true, encoding: .utf8)
+        guard (try? md.write(to: finalDestURL, atomically: true, encoding: .utf8)) != nil else { return }
         try? fm.removeItem(at: entry.filePath)
         reload()
     }

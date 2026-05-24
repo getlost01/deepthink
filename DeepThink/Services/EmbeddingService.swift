@@ -344,6 +344,7 @@ enum SemanticChunker {
     static let maxChunkSize = 500
     static let minChunkSize = 100
 
+    // swiftlint:disable:next function_parameter_count
     static func chunk(
         text: String,
         entryID: String,

@@ -40,60 +40,67 @@ struct ProjectListView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(projects) { project in
-                        let isSelected = appState.selectedProjectID == project.id
-                        Button {
-                            appState.selectedProjectID = project.id
-                        } label: {
-                            ProjectCard(project: project)
-                                .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, DS.Spacing.xxs)
-                                .background(isSelected ? DS.Colors.accentFill : .clear)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plainPointer)
-                        .contextMenu {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(projects) { project in
+                            let isSelected = appState.selectedProjectID == project.id
                             Button {
-                                let archiving = !project.isArchived
-                                project.isArchived = archiving
-                                project.modifiedAt = Date()
-                                if archiving {
-                                    ArchiveService.archiveProjectTasks(project, context: modelContext)
-                                } else {
-                                    ArchiveService.unarchiveProjectTasks(project, context: modelContext)
+                                appState.selectedProjectID = project.id
+                            } label: {
+                                ProjectCard(project: project)
+                                    .padding(.horizontal, DS.Spacing.sm)
+                                    .padding(.vertical, DS.Spacing.xxs)
+                                    .background(isSelected ? DS.Colors.accentFill : .clear)
+                                    .contentShape(Rectangle())
+                            }
+                            .id(project.id)
+                            .buttonStyle(.plainPointer)
+                            .contextMenu {
+                                Button {
+                                    let archiving = !project.isArchived
+                                    project.isArchived = archiving
+                                    project.modifiedAt = Date()
+                                    if archiving {
+                                        ArchiveService.archiveProjectTasks(project, context: modelContext)
+                                    } else {
+                                        ArchiveService.unarchiveProjectTasks(project, context: modelContext)
+                                    }
+                                } label: {
+                                    Label(project.isArchived ? "Unarchive" : "Archive", systemImage: project.isArchived ? "archivebox" : "archivebox.fill")
                                 }
-                            } label: {
-                                Label(project.isArchived ? "Unarchive" : "Archive", systemImage: project.isArchived ? "archivebox" : "archivebox.fill")
+                                Divider()
+                                Button(role: .destructive) {
+                                    projectToDelete = project
+                                    showDeleteConfirm = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
-                            Divider()
-                            Button(role: .destructive) {
-                                projectToDelete = project
-                                showDeleteConfirm = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
+                            if project.id != projects.last?.id {
+                                Divider()
                             }
-                        }
-                        if project.id != projects.last?.id {
-                            Divider()
                         }
                     }
                 }
-            }
-            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
-            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
-            .onKeyPress(.escape) { appState.selectedProjectID = nil; return .handled }
-            .overlay {
-                if projects.isEmpty {
-                    DSEmptyState(
-                        icon: "folder",
-                        title: "No Projects Yet",
-                        subtitle: "Projects keep related notes and tasks together — like a folder for everything about one goal or topic.",
-                        hint: "Example: \"Product Launch\", \"Home Renovation\", \"Research Paper\"",
-                        action: createProject,
-                        actionTitle: "New Project"
-                    )
+                .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+                .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+                .onKeyPress(.escape) { appState.selectedProjectID = nil; return .handled }
+                .overlay {
+                    if projects.isEmpty {
+                        DSEmptyState(
+                            icon: "folder",
+                            title: "No Projects Yet",
+                            subtitle: "Projects keep related notes and tasks together — like a folder for everything about one goal or topic.",
+                            hint: "Example: \"Product Launch\", \"Home Renovation\", \"Research Paper\"",
+                            action: createProject,
+                            actionTitle: "New Project"
+                        )
+                    }
+                }
+                .onChange(of: appState.selectedProjectID) { _, id in
+                    guard let id else { return }
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
         }
@@ -139,8 +146,7 @@ struct ProjectListView: View {
     private func moveSelection(_ direction: Int) {
         guard !projects.isEmpty else { return }
         if let current = appState.selectedProjectID,
-           let idx = projects.firstIndex(where: { $0.id == current })
-        {
+           let idx = projects.firstIndex(where: { $0.id == current }) {
             let next = min(max(idx + direction, 0), projects.count - 1)
             appState.selectedProjectID = projects[next].id
         } else {

@@ -31,6 +31,7 @@ const IC = {
   bold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>`,
   italic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
   highlight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+  wikiLink: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M7 11h2l1 2 1-4 1 4 1-2h2"/></svg>`,
   linkTask: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
   linkNote: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
   linkReminder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
@@ -53,6 +54,7 @@ const slashItems = [
   { title: 'Bold',          icon: IC.bold,         group: 'Inline', cmd: (e) => e.chain().focus().toggleBold().run() },
   { title: 'Italic',        icon: IC.italic,       group: 'Inline', cmd: (e) => e.chain().focus().toggleItalic().run() },
   { title: 'Highlight',     icon: IC.highlight,    group: 'Inline', cmd: (e) => e.chain().focus().toggleHighlight().run() },
+  { title: 'Wiki Link',     icon: IC.wikiLink,     group: 'Link',   wikiOnly: true, cmd: () => { window.webkit.messageHandlers.requestWikiLinkInsert.postMessage('') } },
   { title: 'Link Task',     icon: IC.linkTask,     group: 'Link',   cmd: () => { window.webkit.messageHandlers.requestLinkInsert.postMessage('task') } },
   { title: 'Link Note',     icon: IC.linkNote,     group: 'Link',   cmd: () => { window.webkit.messageHandlers.requestLinkInsert.postMessage('note') } },
   { title: 'Link Reminder', icon: IC.linkReminder, group: 'Link',   cmd: () => { window.webkit.messageHandlers.requestLinkInsert.postMessage('reminder') } },
@@ -80,12 +82,15 @@ function positionSlashMenu(rect) {
   const left = Math.max(margin, Math.min(rect.left, window.innerWidth - 220 - margin))
   slashPopup.style.left = left + 'px'
   const spaceBelow = window.innerHeight - rect.bottom - margin
-  if (spaceBelow < menuMaxH && rect.top > menuMaxH) {
+  const spaceAbove = rect.top - margin
+  if (spaceBelow < menuMaxH && spaceAbove > spaceBelow) {
     slashPopup.style.top = 'auto'
     slashPopup.style.bottom = (window.innerHeight - rect.top + 4) + 'px'
+    slashPopup.style.maxHeight = Math.min(menuMaxH, spaceAbove - 4) + 'px'
   } else {
     slashPopup.style.top = (rect.bottom + 4) + 'px'
     slashPopup.style.bottom = 'auto'
+    slashPopup.style.maxHeight = Math.min(menuMaxH, spaceBelow) + 'px'
   }
 }
 
@@ -102,7 +107,8 @@ function renderSlashItems(items) {
 
   let html = ''
   let lastGroup = null
-  const isFiltering = items.length !== slashItems.length
+  const baseCount = slashItems.filter(item => wikiMode ? true : !item.wikiOnly).length
+  const isFiltering = items.length !== baseCount
   items.forEach((item, i) => {
     if (!isFiltering && item.group && item.group !== lastGroup) {
       html += `<div class="slash-group-label">${item.group}</div>`
@@ -114,6 +120,9 @@ function renderSlashItems(items) {
     </div>`
   })
   slashPopup.innerHTML = html
+
+  const selectedEl = slashPopup.querySelector('.slash-item.selected')
+  if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' })
 
   slashPopup.querySelectorAll('.slash-item').forEach(el => {
     el.addEventListener('mouseenter', () => {
@@ -143,6 +152,7 @@ const SlashCommands = Extension.create({
         startOfLine: false,
         items: ({ query }) => {
           return slashItems.filter(item =>
+            (wikiMode ? true : !item.wikiOnly) &&
             item.title.toLowerCase().includes(query.toLowerCase())
           ).slice(0, 20)
         },
@@ -207,6 +217,11 @@ const SlashCommands = Extension.create({
     ]
   },
 })
+
+// --- Wiki mode ---
+let wikiMode = false
+let lastClickedWikiFrom = -1
+let lastClickedWikiTo = -1
 
 // --- Wiki Links Extension ---
 let wikiLinkMap = {}
@@ -463,13 +478,13 @@ const editor = new Editor({
     if (isSettingContent) return
     clearTimeout(debounceTimer)
     debounceTimer = setTimeout(() => {
-      const md = editor.storage.markdown.getMarkdown()
+      const md = unescapeWikiLinks(editor.storage.markdown.getMarkdown())
       window.webkit.messageHandlers.contentChanged.postMessage(md)
       refreshDeadLinkStyles()
     }, 150)
 
     const wikiAcResult = getWikiQueryBeforeCursor()
-    if (wikiAcResult) {
+    if (wikiAcResult && wikiMode) {
       showWikiAc(wikiAcResult.query, wikiAcResult.from)
     } else {
       hideWikiAc()
@@ -484,14 +499,46 @@ document.getElementById('editor').addEventListener('click', (e) => {
   if (el) {
     const title = el.getAttribute('data-title')
     if (title) {
-      if (wikiLinkMap[title]) {
-        window.webkit.messageHandlers.linkClicked.postMessage(wikiLinkMap[title])
+      if (wikiMode) {
+        const range = findWikiLinkRangeFromDOM(el, title)
+        lastClickedWikiFrom = range ? range.from : -1
+        lastClickedWikiTo = range ? range.to : -1
+        window.webkit.messageHandlers.requestWikiLinkEdit.postMessage(title)
       } else {
-        window.webkit.messageHandlers.wikiLinkClicked.postMessage(title)
+        const mapped = wikiLinkMap[title]
+        if (mapped && mapped.startsWith('deepthink://')) {
+          window.webkit.messageHandlers.linkClicked.postMessage(mapped)
+        } else {
+          window.webkit.messageHandlers.wikiLinkClicked.postMessage(title)
+        }
       }
     }
   }
 })
+
+function findWikiLinkRangeFromDOM(el, title) {
+  try {
+    const approxPos = editor.view.posAtDOM(el, 0)
+    const pattern = `[[${title}]]`
+    const { doc } = editor.state
+    let best = null
+    let bestDist = Infinity
+    doc.descendants((node, pos) => {
+      if (!node.isText || !node.text) return
+      let idx = node.text.indexOf(pattern)
+      while (idx !== -1) {
+        const from = pos + idx
+        const to = from + pattern.length
+        const dist = Math.abs(from - approxPos)
+        if (dist < bestDist) { bestDist = dist; best = { from, to } }
+        idx = node.text.indexOf(pattern, idx + 1)
+      }
+    })
+    return best
+  } catch (_) {
+    return null
+  }
+}
 
 window.setWikiLinks = function(linksJson) {
   wikiLinkMap = linksJson || {}
@@ -502,6 +549,12 @@ window.setWikiLinks = function(linksJson) {
 // --- Shared helper ---
 function escapeHtml(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// prosemirror-markdown escapes [ and ] inside text nodes, turning [[title]] into \[\[title\]\].
+// Undo that specifically for wiki-link patterns so the raw markdown stays readable.
+function unescapeWikiLinks(md) {
+  return md.replace(/\\\[\\\[([^\]]*?)\\\]\\\]/g, '[[$1]]')
 }
 
 // --- Feature 1: Wiki link autocomplete ---
@@ -822,17 +875,68 @@ window.setMarkdown = function(md) {
   isSettingContent = true
   editor.commands.setContent(md)
   isSettingContent = false
+  window.webkit.messageHandlers.contentChanged.postMessage(unescapeWikiLinks(md))
   setTimeout(() => refreshDeadLinkStyles(), 50)
 }
 
 window.getMarkdown = function() {
-  return editor.storage.markdown.getMarkdown()
+  return unescapeWikiLinks(editor.storage.markdown.getMarkdown())
 }
 
 window.setReadOnly = function(readOnly) {
   editor.setEditable(!readOnly)
   const toolbar = document.getElementById('toolbar')
   if (toolbar) toolbar.style.display = readOnly ? 'none' : ''
+}
+
+window.setWikiMode = function(enabled) {
+  wikiMode = !!enabled
+}
+
+function syncContentNow() {
+  clearTimeout(debounceTimer)
+  const md = unescapeWikiLinks(editor.storage.markdown.getMarkdown())
+  window.webkit.messageHandlers.contentChanged.postMessage(md)
+}
+
+window.insertWikiLink = function(title) {
+  editor.chain().focus().insertContent(`[[${title}]]`).run()
+  syncContentNow()
+}
+
+window.replaceWikiLink = function(title) {
+  if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+    editor.chain().focus()
+      .deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo })
+      .insertContent(`[[${title}]]`)
+      .run()
+    lastClickedWikiFrom = -1
+    lastClickedWikiTo = -1
+    syncContentNow()
+  }
+}
+
+window.replaceWikiWithLink = function(text, url) {
+  if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+    editor.chain().focus()
+      .deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo })
+      .insertContent({ type: 'text', text: text, marks: [{ type: 'link', attrs: { href: url } }] })
+      .run()
+    lastClickedWikiFrom = -1
+    lastClickedWikiTo = -1
+    syncContentNow()
+  }
+}
+
+window.removeWikiLink = function() {
+  if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+    editor.chain().focus()
+      .deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo })
+      .run()
+    lastClickedWikiFrom = -1
+    lastClickedWikiTo = -1
+    syncContentNow()
+  }
 }
 
 window.webkit.messageHandlers.editorReady.postMessage('ready')

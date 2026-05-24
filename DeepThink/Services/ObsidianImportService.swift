@@ -14,9 +14,11 @@ final class ObsidianImportService {
     private let fm = FileManager.default
     private init() {}
 
+    // swiftlint:disable force_try
     private static let wikiLinkRegex = try! NSRegularExpression(pattern: "\\[\\[([^\\]]+)\\]\\]")
     private static let calloutRegex = try! NSRegularExpression(pattern: "> \\[!(\\w+)\\]\\s*(.*)", options: .caseInsensitive)
     private static let inlineTagRegex = try! NSRegularExpression(pattern: "(?:^|\\s)#([a-zA-Z][a-zA-Z0-9_/-]*)")
+    // swiftlint:enable force_try
 
     // MARK: - Options & Result
 
@@ -53,8 +55,7 @@ final class ObsidianImportService {
             guard ext == "md" || ext == "markdown" else { continue }
             count += 1
             if let values = try? url.resourceValues(forKeys: [.fileSizeKey]),
-               let fileSize = values.fileSize
-            {
+               let fileSize = values.fileSize {
                 size += Int64(fileSize)
             }
         }
@@ -189,7 +190,7 @@ final class ObsidianImportService {
             tags = tagStr
                 .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
                 .components(separatedBy: ",")
-                .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "#")) }
+                .map { $0.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "#\"'")) }
                 .filter { !$0.isEmpty }
         }
 
@@ -239,19 +240,22 @@ final class ObsidianImportService {
         md += "title: \(title)\n"
         md += "source: obsidian\n"
         md += "folder: \(folder)\n"
-        if !tags.isEmpty { md += "tags: [\(tags.joined(separator: ", "))]\n" }
+        if !tags.isEmpty { md += "tags: [\(tags.map { "\"\($0)\"" }.joined(separator: ", "))]\n" }
         if let aliases = existingFM["aliases"] { md += "aliases: \(aliases)\n" }
         md += "imported_at: \(isoFormatter.string(from: Date()))\n"
         md += "---\n\n"
         md += body
 
-        // Write file
-        let filename = fileURL.lastPathComponent
-        let destFile = destDir.appendingPathComponent(filename)
-
-        // Skip if already exists at destination
+        // Write file — resolve collisions when same filename exists from a different folder
+        let baseName = fileURL.deletingPathExtension().lastPathComponent
+        let ext = fileURL.pathExtension
+        var destFile = destDir.appendingPathComponent(fileURL.lastPathComponent)
         if fm.fileExists(atPath: destFile.path) {
-            return .skippedOther
+            var counter = 2
+            repeat {
+                destFile = destDir.appendingPathComponent("\(baseName)-\(counter).\(ext)")
+                counter += 1
+            } while fm.fileExists(atPath: destFile.path)
         }
 
         try md.write(to: destFile, atomically: true, encoding: .utf8)

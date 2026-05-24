@@ -81,7 +81,9 @@ final class AgentFileService {
                 return "- /\(skill.commandName): \(desc)"
             }
             if !skillLines.isEmpty {
-                prompt += "\n\n# Available Skills\nYou have the following skills available. When a user request matches a skill, suggest using it with /command-name:\n"
+                prompt +=
+                    "\n\n# Available Skills\nYou have the following skills available. " +
+                    "When a user request matches a skill, suggest using it with /command-name:\n"
                 prompt += skillLines.joined(separator: "\n")
             }
         }

@@ -182,7 +182,8 @@ struct RulesListView: View {
                         DSEmptyState(
                             icon: "bolt",
                             title: "No Rules Yet",
-                            subtitle: "Rules are automatic instructions for AI — they kick in when certain conditions are met, so you don't have to repeat yourself.",
+                            subtitle: "Rules are automatic instructions for AI — they kick in when certain conditions are met, " +
+                                "so you don't have to repeat yourself.",
                             hint: "Example: \"Always use bullet points\" or \"Keep replies under 200 words\"",
                             action: { createNewRule() },
                             actionTitle: "Create Rule"
@@ -230,8 +231,7 @@ struct RulesListView: View {
             .onAppear { ruleService.reload() }
             .onChange(of: ruleService.rules) { _, newRules in
                 if let current = selectedRule,
-                   let updated = newRules.first(where: { $0.id == current.id })
-                {
+                   let updated = newRules.first(where: { $0.id == current.id }) {
                     selectedRule = updated
                 }
             }

@@ -104,7 +104,9 @@ struct DeepThinkApp: App {
         } catch {
             let alert = NSAlert()
             alert.messageText = "Workspace Data Error"
-            alert.informativeText = "DeepThink could not open your workspace:\n\n\(error.localizedDescription)\n\nResetting will delete your local data (backups are preserved)."
+            alert.informativeText =
+                "DeepThink could not open your workspace:\n\n\(error.localizedDescription)\n\n" +
+                "Resetting will delete your local data (backups are preserved)."
             alert.addButton(withTitle: "Reset Workspace")
             alert.addButton(withTitle: "Quit")
             alert.alertStyle = .critical

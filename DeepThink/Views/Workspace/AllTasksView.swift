@@ -332,7 +332,7 @@ struct AllTasksView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(taskToDelete?.title.isEmpty == false ? taskToDelete!.title : "Untitled")\".")
+            Text("This will permanently delete \"\(taskToDelete.flatMap { $0.title.isEmpty ? nil : $0.title } ?? "Untitled")\".")
         }
     }
 
@@ -341,6 +341,7 @@ struct AllTasksView: View {
             appState.selectedTaskID = nil
         }
         modelContext.delete(task)
+        try? modelContext.save()
     }
 
     // MARK: - Components

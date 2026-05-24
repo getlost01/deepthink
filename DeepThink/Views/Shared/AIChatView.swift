@@ -640,8 +640,7 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
-            {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -670,8 +669,7 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID)
-        {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
             let recent = Array(prior.suffix(4))
             return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }
@@ -1090,7 +1088,9 @@ struct AIChatView: View {
     }
 
     private func autoTitleConversation(_ conv: Conversation, userMessage: String, assistantMessage: String) async {
-        let prompt = "Generate a 3-5 word title for this conversation. Output ONLY the title, nothing else.\n\nUser: \(userMessage.prefix(200))\nAssistant: \(assistantMessage.prefix(300))"
+        let prompt =
+            "Generate a 3-5 word title for this conversation. Output ONLY the title, nothing else." +
+            "\n\nUser: \(userMessage.prefix(200))\nAssistant: \(assistantMessage.prefix(300))"
         if let title = try? await ClaudeService.shared.query(
             prompt,
             systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.",
@@ -1201,7 +1201,7 @@ private struct ClaudeNotInstalledView: View {
 
             VStack(spacing: DS.Spacing.sm) {
                 Button("Open Installation Guide") {
-                    NSWorkspace.shared.open(URL(string: "https://claude.ai/code")!)
+                    if let url = URL(string: "https://claude.ai/code") { NSWorkspace.shared.open(url) }
                 }
                 .buttonStyle(.dsPrimary)
 

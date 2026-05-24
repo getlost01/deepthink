@@ -76,12 +76,18 @@ enum SidebarSection: String, Identifiable {
         switch self {
         case .recent: "See all recent activity — notes edited, tasks completed, knowledge added — in one timeline."
         case .workspace: "This is your home base. Create projects to organize your work, write notes to capture ideas, and add tasks to track what needs doing."
-        case .knowledge: "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. Everything here can be used by AI to give you better answers."
+        case .knowledge:
+            "Think of this as your second brain. Save web articles, paste text from anywhere, or write things down. " +
+                "Everything here can be used by AI to give you better answers."
         case .aiAssistant: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
         case .reminders: "Keep track of things you need to remember. Optionally set a date and time to get notified."
-        case .integrations: "Connections let AI access external tools like web search, databases, or file systems. Enable what you need, disable what you don't."
+        case .integrations:
+            "Connections let AI access external tools like web search, databases, or file systems. " +
+                "Enable what you need, disable what you don't."
         case .terminal: "A built-in command line for running scripts and system commands."
-        case .contextGraph: "See which knowledge entries are semantically related. Nodes are entries, edges are similarity. Search to highlight relevant clusters."
+        case .contextGraph:
+            "See which knowledge entries are semantically related. Nodes are entries, edges are similarity. " +
+                "Search to highlight relevant clusters."
         case .settings: "Choose which AI model to use and track your usage."
         }
     }

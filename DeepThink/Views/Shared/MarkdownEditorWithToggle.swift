@@ -16,6 +16,10 @@ struct MarkdownEditorWithToggle: View {
     @Binding var text: String
     var placeholder: String = "Start writing..."
     var onSave: (() -> Void)?
+    var wikiLinks: [String: String] = [:]
+    var onWikiLinkClick: ((String) -> Void)?
+    var wikiMode: Bool = false
+    var onWikiNavigate: ((String) -> Void)?
 
     @Environment(AppState.self) private var appState
     @State private var mode: EditorMode = .rich
@@ -23,6 +27,15 @@ struct MarkdownEditorWithToggle: View {
     @State private var isDirty = false
     @State private var linkPickerType: String?
     @State private var linkInsertRequest: DeepLinkInsertRequest?
+    @State private var showWikiPicker = false
+    @State private var wikiPickerMode: WikiLinkPickerMode = .insert
+    @State private var wikiEditorRequest: WikiLinkEditorRequest?
+
+    private static let richEditorSizeLimit = 80000
+
+    private var isLargeDoc: Bool {
+        text.count > Self.richEditorSizeLimit
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -50,6 +63,17 @@ struct MarkdownEditorWithToggle: View {
                 }
                 .padding(2)
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm + 2))
+
+                if isLargeDoc, mode == .rich {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: DS.IconSize.xs))
+                            .foregroundStyle(DS.Colors.warning)
+                        Text("Large document — rich editor may be slow")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                }
 
                 Spacer()
 
@@ -97,7 +121,13 @@ struct MarkdownEditorWithToggle: View {
                     },
                     onLinkClick: { url in appState.handleDeepLink(url) },
                     onRequestLinkInsert: { type in linkPickerType = type },
-                    linkInsertRequest: linkInsertRequest
+                    onWikiLinkClick: onWikiLinkClick,
+                    linkInsertRequest: linkInsertRequest,
+                    wikiLinks: wikiLinks,
+                    wikiMode: wikiMode,
+                    onRequestWikiLinkInsert: wikiMode ? { showWikiPicker = true; wikiPickerMode = .insert } : nil,
+                    onRequestWikiLinkEdit: wikiMode ? { title in showWikiPicker = true; wikiPickerMode = .edit(currentTitle: title) } : nil,
+                    wikiEditorRequest: wikiEditorRequest
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
@@ -109,6 +139,31 @@ struct MarkdownEditorWithToggle: View {
                         }, onDismiss: { linkPickerType = nil })
                     }
                 }
+                .sheet(isPresented: $showWikiPicker) {
+                    WikiLinkPickerSheet(
+                        mode: wikiPickerMode,
+                        onWiki: { entry in
+                            if case .edit = wikiPickerMode {
+                                wikiEditorRequest = WikiLinkEditorRequest(action: .replaceWiki(newTitle: entry.title))
+                            } else {
+                                wikiEditorRequest = WikiLinkEditorRequest(action: .insertWiki(title: entry.title))
+                            }
+                        },
+                        onReference: { entry in
+                            let url = knowledgeEntryURL(entry)
+                            if case .edit = wikiPickerMode {
+                                wikiEditorRequest = WikiLinkEditorRequest(action: .replaceReference(newTitle: entry.title, url: url))
+                            } else {
+                                wikiEditorRequest = WikiLinkEditorRequest(action: .insertReference(title: entry.title, url: url))
+                            }
+                        },
+                        onNavigate: { entry in onWikiNavigate?(entry.title) },
+                        onRemove: {
+                            wikiEditorRequest = WikiLinkEditorRequest(action: .remove)
+                        },
+                        onDismiss: { showWikiPicker = false }
+                    )
+                }
             case .raw:
                 RawMarkdownEditor(text: $text, placeholder: placeholder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -119,7 +174,10 @@ struct MarkdownEditorWithToggle: View {
         .onChange(of: text) {
             isDirty = text != lastSavedText
         }
-        .onAppear { lastSavedText = text }
+        .onAppear {
+            lastSavedText = text
+            if isLargeDoc { mode = .raw }
+        }
         .onDisappear {
             if isDirty { performSave() }
         }
@@ -129,6 +187,14 @@ struct MarkdownEditorWithToggle: View {
         onSave?()
         lastSavedText = text
         isDirty = false
+    }
+
+    private func knowledgeEntryURL(_ entry: KnowledgeEntry) -> URL {
+        var comps = URLComponents()
+        comps.scheme = "deepthink"
+        comps.host = "knowledge"
+        comps.queryItems = [URLQueryItem(name: "id", value: entry.id)]
+        return comps.url ?? URL(fileURLWithPath: "/")
     }
 }
 

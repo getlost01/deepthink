@@ -53,10 +53,18 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
         <meta charset="utf-8">
         <style>
             @media (prefers-color-scheme: dark) {
-                :root { --text: #e0e0e0; --text2: #888; --bg-code: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.08); --accent: #4dacf7; --bg-hover: rgba(255,255,255,0.04); --bg-inline: rgba(255,255,255,0.07); }
+                :root {
+                    --text: #e0e0e0; --text2: #888; --bg-code: rgba(255,255,255,0.04);
+                    --border: rgba(255,255,255,0.08); --accent: #4dacf7;
+                    --bg-hover: rgba(255,255,255,0.04); --bg-inline: rgba(255,255,255,0.07);
+                }
             }
             @media (prefers-color-scheme: light) {
-                :root { --text: #1d1d1f; --text2: #888; --bg-code: rgba(0,0,0,0.03); --border: rgba(0,0,0,0.08); --accent: #1a8ad4; --bg-hover: rgba(0,0,0,0.03); --bg-inline: rgba(0,0,0,0.05); }
+                :root {
+                    --text: #1d1d1f; --text2: #888; --bg-code: rgba(0,0,0,0.03);
+                    --border: rgba(0,0,0,0.08); --accent: #1a8ad4;
+                    --bg-hover: rgba(0,0,0,0.03); --bg-inline: rgba(0,0,0,0.05);
+                }
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             html, body { overflow: hidden; pointer-events: none; }
@@ -144,7 +152,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 border-radius: 0 6px 6px 0;
             }
 
-            .callout { margin: 10px 0; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
+            .callout {
+                margin: 10px 0; padding: 10px 14px; border-radius: 8px;
+                border: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start;
+            }
             .callout-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
             .callout-content { flex: 1; min-width: 0; }
             .callout-content p:first-child { margin-top: 0; }
@@ -153,7 +164,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             .callout-note { background: var(--bg-code); border-color: var(--border); }
             .callout-important { background: rgba(255, 59, 48, 0.08); border-color: rgba(255, 59, 48, 0.2); }
 
-            table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+            table {
+                border-collapse: collapse; width: 100%; margin: 10px 0;
+                font-size: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
+            }
             th, td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
             th { font-weight: 600; background: var(--bg-code); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text2); }
             tr:hover td { background: var(--bg-hover); }
@@ -165,7 +179,11 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
 
             ul.task-list { list-style: none; padding-left: 0; }
             .task-list-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
-            .task-checkbox { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border); background: transparent; flex-shrink: 0; margin-top: 2px; display: flex; align-items: center; justify-content: center; cursor: default; }
+            .task-checkbox {
+                width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid var(--border);
+                background: transparent; flex-shrink: 0; margin-top: 2px;
+                display: flex; align-items: center; justify-content: center; cursor: default;
+            }
             .task-checkbox.checked { background: var(--accent); border-color: var(--accent); }
             .task-checkbox.checked::after { content: '✓'; color: white; font-size: 10px; font-weight: 700; }
             .task-list-item.done .task-text { text-decoration: line-through; color: var(--text2); }

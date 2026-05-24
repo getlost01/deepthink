@@ -66,9 +66,6 @@ private enum SearchScope: String, CaseIterable {
 // MARK: - View
 
 struct ContextGraphView: View {
-    @Query private var noteLinks: [NoteLink]
-    @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
-
     @State private var nodes: [ContextNode] = []
     @State private var edges: [ContextEdge] = []
     @State private var showSemanticEdges = true
@@ -101,6 +98,7 @@ struct ContextGraphView: View {
     @State private var queryDebounceTask: Task<Void, Never>?
     @State private var thresholdDebounceTask: Task<Void, Never>?
     @State private var isDraggingCanvas = false
+    @State private var buildGeneration = 0
 
     private let repulsionStrength: CGFloat = 9000
     private let attractionStrength: CGFloat = 0.006
@@ -195,6 +193,8 @@ struct ContextGraphView: View {
                     }
                     .onDisappear { stopSimulation() }
                     .onChange(of: geo.size) { _, s in canvasSize = s }
+                    .onChange(of: KnowledgeService.shared.lastModifiedAt) { _, _ in rebuild(in: canvasSize) }
+                    .onChange(of: KnowledgeService.shared.entries.count) { _, _ in rebuild(in: canvasSize) }
                     .onChange(of: threshold) { _, _ in
                         thresholdDebounceTask?.cancel()
                         thresholdDebounceTask = Task {
@@ -723,12 +723,14 @@ struct ContextGraphView: View {
                 HintStep(
                     number: "2",
                     title: "Similarity",
-                    text: "Each pair of entries is compared using cosine similarity on their TF-IDF vectors. Pairs above the threshold become connected by an edge."
+                    text: "Each pair of entries is compared using cosine similarity on their TF-IDF vectors. " +
+                        "Pairs above the threshold become connected by an edge."
                 )
                 HintStep(
                     number: "3",
                     title: "Threshold slider",
-                    text: "Lower = more connections (looser matching). Higher = fewer, stronger connections only. Drag it to explore different cluster densities."
+                    text: "Lower = more connections (looser matching). Higher = fewer, stronger connections only. " +
+                        "Drag it to explore different cluster densities."
                 )
                 HintStep(
                     number: "4",
@@ -1195,14 +1197,17 @@ struct ContextGraphView: View {
     private func rebuild(in size: CGSize) {
         stopSimulation()
         isBuilding = true
+        buildGeneration &+= 1
+        let gen = buildGeneration
 
         let knowledgeEntries = KnowledgeService.shared.entries
-        let capturedLinks = noteLinks
-        let capturedNotes = allNotes
         DispatchQueue.global(qos: .userInitiated).async {
             let engine = ContextEngine.shared
             guard !knowledgeEntries.isEmpty else {
-                DispatchQueue.main.async { isBuilding = false; nodes = []; edges = [] }
+                DispatchQueue.main.async {
+                    guard gen == buildGeneration else { return }
+                    isBuilding = false; nodes = []; edges = []
+                }
                 return
             }
 
@@ -1232,39 +1237,39 @@ struct ContextGraphView: View {
                 ContextEdge(id: "\(i)", fromID: e.0, toID: e.1, weight: e.2)
             }
 
-            // Build explicit edges from wiki [[links]] via NoteLink index
-            let entryByTitle: [String: String] = Dictionary(
-                knowledgeEntries.map { ($0.title.lowercased(), $0.id) },
+            // Build explicit edges by parsing [[wiki links]] directly from KnowledgeEntry content
+            let wikiPattern = /\[\[([^\]]+)\]\]/
+            let entryByTitle: [String: KnowledgeEntry] = Dictionary(
+                knowledgeEntries.map { ($0.title.lowercased(), $0) },
                 uniquingKeysWith: { first, _ in first }
             )
-            let entryIDByNoteID: [UUID: String] = capturedNotes.reduce(into: [:]) { acc, note in
-                if let id = entryByTitle[note.title.lowercased()] { acc[note.id] = id }
-            }
 
             var seenExplicit = Set<String>()
-            for link in capturedLinks {
-                guard let fromID = entryIDByNoteID[link.sourceNoteID],
-                      let toID = entryIDByNoteID[link.targetNoteID],
-                      fromID != toID else { continue }
-                let key = ([fromID, toID].sorted()).joined(separator: "|")
-                guard seenExplicit.insert(key).inserted else { continue }
-                let edgeID = "x_\(key)"
-                newEdges.append(ContextEdge(id: edgeID, fromID: fromID, toID: toID, weight: 1.0, kind: .explicit))
+            for entry in knowledgeEntries {
+                let unescaped = entry.content
+                    .replacingOccurrences(of: "\\[\\[", with: "[[")
+                    .replacingOccurrences(of: "\\]\\]", with: "]]")
+                let refs = unescaped.matches(of: wikiPattern).map { String($0.1) }
+                for ref in refs {
+                    guard let target = entryByTitle[ref.lowercased()],
+                          target.id != entry.id else { continue }
+                    let key = ([entry.id, target.id].sorted()).joined(separator: "|")
+                    guard seenExplicit.insert(key).inserted else { continue }
+                    newEdges.append(ContextEdge(id: "x_\(key)", fromID: entry.id, toID: target.id, weight: 1.0, kind: .explicit))
 
-                // Ensure both endpoint nodes exist even if below TF-IDF threshold
-                for entryID in [fromID, toID] {
-                    if !newNodes.contains(where: { $0.id == entryID }),
-                       let entry = knowledgeEntries.first(where: { $0.id == entryID }),
-                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID })
-                    {
-                        let angle = Double(idx) / Double(max(knowledgeEntries.count, 1)) * 2 * .pi
-                        let r = spread * CGFloat.random(in: 0.3...1.0)
-                        newNodes.append(ContextNode(
-                            id: entry.id, title: entry.title, source: entry.source,
-                            bucket: entry.bucket, tags: entry.tags,
-                            position: CGPoint(x: center.x + cos(angle) * r, y: center.y + sin(angle) * r),
-                            connectionCount: 0
-                        ))
+                    // Ensure both endpoint nodes exist even if below TF-IDF threshold
+                    for linked in [entry, target] {
+                        if !newNodes.contains(where: { $0.id == linked.id }),
+                           let idx = knowledgeEntries.firstIndex(where: { $0.id == linked.id }) {
+                            let angle = Double(idx) / Double(max(knowledgeEntries.count, 1)) * 2 * .pi
+                            let r = spread * CGFloat.random(in: 0.3...1.0)
+                            newNodes.append(ContextNode(
+                                id: linked.id, title: linked.title, source: linked.source,
+                                bucket: linked.bucket, tags: linked.tags,
+                                position: CGPoint(x: center.x + cos(angle) * r, y: center.y + sin(angle) * r),
+                                connectionCount: 0
+                            ))
+                        }
                     }
                 }
             }
@@ -1275,6 +1280,7 @@ struct ContextGraphView: View {
             }
 
             DispatchQueue.main.async {
+                guard gen == buildGeneration else { return }
                 nodes = newNodes; edges = newEdges
                 isBuilding = false; simulationSteps = 0
                 startSimulation()
@@ -1363,10 +1369,10 @@ struct ContextGraphView: View {
     private func fitToScreen() {
         let visible = displayNodes
         guard !visible.isEmpty, canvasSize != .zero else { return }
-        let minX = visible.map(\.position.x).min()!
-        let maxX = visible.map(\.position.x).max()!
-        let minY = visible.map(\.position.y).min()!
-        let maxY = visible.map(\.position.y).max()!
+        let xs = visible.map(\.position.x)
+        let ys = visible.map(\.position.y)
+        guard let minX = xs.min(), let maxX = xs.max(),
+              let minY = ys.min(), let maxY = ys.max() else { return }
         let graphW = maxX - minX + 80
         let graphH = maxY - minY + 80
         let newScale = min(5.0, max(0.15, min(canvasSize.width / graphW, canvasSize.height / graphH) * 0.9))

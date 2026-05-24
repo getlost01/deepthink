@@ -689,7 +689,7 @@ private struct ReminderDatePickerPopover: View {
             }
 
             // Custom time stepper
-            HStack {
+            HStack(spacing: DS.Spacing.sm) {
                 Image(systemName: "clock")
                     .font(.system(size: DS.IconSize.sm))
                     .foregroundStyle(DS.Colors.textTertiary)
@@ -701,6 +701,9 @@ private struct ReminderDatePickerPopover: View {
                     .labelsHidden()
                     .datePickerStyle(.stepperField)
             }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm2)
@@ -739,13 +742,11 @@ private struct ReminderDatePickerPopover: View {
             }
         }
         if let tomorrow = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)),
-           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow)
-        {
+           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) {
             result.append(("Tomorrow", d))
         }
         if let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: cal.startOfDay(for: now)),
-           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: nextWeek)
-        {
+           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: nextWeek) {
             result.append(("Next week", d))
         }
         return result

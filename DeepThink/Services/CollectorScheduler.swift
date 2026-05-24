@@ -60,7 +60,7 @@ final class CollectorScheduler {
                     self?.syncSource(id: sourceID)
                 }
                 timers[sourceID] = timer
-                if source.lastSyncAt == nil || Date().timeIntervalSince(source.lastSyncAt!) > TimeInterval(interval) {
+                if source.lastSyncAt.map({ Date().timeIntervalSince($0) > TimeInterval(interval) }) ?? true {
                     syncSource(id: sourceID)
                 }
             }

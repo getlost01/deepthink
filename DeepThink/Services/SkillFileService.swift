@@ -97,8 +97,9 @@ final class SkillFileService {
             lastResult = result
             return result
         } catch {
-            lastResult = "Error: \(error.localizedDescription)"
-            return lastResult!
+            let message = "Error: \(error.localizedDescription)"
+            lastResult = message
+            return message
         }
     }
 
@@ -160,8 +161,7 @@ final class SkillFileService {
 
             if let jsonString = context[indexKey],
                let data = jsonString.data(using: .utf8),
-               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
-            {
+               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] {
                 let exact = array.first { ($0["title"] ?? "").lowercased() == refTitle.lowercased() }
                 let found: [String: String]?
                 if let e = exact {
@@ -297,7 +297,8 @@ final class SkillFileService {
                 "Clean Up Note",
                 "doc.text",
                 "Knowledge",
-                "You rewrite messy captures into clean, well-structured notes. Preserve all facts. Add a clear title if missing. Use markdown headings and bullet points.",
+                "You rewrite messy captures into clean, well-structured notes. Preserve all facts. " +
+                    "Add a clear title if missing. Use markdown headings and bullet points.",
                 "Clean up and restructure this note. Keep all information but make it scannable and well-organized:\n\n{{input}}",
                 []
             ),

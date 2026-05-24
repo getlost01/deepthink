@@ -109,8 +109,7 @@ final class ContextEngine {
 
             if let project = projectScope {
                 if chunk.title.localizedCaseInsensitiveContains(project) ||
-                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame })
-                {
+                    chunk.tags.contains(where: { $0.caseInsensitiveCompare(project) == .orderedSame }) {
                     score *= 1.5
                 }
             }
@@ -356,7 +355,9 @@ final class ContextEngine {
 
         do {
             return try await ClaudeService.shared.query(
-                "Summarize this conversation in under \(maxTokens / 4) words. Focus on: decisions made, questions asked, key facts discussed. Be extremely concise.\n\n\(String(conversationText.prefix(4000)))",
+                "Summarize this conversation in under \(maxTokens / 4) words. " +
+                    "Focus on: decisions made, questions asked, key facts discussed. Be extremely concise." +
+                    "\n\n\(String(conversationText.prefix(4000)))",
                 systemPrompt: "Output only a concise summary. No preamble. Use bullet points."
             )
         } catch {

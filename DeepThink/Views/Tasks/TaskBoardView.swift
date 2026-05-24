@@ -134,6 +134,7 @@ struct TaskBoardView: View {
                 task.status = status
                 task.modifiedAt = Date()
             }
+            try? modelContext.save()
             dropTargetStatus = nil
             return true
         } isTargeted: { targeted in
@@ -190,6 +191,7 @@ struct TaskBoardView: View {
                         withAnimation(DS.Animation.standard) {
                             modelContext.delete(task)
                         }
+                        try? modelContext.save()
                     } label: {
                         Image(systemName: "trash")
                             .font(.system(size: DS.IconSize.xs, weight: .medium))
@@ -240,9 +242,9 @@ struct TaskBoardView: View {
                             .font(DS.Font.small)
                             .fontWeight(.medium)
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .padding(.horizontal, 5)
+                            .padding(.horizontal, DS.Spacing.xs)
                             .padding(.vertical, DS.Spacing.xxs)
-                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: 4))
+                            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.xs))
                     }
                 }
 
@@ -284,6 +286,7 @@ struct TaskBoardView: View {
                         task.status = newStatus
                         task.modifiedAt = Date()
                     }
+                    try? modelContext.save()
                 } label: {
                     Label("Move to \(newStatus.rawValue)", systemImage: newStatus.icon)
                 }
@@ -291,6 +294,7 @@ struct TaskBoardView: View {
             Divider()
             Button(role: .destructive) {
                 modelContext.delete(task)
+                try? modelContext.save()
             } label: {
                 Label("Delete", systemImage: "trash")
             }

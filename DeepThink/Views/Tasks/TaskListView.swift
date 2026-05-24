@@ -177,96 +177,103 @@ struct TaskListView: View {
 
             Divider()
 
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
-                    ForEach(groupedTasks, id: \.0) { status, tasks in
-                        Section {
-                            ForEach(tasks) { task in
-                                let isSelected = appState.selectedTaskID == task.id
-                                Button {
-                                    appState.selectedTaskID = task.id
-                                } label: {
-                                    TaskRowView(task: task)
-                                        .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, DS.Spacing.xxs)
-                                        .background(isSelected ? DS.Colors.accentFill : .clear)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plainPointer)
-                                .contextMenu {
-                                    ForEach(TaskStatus.allCases) { newStatus in
-                                        Button {
-                                            task.status = newStatus
-                                            task.modifiedAt = Date()
-                                        } label: {
-                                            Label("Mark as \(newStatus.rawValue)", systemImage: newStatus.icon)
-                                        }
-                                    }
-                                    Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                        ForEach(groupedTasks, id: \.0) { status, tasks in
+                            Section {
+                                ForEach(tasks) { task in
+                                    let isSelected = appState.selectedTaskID == task.id
                                     Button {
-                                        if task.isArchived {
-                                            task.isArchived = false
-                                            task.manuallyArchived = false
-                                        } else {
-                                            task.isArchived = true
-                                            task.manuallyArchived = true
-                                        }
-                                        task.modifiedAt = Date()
-                                        try? modelContext.save()
+                                        appState.selectedTaskID = task.id
                                     } label: {
-                                        Label(task.isArchived ? "Unarchive" : "Archive", systemImage: task.isArchived ? "archivebox" : "archivebox.fill")
+                                        TaskRowView(task: task)
+                                            .padding(.horizontal, DS.Spacing.sm)
+                                            .padding(.vertical, DS.Spacing.xxs)
+                                            .background(isSelected ? DS.Colors.accentFill : .clear)
+                                            .contentShape(Rectangle())
                                     }
-                                    Divider()
-                                    Button(role: .destructive) { deleteTask(task) } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    .id(task.id)
+                                    .buttonStyle(.plainPointer)
+                                    .contextMenu {
+                                        ForEach(TaskStatus.allCases) { newStatus in
+                                            Button {
+                                                task.status = newStatus
+                                                task.modifiedAt = Date()
+                                            } label: {
+                                                Label("Mark as \(newStatus.rawValue)", systemImage: newStatus.icon)
+                                            }
+                                        }
+                                        Divider()
+                                        Button {
+                                            if task.isArchived {
+                                                task.isArchived = false
+                                                task.manuallyArchived = false
+                                            } else {
+                                                task.isArchived = true
+                                                task.manuallyArchived = true
+                                            }
+                                            task.modifiedAt = Date()
+                                            try? modelContext.save()
+                                        } label: {
+                                            Label(task.isArchived ? "Unarchive" : "Archive", systemImage: task.isArchived ? "archivebox" : "archivebox.fill")
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) { deleteTask(task) } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                    if task.id != tasks.last?.id {
+                                        Divider()
                                     }
                                 }
-                                if task.id != tasks.last?.id {
-                                    Divider()
+                            } header: {
+                                HStack(spacing: DS.Spacing.sm) {
+                                    Image(systemName: status.icon)
+                                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                                        .foregroundStyle(status.color)
+                                    Text(status.rawValue)
+                                        .font(DS.Font.caption)
+                                        .fontWeight(.medium)
+                                    DSPill(text: "\(tasks.count)", color: status.color)
+                                    Spacer()
+                                    Button {
+                                        let newTask = createTaskWithStatus(status)
+                                        appState.selectedTaskID = newTask
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                    }
+                                    .buttonStyle(.plainPointer)
+                                    .help("Add task with status \(status.rawValue)")
                                 }
+                                .padding(.horizontal, DS.Spacing.md)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(DS.Colors.surfaceElevated)
                             }
-                        } header: {
-                            HStack(spacing: DS.Spacing.sm) {
-                                Image(systemName: status.icon)
-                                    .font(.system(size: DS.IconSize.sm, weight: .medium))
-                                    .foregroundStyle(status.color)
-                                Text(status.rawValue)
-                                    .font(DS.Font.caption)
-                                    .fontWeight(.medium)
-                                DSPill(text: "\(tasks.count)", color: status.color)
-                                Spacer()
-                                Button {
-                                    let newTask = createTaskWithStatus(status)
-                                    appState.selectedTaskID = newTask
-                                } label: {
-                                    Image(systemName: "plus")
-                                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                }
-                                .buttonStyle(.plainPointer)
-                                .help("Add task with status \(status.rawValue)")
-                            }
-                            .padding(.horizontal, DS.Spacing.md)
-                            .padding(.vertical, DS.Spacing.xs)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(DS.Colors.surfaceElevated)
                         }
                     }
                 }
-            }
-            .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
-            .onKeyPress(.downArrow) { moveSelection(1); return .handled }
-            .onKeyPress(.escape) { appState.selectedTaskID = nil; return .handled }
-            .overlay {
-                if groupedTasks.isEmpty {
-                    DSEmptyState(
-                        icon: "checklist",
-                        title: "No Tasks Yet",
-                        subtitle: "Keep track of what you need to do. Set priorities and due dates so nothing falls through the cracks.",
-                        hint: "Tasks can belong to a project, or stand on their own",
-                        action: createTask,
-                        actionTitle: "New Task"
-                    )
+                .onKeyPress(.upArrow) { moveSelection(-1); return .handled }
+                .onKeyPress(.downArrow) { moveSelection(1); return .handled }
+                .onKeyPress(.escape) { appState.selectedTaskID = nil; return .handled }
+                .overlay {
+                    if groupedTasks.isEmpty {
+                        DSEmptyState(
+                            icon: "checklist",
+                            title: "No Tasks Yet",
+                            subtitle: "Keep track of what you need to do. Set priorities and due dates so nothing falls through the cracks.",
+                            hint: "Tasks can belong to a project, or stand on their own",
+                            action: createTask,
+                            actionTitle: "New Task"
+                        )
+                    }
+                }
+                .onChange(of: appState.selectedTaskID) { _, id in
+                    guard let id else { return }
+                    proxy.scrollTo(id, anchor: .center)
                 }
             }
         }
@@ -300,14 +307,14 @@ struct TaskListView: View {
     private func deleteTask(_ task: TaskItem) {
         if appState.selectedTaskID == task.id { appState.selectedTaskID = nil }
         modelContext.delete(task)
+        try? modelContext.save()
     }
 
     private func moveSelection(_ direction: Int) {
         let allItems = groupedTasks.flatMap(\.1)
         guard !allItems.isEmpty else { return }
         if let current = appState.selectedTaskID,
-           let idx = allItems.firstIndex(where: { $0.id == current })
-        {
+           let idx = allItems.firstIndex(where: { $0.id == current }) {
             let next = min(max(idx + direction, 0), allItems.count - 1)
             appState.selectedTaskID = allItems[next].id
         } else {

@@ -16,6 +16,7 @@ enum DS {
     }
 
     enum Radius {
+        static let xs: CGFloat = 4
         static let sm: CGFloat = 6
         static let md: CGFloat = 8
         static let lg: CGFloat = 12
@@ -103,6 +104,16 @@ enum DS {
         static let projectColorHexes = [
             "#007AFF", "#FF3B30", "#FF9500", "#34C759",
             "#5856D6", "#AF52DE", "#FF2D55", "#A2845E"
+        ]
+        static let projectColorNames: [String: String] = [
+            "#007AFF": "Blue",
+            "#FF3B30": "Red",
+            "#FF9500": "Orange",
+            "#34C759": "Green",
+            "#5856D6": "Indigo",
+            "#AF52DE": "Purple",
+            "#FF2D55": "Pink",
+            "#A2845E": "Brown"
         ]
     }
 
@@ -983,8 +994,8 @@ struct DSCalendarPicker: View {
     }
 
     private var daysInMonth: [Date?] {
-        let range = calendar.range(of: .day, in: .month, for: displayMonth)!
-        let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayMonth))!
+        guard let range = calendar.range(of: .day, in: .month, for: displayMonth),
+              let firstDay = calendar.date(from: calendar.dateComponents([.year, .month], from: displayMonth)) else { return [] }
         var weekday = calendar.component(.weekday, from: firstDay)
         weekday = (weekday + 5) % 7
 
@@ -1140,6 +1151,22 @@ struct DeepLinkInsertRequest: Equatable {
     }
 }
 
+enum WikiLinkAction {
+    case insertWiki(title: String)
+    case insertReference(title: String, url: URL)
+    case replaceWiki(newTitle: String)
+    case replaceReference(newTitle: String, url: URL)
+    case remove
+}
+
+struct WikiLinkEditorRequest: Equatable {
+    let id = UUID()
+    let action: WikiLinkAction
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 struct RichMarkdownEditor: NSViewRepresentable {
     @Binding var text: String
     var isReadOnly: Bool = false
@@ -1153,6 +1180,10 @@ struct RichMarkdownEditor: NSViewRepresentable {
     var deadLinkUUIDs: Set<String> = []
     var onRequestDeadLinkClean: (() -> Void)?
     var cleanDeadLinksRequest: UUID?
+    var wikiMode: Bool = false
+    var onRequestWikiLinkInsert: (() -> Void)?
+    var onRequestWikiLinkEdit: ((String) -> Void)?
+    var wikiEditorRequest: WikiLinkEditorRequest?
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1165,6 +1196,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "linkClicked")
         config.userContentController.add(context.coordinator, name: "requestLinkInsert")
         config.userContentController.add(context.coordinator, name: "wikiLinkClicked")
+        config.userContentController.add(context.coordinator, name: "requestWikiLinkInsert")
+        config.userContentController.add(context.coordinator, name: "requestWikiLinkEdit")
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
@@ -1206,6 +1239,14 @@ struct RichMarkdownEditor: NSViewRepresentable {
             context.coordinator.lastInsertRequest = req
             context.coordinator.insertLink(text: req.text, url: req.url)
         }
+        context.coordinator.onRequestWikiLinkInsert = onRequestWikiLinkInsert
+        context.coordinator.onRequestWikiLinkEdit = onRequestWikiLinkEdit
+        context.coordinator.pendingWikiMode = wikiMode
+        context.coordinator.pushIfReady()
+        if let req = wikiEditorRequest, req != context.coordinator.lastWikiEditorRequest {
+            context.coordinator.lastWikiEditorRequest = req
+            context.coordinator.performWikiAction(req.action)
+        }
     }
 
     class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
@@ -1213,17 +1254,23 @@ struct RichMarkdownEditor: NSViewRepresentable {
         var onLinkClick: ((URL) -> Void)?
         var onRequestLinkInsert: ((String) -> Void)?
         var onWikiLinkClick: ((String) -> Void)?
+        var onRequestWikiLinkInsert: (() -> Void)?
+        var onRequestWikiLinkEdit: ((String) -> Void)?
         weak var webView: WKWebView?
         var isReady = false
         var pendingText: String?
         var pendingReadOnly: Bool = false
+        var pendingWikiMode: Bool = false
         var lastInsertRequest: DeepLinkInsertRequest?
         var lastWikiLinks: [String: String] = [:]
         var lastLinkPreviews: [String: [String: String]] = [:]
         var onRequestDeadLinkClean: (() -> Void)?
         var lastDeadLinkUUIDs: Set<String> = []
         var lastCleanDeadLinksRequest: UUID?
+        var lastWikiMode: Bool?
+        var lastWikiEditorRequest: WikiLinkEditorRequest?
         private var isReceiving = false
+        private var isPushing = false
         private var lastPushed: String?
         private var lastReadOnly: Bool?
         private var hasSettled = false
@@ -1234,7 +1281,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
 
         func pushIfReady() {
             guard isReady, let webView else { return }
-            if let text = pendingText, text != lastPushed, !isReceiving {
+            if let text = pendingText, text != lastPushed, !isReceiving, !isPushing {
+                isPushing = true
                 lastPushed = text
                 let escaped = text
                     .replacingOccurrences(of: "\\", with: "\\\\")
@@ -1246,6 +1294,10 @@ struct RichMarkdownEditor: NSViewRepresentable {
             if pendingReadOnly != lastReadOnly {
                 lastReadOnly = pendingReadOnly
                 webView.evaluateJavaScript("window.setReadOnly(\(pendingReadOnly ? "true" : "false"))")
+            }
+            if pendingWikiMode != lastWikiMode {
+                lastWikiMode = pendingWikiMode
+                webView.evaluateJavaScript("window.setWikiMode(\(pendingWikiMode ? "true" : "false"))")
             }
         }
 
@@ -1304,6 +1356,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
                 pushIfReady()
                 injectLinkInterceptor()
             } else if message.name == "contentChanged", let md = message.body as? String {
+                isPushing = false
                 isReceiving = true
                 lastPushed = md
                 parent.text = md
@@ -1313,21 +1366,23 @@ struct RichMarkdownEditor: NSViewRepresentable {
                     DispatchQueue.main.async { self.parent.onContentSettled?() }
                 }
             } else if message.name == "linkClicked", let urlStr = message.body as? String,
-                      let url = URL(string: urlStr)
-            {
+                      let url = URL(string: urlStr) {
                 DispatchQueue.main.async { self.onLinkClick?(url) }
             } else if message.name == "requestLinkInsert", let type = message.body as? String {
                 DispatchQueue.main.async { self.onRequestLinkInsert?(type) }
             } else if message.name == "wikiLinkClicked", let title = message.body as? String {
                 DispatchQueue.main.async { self.onWikiLinkClick?(title) }
+            } else if message.name == "requestWikiLinkInsert" {
+                DispatchQueue.main.async { self.onRequestWikiLinkInsert?() }
+            } else if message.name == "requestWikiLinkEdit", let title = message.body as? String {
+                DispatchQueue.main.async { self.onRequestWikiLinkEdit?(title) }
             }
         }
 
         func updateWikiLinks(_ map: [String: String]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setWikiLinks(\(json))")
             }
         }
@@ -1335,8 +1390,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateLinkPreviews(_ map: [String: [String: String]]) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: map),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setLinkPreviews(\(json))")
             }
         }
@@ -1344,14 +1398,39 @@ struct RichMarkdownEditor: NSViewRepresentable {
         func updateDeadLinks(_ uuids: Set<String>) {
             guard isReady, let webView else { return }
             if let data = try? JSONSerialization.data(withJSONObject: Array(uuids)),
-               let json = String(data: data, encoding: .utf8)
-            {
+               let json = String(data: data, encoding: .utf8) {
                 webView.evaluateJavaScript("window.setDeadLinkUUIDs(\(json))")
             }
         }
 
         func cleanDeadLinks() {
             webView?.evaluateJavaScript("window.cleanDeadLinks()")
+        }
+
+        func performWikiAction(_ action: WikiLinkAction) {
+            guard let webView else { return }
+            switch action {
+            case let .insertWiki(title):
+                let esc = escapeForTemplate(title)
+                webView.evaluateJavaScript("window.insertWikiLink(`\(esc)`)")
+            case let .insertReference(title, url):
+                insertLink(text: title, url: url)
+            case let .replaceWiki(newTitle):
+                let esc = escapeForTemplate(newTitle)
+                webView.evaluateJavaScript("window.replaceWikiLink(`\(esc)`)")
+            case let .replaceReference(newTitle, url):
+                guard let data = try? JSONSerialization.data(withJSONObject: [newTitle, url.absoluteString]),
+                      let json = String(data: data, encoding: .utf8) else { return }
+                webView.evaluateJavaScript("window.replaceWikiWithLink(...\(json))")
+            case .remove:
+                webView.evaluateJavaScript("window.removeWikiLink()")
+            }
+        }
+
+        private func escapeForTemplate(_ s: String) -> String {
+            s.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "`", with: "\\`")
+                .replacingOccurrences(of: "$", with: "\\$")
         }
     }
 }

@@ -256,6 +256,26 @@ export async function archiveProject(project: string): Promise<string> {
   const archiveFile = join(KNOWLEDGE_DIRS.archive, `${slugify(project)}_${timestamp()}.md`);
   const content = `# Archived: ${project}\n${new Date().toISOString()}\n\n${compressed}`;
   writeFileSync(archiveFile, content, "utf-8");
+
+  // Delete original project files after successful archive
+  const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
+  const contextPath = join(projectDir, "context.md");
+  const decisionsPath = join(projectDir, "decisions.md");
+  try {
+    if (existsSync(contextPath)) unlinkSync(contextPath);
+  } catch {}
+  try {
+    if (existsSync(decisionsPath)) unlinkSync(decisionsPath);
+  } catch {}
+  if (k.artifacts.length > 0) {
+    const artDir = join(projectDir, "artifacts");
+    for (const f of k.artifacts) {
+      try {
+        unlinkSync(join(artDir, f));
+      } catch {}
+    }
+  }
+
   notifyAppSync();
   return archiveFile;
 }

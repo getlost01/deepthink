@@ -18,12 +18,14 @@ struct ClaudeSettingsView: View {
         CLICommandEntry(
             name: "/deepthink",
             path: "~/.claude/commands/deepthink.md",
-            description: "Universal assistant — routes any query to the right tool. Handles search, capture, tasks, notes, projects, reminders, agents, skills, rules, and AI reasoning in one command."
+            description: "Universal assistant — routes any query to the right tool. Handles search, capture, " +
+                "tasks, notes, projects, reminders, agents, skills, rules, and AI reasoning in one command."
         ),
         CLICommandEntry(
             name: "/deepthink:sync-session",
             path: "~/.claude/commands/deepthink/sync-session.md",
-            description: "Capture the current Claude Code session to DeepThink. Reads git context, summarizes what was worked on, decisions made, files changed, and open items, then stores it in the knowledge base."
+            description: "Capture the current Claude Code session to DeepThink. Reads git context, summarizes what " +
+                "was worked on, decisions made, files changed, and open items, then stores it in the knowledge base."
         )
     ]
 

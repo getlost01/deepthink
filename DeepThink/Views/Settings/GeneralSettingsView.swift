@@ -401,7 +401,8 @@ private struct BackupSettingsSection: View {
         } message: {
             if let s = pendingRestore {
                 Text(
-                    "Your current workspace will be replaced with the snapshot from \(s.date.formatted(date: .abbreviated, time: .shortened)). The app will quit to apply the restore."
+                    "Your current workspace will be replaced with the snapshot from " +
+                        "\(s.date.formatted(date: .abbreviated, time: .shortened)). The app will quit to apply the restore."
                 )
             }
         }

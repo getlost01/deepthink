@@ -555,7 +555,7 @@
         return _Fragment.empty;
       if (!Array.isArray(value))
         throw new RangeError("Invalid input for Fragment.fromJSON");
-      return new _Fragment(value.map(schema2.nodeFromJSON));
+      return _Fragment.fromArray(value.map(schema2.nodeFromJSON));
     }
     /**
     Build a fragment from an array of nodes. Ensures that adjacent
@@ -778,7 +778,7 @@
     @internal
     */
     insertAt(pos, fragment) {
-      let content = insertInto(this.content, pos + this.openStart, fragment);
+      let content = insertInto(this.content, pos + this.openStart, fragment, this.openStart + 1, this.openEnd + 1);
       return content && new _Slice(content, this.openStart, this.openEnd);
     }
     /**
@@ -849,14 +849,14 @@
       throw new RangeError("Removing non-flat range");
     return content.replaceChild(index, child.copy(removeRange(child.content, from2 - offset - 1, to - offset - 1)));
   }
-  function insertInto(content, dist, insert, parent) {
+  function insertInto(content, dist, insert, openStart, openEnd, parent) {
     let { index, offset } = content.findIndex(dist), child = content.maybeChild(index);
     if (offset == dist || child.isText) {
-      if (parent && !parent.canReplace(index, index, insert))
+      if (parent && openStart <= 0 && openEnd <= 0 && !parent.canReplace(index, index, insert))
         return null;
       return content.cut(0, dist).append(insert).append(content.cut(dist));
     }
-    let inner = insertInto(child.content, dist - offset - 1, insert, child);
+    let inner = insertInto(child.content, dist - offset - 1, insert, index == 0 ? openStart - 1 : 0, index == content.childCount - 1 ? openEnd - 1 : 0, child);
     return inner && content.replaceChild(index, child.copy(inner));
   }
   function replace($from, $to, slice2) {
@@ -1334,10 +1334,11 @@
       this.content.forEach(f);
     }
     /**
-    Invoke a callback for all descendant nodes recursively between
+    Invoke a callback for all descendant nodes recursively overlapping
     the given two positions that are relative to start of this
-    node's content. The callback is invoked with the node, its
-    position relative to the original node (method receiver),
+    node's content. This includes all ancestors of the nodes
+    containing the two positions. The callback is invoked with the
+    node, its position relative to the original node (method receiver),
     its parent node, and its child index. When the callback returns
     false for a given node, that node's children will not be
     recursed over. The last parameter can be used to specify a
@@ -3293,6 +3294,8 @@
     @internal
     */
     serializeNodeInner(node, options) {
+      if (node.isText)
+        return doc(options).createTextNode(node.text);
       let { dom, contentDOM } = renderSpec(doc(options), this.nodes[node.type.name](node), null, node.attrs);
       if (contentDOM) {
         if (node.isLeaf)
@@ -3327,6 +3330,8 @@
       return toDOM && renderSpec(doc(options), toDOM(mark, inline2), null, mark.attrs);
     }
     static renderSpec(doc3, structure, xmlNS = null, blockArraysIn) {
+      if (typeof structure == "string")
+        return { dom: doc3.createTextNode(structure) };
       return renderSpec(doc3, structure, xmlNS, blockArraysIn);
     }
     /**
@@ -3395,11 +3400,9 @@
     return result;
   }
   function renderSpec(doc3, structure, xmlNS, blockArraysIn) {
-    if (typeof structure == "string")
-      return { dom: doc3.createTextNode(structure) };
-    if (structure.nodeType != null)
+    if (structure.nodeType == 1)
       return { dom: structure };
-    if (structure.dom && structure.dom.nodeType != null)
+    if (structure.dom && structure.dom.nodeType == 1)
       return structure;
     let tagName = structure[0], suspicious;
     if (typeof tagName != "string")
@@ -3433,6 +3436,8 @@
         if (i < structure.length - 1 || i > start)
           throw new RangeError("Content hole must be the only child of its parent node");
         return { dom, contentDOM: dom };
+      } else if (typeof child == "string") {
+        dom.appendChild(doc3.createTextNode(child));
       } else {
         let { dom: inner, contentDOM: innerContent } = renderSpec(doc3, child, xmlNS, blockArraysIn);
         dom.appendChild(inner);
@@ -15110,6 +15115,7 @@
       });
       extension.name = this.name;
       extension.parent = this.parent;
+      this.child = null;
       return extension;
     }
     extend(extendedConfig = {}) {
@@ -15638,6 +15644,36 @@
       );
     }
     /**
+     * Destroy the extension manager and clean up all extension references
+     * to prevent memory leaks through parent/child extension chains.
+     *
+     * Walks each extension's full parent chain and nulls every forward
+     * `parent.child → current` link where the parent still points to the
+     * current node. This breaks the retention path from module-scope
+     * singleton roots through deep extend() chains.
+     *
+     * Only ancestor `.child` links matching the current chain are cleared.
+     * The `.parent` pointer on ancestors is never touched — extensions
+     * may be shared across live editors, so their own backward references
+     * and non-matching forward links must remain intact.
+     */
+    destroy() {
+      this.extensions.forEach((extension) => {
+        let current = extension;
+        while (current.parent) {
+          const parent = current.parent;
+          if (parent.child === current) {
+            parent.child = null;
+          }
+          current = parent;
+        }
+      });
+      this.extensions = [];
+      this.baseExtensions = [];
+      this.schema = null;
+      this.editor = null;
+    }
+    /**
      * Go through all extensions, create extension storages & setup marks
      * & bind editor event listener.
      */
@@ -16042,12 +16078,23 @@
   });
   var Tabindex = Extension.create({
     name: "tabindex",
+    addOptions() {
+      return {
+        value: void 0
+      };
+    },
     addProseMirrorPlugins() {
       return [
         new Plugin({
           key: new PluginKey("tabindex"),
           props: {
-            attributes: () => this.editor.isEditable ? { tabindex: "0" } : {}
+            attributes: () => {
+              var _a2;
+              if (!this.editor.isEditable && this.options.value === void 0) {
+                return {};
+              }
+              return { tabindex: (_a2 = this.options.value) != null ? _a2 : "0" };
+            }
           }
         })
       ];
@@ -16378,6 +16425,7 @@ img.ProseMirror-separator {
       this.className = "tiptap";
       this.editorView = null;
       this.isFocused = false;
+      this.destroyed = false;
       this.isInitialized = false;
       this.extensionStorage = {};
       this.instanceId = Math.random().toString(36).slice(2, 9);
@@ -16660,7 +16708,7 @@ img.ProseMirror-separator {
      * Creates an extension manager.
      */
     createExtensionManager() {
-      var _a2, _b;
+      var _a2, _b, _c, _d;
       const coreExtensions = this.options.enableCoreExtensions ? [
         Editable,
         ClipboardTextSerializer.configure({
@@ -16669,7 +16717,9 @@ img.ProseMirror-separator {
         Commands,
         FocusEvents,
         Keymap,
-        Tabindex,
+        Tabindex.configure({
+          value: (_d = (_c = this.options.coreExtensionOptions) == null ? void 0 : _c.tabindex) == null ? void 0 : _d.value
+        }),
         Drop,
         Paste,
         Delete,
@@ -16907,9 +16957,18 @@ img.ProseMirror-separator {
      * Destroy the editor.
      */
     destroy() {
+      if (this.destroyed) {
+        return;
+      }
+      this.destroyed = true;
       this.emit("destroy");
       this.unmount();
       this.removeAllListeners();
+      this.extensionManager.destroy();
+      this.extensionManager = null;
+      this.schema = null;
+      this.commandManager = null;
+      this.extensionStorage = {};
     }
     /**
      * Check if the editor is already destroyed.
@@ -17069,6 +17128,26 @@ img.ProseMirror-separator {
   }
   function escapeForRegEx(string) {
     return string.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+  }
+  function getStyleProperty(element, propertyName) {
+    const styleAttr = element.getAttribute("style");
+    if (!styleAttr) {
+      return null;
+    }
+    const decls = styleAttr.split(";").map((decl) => decl.trim()).filter(Boolean);
+    const target = propertyName.toLowerCase();
+    for (let i = decls.length - 1; i >= 0; i -= 1) {
+      const decl = decls[i];
+      const colonIndex = decl.indexOf(":");
+      if (colonIndex === -1) {
+        continue;
+      }
+      const prop = decl.slice(0, colonIndex).trim().toLowerCase();
+      if (prop === target) {
+        return decl.slice(colonIndex + 1).trim();
+      }
+    }
+    return null;
   }
   var markdown_exports = {};
   __export2(markdown_exports, {
@@ -18529,7 +18608,7 @@ ${prefix}
   });
 
   // node_modules/linkifyjs/dist/linkify.mjs
-  var encodedTlds = "aaa1rp3bb0ott3vie4c1le2ogado5udhabi7c0ademy5centure6ountant0s9o1tor4d0s1ult4e0g1ro2tna4f0l1rica5g0akhan5ency5i0g1rbus3force5tel5kdn3l0ibaba4pay4lfinanz6state5y2sace3tom5m0azon4ericanexpress7family11x2fam3ica3sterdam8nalytics7droid5quan4z2o0l2partments8p0le4q0uarelle8r0ab1mco4chi3my2pa2t0e3s0da2ia2sociates9t0hleta5torney7u0ction5di0ble3o3spost5thor3o0s4w0s2x0a2z0ure5ba0by2idu3namex4d1k2r0celona5laycard4s5efoot5gains6seball5ketball8uhaus5yern5b0c1t1va3cg1n2d1e0ats2uty4er2rlin4st0buy5t2f1g1h0arti5i0ble3d1ke2ng0o3o1z2j1lack0friday9ockbuster8g1omberg7ue3m0s1w2n0pparibas9o0ats3ehringer8fa2m1nd2o0k0ing5sch2tik2on4t1utique6x2r0adesco6idgestone9oadway5ker3ther5ussels7s1t1uild0ers6siness6y1zz3v1w1y1z0h3ca0b1fe2l0l1vinklein9m0era3p2non3petown5ital0one8r0avan4ds2e0er0s4s2sa1e1h1ino4t0ering5holic7ba1n1re3c1d1enter4o1rn3f0a1d2g1h0anel2nel4rity4se2t2eap3intai5ristmas6ome4urch5i0priani6rcle4sco3tadel4i0c2y3k1l0aims4eaning6ick2nic1que6othing5ud3ub0med6m1n1o0ach3des3ffee4llege4ogne5m0mbank4unity6pany2re3uter5sec4ndos3struction8ulting7tact3ractors9oking4l1p2rsica5untry4pon0s4rses6pa2r0edit0card4union9icket5own3s1uise0s6u0isinella9v1w1x1y0mru3ou3z2dad1nce3ta1e1ing3sun4y2clk3ds2e0al0er2s3gree4livery5l1oitte5ta3mocrat6ntal2ist5si0gn4v2hl2iamonds6et2gital5rect0ory7scount3ver5h2y2j1k1m1np2o0cs1tor4g1mains5t1wnload7rive4tv2ubai3nlop4pont4rban5vag2r2z2earth3t2c0o2deka3u0cation8e1g1mail3erck5nergy4gineer0ing9terprises10pson4quipment8r0icsson6ni3s0q1tate5t1u0rovision8s2vents5xchange6pert3osed4ress5traspace10fage2il1rwinds6th3mily4n0s2rm0ers5shion4t3edex3edback6rrari3ero6i0delity5o2lm2nal1nce1ial7re0stone6mdale6sh0ing5t0ness6j1k1lickr3ghts4r2orist4wers5y2m1o0o0d1tball6rd1ex2sale4um3undation8x2r0ee1senius7l1ogans4ntier7tr2ujitsu5n0d2rniture7tbol5yi3ga0l0lery3o1up4me0s3p1rden4y2b0iz3d0n2e0a1nt0ing5orge5f1g0ee3h1i0ft0s3ves2ing5l0ass3e1obal2o4m0ail3bh2o1x2n1odaddy5ld0point6f2o0dyear5g0le4p1t1v2p1q1r0ainger5phics5tis4een3ipe3ocery4up4s1t1u0cci3ge2ide2tars5ru3w1y2hair2mburg5ngout5us3bo2dfc0bank7ealth0care8lp1sinki6re1mes5iphop4samitsu7tachi5v2k0t2m1n1ockey4ldings5iday5medepot5goods5s0ense7nda3rse3spital5t0ing5t0els3mail5use3w2r1sbc3t1u0ghes5yatt3undai7ibm2cbc2e1u2d1e0ee3fm2kano4l1m0amat4db2mo0bilien9n0c1dustries8finiti5o2g1k1stitute6urance4e4t0ernational10uit4vestments10o1piranga7q1r0ish4s0maili5t0anbul7t0au2v3jaguar4va3cb2e0ep2tzt3welry6io2ll2m0p2nj2o0bs1urg4t1y2p0morgan6rs3uegos4niper7kaufen5ddi3e0rryhotels6properties14fh2g1h1i0a1ds2m1ndle4tchen5wi3m1n1oeln3matsu5sher5p0mg2n2r0d1ed3uokgroup8w1y0oto4z2la0caixa5mborghini8er3nd0rover6xess5salle5t0ino3robe5w0yer5b1c1ds2ease3clerc5frak4gal2o2xus4gbt3i0dl2fe0insurance9style7ghting6ke2lly3mited4o2ncoln4k2ve1ing5k1lc1p2oan0s3cker3us3l1ndon4tte1o3ve3pl0financial11r1s1t0d0a3u0ndbeck6xe1ury5v1y2ma0drid4if1son4keup4n0agement7go3p1rket0ing3s4riott5shalls7ttel5ba2c0kinsey7d1e0d0ia3et2lbourne7me1orial6n0u2rckmsd7g1h1iami3crosoft7l1ni1t2t0subishi9k1l0b1s2m0a2n1o0bi0le4da2e1i1m1nash3ey2ster5rmon3tgage6scow4to0rcycles9v0ie4p1q1r1s0d2t0n1r2u0seum3ic4v1w1x1y1z2na0b1goya4me2vy3ba2c1e0c1t0bank4flix4work5ustar5w0s2xt0direct7us4f0l2g0o2hk2i0co2ke1on3nja3ssan1y5l1o0kia3rton4w0ruz3tv4p1r0a1w2tt2u1yc2z2obi1server7ffice5kinawa6layan0group9lo3m0ega4ne1g1l0ine5oo2pen3racle3nge4g0anic5igins6saka4tsuka4t2vh3pa0ge2nasonic7ris2s1tners4s1y3y2ccw3e0t2f0izer5g1h0armacy6d1ilips5one2to0graphy6s4ysio5ics1tet2ures6d1n0g1k2oneer5zza4k1l0ace2y0station9umbing5s3m1n0c2ohl2ker3litie5rn2st3r0axi3ess3ime3o0d0uctions8f1gressive8mo2perties3y5tection8u0dential9s1t1ub2w0c2y2qa1pon3uebec3st5racing4dio4e0ad1lestate6tor2y4cipes5d0stone5umbrella9hab3ise0n3t2liance6n0t0als5pair3ort3ublican8st0aurant8view0s5xroth6ich0ardli6oh3l1o1p2o0cks3deo3gers4om3s0vp3u0gby3hr2n2w0e2yukyu6sa0arland6fe0ty4kura4le1on3msclub4ung5ndvik0coromant12ofi4p1rl2s1ve2xo3b0i1s2c0b1haeffler7midt4olarships8ol3ule3warz5ience5ot3d1e0arch3t2cure1ity6ek2lect4ner3rvices6ven3w1x0y3fr2g1h0angrila6rp3ell3ia1ksha5oes2p0ping5uji3w3i0lk2na1gles5te3j1k0i0n2y0pe4l0ing4m0art3ile4n0cf3o0ccer3ial4ftbank4ware6hu2lar2utions7ng1y2y2pa0ce3ort2t3r0l2s1t0ada2ples4r1tebank4farm7c0group6ockholm6rage3e3ream4udio2y3yle4u0cks3pplies3y2ort5rf1gery5zuki5v1watch4iss4x1y0dney4stems6z2tab1ipei4lk2obao4rget4tamotors6r2too4x0i3c0i2d0k2eam2ch0nology8l1masek5nnis4va3f1g1h0d1eater2re6iaa2ckets5enda4ps2res2ol4j0maxx4x2k0maxx5l1m0all4n1o0day3kyo3ols3p1ray3shiba5tal3urs3wn2yota3s3r0ade1ing4ining5vel0ers0insurance16ust3v2t1ube2i1nes3shu4v0s2w1z2ua1bank3s2g1k1nicom3versity8o2ol2ps2s1y1z2va0cations7na1guard7c1e0gas3ntures6risign5m\xF6gensberater2ung14sicherung10t2g1i0ajes4deo3g1king4llas4n1p1rgin4sa1ion4va1o3laanderen9n1odka3lvo3te1ing3o2yage5u2wales2mart4ter4ng0gou5tch0es6eather0channel12bcam3er2site5d0ding5ibo2r3f1hoswho6ien2ki2lliamhill9n0dows4e1ners6me2olterskluwer11odside6rk0s2ld3w2s1tc1f3xbox3erox4ihuan4n2xx2yz3yachts4hoo3maxun5ndex5e1odobashi7ga2kohama6u0tube6t1un3za0ppos4ra3ero3ip2m1one3uerich6w2";
+  var encodedTlds = "aaa1rp3bb0ott3vie4c1le2ogado5udhabi7c0ademy5centure6ountant0s9o1tor4d0s1ult4e0g1ro2tna4f0l1rica5g0akhan5ency5i0g1rbus3force5tel5kdn3l0ibaba4pay4lfinanz6state5y2sace3tom5m0azon4ericanexpress7family11x2fam3ica3sterdam8nalytics7droid5quan4z2o0l2partments8p0le4q0uarelle8r0ab1mco4chi3my2pa2t0e3s0da2ia2sociates9t0hleta5torney7u0ction5di0ble3o3spost5thor3o0s4w0s2x0a2z0ure5ba0by2idu3namex4d1k2r0celona5laycard4s5efoot5gains6seball5ketball8uhaus5yern5b0c1t1va3cg1n2d1e0ats2uty4er2rlin4st0buy5t2f1g1h0arti5i0ble3d1ke2ng0o3o1z2j1lack0friday9ockbuster8g1omberg7ue3m0s1w2n0pparibas9o0ats3ehringer8fa2m1nd2o0k0ing5sch2tik2on4t1utique6x2r0adesco6idgestone9oadway5ker3ther5ussels7s1t1uild0ers6siness6y1zz3v1w1y1z0h3ca0b1fe2l0l1vinklein9m0era3p2non3petown5ital0one8r0avan4ds2e0er0s4s2sa1e1h1ino4t0ering5holic7ba1n1re3c1d1enter4o1rn3f0a1d2g1h0anel2nel4rity4se2t2eap3intai5ristmas6ome4urch5i0priani6rcle4sco3tadel4i0c2y3k1l0aims4eaning6ick2nic1que6othing5ud3ub0med6m1n1o0ach3des3ffee4llege4ogne5m0mbank4unity6pany2re3uter5sec4ndos3struction8ulting7tact3ractors9oking4l1p2rsica5untry4pon0s4rses6pa2r0edit0card4union9icket5own3s1uise0s6u0isinella9v1w1x1y0mru3ou3z2dad1nce3ta1e1ing3sun4y2clk3ds2e0al0er2s3gree4livery5l1oitte5ta3mocrat6ntal2ist5si0gn4v2hl2iamonds6et2gital5rect0ory7scount3ver5h2y2j1k1m1np2o0cs1tor4g1mains5t1wnload7rive4tv2ubai3pont4rban5vag2r2z2earth3t2c0o2deka3u0cation8e1g1mail3erck5nergy4gineer0ing9terprises10pson4quipment8r0icsson6ni3s0q1tate5t1u0rovision8s2vents5xchange6pert3osed4ress5traspace10fage2il1rwinds6th3mily4n0s2rm0ers5shion4t3edex3edback6rrari3ero6i0delity5o2lm2nal1nce1ial7re0stone6mdale6sh0ing5t0ness6j1k1lickr3ghts4r2orist4wers5y2m1o0o0d1tball6rd1ex2sale4um3undation8x2r0ee1senius7l1ogans4ntier7tr2ujitsu5n0d2rniture7tbol5yi3ga0l0lery3o1up4me0s3p1rden4y2b0iz3d0n2e0a1nt0ing5orge5f1g0ee3h1i0ft0s3ves2ing5l0ass3e1obal2o4m0ail3bh2o1x2n1odaddy5ld0point6f2odyear5g0le4p1t1v2p1q1r0ainger5phics5tis4een3ipe3ocery4up4s1t1u0cci3ge2ide2tars5ru3w1y2hair2mburg5ngout5us3bo2dfc0bank7ealth0care8lp1sinki6re1mes5iphop4samitsu7tachi5v2k0t2m1n1ockey4ldings5iday5medepot5goods5s0ense7nda3rse3spital5t0ing5t0els3mail5use3w2r1sbc3t1u0ghes5yatt3undai7ibm2cbc2e1u2d1e0ee3fm2kano4l1m0amat4db2mo0bilien9n0c1dustries8finiti5o2g1k1stitute6urance4e4t0ernational10uit4vestments10o1piranga7q1r0ish4s0maili5t0anbul7t0au2v3jaguar4va3cb2e0ep2tzt3welry6io2ll2m0p2nj2o0bs1urg4t1y2p0morgan6rs3uegos4niper7kaufen5ddi3e0rryhotels6properties14fh2g1h1i0a1ds2m1ndle4tchen5wi3m1n1oeln3matsu5sher5p0mg2n2r0d1ed3uokgroup8w1y0oto4z2la0caixa5mborghini8er3nd0rover6xess5salle5t0ino3robe5w0yer5b1c1ds2ease3clerc5frak4gal2o2xus4gbt3i0dl2fe0insurance9style7ghting6ke2lly3mited4o2ncoln4k2ve1ing5k1lc1p2oan0s3cker3us3l1ndon4tte1o3ve3pl0financial11r1s1t0d0a3u0ndbeck6xe1ury5v1y2ma0drid4if1son4keup4n0agement7go3p1rket0ing3s4riott5shalls7ttel5ba2c0kinsey7d1e0d0ia3et2lbourne7me1orial6n0u2rck0msd7g1h1iami3crosoft7l1ni1t2t0subishi9k1l0b1s2m0a2n1o0bi0le4da2e1i1m1nash3ey2ster5rmon3tgage6scow4to0rcycles9v0ie4p1q1r1s0d2t0n1r2u0seum3ic4v1w1x1y1z2na0b1goya4me2vy3ba2c1e0c1t0bank4flix4work5ustar5w0s2xt0direct7us4f0l2g0o2hk2i0co2ke1on3nja3ssan1y5l1o0kia3rton4w0ruz3tv4p1r0a1w2tt2u1yc2z2obi1server7ffice5kinawa6layan0group9lo3m0ega4ne1g1l0ine5oo2pen3racle3nge4g0anic5igins6saka4tsuka4t2vh3pa0ge2nasonic7ris2s1tners4s1y3y2ccw3e0t2f0izer5g1h0armacy6d1ilips5one2to0graphy6s4ysio5ics1tet2ures6d1n0g1k2oneer5zza4k1l0ace2y0station9umbing5s3m1n0c2ohl2ker3litie5rn2st3r0axi3ess3ime3o0d0uctions8f1gressive8mo2perties3y5tection8u0dential9s1t1ub2w0c2y2qa1pon3uebec3st5racing4dio4e0ad1lestate6tor2y4cipes5d0umbrella9hab3ise0n3t2liance6n0t0als5pair3ort3ublican8st0aurant8view0s5xroth6ich0ardli6oh3l1o1p2o0cks3deo3gers4om3s0vp3u0gby3hr2n2w0e2yukyu6sa0arland6fe0ty4kura4le1on3msclub4ung5ndvik0coromant12ofi4p1rl2s1ve2xo3b0i1s2c0b1haeffler7midt4olarships8ol3ule3warz5ience5ot3d1e0arch3t2cure1ity6ek2lect4ner3rvices6ven3w1x0y3fr2g1h0angrila6rp3ell3ia1ksha5oes2p0ping5uji3w3i0lk2na1gles5te3j1k0i0n2y0pe4l0ing4m0art3ile4n0cf3o0ccer3ial4ftbank4ware6hu2lar2utions7ng1y2y2pa0ce3ort2t3r0l2s1t0ada2ples4r1tebank4farm7c0group6ockholm6rage3e3ream4udio2y3yle4u0cks3pplies3y2ort5rf1gery5zuki5v1watch4iss4x1y0dney4stems6z2tab1ipei4lk2obao4rget4tamotors6r2too4x0i3c0i2d0k2eam2ch0nology8l1masek5nnis4va3f1g1h0d1eater2re6iaa2ckets5enda4ps2res2ol4j0maxx4x2k0maxx5l1m0all4n1o0day3kyo3ols3p1ray3shiba5tal3urs3wn2yota3s3r0ade1ing4ining5vel0ers0insurance16ust3v2t1ube2i1nes3shu4v0s2w1z2ua1bank3s2g1k1nicom3versity8o2ol2ps2s1y1z2va0cations7na1guard7c1e0gas3ntures6risign5m\xF6gensberater2ung14sicherung10t2g1i0ajes4deo3g1king4llas4n1p1rgin4sa1ion4va1o3laanderen9n1odka3lvo3te1ing3o2yage5u2wales2mart4ter4ng0gou5tch0es6eather0channel12bcam3er2site5d0ding5ibo2r3f1hoswho6ien2ki2lliamhill9n0dows4e1ners6me2oodside6rk0s2ld3w2s1tc1f3xbox3erox4ihuan4n2xx2yz3yachts4hoo3maxun5ndex5e1odobashi7ga2kohama6u0tube6t1un3za0ppos4ra3ero3ip2m1one3uerich6w2";
   var encodedUtlds = "\u03B5\u03BB1\u03C52\u0431\u04331\u0435\u043B3\u0434\u0435\u0442\u04384\u0435\u044E2\u043A\u0430\u0442\u043E\u043B\u0438\u043A6\u043E\u043C3\u043C\u043A\u04342\u043E\u043D1\u0441\u043A\u0432\u04306\u043E\u043D\u043B\u0430\u0439\u043D5\u0440\u04333\u0440\u0443\u04412\u04442\u0441\u0430\u0439\u04423\u0440\u04313\u0443\u043A\u04403\u049B\u0430\u04373\u0570\u0561\u05753\u05D9\u05E9\u05E8\u05D0\u05DC5\u05E7\u05D5\u05DD3\u0627\u0628\u0648\u0638\u0628\u064A5\u0631\u0627\u0645\u0643\u06485\u0644\u0627\u0631\u062F\u06464\u0628\u062D\u0631\u064A\u06465\u062C\u0632\u0627\u0626\u06315\u0633\u0639\u0648\u062F\u064A\u06296\u0639\u0644\u064A\u0627\u06465\u0645\u063A\u0631\u06285\u0645\u0627\u0631\u0627\u062A5\u06CC\u0631\u0627\u06465\u0628\u0627\u0631\u062A2\u0632\u0627\u06314\u064A\u062A\u06433\u06BE\u0627\u0631\u062A5\u062A\u0648\u0646\u06334\u0633\u0648\u062F\u0627\u06463\u0631\u064A\u06295\u0634\u0628\u0643\u06294\u0639\u0631\u0627\u06422\u06282\u0645\u0627\u06464\u0641\u0644\u0633\u0637\u064A\u06466\u0642\u0637\u06313\u0643\u0627\u062B\u0648\u0644\u064A\u06436\u0648\u06453\u0645\u0635\u06312\u0644\u064A\u0633\u064A\u06275\u0648\u0631\u064A\u062A\u0627\u0646\u064A\u06277\u0642\u06394\u0647\u0645\u0631\u0627\u06475\u067E\u0627\u06A9\u0633\u062A\u0627\u06467\u0680\u0627\u0631\u062A4\u0915\u0949\u092E3\u0928\u0947\u091F3\u092D\u093E\u0930\u09240\u092E\u094D3\u094B\u09245\u0938\u0902\u0917\u0920\u09285\u09AC\u09BE\u0982\u09B2\u09BE5\u09AD\u09BE\u09B0\u09A42\u09F0\u09A44\u0A2D\u0A3E\u0A30\u0A244\u0AAD\u0ABE\u0AB0\u0AA44\u0B2D\u0B3E\u0B30\u0B244\u0B87\u0BA8\u0BCD\u0BA4\u0BBF\u0BAF\u0BBE6\u0BB2\u0B99\u0BCD\u0B95\u0BC86\u0B9A\u0BBF\u0B99\u0BCD\u0B95\u0BAA\u0BCD\u0BAA\u0BC2\u0BB0\u0BCD11\u0C2D\u0C3E\u0C30\u0C24\u0C4D5\u0CAD\u0CBE\u0CB0\u0CA44\u0D2D\u0D3E\u0D30\u0D24\u0D025\u0DBD\u0D82\u0D9A\u0DCF4\u0E04\u0E2D\u0E213\u0E44\u0E17\u0E223\u0EA5\u0EB2\u0EA73\u10D2\u10D42\u307F\u3093\u306A3\u30A2\u30DE\u30BE\u30F34\u30AF\u30E9\u30A6\u30C94\u30B0\u30FC\u30B0\u30EB4\u30B3\u30E02\u30B9\u30C8\u30A23\u30BB\u30FC\u30EB3\u30D5\u30A1\u30C3\u30B7\u30E7\u30F36\u30DD\u30A4\u30F3\u30C84\u4E16\u754C2\u4E2D\u4FE11\u56FD1\u570B1\u6587\u7F513\u4E9A\u9A6C\u900A3\u4F01\u4E1A2\u4F5B\u5C712\u4FE1\u606F2\u5065\u5EB72\u516B\u53662\u516C\u53F81\u76CA2\u53F0\u6E7E1\u70632\u5546\u57CE1\u5E971\u68072\u5609\u91CC0\u5927\u9152\u5E975\u5728\u7EBF2\u5927\u62FF2\u5929\u4E3B\u65593\u5A31\u4E502\u5BB6\u96FB2\u5E7F\u4E1C2\u5FAE\u535A2\u6148\u55842\u6211\u7231\u4F603\u624B\u673A2\u62DB\u80582\u653F\u52A11\u5E9C2\u65B0\u52A0\u57612\u95FB2\u65F6\u5C1A2\u66F8\u7C4D2\u673A\u67842\u6DE1\u9A6C\u95213\u6E38\u620F2\u6FB3\u95802\u70B9\u770B2\u79FB\u52A82\u7EC4\u7EC7\u673A\u67844\u7F51\u57401\u5E971\u7AD91\u7EDC2\u8054\u901A2\u8C37\u6B4C2\u8D2D\u72692\u901A\u8CA92\u96C6\u56E22\u96FB\u8A0A\u76C8\u79D14\u98DE\u5229\u6D663\u98DF\u54C12\u9910\u53852\u9999\u683C\u91CC\u62C93\u6E2F2\uB2F7\uB1371\uCEF42\uC0BC\uC1312\uD55C\uAD6D2";
   var numeric = "numeric";
   var ascii = "ascii";
@@ -19460,8 +19539,6 @@ ${prefix}
     ta(Email$1, groups.domain, EmailDomain);
     tt(Email$1, DOT, EmailDomainDot);
     tt(Email$1, HYPHEN, EmailDomainHyphen);
-    const EmailColon = tt(Email$1, COLON);
-    ta(EmailColon, groups.numeric, Email);
     const DomainHyphen = tt(Domain, HYPHEN);
     const DomainDot = tt(Domain, DOT);
     tt(DomainHyphen, HYPHEN, DomainHyphen);
@@ -19525,11 +19602,11 @@ ${prefix}
       const [OPEN, CLOSE] = bracketPairs[i];
       const UrlOpen = tt(Url$1, OPEN);
       tt(UrlNonaccept, OPEN, UrlOpen);
-      tt(UrlOpen, CLOSE, Url$1);
       const UrlOpenQ = makeState(Url);
       ta(UrlOpen, qsAccepting, UrlOpenQ);
       const UrlOpenSyms = makeState();
-      ta(UrlOpen, qsNonAccepting);
+      ta(UrlOpen, qsNonAccepting, UrlOpenSyms);
+      tt(UrlOpen, CLOSE, Url$1);
       ta(UrlOpenQ, qsAccepting, UrlOpenQ);
       ta(UrlOpenQ, qsNonAccepting, UrlOpenSyms);
       ta(UrlOpenSyms, qsAccepting, UrlOpenQ);
@@ -20176,6 +20253,25 @@ ${prefix}
       return [inputRule];
     }
   });
+  function isSameLineOrderedListToken(token) {
+    var _a2, _b;
+    const nestedToken = (_a2 = token.tokens) == null ? void 0 : _a2[0];
+    return Boolean(
+      token.text && ((_b = token.tokens) == null ? void 0 : _b.length) === 1 && (nestedToken == null ? void 0 : nestedToken.type) === "list" && nestedToken.ordered && nestedToken.raw === token.text
+    );
+  }
+  function parseSameLineOrderedListText(text2, helpers) {
+    if (helpers.tokenizeInline) {
+      return helpers.parseInline(helpers.tokenizeInline(text2));
+    }
+    return helpers.parseInline([
+      {
+        type: "text",
+        raw: text2,
+        text: text2
+      }
+    ]);
+  }
   var ListItem = Node3.create({
     name: "listItem",
     addOptions() {
@@ -20206,6 +20302,17 @@ ${prefix}
       const parseBlockChildren = (_a2 = helpers.parseBlockChildren) != null ? _a2 : helpers.parseChildren;
       let content = [];
       if (token.tokens && token.tokens.length > 0) {
+        if (isSameLineOrderedListToken(token)) {
+          return {
+            type: "listItem",
+            content: [
+              {
+                type: "paragraph",
+                content: parseSameLineOrderedListText(token.text || "", helpers)
+              }
+            ]
+          };
+        }
         const hasParagraphTokens = token.tokens.some((t) => t.type === "paragraph");
         if (hasParagraphTokens) {
           content = parseBlockChildren(token.tokens);
@@ -22262,6 +22369,7 @@ ${prefix}
     addOptions() {
       return {
         limit: null,
+        autoTrim: true,
         mode: "textSize",
         textCounter: (text2) => text2.length,
         wordCounter: (text2) => text2.split(" ").filter((word) => word !== "").length
@@ -22299,7 +22407,8 @@ ${prefix}
               return;
             }
             const limit = this.options.limit;
-            if (limit === null || limit === void 0 || limit === 0) {
+            const autoTrim = this.options.autoTrim;
+            if (limit === null || limit === void 0 || limit === 0 || autoTrim === false) {
               initialEvaluationDone = true;
               return;
             }
@@ -22722,7 +22831,11 @@ ${prefix}
       return {
         color: {
           default: null,
-          parseHTML: (element) => element.getAttribute("data-color") || element.style.backgroundColor,
+          // Prefer `data-color` (set by our own `renderHTML`) for lossless
+          // round-trips. Otherwise parse the raw inline `style` attribute so
+          // the original color format (e.g. `#rrggbb`) is preserved instead of
+          // the canonicalized `rgb(...)` value from `element.style.backgroundColor`.
+          parseHTML: (element) => element.getAttribute("data-color") || getStyleProperty(element, "background-color") || element.style.backgroundColor,
           renderHTML: (attributes) => {
             if (!attributes.color) {
               return {};
@@ -25173,6 +25286,14 @@ ${prefix}
           allowTableNodeSelection: this.options.allowTableNodeSelection
         })
       ];
+    },
+    addNodeView() {
+      const isResizable = this.options.resizable && this.editor.isEditable;
+      const View = this.options.View;
+      if (isResizable || !View) {
+        return null;
+      }
+      return ({ node, view }) => new View(node, this.options.cellMinWidth, view);
     },
     extendNodeSchema(extension) {
       const context = {
@@ -32777,6 +32898,7 @@ ${element.innerHTML}
     bold: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>`,
     italic: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>`,
     highlight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`,
+    wikiLink: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="10" rx="2"/><path d="M7 11h2l1 2 1-4 1 4 1-2h2"/></svg>`,
     linkTask: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>`,
     linkNote: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
     linkReminder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
@@ -32797,6 +32919,9 @@ ${element.innerHTML}
     { title: "Bold", icon: IC.bold, group: "Inline", cmd: (e) => e.chain().focus().toggleBold().run() },
     { title: "Italic", icon: IC.italic, group: "Inline", cmd: (e) => e.chain().focus().toggleItalic().run() },
     { title: "Highlight", icon: IC.highlight, group: "Inline", cmd: (e) => e.chain().focus().toggleHighlight().run() },
+    { title: "Wiki Link", icon: IC.wikiLink, group: "Link", wikiOnly: true, cmd: () => {
+      window.webkit.messageHandlers.requestWikiLinkInsert.postMessage("");
+    } },
     { title: "Link Task", icon: IC.linkTask, group: "Link", cmd: () => {
       window.webkit.messageHandlers.requestLinkInsert.postMessage("task");
     } },
@@ -32831,12 +32956,15 @@ ${element.innerHTML}
     const left = Math.max(margin, Math.min(rect.left, window.innerWidth - 220 - margin));
     slashPopup.style.left = left + "px";
     const spaceBelow = window.innerHeight - rect.bottom - margin;
-    if (spaceBelow < menuMaxH && rect.top > menuMaxH) {
+    const spaceAbove = rect.top - margin;
+    if (spaceBelow < menuMaxH && spaceAbove > spaceBelow) {
       slashPopup.style.top = "auto";
       slashPopup.style.bottom = window.innerHeight - rect.top + 4 + "px";
+      slashPopup.style.maxHeight = Math.min(menuMaxH, spaceAbove - 4) + "px";
     } else {
       slashPopup.style.top = rect.bottom + 4 + "px";
       slashPopup.style.bottom = "auto";
+      slashPopup.style.maxHeight = Math.min(menuMaxH, spaceBelow) + "px";
     }
   }
   function renderSlashItems(items) {
@@ -32850,7 +32978,8 @@ ${element.innerHTML}
     }
     let html = "";
     let lastGroup = null;
-    const isFiltering = items.length !== slashItems.length;
+    const baseCount = slashItems.filter((item) => wikiMode ? true : !item.wikiOnly).length;
+    const isFiltering = items.length !== baseCount;
     items.forEach((item, i) => {
       if (!isFiltering && item.group && item.group !== lastGroup) {
         html += `<div class="slash-group-label">${item.group}</div>`;
@@ -32862,6 +32991,8 @@ ${element.innerHTML}
     </div>`;
     });
     slashPopup.innerHTML = html;
+    const selectedEl = slashPopup.querySelector(".slash-item.selected");
+    if (selectedEl) selectedEl.scrollIntoView({ block: "nearest" });
     slashPopup.querySelectorAll(".slash-item").forEach((el) => {
       el.addEventListener("mouseenter", () => {
         slashSelectedIndex = parseInt(el.dataset.index);
@@ -32892,7 +33023,7 @@ ${element.innerHTML}
           startOfLine: false,
           items: ({ query }) => {
             return slashItems.filter(
-              (item) => item.title.toLowerCase().includes(query.toLowerCase())
+              (item) => (wikiMode ? true : !item.wikiOnly) && item.title.toLowerCase().includes(query.toLowerCase())
             ).slice(0, 20);
           },
           render: () => {
@@ -32959,6 +33090,9 @@ ${element.innerHTML}
       ];
     }
   });
+  var wikiMode = false;
+  var lastClickedWikiFrom = -1;
+  var lastClickedWikiTo = -1;
   var wikiLinkMap = {};
   var wikiLinkPattern = /\[\[([^\]]+)\]\]/g;
   var wikiLinkPlugin = new Plugin({
@@ -33218,12 +33352,12 @@ ${element.innerHTML}
       if (isSettingContent) return;
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => {
-        const md2 = editor2.storage.markdown.getMarkdown();
+        const md2 = unescapeWikiLinks(editor2.storage.markdown.getMarkdown());
         window.webkit.messageHandlers.contentChanged.postMessage(md2);
         refreshDeadLinkStyles();
       }, 150);
       const wikiAcResult = getWikiQueryBeforeCursor();
-      if (wikiAcResult) {
+      if (wikiAcResult && wikiMode) {
         showWikiAc(wikiAcResult.query, wikiAcResult.from);
       } else {
         hideWikiAc();
@@ -33236,14 +33370,48 @@ ${element.innerHTML}
     if (el) {
       const title = el.getAttribute("data-title");
       if (title) {
-        if (wikiLinkMap[title]) {
-          window.webkit.messageHandlers.linkClicked.postMessage(wikiLinkMap[title]);
+        if (wikiMode) {
+          const range = findWikiLinkRangeFromDOM(el, title);
+          lastClickedWikiFrom = range ? range.from : -1;
+          lastClickedWikiTo = range ? range.to : -1;
+          window.webkit.messageHandlers.requestWikiLinkEdit.postMessage(title);
         } else {
-          window.webkit.messageHandlers.wikiLinkClicked.postMessage(title);
+          const mapped = wikiLinkMap[title];
+          if (mapped && mapped.startsWith("deepthink://")) {
+            window.webkit.messageHandlers.linkClicked.postMessage(mapped);
+          } else {
+            window.webkit.messageHandlers.wikiLinkClicked.postMessage(title);
+          }
         }
       }
     }
   });
+  function findWikiLinkRangeFromDOM(el, title) {
+    try {
+      const approxPos = editor.view.posAtDOM(el, 0);
+      const pattern = `[[${title}]]`;
+      const { doc: doc3 } = editor.state;
+      let best = null;
+      let bestDist = Infinity;
+      doc3.descendants((node, pos) => {
+        if (!node.isText || !node.text) return;
+        let idx = node.text.indexOf(pattern);
+        while (idx !== -1) {
+          const from2 = pos + idx;
+          const to = from2 + pattern.length;
+          const dist = Math.abs(from2 - approxPos);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = { from: from2, to };
+          }
+          idx = node.text.indexOf(pattern, idx + 1);
+        }
+      });
+      return best;
+    } catch (_) {
+      return null;
+    }
+  }
   window.setWikiLinks = function(linksJson) {
     wikiLinkMap = linksJson || {};
     const { tr: tr2 } = editor.state;
@@ -33251,6 +33419,9 @@ ${element.innerHTML}
   };
   function escapeHtml2(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function unescapeWikiLinks(md2) {
+    return md2.replace(/\\\[\\\[([^\]]*?)\\\]\\\]/g, "[[$1]]");
   }
   var wikiAcPopup = null;
   var wikiAcIndex = 0;
@@ -33641,15 +33812,52 @@ ${element.innerHTML}
     isSettingContent = true;
     editor.commands.setContent(md2);
     isSettingContent = false;
+    window.webkit.messageHandlers.contentChanged.postMessage(unescapeWikiLinks(md2));
     setTimeout(() => refreshDeadLinkStyles(), 50);
   };
   window.getMarkdown = function() {
-    return editor.storage.markdown.getMarkdown();
+    return unescapeWikiLinks(editor.storage.markdown.getMarkdown());
   };
   window.setReadOnly = function(readOnly) {
     editor.setEditable(!readOnly);
     const toolbar = document.getElementById("toolbar");
     if (toolbar) toolbar.style.display = readOnly ? "none" : "";
+  };
+  window.setWikiMode = function(enabled) {
+    wikiMode = !!enabled;
+  };
+  function syncContentNow() {
+    clearTimeout(debounceTimer);
+    const md2 = unescapeWikiLinks(editor.storage.markdown.getMarkdown());
+    window.webkit.messageHandlers.contentChanged.postMessage(md2);
+  }
+  window.insertWikiLink = function(title) {
+    editor.chain().focus().insertContent(`[[${title}]]`).run();
+    syncContentNow();
+  };
+  window.replaceWikiLink = function(title) {
+    if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+      editor.chain().focus().deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo }).insertContent(`[[${title}]]`).run();
+      lastClickedWikiFrom = -1;
+      lastClickedWikiTo = -1;
+      syncContentNow();
+    }
+  };
+  window.replaceWikiWithLink = function(text2, url) {
+    if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+      editor.chain().focus().deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo }).insertContent({ type: "text", text: text2, marks: [{ type: "link", attrs: { href: url } }] }).run();
+      lastClickedWikiFrom = -1;
+      lastClickedWikiTo = -1;
+      syncContentNow();
+    }
+  };
+  window.removeWikiLink = function() {
+    if (lastClickedWikiFrom >= 0 && lastClickedWikiTo >= 0) {
+      editor.chain().focus().deleteRange({ from: lastClickedWikiFrom, to: lastClickedWikiTo }).run();
+      lastClickedWikiFrom = -1;
+      lastClickedWikiTo = -1;
+      syncContentNow();
+    }
   };
   window.webkit.messageHandlers.editorReady.postMessage("ready");
 })();

@@ -193,8 +193,7 @@ final class AppState {
         let host = url.host ?? ""
         if host == "knowledge" {
             if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value
-            {
+               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value {
                 navigateToKnowledgeEntry(entryID)
             }
             return

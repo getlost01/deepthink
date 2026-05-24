@@ -387,7 +387,8 @@ final class VectorStore {
         }
 
         let sql =
-            "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding FROM chunks WHERE " +
+            "SELECT id, entry_id, entry_type, title, content, tags, source, imported_at, " +
+            "chunk_index, total_chunks, content_hash, embedding FROM chunks WHERE " +
             conditions.joined(separator: " AND ")
 
         return queue.sync {

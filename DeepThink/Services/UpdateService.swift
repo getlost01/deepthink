@@ -7,9 +7,11 @@ import SwiftUI
 final class UpdateService {
     static let shared = UpdateService()
 
+    // swiftlint:disable force_unwrapping
     private static let repositoryURL = URL(string: "https://github.com/getlost01/deepthink")!
     private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/getlost01/deepthink/releases/latest")!
     private static let fallbackReleasePageURL = URL(string: "https://github.com/getlost01/deepthink/releases/latest")!
+    // swiftlint:enable force_unwrapping
 
     private var isCheckingGitHub = false
     private var hasCheckedAtLaunch = false

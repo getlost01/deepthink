@@ -4,14 +4,16 @@ struct WelcomeView: View {
     let onComplete: () -> Void
     @Environment(InstallationManager.self) private var installer
     @State private var currentStep = 0
+    @FocusState private var isFocused: Bool
 
-    private let infoSteps: [WelcomeStep] = [
+    private let steps: [WelcomeStep] = [
         WelcomeStep(
             icon: "brain.head.profile",
             title: "Welcome to DeepThink",
-            subtitle: "A local-first AI workspace for macOS. Your projects, notes, knowledge, and AI — all in one place, all on your machine.",
+            subtitle: "A local-first AI workspace for macOS. Projects, notes, knowledge, and AI — all in one place, all on your machine.",
             features: [],
-            tag: nil
+            tag: nil,
+            color: DS.Colors.accent
         ),
         WelcomeStep(
             icon: "square.grid.2x2",
@@ -23,7 +25,8 @@ struct WelcomeView: View {
                 Feature(icon: "checklist", title: "Task Board", description: "Kanban board with priorities, story points, and due dates"),
                 Feature(icon: "bell", title: "Reminders", description: "Timed reminders with native macOS notifications")
             ],
-            tag: "Workspace"
+            tag: "Workspace",
+            color: DS.Colors.info
         ),
         WelcomeStep(
             icon: "brain",
@@ -33,9 +36,10 @@ struct WelcomeView: View {
                 Feature(icon: "globe", title: "Web & URLs", description: "Save articles, docs, and pages from any URL"),
                 Feature(icon: "folder.badge.plus", title: "Files & Folders", description: "Import local documents, codebases, and data"),
                 Feature(icon: "arrow.down.circle", title: "Obsidian Import", description: "One-click vault import with wiki-link conversion"),
-                Feature(icon: "timer", title: "Auto-collection", description: "RSS feeds, scripts, and folder watches — on a schedule")
+                Feature(icon: "network", title: "Context Graph", description: "Visual knowledge graph showing connections between your notes")
             ],
-            tag: "Knowledge"
+            tag: "Knowledge",
+            color: DS.Colors.knowledge
         ),
         WelcomeStep(
             icon: "sparkles",
@@ -51,7 +55,8 @@ struct WelcomeView: View {
                 Feature(icon: "bolt", title: "Skills", description: "Slash-command automations with template variables and context injection"),
                 Feature(icon: "text.quote", title: "Rules", description: "Context-aware instructions that apply automatically based on what you're doing")
             ],
-            tag: "AI"
+            tag: "AI",
+            color: DS.Colors.amber
         ),
         WelcomeStep(
             icon: "puzzlepiece.extension",
@@ -63,7 +68,8 @@ struct WelcomeView: View {
                 Feature(icon: "magnifyingglass", title: "Command Palette", description: "Cmd+K — navigate, run skills, and find anything instantly"),
                 Feature(icon: "server.rack", title: "MCP Server", description: "Bundled MCP server for Claude Code, Cursor, VS Code, and any MCP client")
             ],
-            tag: "Tools"
+            tag: "Tools",
+            color: DS.Colors.success
         ),
         WelcomeStep(
             icon: "key.fill",
@@ -74,65 +80,107 @@ struct WelcomeView: View {
                 Feature(icon: "2.circle", title: "Log in", description: "Run `claude login` in Terminal and follow the prompts"),
                 Feature(icon: "3.circle", title: "That's it", description: "DeepThink will find Claude automatically after installation")
             ],
-            tag: "Setup"
+            tag: "Setup",
+            color: DS.Colors.purple
         )
     ]
 
     private var isSetupStep: Bool {
-        currentStep == infoSteps.count
+        currentStep == steps.count
     }
 
     private var totalSteps: Int {
-        infoSteps.count + 1
+        steps.count + 1
+    }
+
+    private var currentColor: Color {
+        isSetupStep ? DS.Colors.success : steps[currentStep].color
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        ZStack {
+            currentColor
+                .opacity(0.04)
+                .ignoresSafeArea()
+                .animation(DS.Animation.standard, value: currentStep)
 
-            Group {
-                if isSetupStep {
-                    SetupStepView(installer: installer)
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)),
-                            removal: .opacity
-                        ))
-                } else {
-                    InfoStepView(step: infoSteps[currentStep])
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .move(edge: .trailing)),
-                            removal: .opacity.combined(with: .move(edge: .leading))
-                        ))
-                        .id(currentStep)
+            VStack(spacing: 0) {
+                Spacer()
+
+                Group {
+                    if isSetupStep {
+                        SetupStepView(installer: installer)
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                                removal: .opacity
+                            ))
+                    } else {
+                        InfoStepView(step: steps[currentStep])
+                            .transition(.asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .trailing)),
+                                removal: .opacity.combined(with: .move(edge: .leading))
+                            ))
+                            .id(currentStep)
+                    }
                 }
+                .animation(.easeInOut(duration: 0.28), value: currentStep)
+
+                Spacer()
+
+                bottomBar
             }
-            .animation(.easeInOut(duration: 0.28), value: currentStep)
-
-            Spacer()
-
-            bottomBar
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .focusable()
+        .focused($isFocused)
+        .onAppear { isFocused = true }
+        .onKeyPress(.leftArrow) {
+            if currentStep > 0 { withAnimation { currentStep -= 1 } }
+            return .handled
+        }
+        .onKeyPress(.rightArrow) {
+            guard currentStep < totalSteps - 1 else { return .handled }
+            withAnimation { currentStep += 1 }
+            if currentStep == steps.count { installer.install() }
+            return .handled
+        }
+        .gesture(
+            DragGesture(minimumDistance: 40)
+                .onEnded { value in
+                    if value.translation.width < -40 {
+                        guard currentStep < totalSteps - 1 else { return }
+                        withAnimation { currentStep += 1 }
+                        if currentStep == steps.count { installer.install() }
+                    } else if value.translation.width > 40 {
+                        if currentStep > 0 { withAnimation { currentStep -= 1 } }
+                    }
+                }
+        )
     }
 
     // MARK: - Bottom bar
 
     private var bottomBar: some View {
         VStack(spacing: DS.Spacing.lg) {
-            VStack(spacing: DS.Spacing.xs) {
-                HStack(spacing: DS.Spacing.sm) {
-                    ForEach(0..<totalSteps, id: \.self) { index in
+            HStack(spacing: DS.Spacing.sm) {
+                ForEach(0..<totalSteps, id: \.self) { index in
+                    Button {
+                        withAnimation { currentStep = index }
+                        if index == steps.count { installer.install() }
+                    } label: {
                         Capsule()
-                            .fill(index == currentStep ? DS.Colors.accent : DS.Colors.border)
+                            .fill(index == currentStep ? currentColor : DS.Colors.border)
                             .frame(width: index == currentStep ? 20 : 8, height: 8)
-                            .animation(DS.Animation.quick, value: currentStep)
                     }
+                    .buttonStyle(.plainPointer)
+                    .animation(DS.Animation.quick, value: currentStep)
                 }
-                Text("Step \(currentStep + 1) of \(totalSteps)")
-                    .font(DS.Font.micro)
-                    .foregroundStyle(DS.Colors.textTertiary)
             }
+
+            Text("Step \(currentStep + 1) of \(totalSteps)")
+                .font(DS.Font.micro)
+                .foregroundStyle(DS.Colors.textTertiary)
 
             HStack(spacing: DS.Spacing.lg) {
                 if currentStep > 0, !isSetupStep {
@@ -145,9 +193,7 @@ struct WelcomeView: View {
                 }
 
                 if isSetupStep {
-                    Button {
-                        onComplete()
-                    } label: {
+                    Button { onComplete() } label: {
                         Text("Get Started")
                             .font(DS.Font.body)
                             .fontWeight(.semibold)
@@ -155,7 +201,7 @@ struct WelcomeView: View {
                             .padding(.horizontal, DS.Spacing.xxl)
                             .padding(.vertical, DS.Spacing.md)
                             .background(
-                                installer.isComplete ? DS.Colors.accent : DS.Colors.border,
+                                installer.isComplete ? DS.Colors.success : DS.Colors.border,
                                 in: RoundedRectangle(cornerRadius: DS.Radius.md)
                             )
                     }
@@ -165,15 +211,13 @@ struct WelcomeView: View {
                 } else {
                     Button {
                         withAnimation { currentStep += 1 }
-                        if currentStep == infoSteps.count {
-                            installer.install()
-                        }
+                        if currentStep == steps.count { installer.install() }
                     } label: {
                         HStack(spacing: DS.Spacing.xs) {
-                            Text(currentStep == infoSteps.count - 1 ? "Continue to Setup" : "Next")
+                            Text(currentStep == steps.count - 1 ? "Continue to Setup" : "Next")
                                 .font(DS.Font.body)
                                 .fontWeight(.semibold)
-                            if currentStep < infoSteps.count - 1 {
+                            if currentStep < steps.count - 1 {
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: DS.IconSize.xs, weight: .bold))
                             }
@@ -181,9 +225,10 @@ struct WelcomeView: View {
                         .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.xxl)
                         .padding(.vertical, DS.Spacing.md)
-                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .background(currentColor, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                     }
                     .buttonStyle(.plainPointer)
+                    .animation(DS.Animation.standard, value: currentStep)
                 }
             }
 
@@ -195,11 +240,19 @@ struct WelcomeView: View {
                 .font(DS.Font.caption)
                 .foregroundStyle(DS.Colors.textTertiary)
                 .buttonStyle(.plainPointer)
-            } else if let tag = infoSteps[min(currentStep, infoSteps.count - 1)].tag, !isSetupStep {
-                Text(tag.uppercased())
-                    .font(DS.Font.micro)
-                    .foregroundStyle(DS.Colors.textTertiary)
-                    .tracking(1.2)
+            } else if let tag = steps[min(currentStep, steps.count - 1)].tag, !isSetupStep {
+                HStack(spacing: DS.Spacing.xs) {
+                    Text("← → to navigate")
+                        .font(DS.Font.micro)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text("·")
+                        .font(DS.Font.micro)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text(tag.uppercased())
+                        .font(DS.Font.micro)
+                        .foregroundStyle(currentColor.opacity(0.8))
+                        .tracking(1.2)
+                }
             } else {
                 Color.clear.frame(height: 13)
             }
@@ -212,62 +265,128 @@ struct WelcomeView: View {
 
 private struct InfoStepView: View {
     let step: WelcomeStep
+    @State private var pulse = false
+    @State private var hoveredFeature: UUID?
 
     var body: some View {
         VStack(spacing: DS.Spacing.xxl) {
-            Image(systemName: step.icon)
-                .font(DS.Font.hero)
-                .foregroundStyle(DS.Colors.accent)
-                .frame(height: 60)
-
-            VStack(spacing: DS.Spacing.md) {
-                Text(step.title)
-                    .font(DS.Font.display)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                    .multilineTextAlignment(.center)
-
-                Text(step.subtitle)
-                    .font(DS.Font.body)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 420)
-            }
-
-            if !step.features.isEmpty {
-                VStack(spacing: 0) {
-                    ForEach(Array(step.features.enumerated()), id: \.element.id) { index, feature in
-                        if index > 0 {
-                            Divider().padding(.leading, DS.Spacing.lg + 32 + DS.Spacing.lg)
-                        }
-                        HStack(spacing: DS.Spacing.lg) {
-                            Image(systemName: feature.icon)
-                                .font(.system(size: DS.IconSize.md, weight: .medium))
-                                .foregroundStyle(DS.Colors.accent)
-                                .frame(width: 32, height: 32)
-                                .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-
-                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
-                                Text(feature.title)
-                                    .font(DS.Font.body)
-                                    .fontWeight(.medium)
-                                    .foregroundStyle(DS.Colors.textPrimary)
-                                Text(feature.description)
-                                    .font(DS.Font.caption)
-                                    .foregroundStyle(DS.Colors.textSecondary)
-                            }
-
-                            Spacer()
-                        }
-                        .padding(.horizontal, DS.Spacing.lg)
-                        .padding(.vertical, DS.Spacing.sm + 2)
-                    }
-                }
-                .frame(maxWidth: 420)
-                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
-                .overlay(RoundedRectangle(cornerRadius: DS.Radius.lg).strokeBorder(DS.Colors.border, lineWidth: 0.5))
-            }
+            heroIcon
+            heading
+            if !step.features.isEmpty { featureList }
         }
         .padding(.horizontal, DS.Spacing.xxl)
+        .onAppear { pulse = true }
+    }
+
+    /// Animated orb on hero slide, plain icon on feature slides
+    private var heroIcon: some View {
+        ZStack {
+            if step.features.isEmpty {
+                Circle()
+                    .fill(step.color.opacity(pulse ? 0.09 : 0.04))
+                    .frame(width: pulse ? 128 : 108)
+                    .animation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true), value: pulse)
+
+                Circle()
+                    .fill(step.color.opacity(pulse ? 0.14 : 0.08))
+                    .frame(width: pulse ? 92 : 78)
+                    .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(0.4), value: pulse)
+            }
+
+            Image(systemName: step.icon)
+                .font(DS.Font.hero)
+                .foregroundStyle(step.color)
+                .frame(height: 60)
+        }
+        .frame(height: 90)
+    }
+
+    private var heading: some View {
+        VStack(spacing: DS.Spacing.md) {
+            Text(step.title)
+                .font(DS.Font.display)
+                .foregroundStyle(DS.Colors.textPrimary)
+                .multilineTextAlignment(.center)
+
+            Text(step.subtitle)
+                .font(DS.Font.body)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 420)
+        }
+    }
+
+    private var featureList: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(step.features.enumerated()), id: \.element.id) { index, feature in
+                if index > 0 {
+                    Divider().padding(.leading, DS.Spacing.lg + 32 + DS.Spacing.lg)
+                }
+                FeatureRow(feature: feature, color: step.color, isHovered: hoveredFeature == feature.id)
+                    .onHover { hovering in
+                        withAnimation(DS.Animation.quick) {
+                            hoveredFeature = hovering ? feature.id : nil
+                        }
+                    }
+            }
+        }
+        .frame(maxWidth: 420)
+        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.Radius.lg)
+                .strokeBorder(
+                    hoveredFeature != nil ? DS.Colors.borderHover : DS.Colors.border,
+                    lineWidth: 0.5
+                )
+        )
+        .animation(DS.Animation.quick, value: hoveredFeature)
+    }
+}
+
+// MARK: - Feature Row
+
+private struct FeatureRow: View {
+    let feature: Feature
+    let color: Color
+    let isHovered: Bool
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.lg) {
+            Image(systemName: feature.icon)
+                .font(.system(size: DS.IconSize.md, weight: .medium))
+                .foregroundStyle(isHovered ? color : color.opacity(0.8))
+                .frame(width: 32, height: 32)
+                .background(
+                    color.opacity(isHovered ? DS.Opacity.subtle : 0.10),
+                    in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                )
+                .animation(DS.Animation.quick, value: isHovered)
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(feature.title)
+                    .font(DS.Font.body)
+                    .fontWeight(.medium)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Text(feature.description)
+                    .font(DS.Font.caption)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+
+            Spacer()
+
+            if isHovered {
+                Image(systemName: "checkmark")
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                    .foregroundStyle(color)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+            }
+        }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm + 2)
+        .background(
+            isHovered ? color.opacity(0.05) : Color.clear,
+            in: Rectangle()
+        )
     }
 }
 
@@ -289,9 +408,10 @@ private struct SetupStepView: View {
                     .font(DS.Font.display)
                     .foregroundStyle(DS.Colors.textPrimary)
 
-                Text(installer.isComplete
-                    ? "CLI and MCP server are installed. Type `deepthink` in any terminal to get started."
-                    : "Installing command-line tools to your system…"
+                Text(
+                    installer.isComplete
+                        ? "CLI and MCP server are installed. Type `deepthink` in any terminal to get started."
+                        : "Installing command-line tools to your system…"
                 )
                 .font(DS.Font.body)
                 .foregroundStyle(DS.Colors.textSecondary)
@@ -325,12 +445,11 @@ private struct InstallRow: View {
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
-            stateIcon
-                .frame(width: 20, height: 20)
+            stateIcon.frame(width: 20, height: 20)
 
             Text(label)
                 .font(DS.Font.caption)
-                .foregroundStyle(rowTextTone)
+                .foregroundStyle(rowTextColor)
                 .monospacedDigit()
 
             Spacer()
@@ -347,7 +466,7 @@ private struct InstallRow: View {
         .animation(DS.Animation.standard, value: stateLabel)
     }
 
-    private var rowTextTone: Color {
+    private var rowTextColor: Color {
         switch state {
         case .done: DS.Colors.textPrimary
         case .failed: DS.Colors.warning
@@ -374,9 +493,7 @@ private struct InstallRow: View {
                 .frame(width: 8, height: 8)
                 .frame(width: 20, height: 20)
         case .running:
-            ProgressView()
-                .controlSize(.small)
-                .frame(width: 20, height: 20)
+            ProgressView().controlSize(.small).frame(width: 20, height: 20)
         case .done:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: DS.IconSize.sm, weight: .semibold))
@@ -401,6 +518,7 @@ private struct WelcomeStep {
     let subtitle: String
     let features: [Feature]
     let tag: String?
+    let color: Color
 }
 
 private struct Feature: Identifiable {

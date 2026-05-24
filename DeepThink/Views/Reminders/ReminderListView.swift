@@ -96,8 +96,7 @@ struct ReminderListView: View {
                 listPane
             } right: {
                 if let selectedID = appState.selectedReminderID,
-                   let reminder = allReminders.first(where: { $0.id == selectedID })
-                {
+                   let reminder = allReminders.first(where: { $0.id == selectedID }) {
                     ReminderDetailView(reminder: reminder)
                         .id(reminder.id)
                 } else {
@@ -105,9 +104,7 @@ struct ReminderListView: View {
                         icon: "bell",
                         title: "Select a Reminder",
                         subtitle: "Pick a reminder from the list to see details, or create a new one.",
-                        hint: "Tip: set a date and time to get a native macOS notification",
-                        action: createReminder,
-                        actionTitle: "New Reminder"
+                        hint: "Tip: set a date and time to get a native macOS notification"
                     )
                 }
             }
@@ -250,6 +247,10 @@ struct ReminderListView: View {
                         }
                     }
                 }
+                .onChange(of: appState.selectedReminderID) { _, id in
+                    guard let id else { return }
+                    proxy.scrollTo(id, anchor: .center)
+                }
             }
         }
     }
@@ -257,8 +258,7 @@ struct ReminderListView: View {
     private func navigateList(by delta: Int, proxy: ScrollViewProxy) {
         guard !filteredReminders.isEmpty else { return }
         if let current = appState.selectedReminderID,
-           let idx = filteredReminders.firstIndex(where: { $0.id == current })
-        {
+           let idx = filteredReminders.firstIndex(where: { $0.id == current }) {
             let newIdx = max(0, min(filteredReminders.count - 1, idx + delta))
             let newID = filteredReminders[newIdx].id
             appState.selectedReminderID = newID
@@ -351,8 +351,7 @@ struct ReminderListView: View {
                         changed = true
                     }
                     if stillPending, reminder.repeatInterval != .none,
-                       let date = reminder.reminderDate, date < Date()
-                    {
+                       let date = reminder.reminderDate, date < Date() {
                         reminder.reminderDate = nextOccurrence(after: Date(), from: date, interval: reminder.repeatInterval)
                         reminder.modifiedAt = Date()
                         changed = true
@@ -360,8 +359,7 @@ struct ReminderListView: View {
                     // Schedule notifications for reminders created externally (e.g. via CLI)
                     // that have a future reminderDate but were never registered with UNUserNotificationCenter.
                     if !reminder.isCompleted, !reminder.notificationScheduled, !stillPending,
-                       let date = reminder.reminderDate, date > Date()
-                    {
+                       let date = reminder.reminderDate, date > Date() {
                         scheduleReminderNotification(reminder, context: modelContext)
                     }
                 }

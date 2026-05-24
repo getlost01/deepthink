@@ -243,37 +243,41 @@ struct DeepLinkPickerSheet: View {
         .onAppear { searchFocused = true }
     }
 
+    private func deeplink(_ path: String) -> URL {
+        URL(string: "deepthink://\(path)") ?? URL(fileURLWithPath: "/")
+    }
+
     private func knowledgeURL(for entry: KnowledgeEntry) -> URL {
         var comps = URLComponents()
         comps.scheme = "deepthink"
         comps.host = "knowledge"
         comps.queryItems = [URLQueryItem(name: "id", value: entry.id)]
-        return comps.url ?? URL(string: "deepthink://knowledge")!
+        return comps.url ?? deeplink("knowledge")
     }
 
     private var linkItems: [(String, String, String, URL, Bool)] {
         switch type {
         case "task":
-            filteredTasks.map { ($0.id.uuidString, $0.title, $0.status.rawValue, URL(string: "deepthink://task/\($0.id.uuidString)")!, $0.isArchived) }
+            filteredTasks.map { ($0.id.uuidString, $0.title, $0.status.rawValue, deeplink("task/\($0.id.uuidString)"), $0.isArchived) }
         case "note":
             filteredNotes.map { (
                 $0.id.uuidString,
                 $0.title,
                 $0.modifiedAt.relativeFormatted,
-                URL(string: "deepthink://note/\($0.id.uuidString)")!,
+                deeplink("note/\($0.id.uuidString)"),
                 $0.isArchived
             ) }
         case "reminder":
             filteredReminders.map { r in
                 let subtitle = r.reminderDate.map(\.shortFormatted) ?? (r.isCompleted ? "Completed" : "No date")
-                return (r.id.uuidString, r.title, subtitle, URL(string: "deepthink://reminder/\(r.id.uuidString)")!, false)
+                return (r.id.uuidString, r.title, subtitle, deeplink("reminder/\(r.id.uuidString)"), false)
             }
         case "project":
             filteredProjects.map { (
                 $0.id.uuidString,
                 $0.name,
                 "\($0.tasks.count(where: { !$0.isArchived })) tasks",
-                URL(string: "deepthink://project/\($0.id.uuidString)")!,
+                deeplink("project/\($0.id.uuidString)"),
                 $0.isArchived
             ) }
         case "knowledge":
@@ -303,6 +307,249 @@ struct DeepLinkPickerSheet: View {
         case "knowledge": "brain"
         default: "link"
         }
+    }
+}
+
+// MARK: - Wiki Link Picker
+
+enum WikiLinkPickerMode {
+    case insert
+    case edit(currentTitle: String)
+}
+
+struct WikiLinkPickerSheet: View {
+    let mode: WikiLinkPickerMode
+    let onWiki: (KnowledgeEntry) -> Void
+    let onReference: (KnowledgeEntry) -> Void
+    let onNavigate: ((KnowledgeEntry) -> Void)?
+    let onRemove: (() -> Void)?
+    let onDismiss: () -> Void
+
+    @State private var search = ""
+    @FocusState private var searchFocused: Bool
+
+    private var entries: [KnowledgeEntry] {
+        KnowledgeService.shared.entries
+    }
+
+    private var filteredEntries: [KnowledgeEntry] {
+        entries.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) }
+            .sorted { $0.importedAt > $1.importedAt }
+    }
+
+    private var isEdit: Bool {
+        if case .edit = mode { return true }
+        return false
+    }
+
+    private var currentTitle: String? {
+        if case let .edit(t) = mode { return t }
+        return nil
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.md) {
+                Image(systemName: "book.closed")
+                    .font(.system(size: DS.IconSize.md, weight: .medium))
+                    .foregroundStyle(DS.Colors.accent)
+                    .frame(width: 32, height: 32)
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(isEdit ? "Edit Knowledge Link" : "Link Knowledge Entry")
+                        .font(DS.Font.heading)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Text(isEdit ? "Replace, navigate, or remove" : "Choose wiki link or reference")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+
+                Spacer()
+
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 24, height: 24)
+                        .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .buttonStyle(.plainPointer)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .background(DS.Colors.surfaceElevated)
+
+            Divider()
+
+            HStack(spacing: DS.Spacing.sm) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                TextField("Search knowledge...", text: $search)
+                    .textFieldStyle(.plain)
+                    .font(DS.Font.body)
+                    .focused($searchFocused)
+                if !search.isEmpty {
+                    Button { search = "" } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: DS.IconSize.sm))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .transition(.opacity)
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm + 2)
+            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .animation(DS.Animation.quick, value: search.isEmpty)
+
+            Divider()
+
+            if let title = currentTitle {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text("[[")
+                        .font(DS.Font.mono)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text(title)
+                        .font(DS.Font.mono)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                        .lineLimit(1)
+                    Text("]]")
+                        .font(DS.Font.mono)
+                        .foregroundStyle(DS.Colors.textTertiary)
+
+                    Spacer()
+
+                    if let onNavigate,
+                       let entry = entries.first(where: { $0.title == title }) {
+                        Button("Open") { onNavigate(entry); onDismiss() }
+                            .buttonStyle(.dsSecondary)
+                    }
+
+                    if let onRemove {
+                        Button("Remove") { onRemove(); onDismiss() }
+                            .buttonStyle(.dsSecondary)
+                    }
+                }
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.sm)
+                .background(DS.Colors.fillSecondary)
+
+                Divider()
+            }
+
+            if filteredEntries.isEmpty {
+                VStack(spacing: DS.Spacing.md) {
+                    Image(systemName: "brain")
+                        .font(.system(size: DS.IconSize.xxxl, weight: .light))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text(search.isEmpty ? "No knowledge entries yet" : "No results for \"\(search)\"")
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textSecondary)
+                    if !search.isEmpty {
+                        Button { search = "" } label: {
+                            Text("Clear search")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.accent)
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(filteredEntries, id: \.id) { entry in
+                            WikiLinkPickerRow(
+                                entry: entry,
+                                onWiki: { onWiki(entry); onDismiss() },
+                                onReference: { onReference(entry); onDismiss() }
+                            )
+                        }
+                    }
+                    .padding(.bottom, DS.Spacing.sm)
+                }
+            }
+        }
+        .frame(width: 480, height: 520)
+        .background(DS.Colors.surface)
+        .onAppear { searchFocused = true }
+    }
+}
+
+private struct WikiLinkPickerRow: View {
+    let entry: KnowledgeEntry
+    let onWiki: () -> Void
+    let onReference: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        HStack(spacing: DS.Spacing.md) {
+            Image(systemName: "brain")
+                .font(.system(size: DS.IconSize.sm, weight: .medium))
+                .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textSecondary)
+                .frame(width: 32, height: 32)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                Text(entry.title.isEmpty ? "Untitled" : entry.title)
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                    .lineLimit(1)
+                Text(entry.source)
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            HStack(spacing: DS.Spacing.xs) {
+                Button { onWiki() } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .font(.system(size: DS.IconSize.nano, weight: .medium))
+                        Text("Wiki")
+                            .font(DS.Font.small)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(DS.Colors.accent)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.accent.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(.plainPointer)
+
+                Button { onReference() } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "link")
+                            .font(.system(size: DS.IconSize.nano, weight: .medium))
+                        Text("Ref")
+                            .font(DS.Font.small)
+                            .fontWeight(.medium)
+                    }
+                    .foregroundStyle(DS.Colors.textSecondary)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs)
+                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                }
+                .buttonStyle(.plainPointer)
+            }
+        }
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.md)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .animation(DS.Animation.quick, value: isHovered)
     }
 }
 

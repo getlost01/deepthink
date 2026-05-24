@@ -30,6 +30,10 @@ struct ProjectDetailView: View {
                     TaskDetailView(task: task)
                         .id(task.id)
                 }
+            } else {
+                Color.clear.onAppear {
+                    withAnimation(DS.Animation.standard) { appState.backToProjectOverview() }
+                }
             }
         case .noteDetail:
             if let note = selectedNote {
@@ -38,6 +42,10 @@ struct ProjectDetailView: View {
                     Divider()
                     NoteEditorView(note: note)
                         .id(note.id)
+                }
+            } else {
+                Color.clear.onAppear {
+                    withAnimation(DS.Animation.standard) { appState.backToProjectOverview() }
                 }
             }
         }
@@ -73,15 +81,30 @@ struct ProjectDetailView: View {
     @State private var showArchivedTasks = false
     @State private var showArchivedNotes = false
     @State private var descriptionPreview = false
+    @State private var showColorPicker = false
 
     private var projectOverview: some View {
         VStack(spacing: 0) {
             // Header
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                 HStack(spacing: DS.Spacing.md) {
-                    Circle()
-                        .fill(Color(hex: project.color))
-                        .frame(width: 14, height: 14)
+                    Button {
+                        showColorPicker = true
+                    } label: {
+                        Circle()
+                            .fill(Color(hex: project.color))
+                            .frame(width: 14, height: 14)
+                    }
+                    .buttonStyle(.plainPointer)
+                    .disabled(project.isArchived)
+                    .help("Change project color")
+                    .popover(isPresented: $showColorPicker, arrowEdge: .bottom) {
+                        ProjectColorPickerPopover(selectedHex: project.color) { hex in
+                            project.color = hex
+                            try? modelContext.save()
+                            showColorPicker = false
+                        }
+                    }
 
                     TextField("Give your project a name", text: $project.name)
                         .textFieldStyle(.plain)
@@ -124,7 +147,7 @@ struct ProjectDetailView: View {
                         Button {
                             withAnimation(DS.Animation.quick) { descriptionPreview.toggle() }
                         } label: {
-                            Image(systemName: descriptionPreview ? "pencil" : "eye")
+                            Image(systemName: descriptionPreview ? "pencil.tip" : "eye")
                                 .font(.system(size: DS.IconSize.xs))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
@@ -136,7 +159,7 @@ struct ProjectDetailView: View {
                 if !project.tasks.isEmpty {
                     let total = project.tasks.count
                     let done = project.completedTaskCount
-                    let progress = Double(done) / Double(total)
+                    let progress = total > 0 ? Double(done) / Double(total) : 0.0
 
                     VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                         HStack(spacing: DS.Spacing.md) {
@@ -500,6 +523,46 @@ private struct ProjectTaskRow: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Color Picker
+
+private struct ProjectColorPickerPopover: View {
+    let selectedHex: String
+    let onSelect: (String) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(DS.Colors.projectColorHexes, id: \.self) { hex in
+                colorRow(hex: hex)
+            }
+        }
+        .padding(.vertical, DS.Spacing.xs)
+        .frame(width: 160)
+    }
+
+    private func colorRow(hex: String) -> some View {
+        Button { onSelect(hex) } label: {
+            HStack(spacing: DS.Spacing.sm) {
+                Circle()
+                    .fill(Color(hex: hex))
+                    .frame(width: 14, height: 14)
+                Text(DS.Colors.projectColorNames[hex] ?? hex)
+                    .font(DS.Font.body)
+                    .foregroundStyle(DS.Colors.textPrimary)
+                Spacer()
+                if selectedHex == hex {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.accent)
+                }
+            }
+            .padding(.horizontal, DS.Spacing.md)
+            .padding(.vertical, DS.Spacing.sm)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plainPointer)
     }
 }
 

@@ -86,6 +86,7 @@ final class MCPService {
         let commandsDir = skillURL.deletingLastPathComponent()
         try? fm.createDirectory(at: commandsDir, withIntermediateDirectories: true)
 
+        // swiftlint:disable line_length
         let content = """
         ---
         description: DeepThink universal assistant. Single entry point for knowledge, tasks, notes, projects, agents, skills, and rules. Routes any query — search, capture, CRUD, summarize, or reason — to the right tool.
@@ -155,6 +156,7 @@ final class MCPService {
         ## Output
         Return tool results directly. No preamble. No tool-name explanation.
         """
+        // swiftlint:enable line_length
 
         let newData = Data(content.utf8)
         let newHash = SHA256.hash(data: newData).description
@@ -362,16 +364,14 @@ final class MCPService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                            {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String
-                                    {
+                                              let text = delta["text"] as? String {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -496,8 +496,7 @@ final class MCPService {
                     let output = String(data: outData, encoding: .utf8) ?? ""
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(ClaudeService.CLIResponse.self, from: jsonData),
-                       let result = response.result
-                    {
+                       let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         DispatchQueue.main.async {

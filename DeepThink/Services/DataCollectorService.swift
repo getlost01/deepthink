@@ -159,23 +159,23 @@ final class DataCollectorService {
         guard let enumerator = fm.enumerator(at: folderURL, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) else { return 0 }
 
         while let fileURL = enumerator.nextObject() as? URL {
-            guard Self.allImportExtensions.contains(fileURL.pathExtension) else { continue }
+            let ext = fileURL.pathExtension.lowercased()
+            guard Self.allImportExtensions.contains(ext) else { continue }
 
-            if fileURL.pathExtension == "pdf" {
+            if ext == "pdf" {
                 let title = fileURL.deletingPathExtension().lastPathComponent
-                if let text = extractTextFromPDF(at: fileURL) {
-                    _ = KnowledgeService.shared.createEntryIfNotDuplicate(
-                        title: title, content: text, source: "pdf", tags: ["pdf", folderName.lowercased()]
-                    )
+                if let text = extractTextFromPDF(at: fileURL),
+                   KnowledgeService.shared.createEntryIfNotDuplicate(
+                       title: title, content: text, source: "pdf", tags: ["pdf", folderName.lowercased()]
+                   ) {
                     count += 1
                 }
             } else {
                 let stem = fileURL.deletingPathExtension().lastPathComponent
-                let ext = fileURL.pathExtension
                 let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
-                let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
-                if !fm.fileExists(atPath: destURL.path) {
-                    try? fm.copyItem(at: fileURL, to: destURL)
+                let destURL = destDir.appendingPathComponent("\(stem)-\(hash).md")
+                if !fm.fileExists(atPath: destURL.path),
+                   (try? fm.copyItem(at: fileURL, to: destURL)) != nil {
                     count += 1
                 }
             }
@@ -228,32 +228,34 @@ final class DataCollectorService {
     // MARK: - Import File
 
     func importFile(at url: URL, folder: String = "General") -> Bool {
-        if url.pathExtension.lowercased() == "pdf" {
+        let ext = url.pathExtension.lowercased()
+
+        if ext == "pdf" {
             guard let text = extractTextFromPDF(at: url) else { return false }
             let title = url.deletingPathExtension().lastPathComponent
-            return KnowledgeService.shared.createEntryIfNotDuplicate(
-                title: title, content: text, source: "pdf", tags: ["pdf"]
+            KnowledgeService.shared.createEntry(
+                title: title, content: text, source: "pdf", tags: ["pdf"], bucket: folder
             )
-        }
-
-        let destDir = StorageService.shared.knowledgeURL.appendingPathComponent(folder.slugified)
-        try? fm.createDirectory(at: destDir, withIntermediateDirectories: true)
-
-        let stem = url.deletingPathExtension().lastPathComponent
-        let ext = url.pathExtension
-        let hash = String(abs(url.path.hashValue), radix: 36).prefix(6)
-        let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
-
-        do {
-            if fm.fileExists(atPath: destURL.path) {
-                try fm.removeItem(at: destURL)
-            }
-            try fm.copyItem(at: url, to: destURL)
-            KnowledgeService.shared.reload()
             return true
-        } catch {
-            return false
         }
+
+        guard ext.isEmpty || Self.allImportExtensions.contains(ext) else { return false }
+
+        guard let data = fm.contents(atPath: url.path),
+              let rawText = String(data: data, encoding: .utf8),
+              !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+
+        let (parsedFM, body) = KnowledgeService.shared.parseFrontmatter(rawText)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let entryTitle = parsedFM["title"] ?? stem
+            .replacingOccurrences(of: "-", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+        let content = body.isEmpty ? rawText : body
+
+        KnowledgeService.shared.createEntry(
+            title: entryTitle, content: content, source: "import", tags: [], bucket: folder
+        )
+        return true
     }
 
     // MARK: - RSS/Atom Feed Ingestion

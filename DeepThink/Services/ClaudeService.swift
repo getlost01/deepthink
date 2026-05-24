@@ -294,8 +294,7 @@ final class ClaudeService {
 
     private init() {
         if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
-           FileManager.default.isExecutableFile(atPath: saved)
-        {
+           FileManager.default.isExecutableFile(atPath: saved) {
             claudePath = saved
             customCLIPath = saved
         } else {
@@ -303,12 +302,10 @@ final class ClaudeService {
         }
 
         if let savedFamily = UserDefaults.standard.string(forKey: "selectedModelFamily"),
-           let family = ModelFamily(rawValue: savedFamily)
-        {
+           let family = ModelFamily(rawValue: savedFamily) {
             selectedModelFamily = family
             if let savedVersionID = UserDefaults.standard.string(forKey: "selectedModelVersionID"),
-               let version = family.versions.first(where: { $0.id == savedVersionID })
-            {
+               let version = family.versions.first(where: { $0.id == savedVersionID }) {
                 selectedModelVersion = version
             } else {
                 selectedModelVersion = family.latestVersion
@@ -316,8 +313,7 @@ final class ClaudeService {
         }
 
         if let savedTokens = UserDefaults.standard.object(forKey: "maxTokens") as? Int,
-           Self.maxTokenOptions.contains(savedTokens)
-        {
+           Self.maxTokenOptions.contains(savedTokens) {
             maxTokens = savedTokens
         }
 
@@ -473,8 +469,7 @@ final class ClaudeService {
 
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
-                       let result = response.result
-                    {
+                       let result = response.result {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         let usage = response.usage
@@ -605,16 +600,14 @@ final class ClaudeService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-                            {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String
-                                    {
+                                              let text = delta["text"] as? String {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -714,7 +707,8 @@ final class ClaudeService {
         let prompt = if let question {
             "Analyze this command output and answer: \(question)\n\n```\n\(output.prefix(8000))\n```"
         } else {
-            "Analyze this command output. Summarize key findings, highlight issues or anomalies, and suggest next steps if applicable:\n\n```\n\(output.prefix(8000))\n```"
+            "Analyze this command output. Summarize key findings, highlight issues or anomalies, " +
+                "and suggest next steps if applicable:\n\n```\n\(output.prefix(8000))\n```"
         }
         return try await query(
             prompt,
@@ -723,7 +717,9 @@ final class ClaudeService {
     }
 
     func explainError(_ command: String, stderr: String, exitCode: Int32) async throws -> String {
-        let prompt = "Command: \(command)\nExit code: \(exitCode)\nError output:\n```\n\(stderr.prefix(4000))\n```\n\nExplain what went wrong and suggest a fix."
+        let prompt =
+            "Command: \(command)\nExit code: \(exitCode)\nError output:\n```\n\(stderr.prefix(4000))\n```" +
+            "\n\nExplain what went wrong and suggest a fix."
         return try await query(prompt, systemPrompt: "You are a CLI expert. Explain errors concisely and provide actionable fixes.")
     }
 
@@ -734,7 +730,8 @@ final class ClaudeService {
         let prompt = if let question {
             "Analyze this \(ext) file and answer: \(question)\n\n```\(ext)\n\(content.prefix(10000))\n```"
         } else {
-            "Analyze this \(ext) file. Describe its purpose, highlight key patterns, potential issues, and suggest improvements:\n\n```\(ext)\n\(content.prefix(10000))\n```"
+            "Analyze this \(ext) file. Describe its purpose, highlight key patterns, potential issues, " +
+                "and suggest improvements:\n\n```\(ext)\n\(content.prefix(10000))\n```"
         }
         return try await query(prompt, systemPrompt: "You are a code and data analysis expert. Be concise and actionable.")
     }

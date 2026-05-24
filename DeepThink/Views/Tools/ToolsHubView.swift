@@ -1111,7 +1111,7 @@ private struct CatalogRow: View {
                         HStack(spacing: DS.Spacing.xxs) {
                             Image(systemName: "key.fill")
                                 .font(.system(size: DS.IconSize.xs))
-                            Text(knownKeys.isEmpty ? "Auth required" : knownKeys.first!)
+                            Text(knownKeys.first ?? "Auth required")
                         }
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.warning)

@@ -27,9 +27,11 @@ struct KnowledgeBrowserView: View {
             results = results.filter { $0.bucket == filter }
         }
         if !searchText.isEmpty {
-            results = knowledge.search(searchText)
-            if let filter = bucketFilter {
-                results = results.filter { $0.bucket == filter }
+            let q = searchText.lowercased()
+            results = results.filter {
+                $0.title.lowercased().contains(q) ||
+                    $0.content.lowercased().contains(q) ||
+                    $0.tags.contains { $0.lowercased().contains(q) }
             }
         }
         return results
@@ -135,7 +137,8 @@ struct KnowledgeBrowserView: View {
                         title: knowledge.entries.isEmpty ? "Start Building Your Knowledge" : "No Matches",
                         subtitle: knowledge.entries
                             .isEmpty ?
-                            "Save articles, paste text, import files, or write things down. Everything here becomes context that AI can use to give you better answers." :
+                            "Save articles, paste text, import files, or write things down. " +
+                            "Everything here becomes context that AI can use to give you better answers." :
                             "Try a different search term or clear the filter.",
                         hint: knowledge.entries.isEmpty ? "Try saving a web article you want to reference later" : nil,
                         action: knowledge.entries.isEmpty ? { showURLSheet = true } : nil,
@@ -144,57 +147,64 @@ struct KnowledgeBrowserView: View {
                 } else {
                     let visibleEntries = Array(filteredEntries.prefix(displayedCount))
                     let hasMore = filteredEntries.count > displayedCount
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(visibleEntries) { entry in
-                                EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
-                                    selectedEntry = entry
-                                }
-                                .contextMenu {
-                                    Menu {
-                                        ForEach(knowledge.buckets, id: \.self) { bucket in
-                                            Button {
-                                                KnowledgeService.shared.moveEntry(entry, to: bucket)
-                                            } label: {
-                                                Label(bucket, systemImage: "folder")
-                                            }
-                                            .disabled(entry.bucket == bucket)
-                                        }
-                                    } label: {
-                                        Label("Move to Bucket", systemImage: "folder.badge.arrow.up")
-                                    }
-                                    Divider()
-                                    Button(role: .destructive) {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(spacing: 0) {
+                                ForEach(visibleEntries) { entry in
+                                    EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
                                         selectedEntry = entry
-                                        showDeleteConfirm = true
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    .id(entry.id)
+                                    .contextMenu {
+                                        Menu("Move to Bucket") {
+                                            ForEach(knowledge.buckets, id: \.self) { bucket in
+                                                Button(bucket) {
+                                                    KnowledgeService.shared.moveEntry(entry, to: bucket)
+                                                }
+                                                .disabled(entry.bucket == bucket)
+                                            }
+                                        }
+                                        Divider()
+                                        Button(role: .destructive) {
+                                            selectedEntry = entry
+                                            showDeleteConfirm = true
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                    if entry.id != visibleEntries.last?.id || hasMore {
+                                        Divider()
                                     }
                                 }
-                                if entry.id != visibleEntries.last?.id || hasMore {
-                                    Divider()
+                                if hasMore {
+                                    HStack(spacing: DS.Spacing.xs) {
+                                        ProgressView().controlSize(.small)
+                                        Text("Loading more…")
+                                            .font(DS.Font.small)
+                                            .foregroundStyle(DS.Colors.textTertiary)
+                                    }
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, DS.Spacing.md)
+                                    .onAppear { displayedCount += pageSize }
                                 }
                             }
-                            if hasMore {
-                                HStack(spacing: DS.Spacing.xs) {
-                                    ProgressView().controlSize(.small)
-                                    Text("Loading more…")
-                                        .font(DS.Font.small)
-                                        .foregroundStyle(DS.Colors.textTertiary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, DS.Spacing.md)
-                                .onAppear { displayedCount += pageSize }
-                            }
+                        }
+                        .onChange(of: selectedEntry) { _, entry in
+                            guard let id = entry?.id else { return }
+                            proxy.scrollTo(id, anchor: .center)
                         }
                     }
                 }
             }
         } right: {
             if let entry = selectedEntry {
-                KnowledgeDetailView(entry: entry) {
+                KnowledgeDetailView(entry: entry, onDelete: {
                     showDeleteConfirm = true
-                }
+                }, onWikiLinkNavigate: { title in
+                    selectedEntry = KnowledgeService.shared.entries.first(where: {
+                        $0.title.lowercased() == title.lowercased()
+                    })
+                })
             } else {
                 DSEmptyState(
                     icon: "doc.text.magnifyingglass",
@@ -207,16 +217,28 @@ struct KnowledgeBrowserView: View {
         .onChange(of: bucketFilter) { displayedCount = pageSize }
         .onAppear {
             knowledge.reload()
-            if let entryID = appState.selectedKnowledgeEntryID {
-                selectedEntry = knowledge.entries.first { $0.id == entryID }
+            // Deep link and selectedEntry refresh handled in onChange(of: knowledge.entries)
+            // once the async reload actually populates entries.
+        }
+        .onChange(of: knowledge.entries) { _, entries in
+            // Keep selectedEntry fresh after any reload (handles phantom after moveEntry too)
+            if let sel = selectedEntry {
+                selectedEntry = entries.first(where: { $0.id == sel.id })
+            }
+            // Resolve deep link once entries are available
+            if let entryID = appState.selectedKnowledgeEntryID,
+               let found = entries.first(where: { $0.id == entryID }) {
+                selectedEntry = found
                 appState.selectedKnowledgeEntryID = nil
             }
         }
         .onChange(of: appState.selectedKnowledgeEntryID) { _, newID in
-            if let entryID = newID {
-                selectedEntry = knowledge.entries.first { $0.id == entryID }
+            guard let entryID = newID else { return }
+            if let found = knowledge.entries.first(where: { $0.id == entryID }) {
+                selectedEntry = found
                 appState.selectedKnowledgeEntryID = nil
             }
+            // else: entries onChange will resolve once reload completes
         }
         .sheet(isPresented: $showURLSheet) { URLScrapeSheet() }
         .sheet(isPresented: $showNewEntry) { NewKnowledgeSheet() }
@@ -247,7 +269,6 @@ struct KnowledgeBrowserView: View {
 
     private func captureClipboard() {
         let ok = DataCollectorService.shared.captureClipboard()
-        knowledge.reload()
         if ok { ToastState.shared.show("Clipboard saved to knowledge") } else { ToastState.shared.showError("Clipboard is empty or unsupported") }
     }
 
@@ -255,7 +276,7 @@ struct KnowledgeBrowserView: View {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = true
-        panel.allowedContentTypes = [UTType(filenameExtension: "md")!, .plainText]
+        panel.message = "Select markdown, text, or PDF files to import"
         panel.begin { response in
             guard response == .OK else { return }
             var count = 0
@@ -267,7 +288,6 @@ struct KnowledgeBrowserView: View {
                     if DataCollectorService.shared.importFile(at: url) { count += 1 }
                 }
             }
-            knowledge.reload()
             ToastState.shared.show("\(count) file\(count == 1 ? "" : "s") imported to knowledge")
         }
     }
@@ -276,11 +296,10 @@ struct KnowledgeBrowserView: View {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
-        panel.message = "Select a folder to import markdown files from"
+        panel.message = "Select a folder to import markdown and PDF files from"
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
             let count = DataCollectorService.shared.importFolder(at: url.path)
-            knowledge.reload()
             ToastState.shared.show("\(count) file\(count == 1 ? "" : "s") imported to knowledge")
         }
     }
@@ -395,6 +414,7 @@ private struct BucketPill: View {
 struct KnowledgeDetailView: View {
     let entry: KnowledgeEntry
     let onDelete: () -> Void
+    var onWikiLinkNavigate: ((String) -> Void)?
     @Environment(AppState.self) private var appState
     @Query private var allNotes: [Note]
     @State private var isAutoTagging = false
@@ -408,9 +428,10 @@ struct KnowledgeDetailView: View {
         KnowledgeService.shared.entries.first(where: { $0.id == entry.id })?.tags ?? entry.tags
     }
 
-    init(entry: KnowledgeEntry, onDelete: @escaping () -> Void) {
+    init(entry: KnowledgeEntry, onDelete: @escaping () -> Void, onWikiLinkNavigate: ((String) -> Void)? = nil) {
         self.entry = entry
         self.onDelete = onDelete
+        self.onWikiLinkNavigate = onWikiLinkNavigate
         _editableContent = State(initialValue: entry.content)
         _editableTitle = State(initialValue: entry.title)
         _activeEntry = State(initialValue: entry)
@@ -601,7 +622,16 @@ struct KnowledgeDetailView: View {
             MarkdownEditorWithToggle(
                 text: $editableContent,
                 placeholder: "Write knowledge entry content...",
-                onSave: { commitTitleEdit(); saveEntry() }
+                onSave: { commitTitleEdit(); saveEntry() },
+                wikiLinks: Dictionary(
+                    KnowledgeService.shared.entries.compactMap { e -> (String, String)? in
+                        e.title.isEmpty ? nil : (e.title, e.id)
+                    },
+                    uniquingKeysWith: { first, _ in first }
+                ),
+                onWikiLinkClick: { title in onWikiLinkNavigate?(title) },
+                wikiMode: true,
+                onWikiNavigate: { title in onWikiLinkNavigate?(title) }
             )
             .id(activeEntry.id)
         }
@@ -631,16 +661,18 @@ struct KnowledgeDetailView: View {
         let (frontmatter, _) = KnowledgeService.shared.parseFrontmatter(
             (try? String(contentsOf: filePath, encoding: .utf8)) ?? ""
         )
+        let orderedKeys = ["title", "source", "bucket", "url", "tags", "imported_at"]
         var md = "---\n"
-        for (key, value) in frontmatter {
+        for key in orderedKeys {
+            if let value = frontmatter[key] { md += "\(key): \(value)\n" }
+        }
+        for (key, value) in frontmatter where !orderedKeys.contains(key) {
             md += "\(key): \(value)\n"
         }
         md += "---\n\n\(editableContent)"
-        try? md.write(to: filePath, atomically: true, encoding: .utf8)
+        guard (try? md.write(to: filePath, atomically: true, encoding: .utf8)) != nil else { return }
+        activeEntry.content = editableContent
         KnowledgeService.shared.reload()
-        if let fresh = KnowledgeService.shared.entries.first(where: { $0.id == activeEntry.id }) {
-            activeEntry = fresh
-        }
     }
 
     private func commitTitleEdit() {
@@ -652,15 +684,13 @@ struct KnowledgeDetailView: View {
             return
         }
         KnowledgeService.shared.renameEntry(activeEntry, title: trimmed)
-        if let fresh = KnowledgeService.shared.entries.first(where: { $0.id == activeEntry.id }) {
-            activeEntry = fresh
-        }
+        activeEntry.title = trimmed
     }
 
     private func autoTagEntry() {
         isAutoTagging = true
         Task {
-            await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: entry)
+            await KnowledgeExtractionService.shared.autoTagAndUpdate(entry: activeEntry)
             await MainActor.run { isAutoTagging = false }
         }
     }

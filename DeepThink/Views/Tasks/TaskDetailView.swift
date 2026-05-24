@@ -193,6 +193,7 @@ struct TaskDetailView: View {
                                         sub.status = sub.status == .done ? .todo : .done
                                         sub.modifiedAt = Date()
                                     }
+                                    try? modelContext.save()
                                 } label: {
                                     Image(systemName: sub.status == .done ? "checkmark.circle.fill" : "circle")
                                         .font(DS.Font.body)
@@ -211,6 +212,7 @@ struct TaskDetailView: View {
                                 Button {
                                     VectorStore.shared.enqueuePendingReindex(entryID: "task:\(sub.id.uuidString)", entryType: "task", operation: "delete")
                                     modelContext.delete(sub)
+                                    try? modelContext.save()
                                 } label: {
                                     Image(systemName: "xmark")
                                         .font(.system(size: DS.IconSize.xs, weight: .bold))

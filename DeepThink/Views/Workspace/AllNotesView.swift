@@ -80,22 +80,39 @@ struct AllNotesView: View {
                         hint: searchText.isEmpty ? "Try creating a note for your next meeting or idea" : nil
                     )
                 } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            if !pinnedNotes.isEmpty {
-                                HStack(spacing: DS.Spacing.xs) {
-                                    Image(systemName: "pin.fill")
-                                        .font(.system(size: DS.IconSize.xs))
-                                    Text("Pinned")
-                                        .font(DS.Font.small)
-                                }
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, DS.Spacing.md)
-                                .padding(.top, DS.Spacing.sm)
-                                .padding(.bottom, DS.Spacing.xs)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            VStack(spacing: 0) {
+                                if !pinnedNotes.isEmpty {
+                                    HStack(spacing: DS.Spacing.xs) {
+                                        Image(systemName: "pin.fill")
+                                            .font(.system(size: DS.IconSize.xs))
+                                        Text("Pinned")
+                                            .font(DS.Font.small)
+                                    }
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, DS.Spacing.md)
+                                    .padding(.top, DS.Spacing.sm)
+                                    .padding(.bottom, DS.Spacing.xs)
 
-                                ForEach(pinnedNotes) { note in
+                                    ForEach(pinnedNotes) { note in
+                                        let isSelected = appState.selectedNoteID == note.id
+                                        Button { appState.selectedNoteID = note.id } label: {
+                                            noteRow(note)
+                                                .padding(.horizontal, DS.Spacing.sm)
+                                                .padding(.vertical, DS.Spacing.xxs)
+                                                .background(isSelected ? DS.Colors.accentFill : .clear)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plainPointer)
+                                        .contextMenu { noteContextMenu(note) }
+                                        .id(note.id)
+                                        Divider().padding(.horizontal, DS.Spacing.sm)
+                                    }
+                                }
+
+                                ForEach(unpinnedNotes) { note in
                                     let isSelected = appState.selectedNoteID == note.id
                                     Button { appState.selectedNoteID = note.id } label: {
                                         noteRow(note)
@@ -106,23 +123,14 @@ struct AllNotesView: View {
                                     }
                                     .buttonStyle(.plainPointer)
                                     .contextMenu { noteContextMenu(note) }
+                                    .id(note.id)
                                     Divider().padding(.horizontal, DS.Spacing.sm)
                                 }
                             }
-
-                            ForEach(unpinnedNotes) { note in
-                                let isSelected = appState.selectedNoteID == note.id
-                                Button { appState.selectedNoteID = note.id } label: {
-                                    noteRow(note)
-                                        .padding(.horizontal, DS.Spacing.sm)
-                                        .padding(.vertical, DS.Spacing.xxs)
-                                        .background(isSelected ? DS.Colors.accentFill : .clear)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plainPointer)
-                                .contextMenu { noteContextMenu(note) }
-                                Divider().padding(.horizontal, DS.Spacing.sm)
-                            }
+                        }
+                        .onChange(of: appState.selectedNoteID) { _, id in
+                            guard let id else { return }
+                            proxy.scrollTo(id, anchor: .center)
                         }
                     }
                 }
@@ -154,7 +162,7 @@ struct AllNotesView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(noteToDelete?.title.isEmpty == false ? noteToDelete!.title : "Untitled")\".")
+            Text("This will permanently delete \"\(noteToDelete.flatMap { $0.title.isEmpty ? nil : $0.title } ?? "Untitled")\".")
         }
     }
 
