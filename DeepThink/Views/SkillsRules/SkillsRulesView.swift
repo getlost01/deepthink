@@ -228,6 +228,13 @@ struct RulesListView: View {
                 }
             }
             .onAppear { ruleService.reload() }
+            .onChange(of: ruleService.rules) { _, newRules in
+                if let current = selectedRule,
+                   let updated = newRules.first(where: { $0.id == current.id })
+                {
+                    selectedRule = updated
+                }
+            }
             .confirmationDialog("Delete Rule?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
                     if let rule = selectedRule {
@@ -426,6 +433,12 @@ private struct SkillInlineEditor: View {
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
     @State private var duplicated = false
+    @State private var filePath: URL?
+    @State private var trigger: String = "manual"
+    @State private var skillModel: String?
+    @State private var isBuiltIn: Bool = false
+    @State private var isPinned: Bool = false
+    @State private var knowledgeScope: [String] = []
 
     private let categories = [
         "General",
@@ -594,7 +607,11 @@ private struct SkillInlineEditor: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadSkill() }
-        .onChange(of: skill.id) { loadSkill() }
+        .onChange(of: skill.id) {
+            saveTask?.cancel()
+            saveSkill()
+            loadSkill()
+        }
     }
 
     private func loadSkill() {
@@ -604,6 +621,12 @@ private struct SkillInlineEditor: View {
         systemPrompt = skill.systemPrompt
         promptTemplate = skill.promptTemplate
         command = skill.command
+        filePath = skill.filePath
+        trigger = skill.trigger
+        skillModel = skill.model
+        isBuiltIn = skill.isBuiltIn
+        isPinned = skill.isPinned
+        knowledgeScope = skill.knowledgeScope
         hasLoaded = true
     }
 
@@ -618,12 +641,12 @@ private struct SkillInlineEditor: View {
     }
 
     private func saveSkill() {
-        guard hasLoaded else { return }
+        guard hasLoaded, let fp = filePath else { return }
         let updated = SkillFile(
-            name: name, trigger: skill.trigger, icon: icon, model: skill.model,
+            name: name, trigger: trigger, icon: icon, model: skillModel,
             category: category, systemPrompt: systemPrompt, promptTemplate: promptTemplate,
-            filePath: skill.filePath, isBuiltIn: skill.isBuiltIn, isPinned: skill.isPinned,
-            command: command
+            filePath: fp, isBuiltIn: isBuiltIn, isPinned: isPinned,
+            knowledgeScope: knowledgeScope, command: command
         )
         SkillFileService.shared.save(skill: updated)
     }
@@ -654,6 +677,9 @@ private struct RuleInlineEditor: View {
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
+    @State private var filePath: URL?
+    @State private var isBuiltIn: Bool = false
+    @State private var priority: Int = 0
 
     private let categories = [
         "General",
@@ -779,7 +805,14 @@ private struct RuleInlineEditor: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadRule() }
-        .onChange(of: rule.id) { loadRule() }
+        .onChange(of: rule.id) {
+            saveTask?.cancel()
+            saveRule()
+            loadRule()
+        }
+        .onChange(of: rule.isDisabled) { _, newValue in
+            isDisabled = newValue
+        }
     }
 
     private func loadRule() {
@@ -789,6 +822,9 @@ private struct RuleInlineEditor: View {
         category = rule.category
         instruction = rule.instruction
         isDisabled = rule.isDisabled
+        filePath = rule.filePath
+        isBuiltIn = rule.isBuiltIn
+        priority = rule.priority
         hasLoaded = true
     }
 
@@ -803,11 +839,11 @@ private struct RuleInlineEditor: View {
     }
 
     private func saveRule() {
-        guard hasLoaded else { return }
+        guard hasLoaded, let fp = filePath else { return }
         let updated = RuleFile(
             name: name, trigger: trigger, icon: icon, category: category,
-            instruction: instruction, filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
-            isDisabled: isDisabled
+            instruction: instruction, filePath: fp, isBuiltIn: isBuiltIn,
+            priority: priority, isDisabled: isDisabled
         )
         RuleFileService.shared.save(rule: updated)
     }
@@ -959,12 +995,12 @@ struct SkillRunSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DS.Spacing.sm + 2)
                         .background(
-                            (isRunning || input.isEmpty) ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent,
+                            (isRunning || (input.isEmpty && skill.promptTemplate.contains("{{input}}"))) ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                     }
                     .buttonStyle(.plainPointer)
-                    .disabled(isRunning || input.isEmpty)
+                    .disabled(isRunning || (input.isEmpty && skill.promptTemplate.contains("{{input}}")))
 
                     if let result {
                         VStack(alignment: .leading, spacing: DS.Spacing.sm) {

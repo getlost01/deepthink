@@ -27,6 +27,58 @@ final class MCPCatalogService {
         loadCache()
     }
 
+    // MARK: - Auth inference
+
+    static let knownEnvVars: [String: [String]] = [
+        "@modelcontextprotocol/server-github": ["GITHUB_TOKEN"],
+        "@modelcontextprotocol/server-gitlab": ["GITLAB_PERSONAL_ACCESS_TOKEN", "GITLAB_API_URL"],
+        "@modelcontextprotocol/server-slack": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
+        "@modelcontextprotocol/server-brave-search": ["BRAVE_API_KEY"],
+        "@modelcontextprotocol/server-google-maps": ["GOOGLE_MAPS_API_KEY"],
+        "@modelcontextprotocol/server-aws-kb-retrieval": ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"],
+        "@modelcontextprotocol/server-gdrive": ["GDRIVE_CLIENT_ID", "GDRIVE_CLIENT_SECRET"],
+        "@modelcontextprotocol/server-linear": ["LINEAR_API_KEY"],
+        "@modelcontextprotocol/server-notion": ["NOTION_API_KEY"],
+        "@modelcontextprotocol/server-jira": ["JIRA_API_TOKEN", "JIRA_BASE_URL", "JIRA_USER_EMAIL"],
+        "@modelcontextprotocol/server-sentry": ["SENTRY_AUTH_TOKEN"],
+        "@modelcontextprotocol/server-stripe": ["STRIPE_SECRET_KEY"],
+        "@modelcontextprotocol/server-sendgrid": ["SENDGRID_API_KEY"],
+        "@modelcontextprotocol/server-twilio": ["TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN"],
+        "@modelcontextprotocol/server-openai": ["OPENAI_API_KEY"],
+        "mcp-server-openai": ["OPENAI_API_KEY"],
+        "mcp-server-perplexity": ["PERPLEXITY_API_KEY"],
+        "mcp-server-anthropic": ["ANTHROPIC_API_KEY"],
+        "@anthropic-ai/mcp-server-claude": ["ANTHROPIC_API_KEY"],
+        "mcp-server-airtable": ["AIRTABLE_API_KEY", "AIRTABLE_BASE_ID"],
+        "mcp-server-hubspot": ["HUBSPOT_API_KEY"],
+        "mcp-server-zendesk": ["ZENDESK_API_TOKEN", "ZENDESK_SUBDOMAIN", "ZENDESK_EMAIL"],
+        "mcp-server-pagerduty": ["PAGERDUTY_API_KEY"],
+        "mcp-server-datadog": ["DATADOG_API_KEY", "DATADOG_APP_KEY"],
+        "mcp-server-firebase": ["FIREBASE_PROJECT_ID", "GOOGLE_APPLICATION_CREDENTIALS"],
+        "mcp-server-supabase": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"],
+        "mcp-server-planetscale": ["PLANETSCALE_SERVICE_TOKEN", "PLANETSCALE_ORG"],
+        "mcp-server-shopify": ["SHOPIFY_ACCESS_TOKEN", "SHOPIFY_STORE_DOMAIN"],
+        "mcp-server-asana": ["ASANA_ACCESS_TOKEN"],
+        "mcp-server-trello": ["TRELLO_API_KEY", "TRELLO_TOKEN"],
+        "mcp-server-clickup": ["CLICKUP_API_TOKEN"],
+        "@modelcontextprotocol/server-postgres": ["POSTGRES_CONNECTION_STRING"],
+        "mcp-server-neon": ["NEON_API_KEY"],
+        "mcp-server-upstash": ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"]
+    ]
+
+    static func envVarKeys(for package: MCPPackage) -> [String] {
+        knownEnvVars[package.name] ?? []
+    }
+
+    static func requiresAuth(_ package: MCPPackage) -> Bool {
+        if knownEnvVars[package.name] != nil { return true }
+        let text = (package.name + " " + package.description + " " + package.keywords.joined(separator: " ")).lowercased()
+        return text.contains("api key") || text.contains("api_key") ||
+            text.contains("token") || text.contains("oauth") ||
+            text.contains("secret") || text.contains("credential") ||
+            text.contains("auth") || text.contains("bearer")
+    }
+
     // MARK: - Fetch
 
     func fetchCatalog() async {
@@ -124,14 +176,15 @@ final class MCPCatalogService {
         }
     }
 
-    func searchLive(query: String, from: Int = 0) async -> [MCPPackage] {
+    func searchLive(query: String, from: Int = 0) async -> (packages: [MCPPackage], hasMore: Bool) {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=30&from=\(from)") else { return [] }
+        guard let url = URL(string: "https://registry.npmjs.org/-/v1/search?text=\(encoded)&size=30&from=\(from)") else { return ([], false) }
         do {
             let (data, response) = try await Self.session.data(from: url)
-            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return [] }
+            guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return ([], false) }
             let result = try JSONDecoder().decode(NPMSearchResult.self, from: data)
-            return result.objects.compactMap { obj -> MCPPackage? in
+            let rawCount = result.objects.count
+            let filtered = result.objects.compactMap { obj -> MCPPackage? in
                 let pkg = obj.package
                 let isMCP = pkg.name.contains("mcp") ||
                     (pkg.keywords ?? []).contains(where: { $0.lowercased().contains("mcp") }) ||
@@ -150,8 +203,9 @@ final class MCPCatalogService {
                     downloads: obj.score?.detail?.popularity ?? 0
                 )
             }
+            return (filtered, rawCount >= 30)
         } catch {
-            return []
+            return ([], false)
         }
     }
 

@@ -21,7 +21,7 @@ DeepThink is under active development—contributions are welcome and help shape
 [![License: MIT](https://img.shields.io/badge/license-MIT-7cb342)](LICENSE)
 [![Contributing](https://img.shields.io/badge/contributing-CONTRIBUTING-0366d6)](CONTRIBUTING.md)
 
-> **Download:** [Latest release →](https://github.com/getlost01/deepthink/releases/latest) (unsigned `.zip`; first launch: **Right-click → Open**) · macOS **14+**
+> **Install:** `brew tap getlost01/deepthink && brew install --cask deepthink` (recommended) · or [download zip →](https://github.com/getlost01/deepthink/releases/latest) · macOS **14+**
 
 <p align="center">
   <img src="web-app/public/images/settings.png" alt="DeepThink settings" width="720" />

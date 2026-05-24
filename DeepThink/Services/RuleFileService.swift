@@ -111,7 +111,12 @@ final class RuleFileService {
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let slug = name.lowercased().replacingOccurrences(of: " ", with: "-").replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
-        let url = dir.appendingPathComponent("\(slug).md")
+        var url = dir.appendingPathComponent("\(slug).md")
+        var counter = 2
+        while fm.fileExists(atPath: url.path) {
+            url = dir.appendingPathComponent("\(slug)-\(counter).md")
+            counter += 1
+        }
 
         let rule = RuleFile(name: name, trigger: trigger, icon: icon, category: category, instruction: instruction, filePath: url, isBuiltIn: false)
         save(rule: rule)

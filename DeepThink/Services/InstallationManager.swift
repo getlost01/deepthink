@@ -89,7 +89,8 @@ final class InstallationManager {
 
         var sourcePath: String?
         if let bundled = Bundle.main.resourceURL?.appendingPathComponent(bundleName).path,
-           fm.isExecutableFile(atPath: bundled) {
+           fm.isExecutableFile(atPath: bundled)
+        {
             sourcePath = bundled
         } else {
             let devBase = Bundle.main.bundlePath
@@ -109,7 +110,8 @@ final class InstallationManager {
         if sourceSize == destSize,
            let srcData = try? Data(contentsOf: URL(fileURLWithPath: source)),
            let dstData = try? Data(contentsOf: URL(fileURLWithPath: installPath)),
-           SHA256.hash(data: srcData) == SHA256.hash(data: dstData) {
+           SHA256.hash(data: srcData) == SHA256.hash(data: dstData)
+        {
             return true
         }
 
@@ -157,7 +159,7 @@ final class InstallationManager {
 
     // MARK: - Claude Code slash commands
 
-    private static func installClaudeCommands() {
+    static func installClaudeCommands() {
         let commandsDir = NSHomeDirectory() + "/.claude/commands/deepthink"
         try? FileManager.default.createDirectory(atPath: commandsDir, withIntermediateDirectories: true)
 
@@ -177,69 +179,81 @@ final class InstallationManager {
 
     private static let syncSessionCommandContent = #"""
     ---
-    description: Summarize the current Claude Code session and store it in the DeepThink knowledge base. Captures what was worked on, decisions made, files changed, and open items.
+    description: Capture the current Claude Code session to DeepThink — what was worked on, decisions made, files changed, and open items.
     ---
 
     Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
 
-    ## Step 1 — Derive context
+    ## Step 1 — Gather context
 
-    Determine:
-    - **project**: the git repo name (from `basename $(git rev-parse --show-toplevel)` if in a repo, else the working directory basename). If `$ARGUMENTS` is non-empty, use it as an override project name.
-    - **date**: today in `YYYY-MM-DD` format
-    - **working_dir**: current working directory
+    Run these shell commands to ground the summary in facts:
 
-    ## Step 2 — Build the session summary
+    ```bash
+    git rev-parse --show-toplevel 2>/dev/null || pwd          # repo root
+    git branch --show-current 2>/dev/null                     # current branch
+    git log --oneline -10 2>/dev/null                         # recent commits
+    git diff --stat HEAD 2>/dev/null                          # changed files
+    date +%Y-%m-%d                                            # today's date
+    ```
 
-    Produce a structured markdown document covering this session. Use only what actually happened — do not invent or pad.
+    Derive:
+    - **project**: `basename` of the repo root (override with `$ARGUMENTS` if provided)
+    - **branch**: current git branch (omit if not in a git repo)
+    - **date**: from `date` command above
+
+    ## Step 2 — Build the summary
+
+    Use conversation history as the primary source; use git output to fill gaps or verify file names. Include only what actually happened — do not pad or invent.
 
     ```
     # Session: <date> — <one-line topic>
 
     **Project:** <project>
-    **Directory:** <working_dir>
+    **Branch:** <branch>
     **Date:** <date>
 
     ## What was worked on
-    <bullet list of features, bugs, tasks touched>
+    <bullet list — features, bugs, refactors, investigations>
 
     ## Key decisions
-    <bullet list of architectural/design/approach decisions made>
+    <bullet list — architectural, approach, or design choices made>
 
     ## Files changed
-    <bullet list of notable files created or modified, with a short reason>
+    <bullet list — notable files created or modified with a short reason>
 
     ## Outcomes
-    <what was completed or resolved>
+    <what was completed, fixed, or shipped>
 
     ## Open items / follow-ups
-    <anything left unresolved, deferred, or flagged for later — "none" if clean>
+    <unresolved work, deferred items, or follow-ups — "none" if clean>
     ```
 
-    Omit any section that has no content (e.g. skip "Files changed" if no files were touched).
+    Omit any section with no content.
 
     ## Step 3 — Capture to DeepThink
 
     Call `mcp__deepthink__knowledge_capture` with:
     - `source`: `"claude-code"`
-    - `channel`: the project name from Step 1 (lowercase, spaces as hyphens)
-    - `content`: the full markdown document from Step 2
+    - `channel`: project slug (lowercase, spaces as hyphens)
+    - `content`: full markdown from Step 2
     - `title`: `"Session <date>: <one-line topic>"`
-    - `tags`: `["session-log", "<project-slug>", "<date>"]`
+    - `tags`: `["session-log", "<project-slug>", "<date>", "<branch>"]` (omit branch tag if not in a git repo)
 
     ## Step 4 — Confirm
 
-    After the tool call succeeds, output a single confirmation line:
+    On success, output one line:
 
     ```
-    Saved session to DeepThink — claude-code/<channel>: "<title>"
+    Saved → DeepThink / <channel>: "<title>"
     ```
 
-    If the capture tool is unavailable, print:
+    If the MCP tool is unavailable, print the full summary so nothing is lost:
+
     ```
     DeepThink MCP not connected. Session summary:
+
+    <markdown from Step 2>
     ```
-    followed by the full markdown from Step 2 so nothing is lost.
     """#
 
     // MARK: - PATH setup

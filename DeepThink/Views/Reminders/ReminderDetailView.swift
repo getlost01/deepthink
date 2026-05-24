@@ -28,7 +28,11 @@ struct ReminderDetailView: View {
                         reminder.isCompleted.toggle()
                         reminder.completedAt = reminder.isCompleted ? Date() : nil
                         reminder.modifiedAt = Date()
-                        if reminder.isCompleted { cancelNotification(for: reminder) }
+                    }
+                    if reminder.isCompleted {
+                        cancelNotification(for: reminder)
+                    } else {
+                        scheduleNotification(for: reminder)
                     }
                     try? modelContext.save()
                 } label: {
@@ -71,6 +75,7 @@ struct ReminderDetailView: View {
                             if reminder.reminderDate != nil {
                                 Button {
                                     reminder.reminderDate = nil
+                                    reminder.repeatInterval = .none
                                     cancelNotification(for: reminder)
                                     reminder.modifiedAt = Date()
                                     try? modelContext.save()
@@ -100,6 +105,7 @@ struct ReminderDetailView: View {
                             isPresented: $showDatePicker,
                             onClear: {
                                 reminder.reminderDate = nil
+                                reminder.repeatInterval = .none
                                 cancelNotification(for: reminder)
                                 reminder.modifiedAt = Date()
                                 try? modelContext.save()
@@ -187,6 +193,7 @@ struct ReminderDetailView: View {
                         ) {
                             reminder.modifiedAt = Date()
                             try? modelContext.save()
+                            scheduleNotification(for: reminder)
                         }
                     }
 
@@ -310,60 +317,76 @@ struct ReminderDetailView: View {
     }
 
     private var dateChipColor: Color {
-        reminder.isOverdue ? DS.Colors.danger : DS.Colors.textPrimary
+        if reminder.isCompleted { return DS.Colors.textTertiary }
+        return reminder.isOverdue ? DS.Colors.danger : DS.Colors.textPrimary
     }
 
     private func scheduleNotification(for reminder: Reminder) {
-        guard let date = reminder.reminderDate, date > Date() else { return }
-
-        let reminderID = reminder.id
-        let reminderTitle = reminder.title
-        let repeatInterval = reminder.repeatInterval
-        let context = modelContext
-
-        let center = UNUserNotificationCenter.current()
-        center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
-            guard granted else { return }
-
-            center.removePendingNotificationRequests(withIdentifiers: [reminderID.uuidString])
-
-            let content = UNMutableNotificationContent()
-            content.title = "DeepThink Reminder"
-            content.body = reminderTitle.isEmpty ? "You have a reminder" : reminderTitle
-            content.sound = .default
-            content.interruptionLevel = .timeSensitive
-            content.categoryIdentifier = "REMINDER"
-
-            let cal = Calendar.current
-            let components: DateComponents
-            let repeats: Bool
-            switch repeatInterval {
-            case .none:
-                components = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
-                repeats = false
-            case .daily:
-                components = cal.dateComponents([.hour, .minute], from: date)
-                repeats = true
-            case .weekly:
-                components = cal.dateComponents([.weekday, .hour, .minute], from: date)
-                repeats = true
-            case .monthly:
-                components = cal.dateComponents([.day, .hour, .minute], from: date)
-                repeats = true
-            case .yearly:
-                components = cal.dateComponents([.month, .day, .hour, .minute], from: date)
-                repeats = true
+        guard let date = reminder.reminderDate, date > Date() else {
+            if reminder.notificationScheduled {
+                reminder.notificationScheduled = false
+                try? modelContext.save()
             }
+            return
+        }
 
-            let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: repeats)
-            let request = UNNotificationRequest(identifier: reminderID.uuidString, content: content, trigger: trigger)
-
-            center.add(request) { error in
-                guard error == nil else { return }
-                DispatchQueue.main.async {
-                    reminder.notificationScheduled = true
-                    try? context.save()
+        let context = modelContext
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized,
+                 .provisional:
+                scheduleRequest(center: center, reminder: reminder, date: date, context: context)
+            case .notDetermined:
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    guard granted else { return }
+                    scheduleRequest(center: center, reminder: reminder, date: date, context: context)
                 }
+            default:
+                break
+            }
+        }
+    }
+
+    private func scheduleRequest(center: UNUserNotificationCenter, reminder: Reminder, date: Date, context: ModelContext) {
+        center.removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+
+        let content = UNMutableNotificationContent()
+        content.title = "DeepThink Reminder"
+        content.body = reminder.title.isEmpty ? "You have a reminder" : reminder.title
+        content.sound = .default
+        content.interruptionLevel = .timeSensitive
+        content.categoryIdentifier = "REMINDER"
+
+        let cal = Calendar.current
+        let components: DateComponents
+        let repeats: Bool
+        switch reminder.repeatInterval {
+        case .none:
+            components = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+            repeats = false
+        case .daily:
+            components = cal.dateComponents([.hour, .minute], from: date)
+            repeats = true
+        case .weekly:
+            components = cal.dateComponents([.weekday, .hour, .minute], from: date)
+            repeats = true
+        case .monthly:
+            components = cal.dateComponents([.day, .hour, .minute], from: date)
+            repeats = true
+        case .yearly:
+            components = cal.dateComponents([.month, .day, .hour, .minute], from: date)
+            repeats = true
+        }
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: repeats)
+        let request = UNNotificationRequest(identifier: reminder.id.uuidString, content: content, trigger: trigger)
+
+        center.add(request) { error in
+            guard error == nil else { return }
+            DispatchQueue.main.async {
+                reminder.notificationScheduled = true
+                try? context.save()
             }
         }
     }
@@ -704,15 +727,25 @@ private struct ReminderDatePickerPopover: View {
     private var quickDates: [(String, Date)] {
         let now = Date()
         var result: [(String, Date)] = []
-        if let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: now), d > now {
-            result.append(("Today", d))
+        if let todayAt9 = cal.date(bySettingHour: 9, minute: 0, second: 0, of: now), todayAt9 > now {
+            result.append(("Today", todayAt9))
+        } else {
+            // Past 9am: snap to the next clean hour at least ~1h out, only if still today
+            let twoHoursOut = cal.date(byAdding: .hour, value: 2, to: now) ?? now
+            var comps = cal.dateComponents([.year, .month, .day, .hour], from: twoHoursOut)
+            comps.minute = 0; comps.second = 0
+            if let d = cal.date(from: comps), cal.isDateInToday(d) {
+                result.append(("Today", d))
+            }
         }
         if let tomorrow = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: now)),
-           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) {
+           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow)
+        {
             result.append(("Tomorrow", d))
         }
         if let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: cal.startOfDay(for: now)),
-           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: nextWeek) {
+           let d = cal.date(bySettingHour: 9, minute: 0, second: 0, of: nextWeek)
+        {
             result.append(("Next week", d))
         }
         return result
@@ -744,6 +777,77 @@ private struct ReminderDatePickerPopover: View {
     private func setTime(hour: Int, minute: Int) {
         if let d = cal.date(bySettingHour: hour, minute: minute, second: 0, of: pickedDate) {
             pickedDate = d
+        }
+    }
+}
+
+// MARK: - Shared notification helpers (module-level, used by list and row views too)
+
+func scheduleReminderNotification(_ reminder: Reminder, context: ModelContext) {
+    guard let date = reminder.reminderDate, date > Date() else {
+        if reminder.notificationScheduled {
+            reminder.notificationScheduled = false
+            try? context.save()
+        }
+        return
+    }
+
+    let center = UNUserNotificationCenter.current()
+    center.getNotificationSettings { settings in
+        switch settings.authorizationStatus {
+        case .authorized,
+             .provisional:
+            _addReminderRequest(center: center, reminder: reminder, date: date, context: context)
+        case .notDetermined:
+            center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                guard granted else { return }
+                _addReminderRequest(center: center, reminder: reminder, date: date, context: context)
+            }
+        default:
+            break
+        }
+    }
+}
+
+private func _addReminderRequest(center: UNUserNotificationCenter, reminder: Reminder, date: Date, context: ModelContext) {
+    center.removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+
+    let content = UNMutableNotificationContent()
+    content.title = "DeepThink Reminder"
+    content.body = reminder.title.isEmpty ? "You have a reminder" : reminder.title
+    content.sound = .default
+    content.interruptionLevel = .timeSensitive
+    content.categoryIdentifier = "REMINDER"
+
+    let cal = Calendar.current
+    let components: DateComponents
+    let repeats: Bool
+    switch reminder.repeatInterval {
+    case .none:
+        components = cal.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        repeats = false
+    case .daily:
+        components = cal.dateComponents([.hour, .minute], from: date)
+        repeats = true
+    case .weekly:
+        components = cal.dateComponents([.weekday, .hour, .minute], from: date)
+        repeats = true
+    case .monthly:
+        components = cal.dateComponents([.day, .hour, .minute], from: date)
+        repeats = true
+    case .yearly:
+        components = cal.dateComponents([.month, .day, .hour, .minute], from: date)
+        repeats = true
+    }
+
+    let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: repeats)
+    let request = UNNotificationRequest(identifier: reminder.id.uuidString, content: content, trigger: trigger)
+
+    center.add(request) { error in
+        guard error == nil else { return }
+        DispatchQueue.main.async {
+            reminder.notificationScheduled = true
+            try? context.save()
         }
     }
 }

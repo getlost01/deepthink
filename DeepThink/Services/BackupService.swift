@@ -134,7 +134,17 @@ final class BackupService {
     // MARK: - Stage Restore
 
     func stageRestore(snapshot: BackupSnapshot) {
-        try? snapshot.folderName.write(to: pendingRestoreURL, atomically: true, encoding: .utf8)
+        do {
+            try snapshot.folderName.write(to: pendingRestoreURL, atomically: true, encoding: .utf8)
+        } catch {
+            let errAlert = NSAlert()
+            errAlert.messageText = "Could Not Stage Restore"
+            errAlert.informativeText = "Failed to save the restore marker: \(error.localizedDescription). Please try again."
+            errAlert.alertStyle = .critical
+            errAlert.addButton(withTitle: "OK")
+            errAlert.runModal()
+            return
+        }
 
         let alert = NSAlert()
         alert.messageText = "Restore Staged"

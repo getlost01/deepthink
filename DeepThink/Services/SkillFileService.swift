@@ -160,7 +160,8 @@ final class SkillFileService {
 
             if let jsonString = context[indexKey],
                let data = jsonString.data(using: .utf8),
-               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]] {
+               let array = try? JSONSerialization.jsonObject(with: data) as? [[String: String]]
+            {
                 let exact = array.first { ($0["title"] ?? "").lowercased() == refTitle.lowercased() }
                 let found: [String: String]?
                 if let e = exact {
@@ -235,7 +236,12 @@ final class SkillFileService {
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
 
         let slug = name.lowercased().replacingOccurrences(of: " ", with: "-").replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
-        let url = dir.appendingPathComponent("\(slug).md")
+        var url = dir.appendingPathComponent("\(slug).md")
+        var counter = 2
+        while fm.fileExists(atPath: url.path) {
+            url = dir.appendingPathComponent("\(slug)-\(counter).md")
+            counter += 1
+        }
 
         let skill = SkillFile(
             name: name, trigger: trigger, icon: icon, model: model,

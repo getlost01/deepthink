@@ -12,6 +12,7 @@ export class DailyBriefAgent extends Agent {
   async generate(): Promise<string> {
     const today = new Date();
     const todayStr = today.toISOString().slice(0, 10);
+    const startOfToday = new Date(todayStr);
     const yesterdayStr = new Date(today.getTime() - 86_400_000).toISOString().slice(0, 10);
 
     const tasks = db.listTasks({ excludeArchived: true });
@@ -20,7 +21,7 @@ export class DailyBriefAgent extends Agent {
 
     const todayDue = tasks.filter((t) => t.dueDate?.toISOString().slice(0, 10) === todayStr && t.status !== "Done");
     const overdue = tasks.filter(
-      (t) => t.dueDate && t.dueDate < today && t.status !== "Done" && t.status !== "Cancelled"
+      (t) => t.dueDate && t.dueDate < startOfToday && t.status !== "Done" && t.status !== "Cancelled"
     );
     const inProgress = tasks.filter((t) => t.status === "In Progress");
     const todayReminders = reminders.filter(

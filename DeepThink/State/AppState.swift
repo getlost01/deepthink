@@ -57,6 +57,7 @@ final class AppState {
     // Terminal state (persists across tab switches)
     var terminalTabs: [TerminalTab] = []
     var activeTerminalTabID: UUID?
+    var terminalTabCounter: Int = 0
 
     /// Edit branching (keyed by message index where edit happened)
     var editBranchPoints: [Int: BranchPoint] = [:]
@@ -192,7 +193,8 @@ final class AppState {
         let host = url.host ?? ""
         if host == "knowledge" {
             if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value {
+               let entryID = comps.queryItems?.first(where: { $0.name == "id" })?.value
+            {
                 navigateToKnowledgeEntry(entryID)
             }
             return

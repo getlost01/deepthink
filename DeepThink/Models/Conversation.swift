@@ -8,6 +8,7 @@ final class UsageSession {
     var inputTokens: Int = 0
     var outputTokens: Int = 0
     var cacheReadTokens: Int = 0
+    var cacheCreationTokens: Int = 0
     var queries: Int = 0
     var costUSD: Double = 0
     var durationMs: Double = 0

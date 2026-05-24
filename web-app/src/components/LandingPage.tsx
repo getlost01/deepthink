@@ -824,6 +824,9 @@ function FinalCtaSection() {
             </Link>
           </motion.div>
         </div>
+        <div className="relative mt-6">
+          <BrewInstallBlock />
+        </div>
       </motion.div>
     </section>
   )

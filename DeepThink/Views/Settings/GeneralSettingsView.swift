@@ -24,6 +24,7 @@ private struct UpdatesSettingsSection: View {
     @State private var hideDoneTask: Task<Void, Never>?
     @State private var installInstructionsExpanded = false
     @State private var copiedCommand: String?
+    @State private var copyResetTask: Task<Void, Never>?
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
@@ -40,7 +41,7 @@ private struct UpdatesSettingsSection: View {
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                         } else {
-                            Text("DeepThink checks GitHub Releases and offers the latest macOS zip download.")
+                            Text("DeepThink checks GitHub Releases for updates. Install or update via Homebrew (recommended) or download the zip directly.")
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                             HStack(spacing: DS.Spacing.xs) {
@@ -110,6 +111,7 @@ private struct UpdatesSettingsSection: View {
         }
         .onDisappear {
             hideDoneTask?.cancel()
+            copyResetTask?.cancel()
         }
     }
 
@@ -146,7 +148,7 @@ private struct UpdatesSettingsSection: View {
                     }
                 } label: {
                     HStack(spacing: DS.Spacing.xs) {
-                        Text("How to install a downloaded update")
+                        Text("How to install or update DeepThink")
                             .font(DS.Font.caption)
                             .foregroundStyle(DS.Colors.textSecondary)
                         Image(systemName: installInstructionsExpanded ? "chevron.up" : "chevron.down")
@@ -157,20 +159,39 @@ private struct UpdatesSettingsSection: View {
                 .buttonStyle(.plainPointer)
 
                 if installInstructionsExpanded {
-                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
-                        Text("1. Click \"Download Update\" and wait for the zip to finish downloading.")
-                        Text("2. Open the downloaded zip and drag DeepThink.app to Applications.")
-                        Text("3. If prompted, choose Replace to overwrite the existing app build.")
-                        Text("4. If macOS still blocks opening, run one of these in Terminal:")
-                        commandCopyRow(
-                            title: "App still in Downloads",
-                            command: "xattr -cr ~/Downloads/DeepThink.app"
-                        )
-                        commandCopyRow(
-                            title: "App already in Applications",
-                            command: "xattr -cr /Applications/DeepThink.app"
-                        )
-                        Text("5. Re-open DeepThink from Applications.")
+                    VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                            Text("Via Homebrew (recommended)")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textSecondary)
+                            commandCopyRow(
+                                title: "Install",
+                                command: "brew tap getlost01/deepthink && brew install --cask deepthink"
+                            )
+                            commandCopyRow(
+                                title: "Update",
+                                command: "brew upgrade --cask deepthink"
+                            )
+                        }
+
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                            Text("Via zip download")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textSecondary)
+                            Text("1. Click \"Download Update\" and wait for the zip to finish downloading.")
+                            Text("2. Open the downloaded zip and drag DeepThink.app to Applications.")
+                            Text("3. If prompted, choose Replace to overwrite the existing app build.")
+                            Text("4. If macOS still blocks opening, run one of these in Terminal:")
+                            commandCopyRow(
+                                title: "App still in Downloads",
+                                command: "xattr -cr ~/Downloads/DeepThink.app"
+                            )
+                            commandCopyRow(
+                                title: "App already in Applications",
+                                command: "xattr -cr /Applications/DeepThink.app"
+                            )
+                            Text("5. Re-open DeepThink from Applications.")
+                        }
                     }
                     .font(DS.Font.caption)
                     .foregroundStyle(DS.Colors.textTertiary)
@@ -200,6 +221,12 @@ private struct UpdatesSettingsSection: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(command, forType: .string)
                 copiedCommand = command
+                copyResetTask?.cancel()
+                copyResetTask = Task {
+                    try? await Task.sleep(for: .seconds(2))
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run { copiedCommand = nil }
+                }
             }
             .buttonStyle(.dsSecondary)
         }
@@ -449,6 +476,9 @@ private struct BackupSettingsSection: View {
             .labelsHidden()
             .pickerStyle(.menu)
             .frame(width: 100)
+            .onChange(of: intervalHours) { _, _ in
+                BackupService.shared.start()
+            }
         }
         .padding(DS.Spacing.lg)
     }

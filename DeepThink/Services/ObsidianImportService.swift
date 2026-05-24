@@ -53,7 +53,8 @@ final class ObsidianImportService {
             guard ext == "md" || ext == "markdown" else { continue }
             count += 1
             if let values = try? url.resourceValues(forKeys: [.fileSizeKey]),
-               let fileSize = values.fileSize {
+               let fileSize = values.fileSize
+            {
                 size += Int64(fileSize)
             }
         }

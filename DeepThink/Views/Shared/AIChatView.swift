@@ -460,11 +460,14 @@ struct AIChatView: View {
                         .font(DS.Font.micro)
                         .foregroundStyle(DS.Colors.textTertiary.opacity(0.6))
 
-                    if appState.isChatProcessing {
+                    if appState.isChatProcessing || appState.chatMessages.last?.isStreaming == true {
                         Button {
                             chatTask?.cancel()
                             appState.isChatProcessing = false
                             appState.chatProcessingStartTime = nil
+                            if let idx = appState.chatMessages.lastIndex(where: { $0.isStreaming }) {
+                                appState.chatMessages[idx].isStreaming = false
+                            }
                         } label: {
                             Image(systemName: "stop.circle.fill")
                                 .font(.system(size: DS.IconSize.xl))
@@ -508,7 +511,6 @@ struct AIChatView: View {
         .frame(maxWidth: .infinity)
         .padding(.horizontal, DS.Spacing.xl)
         .padding(.vertical, DS.Spacing.md)
-        .background(DS.Colors.surfaceElevated)
     }
 
     // MARK: - Actions
@@ -542,18 +544,19 @@ struct AIChatView: View {
         }
     }
 
-    private func beginStreamSlot() async -> Int {
+    private func beginStreamSlot() async -> UUID {
         await MainActor.run {
-            appState.chatMessages.append(AIMessage(role: .assistant, content: "", isStreaming: true))
+            let msg = AIMessage(role: .assistant, content: "", isStreaming: true)
+            appState.chatMessages.append(msg)
             appState.isChatProcessing = false
             appState.chatProcessingStartTime = nil
-            return appState.chatMessages.count - 1
+            return msg.id
         }
     }
 
-    private func endStreamSlot(_ idx: Int, response: String) async {
+    private func endStreamSlot(_ msgID: UUID, response: String) async {
         await MainActor.run {
-            guard idx < appState.chatMessages.count else { return }
+            guard let idx = appState.chatMessages.firstIndex(where: { $0.id == msgID }) else { return }
             let finalContent = response.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? "_No response received. The model returned an empty reply — try again or check your Claude CLI connection._"
                 : response
@@ -612,7 +615,8 @@ struct AIChatView: View {
             ""
         }
 
-        appState.chatMessages.append(AIMessage(role: .user, content: "/\(skill.commandName) \(resolvedInput.prefix(100))..."))
+        let displayInput = resolvedInput.count > 100 ? "\(resolvedInput.prefix(100))..." : resolvedInput
+        appState.chatMessages.append(AIMessage(role: .user, content: "/\(skill.commandName)\(displayInput.isEmpty ? "" : " \(displayInput)")"))
         persistMessage(role: "user", content: "/\(skill.commandName)")
         appState.isChatProcessing = true
         appState.chatProcessingStartTime = Date()
@@ -636,7 +640,8 @@ struct AIChatView: View {
             let remindersJSON = reminders.prefix(50).map { ["title": $0.title, "notes": String($0.notes.prefix(200))] }
             if let notesData = try? JSONSerialization.data(withJSONObject: notesJSON),
                let tasksData = try? JSONSerialization.data(withJSONObject: tasksJSON),
-               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON) {
+               let remindersData = try? JSONSerialization.data(withJSONObject: remindersJSON)
+            {
                 context["notes_index"] = String(data: notesData, encoding: .utf8) ?? ""
                 context["tasks_index"] = String(data: tasksData, encoding: .utf8) ?? ""
                 context["reminders_index"] = String(data: remindersData, encoding: .utf8) ?? ""
@@ -665,7 +670,8 @@ struct AIChatView: View {
         let total = prior.count
 
         if total > 8, let convID = currentConversation?.id,
-           let summary = ContextEngine.shared.getCachedSummary(for: convID) {
+           let summary = ContextEngine.shared.getCachedSummary(for: convID)
+        {
             let recent = Array(prior.suffix(4))
             return "<conversation_summary>\n\(summary)\n</conversation_summary>\n\n<recent_turns>\n\(compactMessages(recent))\n</recent_turns>"
         }
@@ -723,10 +729,15 @@ struct AIChatView: View {
     // MARK: - Send
 
     private static let workspaceKeywords = [
-        "create", "add", "make", "new", "delete", "remove", "update", "edit", "change",
-        "task", "note", "project", "assign", "move", "set status", "mark done", "archive",
-        "list tasks", "list notes", "list projects", "show tasks", "workspace", "summary",
-        "knowledge", "tally", "count", "how many", "list all"
+        "create task", "add task", "new task", "delete task", "remove task", "update task",
+        "create note", "add note", "new note", "delete note", "remove note", "update note",
+        "create project", "new project", "delete project", "update project",
+        "set status", "mark done", "mark complete", "mark task", "archive task", "archive note",
+        "list tasks", "list notes", "list projects", "show tasks", "show notes", "show projects",
+        "my tasks", "my notes", "my projects", "pending tasks", "open tasks",
+        "workspace summary", "workspace context", "workspace overview",
+        "how many tasks", "how many notes", "how many projects",
+        "create reminder", "new reminder", "delete reminder", "list reminders"
     ]
 
     private func isWorkspaceRequest(_ text: String) -> Bool {
@@ -854,12 +865,12 @@ struct AIChatView: View {
 
                 try Task.checkCancellation()
 
-                let streamIdx = await beginStreamSlot()
+                let streamMsgID = await beginStreamSlot()
                 if servers.isEmpty {
                     response = try await ClaudeService.shared.streamQuery(fullPrompt, systemPrompt: systemPrompt) { token in
                         DispatchQueue.main.async {
-                            if streamIdx < appState.chatMessages.count {
-                                appState.chatMessages[streamIdx].content += token
+                            if let idx = appState.chatMessages.firstIndex(where: { $0.id == streamMsgID }) {
+                                appState.chatMessages[idx].content += token
                             }
                         }
                     }
@@ -868,13 +879,13 @@ struct AIChatView: View {
                         prompt: fullPrompt, servers: servers, systemPrompt: systemPrompt
                     ) { token in
                         DispatchQueue.main.async {
-                            if streamIdx < appState.chatMessages.count {
-                                appState.chatMessages[streamIdx].content += token
+                            if let idx = appState.chatMessages.firstIndex(where: { $0.id == streamMsgID }) {
+                                appState.chatMessages[idx].content += token
                             }
                         }
                     }
                 }
-                await endStreamSlot(streamIdx, response: response)
+                await endStreamSlot(streamMsgID, response: response)
 
                 try Task.checkCancellation()
 
@@ -905,6 +916,9 @@ struct AIChatView: View {
                 await MainActor.run {
                     appState.isChatProcessing = false
                     appState.chatProcessingStartTime = nil
+                    if let idx = appState.chatMessages.lastIndex(where: { $0.isStreaming }) {
+                        appState.chatMessages[idx].isStreaming = false
+                    }
                 }
             } catch {
                 await MainActor.run {
@@ -1080,7 +1094,7 @@ struct AIChatView: View {
         if let title = try? await ClaudeService.shared.query(
             prompt,
             systemPrompt: "Output only a short title. No quotes, no punctuation, no explanation.",
-            model: "claude-haiku-4-5-20251001"
+            model: ClaudeService.ModelVersion.haiku45.id
         ) {
             let cleaned = title.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\"", with: "")
             if !cleaned.isEmpty, cleaned.count < 60 {
@@ -1123,7 +1137,7 @@ struct AIChatView: View {
             guard let result = try? await ClaudeService.shared.query(
                 prompt,
                 systemPrompt: "Output exactly 3 short follow-up questions, one per line. Nothing else.",
-                model: "claude-haiku-4-5-20251001"
+                model: ClaudeService.ModelVersion.haiku45.id
             ) else { return }
 
             let suggestions = result

@@ -54,6 +54,15 @@ private func labelForSource(_ source: String) -> String {
     return "Manual"
 }
 
+// MARK: - SearchScope
+
+private enum SearchScope: String, CaseIterable {
+    case all = "All Fields"
+    case title = "Title"
+    case tags = "Tags"
+    case bucket = "Bucket"
+}
+
 // MARK: - View
 
 struct ContextGraphView: View {
@@ -81,10 +90,14 @@ struct ContextGraphView: View {
     @State private var threshold: Double = 0.18
     @State private var query: String = ""
     @State private var queryScores: [String: Double] = [:]
+    @State private var searchScope: SearchScope = .all
+    @State private var searchFilterMode = false
     @State private var isBuilding = false
     @State private var showLegend = false
     @State private var showHint = false
     @State private var activeSourceFilter: String?
+    @State private var activeBucketFilter: String?
+    @State private var showBucketPicker = false
     @State private var queryDebounceTask: Task<Void, Never>?
     @State private var thresholdDebounceTask: Task<Void, Never>?
     @State private var isDraggingCanvas = false
@@ -100,7 +113,7 @@ struct ContextGraphView: View {
 
     private var selectedNeighborIDs: Set<String> {
         guard let sel = selectedNodeID else { return [] }
-        return Set(edges.flatMap { e -> [String] in
+        return Set(displayEdges.flatMap { e -> [String] in
             if e.fromID == sel { return [e.toID] }
             if e.toID == sel { return [e.fromID] }
             return []
@@ -108,23 +121,36 @@ struct ContextGraphView: View {
     }
 
     private var selectedNode: ContextNode? {
-        nodes.first(where: { $0.id == selectedNodeID })
+        displayNodes.first(where: { $0.id == selectedNodeID })
     }
 
     private var uniqueSources: [String] {
         Array(Set(nodes.map { labelForSource($0.source) })).sorted()
     }
 
+    private var uniqueBuckets: [String] {
+        Array(Set(nodes.compactMap { $0.bucket.isEmpty ? nil : $0.bucket })).sorted()
+    }
+
     private var displayNodes: [ContextNode] {
-        guard let filter = activeSourceFilter else { return nodes }
-        return nodes.filter { labelForSource($0.source) == filter }
+        var result = nodes
+        if let src = activeSourceFilter {
+            result = result.filter { labelForSource($0.source) == src }
+        }
+        if let bucket = activeBucketFilter {
+            result = result.filter { $0.bucket == bucket }
+        }
+        if searchFilterMode, !queryScores.isEmpty {
+            result = result.filter { queryScores[$0.id] != nil }
+        }
+        return result
     }
 
     private var displayEdges: [ContextEdge] {
         var result = edges
         if !showSemanticEdges { result = result.filter { $0.kind != .semantic } }
         if !showExplicitEdges { result = result.filter { $0.kind != .explicit } }
-        guard activeSourceFilter != nil else { return result }
+        guard activeSourceFilter != nil || activeBucketFilter != nil else { return result }
         let ids = Set(displayNodes.map(\.id))
         return result.filter { ids.contains($0.fromID) && ids.contains($0.toID) }
     }
@@ -167,6 +193,7 @@ struct ContextGraphView: View {
                         canvasSize = geo.size
                         rebuild(in: geo.size)
                     }
+                    .onDisappear { stopSimulation() }
                     .onChange(of: geo.size) { _, s in canvasSize = s }
                     .onChange(of: threshold) { _, _ in
                         thresholdDebounceTask?.cancel()
@@ -187,6 +214,10 @@ struct ContextGraphView: View {
                                 await MainActor.run { runQuery() }
                             }
                         }
+                    }
+                    .onChange(of: searchScope) { _, _ in
+                        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+                        runQuery()
                     }
                 }
                 .onKeyPress(.escape) {
@@ -230,32 +261,146 @@ struct ContextGraphView: View {
 
                 Spacer()
 
-                HStack(spacing: DS.Spacing.xs) {
+                let semCount = edges.count(where: { $0.kind == .semantic })
+                let expCount = edges.count(where: { $0.kind == .explicit })
+
+                Button {
+                    withAnimation(DS.Animation.quick) { showSemanticEdges.toggle() }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Rectangle().fill(DS.Colors.accent.opacity(0.7)).frame(width: 12, height: 2)
+                        Text("Semantic (\(semCount))")
+                            .font(DS.Font.small)
+                            .foregroundStyle(showSemanticEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs2)
+                    .background(showSemanticEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
+                    .opacity(showSemanticEdges ? 1 : 0.45)
+                }
+                .buttonStyle(.plainPointer)
+                .help("Toggle semantic edges")
+
+                Button {
+                    withAnimation(DS.Animation.quick) { showExplicitEdges.toggle() }
+                } label: {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Rectangle().fill(explicitEdgeColor).frame(width: 12, height: 2)
+                        Text("Wiki Links (\(expCount))")
+                            .font(DS.Font.small)
+                            .foregroundStyle(showExplicitEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+                    }
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .padding(.vertical, DS.Spacing.xs2)
+                    .background(showExplicitEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
+                    .opacity(showExplicitEdges ? 1 : 0.45)
+                }
+                .buttonStyle(.plainPointer)
+                .help("Toggle wiki [[links]]")
+
+                Divider().frame(height: 16)
+
+                if uniqueBuckets.count > 1 {
+                    Button { showBucketPicker.toggle() } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: activeBucketFilter != nil ? "folder.fill" : "folder")
+                                .font(.system(size: DS.IconSize.xs, weight: .medium))
+                                .foregroundStyle(activeBucketFilter != nil ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                            Text(activeBucketFilter ?? "All Buckets")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(activeBucketFilter != nil ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: DS.IconSize.nano, weight: .bold))
+                                .foregroundStyle(activeBucketFilter != nil ? DS.Colors.onAccent.opacity(0.7) : DS.Colors.textTertiary)
+                        }
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs2)
+                        .background(activeBucketFilter != nil ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
+                        .overlay(Capsule().strokeBorder(
+                            activeBucketFilter != nil ? DS.Colors.accent : DS.Colors.border, lineWidth: 1
+                        ))
+                    }
+                    .buttonStyle(.plainPointer)
+                    .animation(DS.Animation.quick, value: activeBucketFilter)
+                    .popover(isPresented: $showBucketPicker, arrowEdge: .bottom) { bucketPickerPopover }
+                }
+
+                HStack(spacing: DS.Spacing.xs2) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: DS.IconSize.sm))
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(query.isEmpty ? DS.Colors.textTertiary : DS.Colors.accent)
+
                     TextField("Search knowledge…", text: $query)
                         .textFieldStyle(.plain)
                         .font(DS.Font.body)
-                        .frame(minWidth: 220, maxWidth: 360)
+                        .frame(minWidth: 180, maxWidth: 300)
+
                     if !query.isEmpty {
-                        Button {
-                            query = ""
-                            queryScores = [:]
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(DS.Colors.textTertiary)
+                        HStack(spacing: DS.Spacing.xs) {
+                            Button {
+                                withAnimation(DS.Animation.quick) { searchFilterMode.toggle() }
+                            } label: {
+                                Image(systemName: searchFilterMode ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: DS.IconSize.md))
+                                    .foregroundStyle(searchFilterMode ? DS.Colors.accent : DS.Colors.textTertiary)
+                            }
+                            .buttonStyle(.plainPointer)
+                            .help(searchFilterMode ? "Filter mode: showing only matches" : "Highlight mode: click to filter")
+
+                            Button {
+                                query = ""; queryScores = [:]; searchFilterMode = false
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.md))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            .buttonStyle(.plainPointer)
                         }
-                        .buttonStyle(.plainPointer)
+                        .transition(.opacity.combined(with: .scale(scale: 0.85, anchor: .trailing)))
                     }
+
+                    Rectangle().fill(DS.Colors.border).frame(width: 1, height: 14)
+
+                    Menu {
+                        ForEach(SearchScope.allCases, id: \.self) { scope in
+                            Button {
+                                withAnimation(DS.Animation.quick) { searchScope = scope }
+                            } label: {
+                                if searchScope == scope {
+                                    Label(scope.rawValue, systemImage: "checkmark")
+                                } else {
+                                    Text(scope.rawValue)
+                                }
+                            }
+                        }
+                    } label: {
+                        Text(searchScope == .all ? "All" : searchScope.rawValue)
+                            .font(DS.Font.small)
+                            .foregroundStyle(searchScope != .all ? DS.Colors.accent : DS.Colors.textTertiary)
+                            .lineLimit(1)
+                            .animation(DS.Animation.quick, value: searchScope)
+                            .padding(.horizontal, DS.Spacing.xs2)
+                            .padding(.vertical, DS.Spacing.xxs)
+                            .background(
+                                searchScope != .all ? DS.Colors.accent.opacity(0.1) : Color.clear,
+                                in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                            )
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
                 }
-                .padding(.horizontal, DS.Spacing.md)
-                .padding(.vertical, 7)
-                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(
-                    query.isEmpty ? DS.Colors.border : DS.Colors.accent,
-                    lineWidth: query.isEmpty ? 1 : 1.5
-                ))
+                .padding(.horizontal, DS.Spacing.sm)
+                .padding(.vertical, DS.Spacing.xs2)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: 10))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10).strokeBorder(
+                        query.isEmpty ? DS.Colors.border : DS.Colors.accent.opacity(0.6),
+                        lineWidth: 1.5
+                    )
+                )
                 .animation(DS.Animation.quick, value: query.isEmpty)
             }
 
@@ -304,45 +449,16 @@ struct ContextGraphView: View {
                     .foregroundStyle(DS.Colors.textSecondary)
                     .frame(width: 36)
 
-                Divider().frame(height: 14)
                 let semanticCount = edges.count(where: { $0.kind == .semantic })
                 let explicitCount = edges.count(where: { $0.kind == .explicit })
-                Button {
-                    withAnimation(DS.Animation.quick) { showSemanticEdges.toggle() }
-                } label: {
-                    HStack(spacing: 4) {
-                        Rectangle().fill(DS.Colors.accent.opacity(0.7)).frame(width: 12, height: 2)
-                        Text("Semantic (\(semanticCount))")
-                            .font(DS.Font.small)
-                            .foregroundStyle(showSemanticEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
-                    }
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 3)
-                    .background(showSemanticEdges ? DS.Colors.fill : Color.clear, in: Capsule())
-                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
-                    .opacity(showSemanticEdges ? 1 : 0.5)
-                }
-                .buttonStyle(.plainPointer)
 
-                Button {
-                    withAnimation(DS.Animation.quick) { showExplicitEdges.toggle() }
-                } label: {
-                    HStack(spacing: 4) {
-                        Rectangle().fill(explicitEdgeColor).frame(width: 12, height: 2)
-                        Text("Explicit (\(explicitCount))")
-                            .font(DS.Font.small)
-                            .foregroundStyle(showExplicitEdges ? DS.Colors.textPrimary : DS.Colors.textTertiary)
-                    }
-                    .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 3)
-                    .background(showExplicitEdges ? DS.Colors.fill : Color.clear, in: Capsule())
-                    .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
-                    .opacity(showExplicitEdges ? 1 : 0.5)
-                }
-                .buttonStyle(.plainPointer)
-
+                // Source filter
                 if uniqueSources.count > 1 {
                     Divider().frame(height: 14)
+
+                    Text("Source")
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: DS.Spacing.xs) {
@@ -372,16 +488,35 @@ struct ContextGraphView: View {
                             }
                         }
                     }
+                    .mask(
+                        HStack(spacing: 0) {
+                            Rectangle().frame(maxWidth: .infinity)
+                            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                                .frame(width: DS.Spacing.xl)
+                        }
+                    )
                 }
 
                 Spacer()
 
+                // Stats
+                let isFiltered = activeSourceFilter != nil || activeBucketFilter != nil || searchFilterMode
                 if !queryScores.isEmpty {
-                    Text("\(queryScores.count) match\(queryScores.count == 1 ? "" : "es")")
-                        .font(DS.Font.caption)
-                        .foregroundStyle(DS.Colors.accent)
+                    let visibleMatches = displayNodes.count(where: { queryScores[$0.id] != nil })
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "sparkle")
+                            .font(.system(size: DS.IconSize.xs))
+                            .foregroundStyle(DS.Colors.accent)
+                        Text("\(visibleMatches) match\(visibleMatches == 1 ? "" : "es")")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.accent)
+                    }
+                } else if isFiltered {
+                    Text("\(displayNodes.count) / \(nodes.count) nodes")
+                        .font(DS.Font.caption.monospacedDigit())
+                        .foregroundStyle(DS.Colors.textSecondary)
                 } else {
-                    Text("\(nodes.count) nodes · \(semanticCount)S \(explicitCount)E edges")
+                    Text("\(nodes.count) nodes · \(semanticCount)S \(explicitCount)E")
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textTertiary)
                 }
@@ -496,6 +631,71 @@ struct ContextGraphView: View {
         }
         .padding(DS.Spacing.md)
         .frame(width: 210)
+    }
+
+    // MARK: - Bucket Picker Popover
+
+    private var bucketPickerPopover: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            Text("FILTER BY BUCKET")
+                .font(DS.Font.micro)
+                .foregroundStyle(DS.Colors.textTertiary)
+                .padding(.bottom, 2)
+
+            Button {
+                withAnimation(DS.Animation.quick) { activeBucketFilter = nil }
+                showBucketPicker = false
+            } label: {
+                HStack(spacing: DS.Spacing.sm) {
+                    Text("All Buckets")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(activeBucketFilter == nil ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                    Spacer()
+                    if activeBucketFilter == nil {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                            .foregroundStyle(DS.Colors.accent)
+                    }
+                }
+                .padding(.vertical, 5)
+                .padding(.horizontal, DS.Spacing.sm)
+                .background(activeBucketFilter == nil ? DS.Colors.fill : Color.clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            }
+            .buttonStyle(.plainPointer)
+
+            Divider()
+
+            ForEach(uniqueBuckets, id: \.self) { bucket in
+                Button {
+                    withAnimation(DS.Animation.quick) {
+                        activeBucketFilter = activeBucketFilter == bucket ? nil : bucket
+                    }
+                    showBucketPicker = false
+                } label: {
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: "folder.fill")
+                            .font(.system(size: DS.IconSize.xs))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Text(bucket)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(activeBucketFilter == bucket ? DS.Colors.textPrimary : DS.Colors.textSecondary)
+                            .lineLimit(1)
+                        Spacer()
+                        if activeBucketFilter == bucket {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                .foregroundStyle(DS.Colors.accent)
+                        }
+                    }
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, DS.Spacing.sm)
+                    .background(activeBucketFilter == bucket ? DS.Colors.fill : Color.clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+            }
+        }
+        .padding(DS.Spacing.sm)
+        .frame(minWidth: 200, maxWidth: 260)
     }
 
     // MARK: - Hint Popover
@@ -895,7 +1095,7 @@ struct ContextGraphView: View {
                             Text("CONNECTED (\(neighbors.count))")
                                 .font(DS.Font.micro)
                                 .foregroundStyle(DS.Colors.textTertiary)
-                            ForEach(nodes.filter { neighbors.contains($0.id) }.sorted { lhs, rhs in
+                            ForEach(displayNodes.filter { neighbors.contains($0.id) }.sorted { lhs, rhs in
                                 let lkind = edges.first(where: { ($0.fromID == node.id && $0.toID == lhs.id) || ($0.toID == node.id && $0.fromID == lhs.id) })?
                                     .kind ?? .semantic
                                 let rkind = edges.first(where: { ($0.fromID == node.id && $0.toID == rhs.id) || ($0.toID == node.id && $0.fromID == rhs.id) })?
@@ -1052,10 +1252,11 @@ struct ContextGraphView: View {
                 newEdges.append(ContextEdge(id: edgeID, fromID: fromID, toID: toID, weight: 1.0, kind: .explicit))
 
                 // Ensure both endpoint nodes exist even if below TF-IDF threshold
-                for (nodeID, entryID) in [(fromID, fromID), (toID, toID)] {
-                    if !newNodes.contains(where: { $0.id == nodeID }),
+                for entryID in [fromID, toID] {
+                    if !newNodes.contains(where: { $0.id == entryID }),
                        let entry = knowledgeEntries.first(where: { $0.id == entryID }),
-                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID }) {
+                       let idx = knowledgeEntries.firstIndex(where: { $0.id == entryID })
+                    {
                         let angle = Double(idx) / Double(max(knowledgeEntries.count, 1)) * 2 * .pi
                         let r = spread * CGFloat.random(in: 0.3...1.0)
                         newNodes.append(ContextNode(
@@ -1160,11 +1361,12 @@ struct ContextGraphView: View {
     // MARK: - Fit to Screen
 
     private func fitToScreen() {
-        guard !nodes.isEmpty, canvasSize != .zero else { return }
-        let minX = nodes.map(\.position.x).min()!
-        let maxX = nodes.map(\.position.x).max()!
-        let minY = nodes.map(\.position.y).min()!
-        let maxY = nodes.map(\.position.y).max()!
+        let visible = displayNodes
+        guard !visible.isEmpty, canvasSize != .zero else { return }
+        let minX = visible.map(\.position.x).min()!
+        let maxX = visible.map(\.position.x).max()!
+        let minY = visible.map(\.position.y).min()!
+        let maxY = visible.map(\.position.y).max()!
         let graphW = maxX - minX + 80
         let graphH = maxY - minY + 80
         let newScale = min(5.0, max(0.15, min(canvasSize.width / graphW, canvasSize.height / graphH) * 0.9))
@@ -1183,12 +1385,45 @@ struct ContextGraphView: View {
     // MARK: - Query
 
     private func runQuery() {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
-            queryScores = [:]; return
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { queryScores = [:]; return }
+
+        switch searchScope {
+        case .all:
+            let scores = ContextEngine.shared.scoreEntries(for: q)
+            let maxScore = scores.values.max() ?? 1
+            queryScores = scores.mapValues { $0 / maxScore }
+
+        case .title:
+            let lower = q.lowercased()
+            var scores: [String: Double] = [:]
+            for node in nodes {
+                let t = node.title.lowercased()
+                if t.contains(lower) {
+                    scores[node.id] = Double(lower.count) / Double(max(t.count, 1))
+                }
+            }
+            let maxT = scores.values.max() ?? 1
+            queryScores = scores.mapValues { $0 / maxT }
+
+        case .tags:
+            let lower = q.lowercased()
+            var scores: [String: Double] = [:]
+            for node in nodes {
+                let matches = node.tags.count(where: { $0.lowercased().contains(lower) })
+                if matches > 0 { scores[node.id] = min(1.0, Double(matches) / 3.0) }
+            }
+            let maxTg = scores.values.max() ?? 1
+            queryScores = scores.mapValues { $0 / maxTg }
+
+        case .bucket:
+            let lower = q.lowercased()
+            queryScores = Dictionary(uniqueKeysWithValues:
+                nodes.compactMap { n -> (String, Double)? in
+                    n.bucket.lowercased().contains(lower) ? (n.id, 1.0) : nil
+                }
+            )
         }
-        let scores = ContextEngine.shared.scoreEntries(for: query)
-        let maxScore = scores.values.max() ?? 1
-        queryScores = scores.mapValues { $0 / maxScore }
     }
 }
 

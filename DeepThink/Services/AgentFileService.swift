@@ -140,7 +140,12 @@ final class AgentFileService {
     func create(name: String, role: String, icon: String, model: String?, systemPrompt: String, skills: [String] = [], knowledgeScope: [String] = []) {
         try? fm.createDirectory(at: agentsDir, withIntermediateDirectories: true)
         let slug = name.lowercased().replacingOccurrences(of: " ", with: "-").replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
-        let url = agentsDir.appendingPathComponent("\(slug).md")
+        var url = agentsDir.appendingPathComponent("\(slug).md")
+        var counter = 2
+        while fm.fileExists(atPath: url.path) {
+            url = agentsDir.appendingPathComponent("\(slug)-\(counter).md")
+            counter += 1
+        }
 
         let agent = AgentFile(
             name: name, role: role, icon: icon, model: model,

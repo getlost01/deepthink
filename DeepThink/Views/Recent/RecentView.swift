@@ -441,6 +441,7 @@ private struct AgentsSection: View {
     @State private var lastRun: [String: String] = [:]
     @State private var outputs: [String: String] = [:]
     @State private var runningAll = false
+    @State private var runningAgents: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.lg) {
@@ -470,10 +471,26 @@ private struct AgentsSection: View {
             }
 
             // Per-agent output cards
-            ForEach(agents, id: \.id) { agent in
-                if let output = outputs[agent.id], !output.isEmpty {
-                    AgentOutputCard(name: agent.name, icon: agent.icon, content: output)
+            let hasAnyOutput = agents.contains { outputs[$0.id]?.isEmpty == false }
+            if hasAnyOutput {
+                ForEach(agents, id: \.id) { agent in
+                    if let output = outputs[agent.id], !output.isEmpty {
+                        AgentOutputCard(name: agent.name, icon: agent.icon, content: output)
+                    }
                 }
+            } else if !runningAll, runningAgents.isEmpty {
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: DS.IconSize.xs, weight: .medium))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                    Text("Run an agent above to see its output here.")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .padding(DS.Spacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
         }
         .onAppear { loadState() }
@@ -497,32 +514,38 @@ private struct AgentsSection: View {
                     .foregroundStyle(DS.Colors.textTertiary)
             }
             Spacer()
-            Menu {
-                Button {
-                    guard !runningAll else { return }
-                    runSingle(agent)
-                } label: {
-                    Label("Run Now", systemImage: "arrow.clockwise")
-                }
-                if outputs[agent.id] != nil {
-                    Button(role: .destructive) {
-                        outputs[agent.id] = nil
-                    } label: {
-                        Label("Clear Output", systemImage: "trash")
-                    }
-                }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: DS.IconSize.xs, weight: .bold))
-                    .foregroundStyle(DS.Colors.textTertiary)
+            if runningAgents.contains(agent.id) {
+                ProgressView()
+                    .scaleEffect(0.6)
                     .frame(width: 20, height: 20)
-                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            } else {
+                Menu {
+                    Button {
+                        guard !runningAll, !runningAgents.contains(agent.id) else { return }
+                        runSingle(agent)
+                    } label: {
+                        Label("Run Now", systemImage: "arrow.clockwise")
+                    }
+                    if outputs[agent.id] != nil {
+                        Button(role: .destructive) {
+                            outputs[agent.id] = nil
+                        } label: {
+                            Label("Clear Output", systemImage: "trash")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: DS.IconSize.xs, weight: .bold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .frame(width: 20, height: 20)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .pointerOnHover()
+                .disabled(runningAll)
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .pointerOnHover()
-            .disabled(runningAll)
         }
         .padding(.horizontal, DS.Spacing.sm)
         .padding(.vertical, DS.Spacing.sm)
@@ -537,9 +560,19 @@ private struct AgentsSection: View {
         return f
     }()
 
+    private static let isoFormatterBasic: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
+    private func parseLastRun(_ str: String) -> Date? {
+        Self.isoFormatter.date(from: str) ?? Self.isoFormatterBasic.date(from: str)
+    }
+
     private func dueLabel(for agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) -> String {
         guard let lastStr = lastRun[agent.id],
-              let date = Self.isoFormatter.date(from: lastStr) else { return "never" }
+              let date = parseLastRun(lastStr) else { return "never" }
         let elapsed = Date().timeIntervalSince(date) / 3600
         let remaining = Double(agent.hours) - elapsed
         if remaining <= 0 { return "due" }
@@ -559,11 +592,12 @@ private struct AgentsSection: View {
     }
 
     private func runSingle(_ agent: (id: String, name: String, icon: String, hours: Int, knowledgeKey: String)) {
-        runningAll = true
+        guard !runningAll, !runningAgents.contains(agent.id) else { return }
+        runningAgents.insert(agent.id)
         Task {
             _ = await DeepThinkCLIService.shared.run(["schedule", "run", "--agent", agent.id, "--force"])
             await MainActor.run {
-                runningAll = false
+                runningAgents.remove(agent.id)
                 loadState()
                 onRan()
             }
@@ -573,7 +607,8 @@ private struct AgentsSection: View {
     private func loadState() {
         let url = StorageService.shared.dataURL.appendingPathComponent("schedule-state.json")
         if let data = try? Data(contentsOf: url),
-           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data) {
+           let state = try? JSONDecoder().decode(ScheduleStateAgents.self, from: data)
+        {
             lastRun = state.lastRun
         }
         loadOutputs()
@@ -616,7 +651,8 @@ private struct AgentsSection: View {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         // If content is a JSON object, extract "suggestion" or "result" field
         if trimmed.hasPrefix("{"), let data = trimmed.data(using: .utf8),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        {
             if let s = json["suggestion"] as? String { return s }
             if let s = json["result"] as? String { return s }
             if let s = json["message"] as? String { return s }
@@ -630,7 +666,8 @@ private struct AgentsSection: View {
                 .joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if inner.hasPrefix("{"), let data = inner.data(using: .utf8),
-               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            {
                 if let s = json["suggestion"] as? String { return s }
                 if let s = json["result"] as? String { return s }
                 return ""
@@ -680,10 +717,15 @@ struct DailyBriefModal: View {
                 HStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "sun.horizon.fill")
                         .font(.system(size: DS.IconSize.sm, weight: .semibold))
-                        .foregroundStyle(Color(hue: 0.08, saturation: 0.85, brightness: 0.98))
-                    Text("Daily Brief")
-                        .font(DS.Font.titleSmall)
-                        .foregroundStyle(DS.Colors.textPrimary)
+                        .foregroundStyle(DS.Colors.sunrise)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Daily Brief")
+                            .font(DS.Font.titleSmall)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(Date(), style: .date)
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
                 }
                 Spacer()
                 Button { dismiss() } label: {
@@ -703,8 +745,6 @@ struct DailyBriefModal: View {
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                     AgentsSection(refreshID: refreshID, onRan: { refreshID = UUID() })
-
-                    Divider()
 
                     InsightsStrip(refreshID: refreshID, onRan: { refreshID = UUID() })
                 }
@@ -736,57 +776,60 @@ private struct InsightsStrip: View {
     @State private var isScanning = false
 
     var body: some View {
-        if insights.isEmpty, !isScanning { EmptyView() } else {
-            VStack(spacing: 0) {
-                // Header row
-                Button {
-                    withAnimation(DS.Animation.standard) { isExpanded.toggle() }
-                } label: {
-                    HStack(spacing: DS.Spacing.sm) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                            .foregroundStyle(DS.Colors.accent)
-                        Text("AI Insights")
-                            .font(DS.Font.small)
-                            .fontWeight(.semibold)
-                            .foregroundStyle(DS.Colors.textPrimary)
-                        if !insights.isEmpty {
-                            Text("\(insights.count)")
-                                .font(DS.Font.micro)
-                                .padding(.horizontal, 5).padding(.vertical, 2)
-                                .background(DS.Colors.fillSecondary, in: Capsule())
+        VStack(spacing: 0) {
+            if !insights.isEmpty || isScanning {
+                Divider().padding(.bottom, DS.Spacing.md)
+                VStack(spacing: 0) {
+                    // Header row
+                    Button {
+                        withAnimation(DS.Animation.standard) { isExpanded.toggle() }
+                    } label: {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                                .foregroundStyle(DS.Colors.accent)
+                            Text("AI Insights")
+                                .font(DS.Font.small)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(DS.Colors.textPrimary)
+                            if !insights.isEmpty {
+                                Text("\(insights.count)")
+                                    .font(DS.Font.micro)
+                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                    .background(DS.Colors.fillSecondary, in: Capsule())
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                            }
+                            Spacer()
+                            if isScanning {
+                                ProgressView().scaleEffect(0.6)
+                            } else {
+                                Button("Scan Now") { runScan() }
+                                    .buttonStyle(.dsSecondary)
+                            }
+                            Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                                .font(.system(size: DS.IconSize.xs, weight: .semibold))
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
-                        Spacer()
-                        if isScanning {
-                            ProgressView().scaleEffect(0.6)
-                        } else {
-                            Button("Scan Now") { runScan() }
-                                .buttonStyle(.dsSecondary)
-                        }
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: DS.IconSize.xs, weight: .semibold))
-                            .foregroundStyle(DS.Colors.textTertiary)
+                        .padding(.horizontal, DS.Spacing.md)
+                        .padding(.vertical, DS.Spacing.sm)
                     }
-                    .padding(.horizontal, DS.Spacing.md)
-                    .padding(.vertical, DS.Spacing.sm)
-                }
-                .buttonStyle(.plainPointer)
+                    .buttonStyle(.plainPointer)
 
-                if isExpanded, !insights.isEmpty {
-                    Divider()
-                    ForEach(Array(insights.enumerated()), id: \.element.id) { idx, insight in
-                        if idx > 0 { Divider().padding(.leading, 40) }
-                        insightRow(insight)
+                    if isExpanded, !insights.isEmpty {
+                        Divider()
+                        ForEach(Array(insights.enumerated()), id: \.element.id) { idx, insight in
+                            if idx > 0 { Divider().padding(.leading, 40) }
+                            insightRow(insight)
+                        }
                     }
                 }
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+                .animation(DS.Animation.standard, value: isExpanded)
             }
-            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
-            .animation(DS.Animation.standard, value: isExpanded)
-            .onAppear { loadInsights() }
-            .onChange(of: refreshID) { loadInsights() }
         }
+        .onAppear { loadInsights() }
+        .onChange(of: refreshID) { loadInsights() }
     }
 
     private func insightRow(_ insight: InsightEntry) -> some View {
@@ -831,7 +874,7 @@ private struct InsightsStrip: View {
     private func severityColor(_ s: String) -> Color {
         switch s {
         case "action": DS.Colors.danger
-        case "warning": .orange
+        case "warning": DS.Colors.warning
         default: DS.Colors.accent
         }
     }

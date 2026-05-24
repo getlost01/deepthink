@@ -28,7 +28,7 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 - Create reminders with or without scheduled dates
 - Overdue detection and highlighting
 - Native macOS notifications at scheduled date/time (banner + sound)
-- "Acknowledge" action on notification marks reminder as completed
+- "Acknowledge" action on notification marks reminder as completed and cancels any remaining pending notification requests for that reminder
 - Clicking notification opens the app and navigates to that reminder
 - Optional project assignment
 - Sort by date, completion status

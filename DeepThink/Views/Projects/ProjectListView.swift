@@ -139,7 +139,8 @@ struct ProjectListView: View {
     private func moveSelection(_ direction: Int) {
         guard !projects.isEmpty else { return }
         if let current = appState.selectedProjectID,
-           let idx = projects.firstIndex(where: { $0.id == current }) {
+           let idx = projects.firstIndex(where: { $0.id == current })
+        {
             let next = min(max(idx + direction, 0), projects.count - 1)
             appState.selectedProjectID = projects[next].id
         } else {

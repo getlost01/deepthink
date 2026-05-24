@@ -12,10 +12,12 @@ struct ReminderRowView: View {
                     reminder.isCompleted.toggle()
                     reminder.completedAt = reminder.isCompleted ? Date() : nil
                     reminder.modifiedAt = Date()
-                    if reminder.isCompleted {
-                        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
-                        reminder.notificationScheduled = false
-                    }
+                }
+                if reminder.isCompleted {
+                    UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+                    reminder.notificationScheduled = false
+                } else {
+                    scheduleReminderNotification(reminder, context: modelContext)
                 }
                 try? modelContext.save()
             } label: {
@@ -33,7 +35,7 @@ struct ReminderRowView: View {
                     .foregroundStyle(reminder.isCompleted ? DS.Colors.textSecondary : DS.Colors.textPrimary)
 
                 if let date = reminder.reminderDate {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: reminder.isOverdue ? "exclamationmark.circle.fill" : "bell.fill")
                             .font(.system(size: DS.IconSize.xs))
                         Text(date.formatted(date: .abbreviated, time: .shortened))

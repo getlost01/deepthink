@@ -33,3 +33,16 @@
 | `Cmd+T` | New Task |
 | `Shift+Cmd+N` | New Project |
 | `Shift+Cmd+R` | New Reminder |
+
+## Terminal
+
+These shortcuts are active when the Terminal section is visible.
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+T` | New tab |
+| `Cmd+W` | Close active tab |
+| `Cmd+F` | Toggle search bar |
+| `Cmd+=` | Increase font size |
+| `Cmd+-` | Decrease font size |
+| `Cmd+0` | Reset font size |

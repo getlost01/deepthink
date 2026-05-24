@@ -10,6 +10,9 @@ struct TerminalHostView: NSViewRepresentable {
         let termView: LocalProcessTerminalView
         if let existing = session.terminalView {
             termView = existing
+            // Always update the delegate so callbacks reach the current coordinator
+            // even when SwiftUI recreates the representable while reusing the NSView.
+            termView.processDelegate = context.coordinator
         } else {
             termView = LocalProcessTerminalView(frame: .zero)
             termView.processDelegate = context.coordinator

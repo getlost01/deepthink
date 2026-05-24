@@ -13,6 +13,7 @@ struct ReminderListView: View {
     @State private var priorityFilter: PriorityFilter = .all
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @FocusState private var listFocused: Bool
+    @AppStorage("reminderNotifBannerDismissed") private var notificationBannerDismissed = false
 
     enum FilterMode: String, CaseIterable {
         case active = "Active"
@@ -72,14 +73,21 @@ struct ReminderListView: View {
         VStack(spacing: 0) {
             if notificationStatus == .denied {
                 NotificationPermissionBanner(isDenied: true, onEnable: {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.notifications")!)
+                    openNotificationSettings()
                 })
                 Divider()
-            } else if notificationStatus == .notDetermined {
+            } else if notificationStatus == .notDetermined, !notificationBannerDismissed {
                 NotificationPermissionBanner(isDenied: false, onEnable: {
-                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
-                        DispatchQueue.main.async { checkNotificationStatus() }
+                    UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, error in
+                        DispatchQueue.main.async {
+                            checkNotificationStatus()
+                            if error != nil {
+                                openNotificationSettings()
+                            }
+                        }
                     }
+                }, onDismiss: {
+                    notificationBannerDismissed = true
                 })
                 Divider()
             }
@@ -88,7 +96,8 @@ struct ReminderListView: View {
                 listPane
             } right: {
                 if let selectedID = appState.selectedReminderID,
-                   let reminder = allReminders.first(where: { $0.id == selectedID }) {
+                   let reminder = allReminders.first(where: { $0.id == selectedID })
+                {
                     ReminderDetailView(reminder: reminder)
                         .id(reminder.id)
                 } else {
@@ -248,7 +257,8 @@ struct ReminderListView: View {
     private func navigateList(by delta: Int, proxy: ScrollViewProxy) {
         guard !filteredReminders.isEmpty else { return }
         if let current = appState.selectedReminderID,
-           let idx = filteredReminders.firstIndex(where: { $0.id == current }) {
+           let idx = filteredReminders.firstIndex(where: { $0.id == current })
+        {
             let newIdx = max(0, min(filteredReminders.count - 1, idx + delta))
             let newID = filteredReminders[newIdx].id
             appState.selectedReminderID = newID
@@ -275,6 +285,9 @@ struct ReminderListView: View {
     }
 
     private func createReminder() {
+        filterMode = .active
+        priorityFilter = .all
+        searchText = ""
         let reminder = Reminder(title: "New Reminder")
         modelContext.insert(reminder)
         appState.selectedReminderID = reminder.id
@@ -292,6 +305,8 @@ struct ReminderListView: View {
         reminder.modifiedAt = Date()
         if reminder.isCompleted {
             cancelNotification(for: reminder)
+        } else {
+            scheduleReminderNotification(reminder, context: modelContext)
         }
         try? modelContext.save()
     }
@@ -302,6 +317,18 @@ struct ReminderListView: View {
         )
         reminder.notificationScheduled = false
         try? modelContext.save()
+    }
+
+    private func openNotificationSettings() {
+        let urls = [
+            "x-apple.systempreferences:com.apple.Notifications-Settings",
+            "x-apple.systempreferences:com.apple.preference.notifications"
+        ]
+        for urlString in urls {
+            if let url = URL(string: urlString), NSWorkspace.shared.open(url) {
+                return
+            }
+        }
     }
 
     private func checkNotificationStatus() {
@@ -324,10 +351,18 @@ struct ReminderListView: View {
                         changed = true
                     }
                     if stillPending, reminder.repeatInterval != .none,
-                       let date = reminder.reminderDate, date < Date() {
+                       let date = reminder.reminderDate, date < Date()
+                    {
                         reminder.reminderDate = nextOccurrence(after: Date(), from: date, interval: reminder.repeatInterval)
                         reminder.modifiedAt = Date()
                         changed = true
+                    }
+                    // Schedule notifications for reminders created externally (e.g. via CLI)
+                    // that have a future reminderDate but were never registered with UNUserNotificationCenter.
+                    if !reminder.isCompleted, !reminder.notificationScheduled, !stillPending,
+                       let date = reminder.reminderDate, date > Date()
+                    {
+                        scheduleReminderNotification(reminder, context: modelContext)
                     }
                 }
                 if changed { try? modelContext.save() }
@@ -354,6 +389,7 @@ struct ReminderListView: View {
 private struct NotificationPermissionBanner: View {
     let isDenied: Bool
     let onEnable: () -> Void
+    var onDismiss: (() -> Void)?
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -388,6 +424,15 @@ private struct NotificationPermissionBanner: View {
                     .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
             .buttonStyle(.plainPointer)
+
+            if let onDismiss {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                .buttonStyle(.plainPointer)
+            }
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.md)

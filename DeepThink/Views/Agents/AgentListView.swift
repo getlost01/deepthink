@@ -404,6 +404,9 @@ private struct AgentDetailEditor: View {
     @State private var hasLoaded = false
     @State private var saveTask: Task<Void, Never>?
     @State private var showIconPicker = false
+    @State private var filePath: URL?
+    @State private var agentSkills: [String] = []
+    @State private var isBuiltIn: Bool = false
 
     private let icons = [
         "person.circle", "magnifyingglass.circle", "chevron.left.forwardslash.chevron.right",
@@ -428,7 +431,11 @@ private struct AgentDetailEditor: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { loadAgent() }
-        .onChange(of: agent.id) { loadAgent() }
+        .onChange(of: agent.id) {
+            saveTask?.cancel()
+            saveAgent()
+            loadAgent()
+        }
     }
 
     private var editorToolbar: some View {
@@ -561,6 +568,9 @@ private struct AgentDetailEditor: View {
         model = agent.model
         knowledgeScope = agent.knowledgeScope.joined(separator: ", ")
         editablePrompt = agent.systemPrompt
+        filePath = agent.filePath
+        agentSkills = agent.skills
+        isBuiltIn = agent.isBuiltIn
         hasLoaded = true
     }
 
@@ -575,14 +585,14 @@ private struct AgentDetailEditor: View {
     }
 
     private func saveAgent() {
-        guard hasLoaded else { return }
+        guard hasLoaded, let fp = filePath else { return }
         let scope = knowledgeScope.components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
         let updated = AgentFile(
             name: name, role: role, icon: icon, model: model,
-            systemPrompt: editablePrompt, skills: agent.skills, knowledgeScope: scope,
-            filePath: agent.filePath, isBuiltIn: agent.isBuiltIn
+            systemPrompt: editablePrompt, skills: agentSkills, knowledgeScope: scope,
+            filePath: fp, isBuiltIn: isBuiltIn
         )
         AgentFileService.shared.save(agent: updated)
     }

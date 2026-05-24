@@ -9,7 +9,11 @@ final class ClaudeService {
     var isProcessing = false
     var lastError: String?
     var lastErrorKind: ClaudeErrorKind?
-    var maxTokens: Int = 16384
+    var maxTokens: Int = 16384 {
+        didSet {
+            UserDefaults.standard.set(maxTokens, forKey: "maxTokens")
+        }
+    }
 
     /// Model selection — persisted across launches via UserDefaults
     var selectedModelFamily: ModelFamily = .sonnet {
@@ -45,11 +49,13 @@ final class ClaudeService {
     var cliVersion: String?
 
     private var container: ModelContainer?
+    private var usageContext: ModelContext?
     private var currentSession: UsageSession?
 
     func start(container: ModelContainer) {
         self.container = container
         let context = ModelContext(container)
+        usageContext = context
         let session = UsageSession()
         context.insert(session)
         try? context.save()
@@ -76,16 +82,15 @@ final class ClaudeService {
         cacheReadTokens: Int = 0,
         cacheCreationTokens: Int = 0
     ) {
-        guard let container, let session = currentSession else { return }
-        let context = ModelContext(container)
+        guard let usageContext, let session = currentSession else { return }
         session.queries += queries
         session.costUSD += cost
         session.durationMs += durationMs
         session.inputTokens += inputTokens
         session.outputTokens += outputTokens
         session.cacheReadTokens += cacheReadTokens
-        context.insert(session)
-        try? context.save()
+        session.cacheCreationTokens += cacheCreationTokens
+        try? usageContext.save()
         sessionCacheReadTokens += cacheReadTokens
         sessionCacheCreationTokens += cacheCreationTokens
         totalDurationMs += durationMs
@@ -289,7 +294,8 @@ final class ClaudeService {
 
     private init() {
         if let saved = UserDefaults.standard.string(forKey: "claudeCLIPath"),
-           FileManager.default.isExecutableFile(atPath: saved) {
+           FileManager.default.isExecutableFile(atPath: saved)
+        {
             claudePath = saved
             customCLIPath = saved
         } else {
@@ -297,14 +303,22 @@ final class ClaudeService {
         }
 
         if let savedFamily = UserDefaults.standard.string(forKey: "selectedModelFamily"),
-           let family = ModelFamily(rawValue: savedFamily) {
+           let family = ModelFamily(rawValue: savedFamily)
+        {
             selectedModelFamily = family
             if let savedVersionID = UserDefaults.standard.string(forKey: "selectedModelVersionID"),
-               let version = family.versions.first(where: { $0.id == savedVersionID }) {
+               let version = family.versions.first(where: { $0.id == savedVersionID })
+            {
                 selectedModelVersion = version
             } else {
                 selectedModelVersion = family.latestVersion
             }
+        }
+
+        if let savedTokens = UserDefaults.standard.object(forKey: "maxTokens") as? Int,
+           Self.maxTokenOptions.contains(savedTokens)
+        {
+            maxTokens = savedTokens
         }
 
         fetchCLIVersion()
@@ -401,7 +415,7 @@ final class ClaudeService {
 
     private func runCLI(prompt: String, systemPrompt: String?, model: String? = nil, extraArgs: [String] = []) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [claudePath] in
+            DispatchQueue.global(qos: .userInitiated).async { [claudePath, maxTokens] in
                 let storage = StorageService.shared
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: claudePath)
@@ -414,7 +428,9 @@ final class ClaudeService {
                     "json",
                     "--no-session-persistence",
                     "--model",
-                    model ?? ClaudeService.shared.fullModelID
+                    model ?? ClaudeService.shared.fullModelID,
+                    "--max-tokens",
+                    "\(maxTokens)"
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -457,7 +473,8 @@ final class ClaudeService {
 
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(CLIResponse.self, from: jsonData),
-                       let result = response.result {
+                       let result = response.result
+                    {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         let usage = response.usage
@@ -531,6 +548,7 @@ final class ClaudeService {
     private func runCLIStreaming(prompt: String, systemPrompt: String?, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
         let cliPath = claudePath
         let modelID = fullModelID
+        let maxTok = maxTokens
         let storage = StorageService.shared
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -547,7 +565,9 @@ final class ClaudeService {
                     "--verbose",
                     "--no-session-persistence",
                     "--model",
-                    modelID
+                    modelID,
+                    "--max-tokens",
+                    "\(maxTok)"
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -573,8 +593,8 @@ final class ClaudeService {
                     let handle = outPipe.fileHandleForReading
                     var buffer = Data()
 
-                    while process.isRunning || !handle.availableData.isEmpty {
-                        let chunk = handle.availableData
+                    while true {
+                        let chunk = (try? handle.read(upToCount: 65536)) ?? Data()
                         if chunk.isEmpty { break }
                         buffer.append(chunk)
 
@@ -585,14 +605,16 @@ final class ClaudeService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+                            {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String {
+                                              let text = delta["text"] as? String
+                                    {
                                         fullText += text
                                         onToken(text)
                                     }

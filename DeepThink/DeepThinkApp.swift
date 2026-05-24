@@ -39,6 +39,7 @@ private class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         reminder.completedAt = Date()
         reminder.modifiedAt = Date()
         reminder.notificationScheduled = false
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminderID.uuidString])
         do {
             try context.save()
             VectorStore.shared.enqueuePendingReindex(entryID: "reminder:\(reminderID.uuidString)", entryType: "reminder")

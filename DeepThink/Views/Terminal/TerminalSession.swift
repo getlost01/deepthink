@@ -14,7 +14,14 @@ final class TerminalSession: Identifiable {
 
     init(title: String, directory: String? = nil) {
         self.title = title
-        currentDirectory = directory ?? NSHomeDirectory() + "/deepthink"
+        let home = NSHomeDirectory()
+        let candidate = directory ?? (home + "/deepthink")
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: candidate, isDirectory: &isDir), isDir.boolValue {
+            currentDirectory = candidate
+        } else {
+            currentDirectory = home
+        }
     }
 
     func start() {
@@ -49,27 +56,42 @@ final class TerminalSession: Identifiable {
     }
 
     func getTextBuffer(lastLines: Int = 50) -> String {
-        guard let terminal = terminalView?.getTerminal() else { return "" }
-        var lines: [String] = []
-        let totalRows = terminal.rows
-        let start = max(0, totalRows - lastLines)
-        for row in start..<totalRows {
-            if let line = terminal.getLine(row: row) {
-                lines.append(line.translateToString(trimRight: true))
-            }
-        }
-        return lines.joined(separator: "\n")
+        extractAllLines().suffix(lastLines).joined(separator: "\n")
     }
 
     func getAllText() -> String {
-        guard let terminal = terminalView?.getTerminal() else { return "" }
+        extractAllLines().joined(separator: "\n")
+    }
+
+    /// Reads all available buffer lines including scrollback.
+    /// Uses getScrollInvariantLine with an estimated range anchor derived from
+    /// the current display position. Works correctly when the user hasn't scrolled;
+    /// for deeply-scrolled views in very long sessions it falls back to visible rows.
+    private func extractAllLines() -> [String] {
+        guard let terminal = terminalView?.getTerminal() else { return [] }
+        let scrollback = terminal.options.scrollback
+        let rows = terminal.rows
+        // yDisp is the first visible line's index in the internal buffer.
+        // When the scrollback is full: linesTop ≈ yDisp - scrollback.
+        // The scroll-invariant start ≈ max(0, yDisp - scrollback).
+        let estimatedStart = max(0, terminal.getTopVisibleRow() - scrollback)
+        let capacity = scrollback + rows
         var lines: [String] = []
-        let totalRows = terminal.rows
-        for row in 0..<totalRows {
-            if let line = terminal.getLine(row: row) {
+        lines.reserveCapacity(capacity)
+        for row in estimatedStart..<(estimatedStart + capacity) {
+            if let line = terminal.getScrollInvariantLine(row: row) {
                 lines.append(line.translateToString(trimRight: true))
             }
         }
-        return lines.joined(separator: "\n")
+        // Fallback for very long sessions where the user has scrolled far up,
+        // causing our estimate to miss the valid range entirely.
+        if lines.isEmpty {
+            for row in 0..<rows {
+                if let line = terminal.getLine(row: row) {
+                    lines.append(line.translateToString(trimRight: true))
+                }
+            }
+        }
+        return lines
     }
 }

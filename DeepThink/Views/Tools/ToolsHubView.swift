@@ -11,6 +11,7 @@ struct ToolsHubView: View {
     @State private var isTesting = false
     @State private var serverToDelete: MCPServer?
     @State private var showDeleteConfirm = false
+    @State private var testTask: Task<Void, Never>?
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
@@ -89,6 +90,13 @@ struct ToolsHubView: View {
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
             }
+            .mask(
+                HStack(spacing: 0) {
+                    Rectangle().frame(maxWidth: .infinity)
+                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: DS.Spacing.xl)
+                }
+            )
 
             if filteredServers.isEmpty {
                 DSEmptyState(
@@ -154,10 +162,11 @@ struct ToolsHubView: View {
     }
 
     private func testServer(_ server: MCPServer) {
+        testTask?.cancel()
         isTesting = true
         testResult = "Testing \(server.name)..."
 
-        Task {
+        testTask = Task {
             do {
                 let result = try await MCPService.shared.queryWithMCP(
                     prompt: "Test: confirm you can access the \(server.name) MCP server. Reply with a one-line confirmation.",
@@ -173,8 +182,12 @@ struct ToolsHubView: View {
                     isTesting = false
                 }
             }
-            try? await Task.sleep(for: .seconds(3))
-            await MainActor.run { testResult = nil }
+            if !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                if !Task.isCancelled {
+                    await MainActor.run { testResult = nil }
+                }
+            }
         }
     }
 
@@ -189,6 +202,7 @@ private struct ToolCard: View {
     let onTest: () -> Void
     let onDelete: () -> Void
     @State private var showCopied = false
+    @State private var showEdit = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -253,6 +267,13 @@ private struct ToolCard: View {
                     .controlSize(.mini)
 
                 if !server.isCore {
+                    Button("Edit") { showEdit = true }
+                        .font(DS.Font.small)
+                        .buttonStyle(.dsSecondary)
+                        .controlSize(.mini)
+                }
+
+                if !server.isCore {
                     Button("Remove", action: onDelete)
                         .font(DS.Font.small)
                         .buttonStyle(.dsSecondary)
@@ -279,6 +300,9 @@ private struct ToolCard: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(DS.Spacing.md)
         .dsClickable()
+        .sheet(isPresented: $showEdit) {
+            EditServerSheet(server: server)
+        }
     }
 
     private func iconFor(_ category: String) -> String {
@@ -293,6 +317,147 @@ private struct ToolCard: View {
         case "Project Management": "list.bullet.rectangle"
         default: "wrench"
         }
+    }
+}
+
+// MARK: - Edit Server Sheet
+
+private struct EditServerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var server: MCPServer
+
+    @State private var name: String = ""
+    @State private var command: String = ""
+    @State private var args: String = ""
+    @State private var envVars: String = ""
+    @State private var category: String = "General"
+    @State private var description: String = ""
+
+    private let categories = ["General", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management"]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.md) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text("Edit MCP Server")
+                        .font(DS.Font.heading)
+                    Text(server.name)
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .background(DS.Colors.surfaceElevated)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.md) {
+                    DSLabeledTextField(label: "Name", text: $name, placeholder: "My MCP Server")
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Category")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Picker("Category", selection: $category) {
+                            ForEach(categories, id: \.self) { cat in
+                                Text(cat).tag(cat)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .font(DS.Font.body)
+                        .fixedSize()
+                        .onHover { if $0 { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+                    }
+
+                    DSLabeledTextField(label: "Description", text: $description, placeholder: "What does this server do?")
+
+                    Divider()
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Command")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        TextField("npx", text: $command)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.monoSmall)
+                            .dsInputField()
+                    }
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Arguments")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        TextField("-y @modelcontextprotocol/server-xxx", text: $args)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.monoSmall)
+                            .dsInputField()
+                    }
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Environment Variables")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("One per line: KEY=VALUE")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        TextField("API_KEY=abc123", text: $envVars, axis: .vertical)
+                            .textFieldStyle(.plain)
+                            .font(DS.Font.monoSmall)
+                            .lineLimit(2...4)
+                            .dsInputField()
+                    }
+                }
+                .padding(DS.Spacing.lg)
+            }
+
+            Divider()
+
+            HStack {
+                Spacer()
+                Button(action: save) {
+                    Text("Save Changes")
+                        .font(DS.Font.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DS.Colors.onAccent)
+                        .padding(.horizontal, DS.Spacing.xl)
+                        .padding(.vertical, DS.Spacing.sm)
+                        .background(
+                            name.isEmpty || command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                            in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        )
+                }
+                .buttonStyle(.plainPointer)
+                .disabled(name.isEmpty || command.isEmpty)
+            }
+            .padding(DS.Spacing.lg)
+        }
+        .frame(width: 520)
+        .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            name = server.name
+            command = server.command
+            args = server.args
+            envVars = server.envVars
+            category = server.category
+            description = server.serverDescription
+        }
+    }
+
+    private func save() {
+        server.name = name
+        server.command = command
+        server.args = args
+        server.envVars = envVars
+        server.category = category
+        server.serverDescription = description
+        ToastState.shared.show("Server updated")
+        dismiss()
     }
 }
 
@@ -540,6 +705,7 @@ private struct PresetServersSheet: View {
     @State private var isSearching = false
     @State private var liveFrom = 0
     @State private var hasMore = false
+    @State private var packageToInstall: MCPPackage?
 
     private let categories = ["All", "Search", "Files", "Data", "Dev", "Web", "Knowledge", "Communication", "Project Management", "General"]
 
@@ -600,29 +766,38 @@ private struct PresetServersSheet: View {
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: DS.Spacing.xs) {
-                    ForEach(categories, id: \.self) { cat in
-                        Button {
-                            selectedCategory = cat
-                        } label: {
-                            Text(cat)
-                                .font(DS.Font.small)
-                                .foregroundStyle(selectedCategory == cat ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                                .padding(.horizontal, DS.Spacing.sm + 2)
-                                .padding(.vertical, DS.Spacing.xs + 1)
-                                .background(selectedCategory == cat ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            HStack(spacing: DS.Spacing.sm) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: DS.Spacing.xs) {
+                        ForEach(categories, id: \.self) { cat in
+                            Button {
+                                selectedCategory = cat
+                            } label: {
+                                Text(cat)
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(selectedCategory == cat ? DS.Colors.onAccent : DS.Colors.textSecondary)
+                                    .padding(.horizontal, DS.Spacing.sm + 2)
+                                    .padding(.vertical, DS.Spacing.xs + 1)
+                                    .background(selectedCategory == cat ? DS.Colors.accent : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            }
+                            .buttonStyle(.plainPointer)
                         }
-                        .buttonStyle(.plainPointer)
                     }
-
-                    Spacer()
-
-                    Text("\(filteredPackages.count) servers")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.leading, DS.Spacing.lg)
+                    .padding(.trailing, DS.Spacing.sm)
                 }
-                .padding(.horizontal, DS.Spacing.lg)
+                .mask(
+                    HStack(spacing: 0) {
+                        Rectangle().frame(maxWidth: .infinity)
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: DS.Spacing.xl)
+                    }
+                )
+
+                Text("\(filteredPackages.count) servers")
+                    .font(DS.Font.small)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.trailing, DS.Spacing.lg)
             }
             .padding(.bottom, DS.Spacing.sm)
 
@@ -655,15 +830,7 @@ private struct PresetServersSheet: View {
                     LazyVStack(spacing: 0) {
                         ForEach(filteredPackages) { pkg in
                             CatalogRow(package: pkg, isAdded: addedNames.contains(pkg.name)) {
-                                let server = MCPServer(
-                                    name: pkg.displayName,
-                                    command: pkg.installCommand,
-                                    args: pkg.installArgs,
-                                    category: pkg.category,
-                                    description: pkg.description
-                                )
-                                onAdd(server)
-                                addedNames.insert(pkg.name)
+                                packageToInstall = pkg
                             }
 
                             if pkg.id != filteredPackages.last?.id || hasMore {
@@ -692,6 +859,12 @@ private struct PresetServersSheet: View {
             }
         }
         .frame(width: 640, height: 560)
+        .sheet(item: $packageToInstall) { pkg in
+            CatalogInstallSheet(package: pkg) { server in
+                onAdd(server)
+                addedNames.insert(pkg.name)
+            }
+        }
         .task(id: searchText) {
             guard !searchText.isEmpty else {
                 liveResults = []
@@ -703,10 +876,10 @@ private struct PresetServersSheet: View {
             guard !Task.isCancelled else { return }
             isSearching = true
             liveFrom = 0
-            let results = await catalog.searchLive(query: searchText, from: 0)
+            let (results, more) = await catalog.searchLive(query: searchText, from: 0)
             liveResults = results
-            hasMore = results.count >= 20
-            liveFrom = results.count
+            hasMore = more
+            liveFrom = 30
             isSearching = false
         }
         .onAppear {
@@ -719,13 +892,179 @@ private struct PresetServersSheet: View {
     private func loadMore() async {
         guard !isSearching, hasMore else { return }
         isSearching = true
-        let results = await catalog.searchLive(query: searchText, from: liveFrom)
+        let (results, more) = await catalog.searchLive(query: searchText, from: liveFrom)
         let existing = Set(liveResults.map(\.id))
         let fresh = results.filter { !existing.contains($0.id) }
         liveResults.append(contentsOf: fresh)
-        hasMore = results.count >= 20
-        liveFrom += results.count
+        hasMore = more
+        liveFrom += 30
         isSearching = false
+    }
+}
+
+// MARK: - Catalog Install Sheet
+
+private struct CatalogInstallSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let package: MCPPackage
+    let onInstall: (MCPServer) -> Void
+
+    @State private var envVars = ""
+
+    private var knownKeys: [String] {
+        MCPCatalogService.envVarKeys(for: package)
+    }
+
+    private var needsAuth: Bool {
+        MCPCatalogService.requiresAuth(package)
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DS.Spacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                        .fill(DS.Colors.accentFill)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: package.iconName)
+                        .font(.system(size: DS.IconSize.md, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                }
+
+                VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                    Text(package.displayName)
+                        .font(DS.Font.heading)
+                    Text(package.name)
+                        .font(DS.Font.monoSmall)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+
+                Spacer()
+
+                Button("Cancel") { dismiss() }
+                    .buttonStyle(.plainPointer)
+                    .foregroundStyle(DS.Colors.textSecondary)
+            }
+            .padding(DS.Spacing.lg)
+            .background(DS.Colors.surfaceElevated)
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: DS.Spacing.lg) {
+                    if !package.description.isEmpty {
+                        Text(package.description)
+                            .font(DS.Font.body)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        Text("Install command")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textSecondary)
+                        Text("\(package.installCommand) \(package.installArgs)")
+                            .font(DS.Font.monoSmall)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, DS.Spacing.xs)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                    }
+
+                    if needsAuth {
+                        HStack(spacing: DS.Spacing.sm) {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: DS.IconSize.sm))
+                                .foregroundStyle(DS.Colors.warning)
+                            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
+                                Text("Authentication required")
+                                    .font(DS.Font.caption)
+                                    .fontWeight(.medium)
+                                    .foregroundStyle(DS.Colors.warning)
+                                Text(knownKeys.isEmpty
+                                    ? "This server needs credentials to function."
+                                    : "Fill in your credentials below to get started.")
+                                    .font(DS.Font.small)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                            }
+                        }
+                        .padding(DS.Spacing.sm)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(DS.Colors.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+                    }
+
+                    VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Text("Environment Variables")
+                                .font(DS.Font.caption)
+                                .foregroundStyle(DS.Colors.textSecondary)
+                            if !needsAuth {
+                                DSPill(text: "Optional", color: DS.Colors.textTertiary)
+                            }
+                        }
+                        Text("One per line: KEY=VALUE")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        TextField(
+                            knownKeys.isEmpty ? "API_KEY=your-key-here" : knownKeys.map { "\($0)=" }.joined(separator: "\n"),
+                            text: $envVars,
+                            axis: .vertical
+                        )
+                        .textFieldStyle(.plain)
+                        .font(DS.Font.monoSmall)
+                        .lineLimit(3...6)
+                        .dsInputField()
+                    }
+                }
+                .padding(DS.Spacing.lg)
+            }
+
+            Divider()
+
+            HStack {
+                Button("Add Without Auth") {
+                    install()
+                }
+                .buttonStyle(.dsSecondary)
+
+                Spacer()
+
+                Button {
+                    install()
+                } label: {
+                    Text(envVars.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Add Server" : "Add with Auth")
+                        .font(DS.Font.body)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(DS.Colors.onAccent)
+                        .padding(.horizontal, DS.Spacing.xl)
+                        .padding(.vertical, DS.Spacing.sm)
+                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                }
+                .buttonStyle(.plainPointer)
+            }
+            .padding(DS.Spacing.lg)
+        }
+        .frame(width: 480)
+        .fixedSize(horizontal: false, vertical: true)
+        .onAppear {
+            if !knownKeys.isEmpty {
+                envVars = knownKeys.map { "\($0)=" }.joined(separator: "\n")
+            }
+        }
+    }
+
+    private func install() {
+        onInstall(MCPServer(
+            name: package.displayName,
+            command: package.installCommand,
+            args: package.installArgs,
+            envVars: envVars,
+            category: package.category,
+            description: package.description
+        ))
+        dismiss()
     }
 }
 
@@ -736,6 +1075,14 @@ private struct CatalogRow: View {
     let isAdded: Bool
     let onAdd: () -> Void
     @State private var isHovered = false
+
+    private var needsAuth: Bool {
+        MCPCatalogService.requiresAuth(package)
+    }
+
+    private var knownKeys: [String] {
+        MCPCatalogService.envVarKeys(for: package)
+    }
 
     var body: some View {
         HStack(spacing: DS.Spacing.md) {
@@ -759,6 +1106,16 @@ private struct CatalogRow: View {
                         .foregroundStyle(DS.Colors.textTertiary)
 
                     DSPill(text: package.category, color: DS.Colors.info)
+
+                    if needsAuth {
+                        HStack(spacing: DS.Spacing.xxs) {
+                            Image(systemName: "key.fill")
+                                .font(.system(size: DS.IconSize.xs))
+                            Text(knownKeys.isEmpty ? "Auth required" : knownKeys.first!)
+                        }
+                        .font(DS.Font.small)
+                        .foregroundStyle(DS.Colors.warning)
+                    }
                 }
 
                 if !package.description.isEmpty {
@@ -768,10 +1125,17 @@ private struct CatalogRow: View {
                         .lineLimit(1)
                 }
 
-                Text(package.name)
-                    .font(DS.Font.monoSmall)
-                    .foregroundStyle(DS.Colors.textTertiary)
-                    .lineLimit(1)
+                if !knownKeys.isEmpty {
+                    Text(knownKeys.joined(separator: ", "))
+                        .font(DS.Font.monoSmall)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                } else {
+                    Text(package.name)
+                        .font(DS.Font.monoSmall)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()

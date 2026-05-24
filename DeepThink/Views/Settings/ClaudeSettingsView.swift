@@ -1,16 +1,31 @@
 import SwiftUI
 
 struct ClaudeSettingsView: View {
-    private var claude: ClaudeService {
-        ClaudeService.shared
-    }
-
-    private var mcp: MCPService {
-        MCPService.shared
-    }
+    @State private var claude = ClaudeService.shared
+    @State private var mcp = MCPService.shared
 
     @State private var showCLIDetails = false
     @State private var animateStatus = false
+    @State private var commandsExpanded = false
+
+    private struct CLICommandEntry {
+        let name: String
+        let path: String
+        let description: String
+    }
+
+    private let cliCommands = [
+        CLICommandEntry(
+            name: "/deepthink",
+            path: "~/.claude/commands/deepthink.md",
+            description: "Universal assistant — routes any query to the right tool. Handles search, capture, tasks, notes, projects, reminders, agents, skills, rules, and AI reasoning in one command."
+        ),
+        CLICommandEntry(
+            name: "/deepthink:sync-session",
+            path: "~/.claude/commands/deepthink/sync-session.md",
+            description: "Capture the current Claude Code session to DeepThink. Reads git context, summarizes what was worked on, decisions made, files changed, and open items, then stores it in the knowledge base."
+        )
+    ]
 
     var body: some View {
         ScrollView {
@@ -37,6 +52,9 @@ struct ClaudeSettingsView: View {
                 animateStatus = true
             }
             mcp.checkGlobalMCPStatus()
+        }
+        .onDisappear {
+            animateStatus = false
         }
     }
 
@@ -402,51 +420,71 @@ struct ClaudeSettingsView: View {
 
             Divider()
 
-            // Global /deepthink skill row
-            HStack(spacing: DS.Spacing.sm) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: DS.IconSize.sm, weight: .medium))
-                    .foregroundStyle(DS.Colors.knowledge)
-                    .frame(width: 20)
-                Text("Skill")
-                    .font(DS.Font.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(DS.Colors.textPrimary)
-                    .frame(width: 36, alignment: .leading)
-                Text("~/.claude/commands/deepthink.md")
-                    .font(DS.Font.monoSmall)
-                    .foregroundStyle(DS.Colors.textSecondary)
-                    .lineLimit(1)
-                Spacer()
-                if mcp.isGlobalSkillInstalled {
-                    HStack(spacing: 3) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: DS.IconSize.sm))
-                        Text("Installed")
-                            .font(DS.Font.small)
-                    }
-                    .foregroundStyle(DS.Colors.success)
-                } else {
-                    Button {
-                        mcp.installGlobalSkill()
-                    } label: {
-                        HStack(spacing: DS.Spacing.xs) {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .font(.system(size: DS.IconSize.xs))
-                            Text("Install")
-                                .font(DS.Font.small)
-                                .fontWeight(.semibold)
+            // Commands (collapsible)
+            VStack(spacing: 0) {
+                Button {
+                    withAnimation(DS.Animation.standard) { commandsExpanded.toggle() }
+                } label: {
+                    HStack(spacing: DS.Spacing.sm) {
+                        Image(systemName: "terminal")
+                            .font(.system(size: DS.IconSize.sm, weight: .medium))
+                            .foregroundStyle(DS.Colors.knowledge)
+                            .frame(width: 20)
+                        Text("Commands")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text("\(cliCommands.count)")
+                            .font(DS.Font.micro)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(DS.Colors.fillSecondary, in: Capsule())
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Spacer()
+                        if mcp.isGlobalSkillInstalled {
+                            HStack(spacing: 3) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: DS.IconSize.sm))
+                                Text("Installed")
+                                    .font(DS.Font.small)
+                            }
+                            .foregroundStyle(DS.Colors.success)
+                        } else {
+                            Button {
+                                mcp.installGlobalSkill()
+                            } label: {
+                                HStack(spacing: DS.Spacing.xs) {
+                                    Image(systemName: "arrow.down.circle.fill")
+                                        .font(.system(size: DS.IconSize.xs))
+                                    Text("Install")
+                                        .font(DS.Font.small)
+                                        .fontWeight(.semibold)
+                                }
+                                .foregroundStyle(DS.Colors.onAccent)
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xs)
+                                .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            }
+                            .buttonStyle(.plainPointer)
                         }
-                        .foregroundStyle(DS.Colors.onAccent)
-                        .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: DS.IconSize.xs, weight: .bold))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                            .rotationEffect(.degrees(commandsExpanded ? 90 : 0))
                     }
-                    .buttonStyle(.plainPointer)
+                    .padding(.horizontal, DS.Spacing.md)
+                    .padding(.vertical, DS.Spacing.sm)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plainPointer)
+
+                if commandsExpanded {
+                    ForEach(Array(cliCommands.enumerated()), id: \.offset) { _, entry in
+                        Divider().padding(.leading, DS.Spacing.md)
+                        commandRow(name: entry.name, path: entry.path, description: entry.description)
+                    }
                 }
             }
-            .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm)
 
             Divider()
 
@@ -650,7 +688,7 @@ struct ClaudeSettingsView: View {
                 }
                 .padding(DS.Spacing.md)
             }
-            .background(.background, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
         }
     }
@@ -819,6 +857,31 @@ struct ClaudeSettingsView: View {
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm)
+    }
+
+    private func commandRow(name: String, path: String, description: String) -> some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+            HStack(spacing: DS.Spacing.sm) {
+                Text(name)
+                    .font(DS.Font.monoSmall)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.accent)
+                Spacer()
+                Text(path)
+                    .font(DS.Font.monoSmall)
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .lineLimit(1)
+            }
+            Text(description)
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, DS.Spacing.md)
+        .padding(.vertical, DS.Spacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.Colors.fillSecondary.opacity(0.5))
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func selectCLIPath() {

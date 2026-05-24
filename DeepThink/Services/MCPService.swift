@@ -88,44 +88,72 @@ final class MCPService {
 
         let content = """
         ---
-        description: DeepThink universal assistant. Single entry point for all DeepThink knowledge, tasks, notes, projects, and AI reasoning. Use /deepthink for any query, search, capture, summary, or workspace interaction — even when intent is vague.
+        description: DeepThink universal assistant. Single entry point for knowledge, tasks, notes, projects, agents, skills, and rules. Routes any query — search, capture, CRUD, summarize, or reason — to the right tool.
         ---
 
-        Route `$ARGUMENTS` to the best `mcp__deepthink__*` tool. When intent is clear, call directly. When ambiguous, call `mcp__deepthink__workspace_context` first to understand current state, then decide.
+        Route `$ARGUMENTS` to the best `mcp__deepthink__*` tool. Call directly when intent is clear. When ambiguous, call `mcp__deepthink__workspace_context` first, then decide.
 
         ## Route map
 
-        | Intent signals | Action | Tool |
-        |---|---|---|
-        | search / find / look for / do I have / any notes on / retrieve / show me / where is | list | `unified_search` |
-        | save / capture / remember / store / log / keep / write down / record / note this | create | `knowledge_capture` |
-        | context / background / brief me / catch me up / what do I know about | load | `knowledge_context` |
-        | tasks / todos / pending / action items / what's next / backlog / in progress | list | `workspace_list_tasks` |
-        | add task / new task / create task / remind me to do | create | `workspace_create_task` |
-        | notes / my notes / show notes / what did I write | list | `workspace_list_notes` |
-        | new note / create note / add note / jot down | create | `workspace_create_note` |
-        | projects / active projects / project status | list | `workspace_list_projects` |
-        | new project / create project | create | `workspace_create_project` |
-        | reminders / upcoming / what's scheduled | list | `workspace_list_reminders` |
-        | remind me / set reminder / don't forget | create | `workspace_create_reminder` |
-        | summary / overview / digest / status / what's going on / catch me up | summarize | `workspace_summary` |
-        | stats / how much / knowledge size / how many | stats | `knowledge_stats` |
-        | agents / my agents | list | `agent_list` |
-        | rules / my rules | list | `rule_list` |
-        | what / why / how / explain / analyze / compare / suggest / help me think / ideas | reason | `smart_query` |
+        All tools called as `mcp__deepthink__<tool>`.
+
+        | Intent signals | Tool |
+        |---|---|
+        | **Search / retrieve** | |
+        | search / find / look for / do I have / any notes on / show me / where is | `unified_search` |
+        | what do I know about / context on / brief me on / catch me up | `knowledge_context` |
+        | knowledge stats / how much stored / how many items | `knowledge_stats` |
+        | **Knowledge** | |
+        | save / capture / remember / store / log / keep / record / note this | `knowledge_capture` |
+        | load project knowledge / context for project | `knowledge_load_project` |
+        | **Workspace** | |
+        | summary / overview / digest / status / what's going on | `workspace_summary` |
+        | **Tasks** | |
+        | tasks / todos / pending / what's next / backlog / in progress | `workspace_list_tasks` |
+        | add task / new task / create task | `workspace_create_task` |
+        | update task / mark done / complete / change task | `workspace_update_task` |
+        | delete task / remove task | `workspace_delete_task` |
+        | show task / get task details | `workspace_get_task` |
+        | **Notes** | |
+        | notes / my notes / show notes / what did I write | `workspace_list_notes` |
+        | new note / create note / add note / jot down | `workspace_create_note` |
+        | update note / edit note | `workspace_update_note` |
+        | delete note / remove note | `workspace_delete_note` |
+        | **Projects** | |
+        | projects / active projects / project status | `workspace_list_projects` |
+        | new project / create project | `workspace_create_project` |
+        | update project / rename project | `workspace_update_project` |
+        | delete project | `workspace_delete_project` |
+        | **Reminders** | |
+        | reminders / upcoming / what's scheduled | `workspace_list_reminders` |
+        | remind me / set reminder / don't forget | `workspace_create_reminder` |
+        | update reminder / reschedule | `workspace_update_reminder` |
+        | delete reminder / cancel reminder | `workspace_delete_reminder` |
+        | **Agents / Skills / Rules** | |
+        | agents / my agents | `agent_list` |
+        | create agent / new agent | `agent_create` |
+        | skills / my skills | `skill_list` |
+        | create skill / new skill | `skill_create` |
+        | rules / my rules | `rule_list` |
+        | create rule / new rule | `rule_create` |
+        | **Reasoning** | |
+        | what / why / how / explain / analyze / compare / suggest / help me think / ideas | `smart_query` |
+        | **Overview** | |
+        | what can you do / help / overview / what is deepthink | `deepthink_overview` |
 
         ## When intent is unclear
         1. Call `mcp__deepthink__workspace_context` — get current workspace state
-        2. Re-evaluate which tool fits given that context
-        3. Call `mcp__deepthink__smart_query` with both the user input and context as input
+        2. Re-evaluate which tool fits
+        3. For complex or open-ended queries, call `mcp__deepthink__smart_query` with user input + context
 
         ## Multi-step
-        Chain calls for compound requests. "Search X then summarize" → `unified_search` → `smart_query` with results.
+        Chain calls for compound requests:
+        - "Search X then summarize" → `unified_search` → `smart_query` with results
+        - "Create a task and a reminder" → `workspace_create_task` → `workspace_create_reminder`
+        - "Find notes on X and update the project" → `unified_search` → `workspace_update_project`
 
         ## Output
-        Return tool result directly. No preamble. No tool explanation.
-
-        All tool names are prefixed `mcp__deepthink__` — e.g. `unified_search` → call `mcp__deepthink__unified_search`.
+        Return tool results directly. No preamble. No tool-name explanation.
         """
 
         let newData = Data(content.utf8)
@@ -135,6 +163,8 @@ final class MCPService {
         if existingHash != newHash {
             try? newData.write(to: skillURL, options: .atomic)
         }
+
+        InstallationManager.installClaudeCommands()
 
         let installed = fm.fileExists(atPath: Self.globalSkillPath)
         DispatchQueue.main.async { self.isGlobalSkillInstalled = installed }
@@ -268,6 +298,7 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
+                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -331,14 +362,16 @@ final class MCPService {
                             guard let line = String(data: lineData, encoding: .utf8), !line.isEmpty else { continue }
 
                             if let jsonData = line.data(using: .utf8),
-                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                               let obj = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+                            {
                                 let type = obj["type"] as? String
                                 if type == "assistant" || type == "content_block_delta" {
                                     if let text = obj["content"] as? String {
                                         fullText += text
                                         onToken(text)
                                     } else if let delta = obj["delta"] as? [String: Any],
-                                              let text = delta["text"] as? String {
+                                              let text = delta["text"] as? String
+                                    {
                                         fullText += text
                                         onToken(text)
                                     }
@@ -386,7 +419,11 @@ final class MCPService {
                     if process.terminationStatus != 0, fullText.isEmpty {
                         let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        if let typed = ClaudeService.classifyOutput(stderr) {
+                            continuation.resume(throwing: typed)
+                        } else {
+                            continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        }
                     } else {
                         continuation.resume(returning: fullText)
                     }
@@ -401,6 +438,7 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
+                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -458,7 +496,8 @@ final class MCPService {
                     let output = String(data: outData, encoding: .utf8) ?? ""
                     if let jsonData = output.data(using: .utf8),
                        let response = try? JSONDecoder().decode(ClaudeService.CLIResponse.self, from: jsonData),
-                       let result = response.result {
+                       let result = response.result
+                    {
                         let cost = response.total_cost_usd
                         let duration = response.duration_ms
                         DispatchQueue.main.async {

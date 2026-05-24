@@ -76,9 +76,11 @@ struct DeepThinkTerminalView: View {
     @State private var isAnalyzing = false
     @State private var analysisResult: String?
     @State private var showAnalysisSheet = false
+    @State private var showAnalysisError = false
+    @State private var analysisError: String?
     @State private var showSearch = false
     @State private var searchQuery = ""
-    @State private var searchResults: [String] = []
+    @State private var searchResultCount: Int = 0
 
     private var activeTab: TerminalTab? {
         tabs.first { $0.id == activeTabID }
@@ -99,11 +101,34 @@ struct DeepThinkTerminalView: View {
                 TerminalAnalysisSheet(text: result)
             }
         }
-        .focusable()
-        .focusEffectDisabled()
-        .onKeyPress(phases: .down) { press in
-            handleKeyPress(press)
+        .alert("Analysis Failed", isPresented: $showAnalysisError, presenting: analysisError) { _ in
+            Button("OK") { showAnalysisError = false }
+        } message: { err in
+            Text(err)
         }
+        .overlay(alignment: .topLeading) { terminalKeyboardShortcuts }
+    }
+
+    /// Hidden zero-size buttons that register keyboard shortcuts at the app-menu level,
+    /// so they fire even when the SwiftTerm NSView holds first responder.
+    private var terminalKeyboardShortcuts: some View {
+        ZStack {
+            Button("") { addTab() }
+                .keyboardShortcut("t", modifiers: .command)
+            Button("") { handleCloseShortcut() }
+                .keyboardShortcut("w", modifiers: .command)
+            Button("") { toggleSearch() }
+                .keyboardShortcut("f", modifiers: .command)
+            Button("") { changeFontSize(by: 1) }
+                .keyboardShortcut("=", modifiers: .command)
+            Button("") { changeFontSize(by: -1) }
+                .keyboardShortcut("-", modifiers: .command)
+            Button("") { resetFontSize() }
+                .keyboardShortcut("0", modifiers: .command)
+        }
+        .frame(width: 0, height: 0)
+        .clipped()
+        .allowsHitTesting(false)
     }
 
     private var tabBar: some View {
@@ -134,8 +159,9 @@ struct DeepThinkTerminalView: View {
         if showSearch {
             TerminalSearchBar(
                 query: $searchQuery,
-                results: searchResults,
+                resultCount: searchResultCount,
                 onSearch: { performSearch() },
+                onPrevious: { performSearchPrevious() },
                 onDismiss: { dismissSearch() }
             )
             Divider()
@@ -149,47 +175,7 @@ struct DeepThinkTerminalView: View {
         }
     }
 
-    private func handleKeyPress(_ press: KeyPress) -> KeyPress.Result {
-        let cmd = press.modifiers.contains(.command)
-        let shift = press.modifiers.contains(.shift)
-        guard cmd else { return .ignored }
-
-        switch press.characters {
-        case "f":
-            showSearch.toggle()
-            if !showSearch { dismissSearch() }
-            return .handled
-        case "=",
-             "+":
-            activeTab?.activeSession().updateFontSize((activeTab?.activeSession().fontSize ?? 13) + 1)
-            return .handled
-        case "-":
-            activeTab?.activeSession().updateFontSize((activeTab?.activeSession().fontSize ?? 13) - 1)
-            return .handled
-        case "0":
-            activeTab?.activeSession().updateFontSize(13)
-            return .handled
-        case "d":
-            if shift { activeTab?.split(.vertical) } else { activeTab?.split(.horizontal) }
-            return .handled
-        case "t":
-            addTab()
-            return .handled
-        case "w":
-            if let tab = activeTab {
-                if tab.isSplit { tab.closeSplit() } else if tabs.count > 1 { closeTab(tab.id) }
-            }
-            return .handled
-        default:
-            return .ignored
-        }
-    }
-
-    private func dismissSearch() {
-        showSearch = false
-        searchQuery = ""
-        searchResults = []
-    }
+    // MARK: - Toolbar
 
     private var toolbarActions: some View {
         HStack(spacing: DS.Spacing.sm) {
@@ -199,9 +185,9 @@ struct DeepThinkTerminalView: View {
                 splitMenuButton(tab: tab)
                 Divider().frame(height: 14)
                 DSToolbarButton(icon: "magnifyingglass", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
-                    showSearch.toggle()
+                    toggleSearch()
                 }
-                .help("Search output (⌘F)")
+                .help("Search output")
             }
 
             DSToolbarButton(icon: "wand.and.rays", color: DS.Colors.textTertiary, size: DS.IconSize.sm) {
@@ -258,11 +244,43 @@ struct DeepThinkTerminalView: View {
         }
     }
 
+    // MARK: - Actions
+
+    private func handleCloseShortcut() {
+        if let tab = activeTab {
+            if tab.isSplit { tab.closeSplit() } else if tabs.count > 1 { closeTab(tab.id) }
+        }
+    }
+
+    private func toggleSearch() {
+        showSearch.toggle()
+        if !showSearch { dismissSearch() }
+    }
+
+    private func changeFontSize(by delta: CGFloat) {
+        guard let session = activeTab?.activeSession() else { return }
+        session.updateFontSize(session.fontSize + delta)
+    }
+
+    private func resetFontSize() {
+        activeTab?.activeSession().updateFontSize(13)
+    }
+
+    private func dismissSearch() {
+        showSearch = false
+        searchQuery = ""
+        searchResultCount = 0
+        activeTab?.activeSession().terminalView?.clearSearch()
+    }
+
     private func addTab() {
-        let session = TerminalSession(title: "Terminal \(appState.terminalTabs.count + 1)")
+        appState.terminalTabCounter += 1
+        let session = TerminalSession(title: "Terminal \(appState.terminalTabCounter)")
         let tab = TerminalTab(session: session)
-        session.onProcessExit = { [weak appState] in
-            guard let appState, appState.terminalTabs.count > 1 else { return }
+        // Capture tab weakly to avoid the retain cycle:
+        // tab → primarySession → onProcessExit closure → tab (strong) → cycle.
+        session.onProcessExit = { [weak appState, weak tab] in
+            guard let appState, let tab, appState.terminalTabs.count > 1 else { return }
             guard let index = appState.terminalTabs.firstIndex(where: { $0.id == tab.id }) else { return }
             let wasActive = tab.id == appState.activeTerminalTabID
             appState.terminalTabs.remove(at: index)
@@ -309,21 +327,29 @@ struct DeepThinkTerminalView: View {
             } catch {
                 await MainActor.run {
                     isAnalyzing = false
+                    analysisError = error.localizedDescription
+                    showAnalysisError = true
                 }
             }
         }
     }
 
+    /// Counts matches and navigates to the first one via SwiftTerm's built-in search,
+    /// which properly highlights results and scrolls the terminal to the match.
     private func performSearch() {
         guard let tab = activeTab, !searchQuery.isEmpty else {
-            searchResults = []
+            searchResultCount = 0
             return
         }
         let text = tab.activeSession().getAllText()
-        let query = searchQuery.lowercased()
-        searchResults = text.components(separatedBy: "\n").filter {
-            $0.lowercased().contains(query)
-        }
+        let q = searchQuery.lowercased()
+        searchResultCount = text.lowercased().components(separatedBy: q).count - 1
+        tab.activeSession().terminalView?.findNext(searchQuery)
+    }
+
+    private func performSearchPrevious() {
+        guard let tab = activeTab, !searchQuery.isEmpty else { return }
+        tab.activeSession().terminalView?.findPrevious(searchQuery)
     }
 }
 
@@ -332,6 +358,7 @@ struct DeepThinkTerminalView: View {
 private struct TerminalPaneView: View {
     let tab: TerminalTab
     @State private var dragOffset: CGFloat = 0
+    @State private var isDragging = false
 
     var body: some View {
         if let secondary = tab.secondarySession {
@@ -380,18 +407,18 @@ private struct TerminalPaneView: View {
             .contentShape(Rectangle())
             .onHover { hovering in
                 if hovering {
-                    if isHorizontal {
-                        NSCursor.resizeLeftRight.push()
-                    } else {
-                        NSCursor.resizeUpDown.push()
-                    }
-                } else {
+                    if isHorizontal { NSCursor.resizeLeftRight.push() } else { NSCursor.resizeUpDown.push() }
+                } else if !isDragging {
+                    // Only pop cursor on hover-exit when not mid-drag.
+                    // During a fast drag the cursor can leave the 4pt handle
+                    // area; popping here would reset the cursor mid-gesture.
                     NSCursor.pop()
                 }
             }
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 1)
                     .onChanged { value in
+                        if !isDragging { isDragging = true }
                         let delta = isHorizontal ? value.translation.width : value.translation.height
                         let newRatio = tab.splitRatio + (delta - dragOffset) / total
                         tab.splitRatio = min(0.8, max(0.2, newRatio))
@@ -399,6 +426,8 @@ private struct TerminalPaneView: View {
                     }
                     .onEnded { _ in
                         dragOffset = 0
+                        isDragging = false
+                        NSCursor.pop()
                     }
             )
     }
@@ -408,8 +437,9 @@ private struct TerminalPaneView: View {
 
 private struct TerminalSearchBar: View {
     @Binding var query: String
-    let results: [String]
+    var resultCount: Int
     let onSearch: () -> Void
+    let onPrevious: () -> Void
     let onDismiss: () -> Void
     @FocusState private var isFocused: Bool
 
@@ -425,16 +455,39 @@ private struct TerminalSearchBar: View {
                 .focused($isFocused)
                 .onSubmit { onSearch() }
 
-            if !results.isEmpty {
-                Text("\(results.count) match\(results.count == 1 ? "" : "es")")
-                    .font(DS.Font.micro)
-                    .foregroundStyle(DS.Colors.textTertiary)
+            if !query.isEmpty {
+                Group {
+                    if resultCount > 0 {
+                        Text("\(resultCount) match\(resultCount == 1 ? "" : "es")")
+                    } else {
+                        Text("No results")
+                    }
+                }
+                .font(DS.Font.micro)
+                .foregroundStyle(DS.Colors.textTertiary)
+
+                Button { onPrevious() } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .buttonStyle(.plainPointer)
+                .help("Previous match (⇧↵)")
+
+                Button { onSearch() } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                        .foregroundStyle(DS.Colors.textSecondary)
+                }
+                .buttonStyle(.plainPointer)
+                .help("Next match (↵)")
             }
 
             Button { onDismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: DS.IconSize.xs, weight: .bold))
                     .foregroundStyle(DS.Colors.textTertiary)
+                    .frame(width: 16, height: 16)
             }
             .buttonStyle(.plainPointer)
         }
@@ -571,10 +624,14 @@ private struct TerminalTabButton: View {
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
-        .onTapGesture(count: 2) {
-            editTitle = tab.primarySession.title
-            isEditing = true
-        }
+        // simultaneousGesture lets the Button handle single-tap (select) while
+        // TapGesture(count:2) handles double-tap (rename) independently.
+        .simultaneousGesture(
+            TapGesture(count: 2).onEnded {
+                editTitle = tab.primarySession.title
+                isEditing = true
+            }
+        )
     }
 
     private func commitRename() {

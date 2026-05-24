@@ -271,7 +271,7 @@ export const landingContent = {
   finalCta: {
     title: 'Connect any agent to your local knowledge base.',
     subtitle:
-      'Download the macOS app to get the bundled MCP server and CLI, then point Cursor, Claude Code, Windsurf, or any editor agent at ~/DeepThink without giving up ownership.',
+      'Install via Homebrew or download the macOS app to get the bundled MCP server and CLI, then point Cursor, Claude Code, Windsurf, or any editor agent at ~/DeepThink without giving up ownership.',
     primaryLabel: 'Download latest release',
     secondaryLabel: 'Open documentation',
   },
