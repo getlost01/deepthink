@@ -58,8 +58,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.deepthink.app
         PRODUCT_NAME: DeepThink
         INFOPLIST_GENERATION_MODE: GeneratedByXcode
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.0.1"
+        CURRENT_PROJECT_VERSION: "2"
         SWIFT_EMIT_LOC_STRINGS: "YES"
         GENERATE_INFOPLIST_FILE: "YES"
         CODE_SIGN_ENTITLEMENTS: DeepThink/DeepThink.entitlements
