@@ -4,19 +4,76 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish (e.g. v1.0.1). Required for manual runs."
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 permissions:
   contents: write
 
 jobs:
+  validate:
+    name: Validate version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Resolve release tag
+        id: meta
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ -z "${{ inputs.tag }}" ]]; then
+              echo "::error::Manual release requires inputs.tag (e.g. v1.0.1)"
+              exit 1
+            fi
+            TAG="${{ inputs.tag }}"
+            git fetch --tags --force
+            git checkout "$TAG"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          VERSION="${TAG#v}"
+          IS_PRERELEASE="false"
+          if [[ "$VERSION" == *-* ]]; then
+            IS_PRERELEASE="true"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$IS_PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG (version $VERSION)"
+
+      - name: Verify version alignment
+        run: bash scripts/release/verify-version.sh "${{ steps.meta.outputs.tag }}"
+
   build-and-release:
-    name: Build & Release
+    name: Build & publish
+    needs: validate
     runs-on: macos-15
     timeout-minutes: 60
+    outputs:
+      sha256: ${{ steps.package.outputs.sha256 }}
+      zip_name: ${{ steps.package.outputs.zip_name }}
+    env:
+      GITHUB_REF_NAME: ${{ needs.validate.outputs.tag }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
       - name: Select Xcode 16
         run: sudo xcode-select -s /Applications/Xcode_16.app
@@ -24,94 +81,56 @@ jobs:
       - name: Install Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
-          bun-version: latest
+          bun-version-file: .bun-version
 
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Build CLI + MCP
-        working-directory: cli
-        run: bash build.sh
+      - name: Build app + bundle CLI/MCP
+        run: bash scripts/release/build-macos-app.sh
 
-      - name: Generate Xcode project
-        run: xcodegen generate
-
-      - name: Build app (Release, unsigned)
+      - name: Package release zip
+        id: package
         run: |
-          xcodebuild build \
-            -project DeepThink.xcodeproj \
-            -scheme DeepThink \
-            -configuration Release \
-            -destination "platform=macOS" \
-            -derivedDataPath build/derivedData \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            | xcpretty --color || true; exit "${PIPESTATUS[0]}"
+          bash scripts/release/package-zip.sh "${{ needs.validate.outputs.tag }}"
+          echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+          echo "zip_name=${ZIP_NAME}" >> "$GITHUB_OUTPUT"
 
-      - name: Ad-hoc sign app
+      - name: Render release notes
+        id: notes
         run: |
-          APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
-          codesign --force --deep --sign - "$APP_PATH"
-
-      - name: Package zip
-        run: |
-          APP_PATH="build/derivedData/Build/Products/Release/DeepThink.app"
-          VERSION="${GITHUB_REF_NAME#v}"
-          ZIP_NAME="DeepThink-${VERSION}.zip"
-          mkdir -p dist
-          ditto -c -k --keepParent "$APP_PATH" "dist/$ZIP_NAME"
-          echo "ZIP_NAME=$ZIP_NAME" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-        env:
-          GITHUB_REF_NAME: ${{ github.ref_name }}
-
-      - name: Compute SHA256
-        run: |
-          SHA=$(shasum -a 256 "dist/$ZIP_NAME" | awk '{print $1}')
-          echo "SHA256=$SHA" >> "$GITHUB_ENV"
+          NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
+          bash scripts/release/render-release-notes.sh "${{ needs.validate.outputs.version }}" "${{ steps.package.outputs.sha256 }}" > "$NOTES_FILE"
+          echo "path=$NOTES_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
-          name: "DeepThink ${{ env.VERSION }}"
-          tag_name: ${{ github.ref_name }}
+          name: "DeepThink ${{ needs.validate.outputs.version }}"
+          tag_name: ${{ needs.validate.outputs.tag }}
           draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          body: |
-            ## DeepThink ${{ env.VERSION }}
+          prerelease: ${{ needs.validate.outputs.is_prerelease == 'true' }}
+          body_path: ${{ steps.notes.outputs.path }}
+          files: dist/${{ steps.package.outputs.zip_name }}
+          fail_on_unmatched_files: true
 
-            ### Install via Homebrew
-            ```bash
-            brew tap getlost01/deepthink
-            brew install --cask deepthink
-            ```
+  update-homebrew:
+    name: Update Homebrew cask
+    needs: [validate, build-and-release]
+    if: needs.validate.outputs.is_prerelease != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
 
-            ### Manual install
-            Download `DeepThink-${{ env.VERSION }}.zip`, unzip, drag to `/Applications`.
-            Then run once to clear quarantine:
-            ```bash
-            xattr -rd com.apple.quarantine /Applications/DeepThink.app
-            ```
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ needs.validate.outputs.tag }}
 
-            ---
-            **SHA256:** `${{ env.SHA256 }}`
-          files: dist/${{ env.ZIP_NAME }}
-
-      - name: Update Homebrew cask
-        if: ${{ !contains(github.ref_name, '-') }}
+      - name: Push cask to homebrew-deepthink tap
         env:
           TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git clone https://github.com/getlost01/homebrew-deepthink.git /tmp/tap --depth=1
-          cp homebrew/deepthink.rb /tmp/tap/Casks/deepthink.rb
-          sed -i '' \
-            -e "s/version \"[^\"]*\"/version \"${{ env.VERSION }}\"/" \
-            -e "s/sha256 \"[^\"]*\"/sha256 \"${{ env.SHA256 }}\"/" \
-            /tmp/tap/Casks/deepthink.rb
-          cd /tmp/tap
-          git add Casks/deepthink.rb
-          git diff --cached --quiet || git commit -m "chore: release v${{ env.VERSION }}"
-          git -c "http.extraHeader=Authorization: token ${TAP_TOKEN}" push origin main
+          bash scripts/release/update-homebrew-cask.sh \
+            "${{ needs.validate.outputs.version }}" \
+            "${{ needs.build-and-release.outputs.sha256 }}"
