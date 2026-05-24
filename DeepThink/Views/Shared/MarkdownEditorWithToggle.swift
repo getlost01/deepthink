@@ -15,6 +15,12 @@ enum EditorMode: String, CaseIterable {
 struct MarkdownEditorWithToggle: View {
     @Binding var text: String
     var placeholder: String = "Start writing..."
+    /// When false, slash/wiki menus can extend past the editor clip. Pair with `compactChrome` for flat overlays.
+    var clipsFloatingOverlays: Bool = true
+    /// When set, Escape closes the host (e.g. Quick Capture) unless the editor has an open overlay menu.
+    var onExternalEscape: (() -> Void)?
+    /// Flat editor chrome: no overlay box-shadows, no link-preview popovers (Quick Capture).
+    var compactChrome: Bool = false
     var onSave: (() -> Void)?
     var wikiLinks: [String: String] = [:]
     var onWikiLinkClick: ((String) -> Void)?
@@ -127,10 +133,12 @@ struct MarkdownEditorWithToggle: View {
                     wikiMode: wikiMode,
                     onRequestWikiLinkInsert: wikiMode ? { showWikiPicker = true; wikiPickerMode = .insert } : nil,
                     onRequestWikiLinkEdit: wikiMode ? { title in showWikiPicker = true; wikiPickerMode = .edit(currentTitle: title) } : nil,
-                    wikiEditorRequest: wikiEditorRequest
+                    wikiEditorRequest: wikiEditorRequest,
+                    onExternalEscape: onExternalEscape,
+                    compactChrome: compactChrome
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
+                .modifier(OptionalClip(enabled: clipsFloatingOverlays))
                 .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {
                     if let type = linkPickerType {
                         DeepLinkPickerSheet(type: type, onSelect: { title, url in
@@ -167,10 +175,10 @@ struct MarkdownEditorWithToggle: View {
             case .raw:
                 RawMarkdownEditor(text: $text, placeholder: placeholder)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .clipped()
+                    .modifier(OptionalClip(enabled: clipsFloatingOverlays))
             }
         }
-        .clipped()
+        .modifier(OptionalClip(enabled: clipsFloatingOverlays))
         .onChange(of: text) {
             isDirty = text != lastSavedText
         }
@@ -307,5 +315,17 @@ struct DSSplitHandle: View {
             }
         }
         .animation(DS.Animation.quick, value: isHovered)
+    }
+}
+
+private struct OptionalClip: ViewModifier {
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.clipped()
+        } else {
+            content
+        }
     }
 }

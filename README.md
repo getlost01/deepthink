@@ -109,6 +109,7 @@ deepthink context --query "authentication decisions"
 | **Reminders** | Timed alerts with native macOS notifications and smart filters (Today, This Week, …) |
 | **Daily Brief (⌘D)** | AI-generated overview of your day from workspace activity |
 | **Built-in terminal** | Multi-tab SwiftTerm with AI analysis on scrollback (build errors, logs, etc.) |
+| **Light & dark theme** | System / Light / Dark in Settings → General; syncs editor, chat markdown, and terminal |
 
 ### AI chat, agents & skills
 
@@ -356,7 +357,7 @@ All new UI must use `DS.*` tokens from `DeepThink/Views/Shared/DesignSystem.swif
 
 | | |
 |-|-|
-| [App Features](docs/app/README.md) | Workspace, knowledge, AI chat, terminal, quick capture |
+| [App Features](docs/app/README.md) | Workspace, knowledge, AI chat, terminal, quick capture, appearance |
 | [CLI Reference](docs/cli/README.md) | All `deepthink` commands, agent system |
 | [MCP Integration](docs/mcp-integration.md) | 51 MCP tools, external client setup |
 | [Architecture](docs/ARCHITECTURE.md) | System design, service layer, data flow |

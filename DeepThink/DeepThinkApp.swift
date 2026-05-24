@@ -177,7 +177,7 @@ struct DeepThinkApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Quick Capture  (\u{2325}Space)") {
-                    QuickCaptureWindowController.shared.toggle(with: sharedModelContainer, appState: appState)
+                    QuickCapturePresenter.toggle(appState: appState)
                 }
 
                 Divider()
@@ -325,7 +325,7 @@ struct DeepThinkApp: App {
                 NotificationCenter.default.post(name: .createNewReminder, object: nil)
             },
             Command(title: "Quick Capture", icon: "bolt.fill", shortcut: "⌥Space", section: "Create") {
-                QuickCaptureWindowController.shared.toggle(with: sharedModelContainer, appState: appState)
+                QuickCapturePresenter.toggle(appState: appState)
             },
 
             // Navigate

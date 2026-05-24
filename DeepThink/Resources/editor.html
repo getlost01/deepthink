@@ -193,6 +193,14 @@
   }
   .ProseMirror.resize-cursor { cursor: col-resize; }
 
+  /* Quick Capture / embedded hosts — flat overlays, no floating shadows */
+  body.compact-chrome #slash-menu,
+  body.compact-chrome #wiki-ac-menu,
+  body.compact-chrome #link-preview,
+  body.compact-chrome #link-popover {
+    box-shadow: none !important;
+  }
+
   /* Slash Command Menu */
   #slash-menu {
     position: fixed;

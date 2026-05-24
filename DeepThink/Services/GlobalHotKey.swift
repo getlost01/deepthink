@@ -6,13 +6,12 @@ final class GlobalHotKey {
     static let shared = GlobalHotKey()
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
-    private var container: ModelContainer?
     private var appState: AppState?
 
     private init() {}
 
     func register(container: ModelContainer, appState: AppState) {
-        self.container = container
+        _ = container
         self.appState = appState
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -37,9 +36,9 @@ final class GlobalHotKey {
     }
 
     private func handleHotKey() {
-        guard let container, let appState else { return }
+        guard let appState else { return }
         DispatchQueue.main.async {
-            QuickCaptureWindowController.shared.toggle(with: container, appState: appState)
+            QuickCapturePresenter.toggle(appState: appState)
         }
     }
 }

@@ -22,6 +22,8 @@ struct NavSnapshot: Equatable {
 final class AppState {
     var selectedSection: SidebarSection? = .recent
     var showCommandPalette: Bool = false
+    var showQuickCapture: Bool = false
+    var quickCapturePrefill: String?
     var searchQuery: String = ""
 
     // Workspace sub-navigation
@@ -298,5 +300,24 @@ final class AppState {
         withAnimation(.spring(duration: 0.25)) {
             showCommandPalette.toggle()
         }
+    }
+
+    func toggleQuickCapture() {
+        if showQuickCapture {
+            dismissQuickCapture()
+        } else {
+            presentQuickCapture()
+        }
+    }
+
+    func presentQuickCapture(prefill: String? = nil) {
+        quickCapturePrefill = prefill
+        showQuickCapture = true
+    }
+
+    func dismissQuickCapture() {
+        showQuickCapture = false
+        quickCapturePrefill = nil
+        NotificationCenter.default.post(name: .quickCaptureReset, object: nil)
     }
 }

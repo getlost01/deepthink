@@ -221,9 +221,7 @@ enum DS {
             p.overlayBg
         }
 
-        static var transparent: Color {
-            DS.Colors.transparent
-        }
+        static let transparent = Color.clear
 
         static func badgeFill(_ color: Color) -> Color {
             color.opacity(DS.Opacity.chipBackground)
@@ -1653,6 +1651,8 @@ struct RichMarkdownEditor: NSViewRepresentable {
     var onRequestWikiLinkInsert: (() -> Void)?
     var onRequestWikiLinkEdit: ((String) -> Void)?
     var wikiEditorRequest: WikiLinkEditorRequest?
+    var onExternalEscape: (() -> Void)?
+    var compactChrome: Bool = false
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -1667,6 +1667,7 @@ struct RichMarkdownEditor: NSViewRepresentable {
         config.userContentController.add(context.coordinator, name: "wikiLinkClicked")
         config.userContentController.add(context.coordinator, name: "requestWikiLinkInsert")
         config.userContentController.add(context.coordinator, name: "requestWikiLinkEdit")
+        config.userContentController.add(context.coordinator, name: "externalEscape")
         if let themeScript = DSThemeManager.shared.palette.editorThemeUserScript() {
             config.userContentController.addUserScript(themeScript)
         }
@@ -1720,11 +1721,21 @@ struct RichMarkdownEditor: NSViewRepresentable {
             context.coordinator.lastWikiEditorRequest = req
             context.coordinator.performWikiAction(req.action)
         }
+        context.coordinator.onExternalEscape = onExternalEscape
+        context.coordinator.compactChrome = compactChrome
+        if context.coordinator.isReady {
+            context.coordinator.applyCompactChromeIfNeeded()
+            if onExternalEscape != nil {
+                context.coordinator.injectExternalEscapeBridge()
+            }
+        }
         context.coordinator.applyEditorThemeIfNeeded()
     }
 
     class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         var parent: RichMarkdownEditor
+        var onExternalEscape: (() -> Void)?
+        var compactChrome: Bool = false
         var onLinkClick: ((URL) -> Void)?
         var onRequestLinkInsert: ((String) -> Void)?
         var onWikiLinkClick: ((String) -> Void)?
@@ -1830,6 +1841,44 @@ struct RichMarkdownEditor: NSViewRepresentable {
             webView?.evaluateJavaScript(js)
         }
 
+        func applyCompactChromeIfNeeded() {
+            guard compactChrome, let webView else { return }
+            webView.evaluateJavaScript("document.body.classList.add('compact-chrome')")
+            let js = """
+            (function() {
+                if (window.__deepthinkLinkPreviewBlock) return;
+                window.__deepthinkLinkPreviewBlock = true;
+                new MutationObserver(function() {
+                    var el = document.getElementById('link-preview');
+                    if (el) el.remove();
+                }).observe(document.body, { childList: true, subtree: true });
+            })();
+            """
+            webView.evaluateJavaScript(js)
+        }
+
+        func injectExternalEscapeBridge() {
+            guard onExternalEscape != nil else { return }
+            let js = """
+            (function() {
+                if (window.__deepthinkExternalEscape) return;
+                window.__deepthinkExternalEscape = true;
+                document.addEventListener('keydown', function(e) {
+                    if (e.key !== 'Escape' && e.key !== 'Esc') return;
+                    function visible(id) {
+                        var el = document.getElementById(id);
+                        if (!el) return false;
+                        var style = window.getComputedStyle(el);
+                        return style.display !== 'none' && style.visibility !== 'hidden';
+                    }
+                    if (visible('slash-menu') || visible('wiki-ac-menu')) return;
+                    window.webkit.messageHandlers.externalEscape.postMessage(null);
+                }, true);
+            })();
+            """
+            webView?.evaluateJavaScript(js)
+        }
+
         func webView(
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction,
@@ -1860,7 +1909,11 @@ struct RichMarkdownEditor: NSViewRepresentable {
                 pendingText = parent.text
                 pushIfReady()
                 injectLinkInterceptor()
+                applyCompactChromeIfNeeded()
+                injectExternalEscapeBridge()
                 applyEditorThemeIfNeeded(force: true)
+            } else if message.name == "externalEscape" {
+                DispatchQueue.main.async { self.onExternalEscape?() }
             } else if message.name == "contentChanged", let md = message.body as? String {
                 isPushing = false
                 isReceiving = true

@@ -517,11 +517,7 @@ struct AIChatView: View {
     // MARK: - Actions
 
     private func saveResponseToQuickCapture(_ content: String) {
-        QuickCaptureWindowController.shared.showPrefilled(
-            with: modelContext.container,
-            appState: appState,
-            content: content
-        )
+        QuickCapturePresenter.showPrefilled(appState: appState, content: content)
     }
 
     /// Scrolls so the newest content stays in view. Uses the last bubble id (not a 1pt spacer)

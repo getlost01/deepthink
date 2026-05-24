@@ -5,6 +5,7 @@ struct QuickCaptureView: View {
     let onDismiss: () -> Void
     let modelContainer: ModelContainer
 
+    @Environment(AppState.self) private var appState
     @State private var captureType: CaptureType = .knowledge
     @State private var title = ""
     @State private var content = ""
@@ -38,27 +39,17 @@ struct QuickCaptureView: View {
             Rectangle().fill(DS.Colors.borderHover).frame(height: 0.5)
             footer
         }
-        .frame(width: 720, height: 620)
-        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .background(DS.Colors.modal, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.xl)
-                .strokeBorder(DS.Colors.borderHover, lineWidth: 1)
-        )
-        .shadow(color: DS.Colors.overlayBg, radius: 30, y: 10)
-        .shadow(color: DS.Colors.cardShadow, radius: 2, y: 1)
+        .onKeyPress(.escape) {
+            onDismiss()
+            return .handled
+        }
         .onAppear {
             titleFocused = true
             loadProjects()
+            applyPrefillIfNeeded()
         }
         .onReceive(NotificationCenter.default.publisher(for: .quickCaptureReset)) { _ in
             resetForm()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .quickCapturePrefill)) { notification in
-            if let prefillContent = notification.userInfo?["content"] as? String {
-                content = prefillContent
-                title = String(prefillContent.prefix(60)).components(separatedBy: "\n").first ?? "AI Response"
-            }
         }
         .alert("Save Failed", isPresented: Binding(
             get: { saveError != nil },
@@ -90,10 +81,25 @@ struct QuickCaptureView: View {
             Spacer()
 
             typePicker
+
+            Button { onDismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: DS.IconSize.xs, weight: .semibold))
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
+                    .background(DS.Colors.fillSecondary, in: Circle())
+            }
+            .buttonStyle(.plainPointer)
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.md)
-        .background(DragHandle())
+    }
+
+    private func applyPrefillIfNeeded() {
+        guard let prefill = appState.quickCapturePrefill else { return }
+        content = prefill
+        title = String(prefill.prefix(60)).components(separatedBy: "\n").first ?? "AI Response"
+        appState.quickCapturePrefill = nil
     }
 
     private var typePicker: some View {
@@ -142,6 +148,10 @@ struct QuickCaptureView: View {
                     .font(DS.Font.body)
                     .focused($titleFocused)
                     .dsInputField()
+                    .onKeyPress(.escape) {
+                        onDismiss()
+                        return .handled
+                    }
             }
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -150,13 +160,20 @@ struct QuickCaptureView: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                     .textCase(.uppercase)
 
-                MarkdownEditorWithToggle(text: $content, placeholder: "Start writing...")
+                MarkdownEditorWithToggle(
+                    text: $content,
+                    placeholder: "Start writing...",
+                    clipsFloatingOverlays: true,
+                    onExternalEscape: onDismiss,
+                    compactChrome: true
+                )
                     .frame(maxHeight: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                    .background(DS.Colors.page, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                     .overlay(
                         RoundedRectangle(cornerRadius: DS.Radius.md)
                             .strokeBorder(DS.Colors.border, lineWidth: 1)
                     )
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
             }
 
             HStack(spacing: DS.Spacing.sm) {
@@ -263,9 +280,9 @@ struct QuickCaptureView: View {
                 }
                 .transition(.scale.combined(with: .opacity))
             } else {
-                Button("Cancel") { onDismiss() }
+                Button("Cancel", action: onDismiss)
                     .buttonStyle(DSSecondaryButtonStyle())
-                    .keyboardShortcut(.escape, modifiers: [])
+                    .keyboardShortcut(.cancelAction)
 
                 Button {
                     save()
@@ -352,27 +369,7 @@ struct QuickCaptureView: View {
         withAnimation(.spring(duration: 0.3)) { saved = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             resetForm()
-            QuickCaptureWindowController.shared.resetAndDismiss()
+            appState.dismissQuickCapture()
         }
-    }
-}
-
-// MARK: - Window Drag Handle
-
-private struct DragHandle: NSViewRepresentable {
-    func makeNSView(context: Context) -> DragHandleView {
-        DragHandleView()
-    }
-
-    func updateNSView(_ nsView: DragHandleView, context: Context) {}
-}
-
-private class DragHandleView: NSView {
-    override var mouseDownCanMoveWindow: Bool {
-        true
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        window?.performDrag(with: event)
     }
 }

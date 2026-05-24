@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.modelContext) private var modelContext
     @Environment(CommandPaletteState.self) private var commandPaletteState
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var isReady = false
@@ -61,6 +62,25 @@ struct ContentView: View {
                     )
                 }
                 .transition(.opacity)
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { appState.showQuickCapture },
+            set: { presented in
+                if !presented { appState.dismissQuickCapture() }
+            }
+        )) {
+            QuickCaptureView(
+                onDismiss: { appState.dismissQuickCapture() },
+                modelContainer: modelContext.container
+            )
+            .environment(appState)
+            .frame(minWidth: 660, idealWidth: 720, minHeight: 560, idealHeight: 620)
+            .dsModalChrome()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            if appState.showQuickCapture {
+                appState.dismissQuickCapture()
             }
         }
     }

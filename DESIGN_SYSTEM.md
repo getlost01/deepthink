@@ -2,7 +2,23 @@
 
 Production-ready, minimal design system. Single accent color, monochrome UI, consistent spacing.
 
-All tokens and components live in `DeepThink/Views/Shared/DesignSystem.swift` under the `DS` namespace.
+All tokens and components live in `DeepThink/Views/Shared/DesignSystem.swift` under the `DS` namespace. Theme palettes and switching live in `DeepThink/Services/DSThemeManager.swift`.
+
+---
+
+## Theming
+
+DeepThink ships **Light** and **Dark** palettes (`DSThemePalette`). Users pick **System**, **Light**, or **Dark** in Settings → General; `DSThemeManager` resolves the active palette and pushes it to SwiftUI, AppKit, and WKWebView surfaces (markdown editor, chat markdown, terminal).
+
+### Rules for contributors
+
+1. **Token-only colors** — use `DS.Colors.*`. Never `Color.primary`, `Color.white`, system materials, or raw `Color(...)`.
+2. **Theme root** — wrap top-level windows in `DSThemeRoot { }` so palette changes re-render.
+3. **Environment** — optional `@Environment(\.dsPalette)` or `@Bindable var theme = DSThemeManager.shared` when you need the bottom sheets tied to appearance.
+4. **Web views** — inject theme via `DSThemeManager.shared.editorThemeUserScript()` / `chatThemeUserScript(isLight:)`; do not hard-code CSS colors in HTML.
+5. **macOS 14+** — palettes use explicit sRGB values so light/dark look consistent across OS versions.
+
+User-facing theme docs: [docs/app/appearance.md](docs/app/appearance.md).
 
 ---
 
@@ -60,27 +76,27 @@ All tokens and components live in `DeepThink/Views/Shared/DesignSystem.swift` un
 
 ### Colors
 
-| Token | Value | Use |
-|-------|-------|-----|
-| **Text** | | |
-| `DS.Colors.textPrimary` | `Color.primary` | Titles, body, selected items |
-| `DS.Colors.textSecondary` | `Color.secondary` | Subtitles, descriptions, inactive UI |
-| `DS.Colors.textTertiary` | `primary @ 40%` | Timestamps, placeholders, disabled |
-| **Surfaces** | | |
-| `DS.Colors.surface` | `controlBackgroundColor` | Panel backgrounds |
-| `DS.Colors.surfaceElevated` | `windowBackgroundColor` | Main window background |
-| `DS.Colors.fill` | `primary @ 4%` | Subtle backgrounds (stat cards, empty states) |
-| `DS.Colors.fillSecondary` | `primary @ 6%` | Input backgrounds, hover states |
-| **Borders** | | |
-| `DS.Colors.border` | `primary @ 8%` | Default borders, dividers |
-| `DS.Colors.borderHover` | `primary @ 14%` | Hover state borders |
-| **Interactive** | | |
-| `DS.Colors.accent` | `Color.accentColor` | Primary action, selected states, links |
-| `DS.Colors.accentFill` | `accent @ 10%` | Selected row bg, active tab bg |
-| **Semantic (use sparingly)** | | |
-| `DS.Colors.success` | `Color.green` | Completed, connected, positive |
-| `DS.Colors.warning` | `Color.orange` | Overdue, in-progress, caution |
-| `DS.Colors.danger` | `Color.red` | Error, delete, destructive |
+Colors are **theme-aware** — each token reads from `DSThemeManager.shared.palette` (light or dark). Surface roles follow a neutral ramp: `page` → `surfaceElevated` → `modal` / `card`.
+
+| Token | Use |
+|-------|-----|
+| **Text** | |
+| `DS.Colors.textPrimary` | Titles, body, selected items |
+| `DS.Colors.textSecondary` | Subtitles, descriptions, inactive UI |
+| `DS.Colors.textTertiary` | Timestamps, placeholders, disabled |
+| **Surfaces** | |
+| `DS.Colors.page` | Main content background |
+| `DS.Colors.surface` / `surfaceElevated` | Panels, sidebar, elevated chrome |
+| `DS.Colors.modal` / `card` | Dialogs and card surfaces |
+| `DS.Colors.fill` / `fillSecondary` | Subtle backgrounds, inputs, hover |
+| **Borders** | |
+| `DS.Colors.border` / `borderHover` / `borderFocused` | Dividers and focus rings |
+| **Interactive** | |
+| `DS.Colors.accent` / `accentFill` / `accentGradient` | Primary actions, selected states |
+| `DS.Colors.onAccent` | Text/icons on accent backgrounds |
+| **Semantic (use sparingly)** | |
+| `DS.Colors.success` / `warning` / `danger` | Status and destructive actions |
+| `DS.Colors.badgeFill(_:)` / `badgeBorder(_:)` | Chip/badge tints — not raw `.opacity` on semantic colors |
 
 ### Layout
 
