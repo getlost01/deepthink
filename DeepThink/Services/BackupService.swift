@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import SQLite3
 
 struct BackupSnapshot: Codable, Identifiable, Equatable {
     var id: UUID
@@ -23,12 +24,15 @@ final class BackupService {
     private let snapshotsDir: URL
     private let manifestURL: URL
     private let pendingRestoreURL: URL
+    private let restoreErrorURL: URL
 
     var snapshots: [BackupSnapshot] = []
     var isRunning = false
     var lastError: String?
+    weak var appState: AppState?
 
     private var timer: Timer?
+    private var pendingManifestError: Error?
 
     deinit {
         timer?.invalidate()
@@ -41,9 +45,14 @@ final class BackupService {
         snapshotsDir = backupRoot.appendingPathComponent("snapshots")
         manifestURL = backupRoot.appendingPathComponent("manifest.json")
         pendingRestoreURL = backupRoot.appendingPathComponent("pending-restore.txt")
+        restoreErrorURL = backupRoot.appendingPathComponent("restore-error.txt")
 
         try? FileManager.default.createDirectory(at: snapshotsDir, withIntermediateDirectories: true)
         loadSnapshots()
+    }
+
+    func configure(appState: AppState) {
+        self.appState = appState
     }
 
     // MARK: - Launch hook — call BEFORE ModelContainer opens
@@ -64,7 +73,8 @@ final class BackupService {
             try performRestore(from: srcDir)
             try? FileManager.default.removeItem(at: pendingRestoreURL)
         } catch {
-            // Leave pending file; will retry next launch
+            let message = "Restore failed: \(error.localizedDescription)"
+            try? message.write(to: restoreErrorURL, atomically: true, encoding: .utf8)
         }
     }
 
@@ -75,6 +85,20 @@ final class BackupService {
     // MARK: - Scheduler
 
     func start() {
+        if let errorText = try? String(contentsOf: restoreErrorURL, encoding: .utf8),
+           !errorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            appState?.presentError(
+                NSError(domain: "DeepThink.Backup", code: 1, userInfo: [NSLocalizedDescriptionKey: errorText]),
+                context: "Backup restore"
+            )
+            try? FileManager.default.removeItem(at: restoreErrorURL)
+        }
+
+        if let pendingManifestError {
+            appState?.presentError(pendingManifestError, context: "Backup manifest")
+            self.pendingManifestError = nil
+        }
+
         scheduleTimer()
     }
 
@@ -103,7 +127,6 @@ final class BackupService {
                 folderName: folderName
             )
 
-            // Mutate snapshots and prune entirely on MainActor to avoid data races
             let dirsToDelete: [URL] = await MainActor.run {
                 self.snapshots.insert(snap, at: 0)
                 self.isRunning = false
@@ -118,7 +141,6 @@ final class BackupService {
                 return excess.map { self.snapshotsDir.appendingPathComponent($0.folderName) }
             }
 
-            // Delete stale snapshot dirs off main thread
             for dir in dirsToDelete {
                 try? FileManager.default.removeItem(at: dir)
             }
@@ -137,12 +159,7 @@ final class BackupService {
         do {
             try snapshot.folderName.write(to: pendingRestoreURL, atomically: true, encoding: .utf8)
         } catch {
-            let errAlert = NSAlert()
-            errAlert.messageText = "Could Not Stage Restore"
-            errAlert.informativeText = "Failed to save the restore marker: \(error.localizedDescription). Please try again."
-            errAlert.alertStyle = .critical
-            errAlert.addButton(withTitle: "OK")
-            errAlert.runModal()
+            appState?.presentError(error, context: "Could not stage restore")
             return
         }
 
@@ -175,6 +192,11 @@ final class BackupService {
         try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
         let base = StorageService.shared.baseURL
 
+        let storePath = StorageService.shared.storeURL.path
+        if fm.fileExists(atPath: storePath) {
+            try checkpointWAL(at: storePath)
+        }
+
         let dataSrc = StorageService.shared.dataURL
         let dataDst = destDir.appendingPathComponent("data")
         if fm.fileExists(atPath: dataSrc.path) {
@@ -194,6 +216,42 @@ final class BackupService {
             guard fm.fileExists(atPath: src.path) else { continue }
             try copyDirectory(from: src, to: dst, excluding: entry.exclude)
         }
+    }
+
+    private func checkpointWAL(at storePath: String) throws {
+        var db: OpaquePointer?
+        let flags = SQLITE_OPEN_READWRITE
+        guard sqlite3_open_v2(storePath, &db, flags, nil) == SQLITE_OK else {
+            let err = db.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown error"
+            sqlite3_close(db)
+            throw NSError(domain: "DeepThink.Backup", code: 2, userInfo: [NSLocalizedDescriptionKey: "WAL checkpoint failed: \(err)"])
+        }
+        defer { sqlite3_close(db) }
+
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA wal_checkpoint(TRUNCATE)", -1, &stmt, nil) == SQLITE_OK else {
+            throw NSError(domain: "DeepThink.Backup", code: 3, userInfo: [NSLocalizedDescriptionKey: "WAL checkpoint prepare failed"])
+        }
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_step(stmt) == SQLITE_ROW else {
+            throw NSError(domain: "DeepThink.Backup", code: 4, userInfo: [NSLocalizedDescriptionKey: "WAL checkpoint step failed"])
+        }
+    }
+
+    private func validateStore(at url: URL) throws {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: url.path) else {
+            throw NSError(domain: "DeepThink.Backup", code: 5, userInfo: [NSLocalizedDescriptionKey: "Restored store file missing"])
+        }
+
+        var db: OpaquePointer?
+        let flags = SQLITE_OPEN_READONLY
+        guard sqlite3_open_v2(url.path, &db, flags, nil) == SQLITE_OK else {
+            let err = db.map { String(cString: sqlite3_errmsg($0)) } ?? "unknown error"
+            sqlite3_close(db)
+            throw NSError(domain: "DeepThink.Backup", code: 6, userInfo: [NSLocalizedDescriptionKey: "Restored store is not openable: \(err)"])
+        }
+        sqlite3_close(db)
     }
 
     // MARK: - Private: Restore
@@ -217,6 +275,10 @@ final class BackupService {
                     try fm.copyItem(at: src, to: dst)
                 }
             }
+
+            let restoredStore = base.appendingPathComponent("data/deepthink.store")
+            try validateStore(at: restoredStore)
+
             try? fm.removeItem(at: tmp)
         } catch {
             try? fm.removeItem(at: base)
@@ -233,7 +295,6 @@ final class BackupService {
         let fm = FileManager.default
         try fm.createDirectory(at: dst, withIntermediateDirectories: true)
 
-        // Standardize to ensure no trailing slash skews dropFirst count
         let srcPath = src.standardized.path
 
         guard let enumerator = fm.enumerator(
@@ -272,7 +333,6 @@ final class BackupService {
     private func scheduleTimer() {
         timer?.invalidate()
 
-        // Use object(forKey:) so missing key falls back to true (enabled by default)
         let enabled = UserDefaults.standard.object(forKey: "backupEnabled") as? Bool ?? true
         guard enabled else { return }
 
@@ -295,15 +355,32 @@ final class BackupService {
     // MARK: - Private: Manifest
 
     private func loadSnapshots() {
-        guard let data = try? Data(contentsOf: manifestURL),
-              let decoded = try? JSONDecoder().decode([BackupSnapshot].self, from: data)
-        else { snapshots = []; return }
-        snapshots = decoded.sorted { $0.date > $1.date }
+        guard FileManager.default.fileExists(atPath: manifestURL.path) else {
+            snapshots = []
+            return
+        }
+
+        do {
+            let data = try Data(contentsOf: manifestURL)
+            snapshots = try JSONDecoder().decode([BackupSnapshot].self, from: data).sorted { $0.date > $1.date }
+        } catch {
+            snapshots = []
+            let corruptURL = backupRoot.appendingPathComponent("manifest.corrupt.json")
+            try? FileManager.default.removeItem(at: corruptURL)
+            try? FileManager.default.moveItem(at: manifestURL, to: corruptURL)
+            pendingManifestError = error
+            saveManifest()
+        }
     }
 
     private func saveManifest() {
-        guard let data = try? JSONEncoder().encode(snapshots) else { return }
-        try? data.write(to: manifestURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(snapshots)
+            try data.write(to: manifestURL, options: .atomic)
+        } catch {
+            appState?.presentError(error, context: "Backup manifest save")
+            StorageService.shared.writeLog("Manifest save failed: \(error)", to: "errors")
+        }
     }
 
     // MARK: - Private: Helpers

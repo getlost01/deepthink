@@ -426,50 +426,50 @@ final class DataCollectorService {
 
     // MARK: - Sync Data Source
 
-    func sync(source: DataSource, container: ModelContainer) async {
+    @MainActor
+    func sync(sourceID: PersistentIdentifier, container: ModelContainer) async {
         isSyncing = true
         defer { isSyncing = false }
+
+        let context = ModelContext(container)
+        guard let source = context.model(for: sourceID) as? DataSource else { return }
 
         switch source.type {
         case .folder:
             if let path = source.path {
                 let count = syncFolderIncremental(at: path)
-                await MainActor.run {
-                    source.itemCount += count
-                    source.lastSyncAt = Date()
-                }
+                source.itemCount += count
+                source.lastSyncAt = Date()
             }
         case .url:
             if let urlStr = source.url {
                 let success = await scrapeURL(urlStr, title: source.name)
-                await MainActor.run {
-                    if success { source.itemCount += 1 }
-                    source.lastSyncAt = Date()
-                }
+                if success { source.itemCount += 1 }
+                source.lastSyncAt = Date()
             }
         case .script:
             if let cmd = source.scriptCommand {
                 let success = await runScript(command: cmd)
-                await MainActor.run {
-                    if success { source.itemCount += 1 }
-                    source.lastSyncAt = Date()
-                }
-            }
-        case .clipboard:
-            await MainActor.run {
-                if captureClipboard() { source.itemCount += 1 }
+                if success { source.itemCount += 1 }
                 source.lastSyncAt = Date()
             }
+        case .clipboard:
+            if captureClipboard() { source.itemCount += 1 }
+            source.lastSyncAt = Date()
         case .mcp:
             break
         case .rssFeed:
             if let urlStr = source.url {
                 let count = await ingestFeed(urlStr)
-                await MainActor.run {
-                    source.itemCount += count
-                    source.lastSyncAt = Date()
-                }
+                source.itemCount += count
+                source.lastSyncAt = Date()
             }
+        }
+
+        do {
+            try context.save()
+        } catch {
+            CollectorScheduler.shared.presentSaveError(error)
         }
     }
 }

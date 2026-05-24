@@ -9,10 +9,16 @@ final class KnowledgeService {
     var isLoading = false
     var lastModifiedAt: Date = .distantPast
 
+    weak var appState: AppState?
+
     private let fm = FileManager.default
     private var lastScanAt: Date?
 
     private init() {}
+
+    func configure(appState: AppState) {
+        self.appState = appState
+    }
 
     // MARK: - Load
 
@@ -249,7 +255,12 @@ final class KnowledgeService {
         md += "---\n\n"
         md += content
 
-        try? md.write(to: fileURL, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            appState?.presentError(error, context: "Knowledge capture")
+            return
+        }
         reload()
 
         if tags.isEmpty, let entry = parseEntry(at: fileURL) {
@@ -319,7 +330,12 @@ final class KnowledgeService {
                 counter += 1
             } while fm.fileExists(atPath: finalDestURL.path)
         }
-        guard (try? md.write(to: finalDestURL, atomically: true, encoding: .utf8)) != nil else { return }
+        do {
+            try md.write(to: finalDestURL, atomically: true, encoding: .utf8)
+        } catch {
+            appState?.presentError(error, context: "Knowledge move")
+            return
+        }
         try? fm.removeItem(at: entry.filePath)
         reload()
     }
@@ -340,7 +356,12 @@ final class KnowledgeService {
             md += "\(key): \(value)\n"
         }
         md += "---\n\n\(body)"
-        try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: entry.filePath, atomically: true, encoding: .utf8)
+        } catch {
+            appState?.presentError(error, context: "Knowledge rename")
+            return
+        }
         reload()
     }
 

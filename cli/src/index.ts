@@ -8,8 +8,8 @@ import { DEEPTHINK_ROOT } from "./config";
 import { retrieveContext, retrieveContextHybrid, workspaceContext } from "./core/context-engine";
 import * as db from "./core/db";
 import { hexToUUID } from "./core/db";
-import { indexEntry, semanticSearch } from "./core/embedding-service";
-import { isClaudeAvailable, query } from "./core/llm";
+import { indexEntry, semanticSearch, embeddingStats } from "./core/embedding-service";
+import { findClaudePath, query } from "./core/llm";
 import { initSandbox, listFiles } from "./core/sandbox";
 import { deleteChunksForEntry } from "./core/vector-store";
 import * as fileTools from "./tools/file";
@@ -39,7 +39,23 @@ const flagVal = (f: string) => {
 function cmdStatus() {
   p("deepthink\n");
   p(`root:       ${DEEPTHINK_ROOT}`);
-  p(`claude:     ${isClaudeAvailable() ? "connected" : "not found"}\n`);
+
+  const claude = findClaudePath();
+  if (claude.path) {
+    p(`claude:     connected (${claude.path})`);
+  } else {
+    p("claude:     not found");
+    p(`  searched: ${claude.searched.join(", ")}`);
+    p("  install:  https://claude.ai/code");
+  }
+
+  const embed = embeddingStats();
+  if (embed.available) {
+    p(`embeddings: ready (${embed.indexed} indexed)`);
+  } else {
+    p(`embeddings: disabled — ${embed.reason ?? "install Xcode Command Line Tools: xcode-select --install"}`);
+  }
+  p("");
 
   p("sandbox:");
   for (const cat of ["docs", "outputs", "analysis", "insights"] as const) p(`  ${cat}: ${listFiles(cat).length}`);

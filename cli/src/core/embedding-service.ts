@@ -33,6 +33,30 @@ const _embeddingCache = new Map<string, { vector: Float32Array; ts: number }>();
 const EMBEDDING_CACHE_TTL = 5 * 60 * 1000;
 const EMBEDDING_CACHE_MAX = 200;
 
+let _lastEmbedError: { stage: "compile" | "runtime"; message: string } | null = null;
+let _warned = false;
+
+function warnEmbedUnavailable(): void {
+  if (_warned || !_lastEmbedError) return;
+  _warned = true;
+  const hint =
+    _lastEmbedError.stage === "compile" && _lastEmbedError.message.includes("ENOENT")
+      ? "install Xcode Command Line Tools: xcode-select --install"
+      : _lastEmbedError.message;
+  console.warn(`[embeddings] disabled — ${hint}`);
+}
+
+function captureExecError(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as { stderr?: Buffer | string; message?: string; code?: string };
+    const stderr = e.stderr ? String(e.stderr).trim() : "";
+    if (stderr) return stderr;
+    if (e.code === "ENOENT") return "swiftc not found (ENOENT)";
+    if (e.message) return e.message;
+  }
+  return String(err);
+}
+
 const SWIFT_SOURCE = `import NaturalLanguage
 import Foundation
 
@@ -94,8 +118,15 @@ function ensureHelper(): boolean {
       stdio: ["pipe", "pipe", "pipe"],
     });
     writeFileSync(HELPER_VERSION_FILE, SWIFT_VERSION);
+    _lastEmbedError = null;
     return true;
-  } catch {
+  } catch (err) {
+    const message = captureExecError(err);
+    _lastEmbedError = {
+      stage: "compile",
+      message: message.includes("ENOENT") || message.includes("not found") ? "swiftc not found (ENOENT)" : message,
+    };
+    warnEmbedUnavailable();
     return false;
   }
 }
@@ -145,8 +176,9 @@ function embedBatch(texts: string[]): (Float32Array | null)[] {
         results[uncachedIndices[j]] = vector;
       }
     }
-  } catch {
-    // Leave nulls for uncached texts on failure.
+  } catch (err) {
+    _lastEmbedError = { stage: "runtime", message: captureExecError(err) };
+    warnEmbedUnavailable();
   }
 
   return results;
@@ -465,7 +497,21 @@ export function semanticSearch(query: string, topK: number = 10, scope?: string[
     .slice(0, topK);
 }
 
-export function embeddingStats(): { indexed: number; available: boolean } {
+export function embeddingStats(): { indexed: number; available: boolean; reason?: string } {
   const available = ensureHelper();
-  return { indexed: embeddedCount(), available };
+  if (!available) {
+    if (!_lastEmbedError) {
+      return {
+        indexed: embeddedCount(),
+        available: false,
+        reason: "install Xcode Command Line Tools: xcode-select --install",
+      };
+    }
+    const reason =
+      _lastEmbedError.stage === "compile" && _lastEmbedError.message.includes("ENOENT")
+        ? "install Xcode Command Line Tools: xcode-select --install"
+        : _lastEmbedError.message;
+    return { indexed: embeddedCount(), available: false, reason };
+  }
+  return { indexed: embeddedCount(), available: true };
 }

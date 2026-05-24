@@ -46,6 +46,18 @@ struct ContentView: View {
                 DSToastView()
                     .padding(.bottom, DS.Spacing.xl)
             }
+            .alert(item: Binding(
+                get: { appState.presentedError },
+                set: { appState.presentedError = $0 }
+            )) { err in
+                Alert(
+                    title: Text(err.title),
+                    message: Text("\(err.context): \(err.message)"),
+                    dismissButton: .default(Text("OK")) {
+                        appState.presentedError = nil
+                    }
+                )
+            }
             .transition(.opacity)
         }
     }

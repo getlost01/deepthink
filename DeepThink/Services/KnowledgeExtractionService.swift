@@ -105,7 +105,11 @@ final class KnowledgeExtractionService {
         md += "---\n\n"
         md += body
 
-        try? md.write(to: entry.filePath, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: entry.filePath, atomically: true, encoding: .utf8)
+        } catch {
+            KnowledgeService.shared.appState?.presentError(error, context: "Knowledge auto-tag")
+        }
     }
 
     // MARK: - Feature 11: Conversation → Knowledge

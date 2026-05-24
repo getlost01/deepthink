@@ -4,18 +4,28 @@ import { homedir } from "node:os";
 
 let claudePath: string | null = null;
 
-function findClaude(): string {
-  if (claudePath) return claudePath;
+export const CLAUDE_SEARCH_PATHS = [
+  `${homedir()}/.local/bin/claude`,
+  "/usr/local/bin/claude",
+  "/opt/homebrew/bin/claude",
+] as const;
 
-  const candidates = [`${homedir()}/.local/bin/claude`, "/usr/local/bin/claude", "/opt/homebrew/bin/claude"];
+export function findClaudePath(): { path: string | null; searched: string[] } {
+  if (claudePath) return { path: claudePath, searched: [...CLAUDE_SEARCH_PATHS] };
 
-  for (const p of candidates) {
+  for (const p of CLAUDE_SEARCH_PATHS) {
     if (existsSync(p)) {
       claudePath = p;
-      return p;
+      return { path: p, searched: [...CLAUDE_SEARCH_PATHS] };
     }
   }
 
+  return { path: null, searched: [...CLAUDE_SEARCH_PATHS] };
+}
+
+function findClaude(): string {
+  const { path } = findClaudePath();
+  if (path) return path;
   throw new Error("Claude CLI not found. Install from https://claude.ai/code");
 }
 
@@ -80,10 +90,5 @@ export async function querySafe(
 }
 
 export function isClaudeAvailable(): boolean {
-  try {
-    findClaude();
-    return true;
-  } catch {
-    return false;
-  }
+  return findClaudePath().path !== null;
 }

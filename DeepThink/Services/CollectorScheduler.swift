@@ -12,10 +12,19 @@ final class CollectorScheduler {
     private var container: ModelContainer?
     private var timers: [UUID: Timer] = [:]
     private var watchers: [UUID: FolderWatcher] = [:]
+    weak var appState: AppState?
 
     private init() {}
 
     deinit { stop() }
+
+    func configure(appState: AppState) {
+        self.appState = appState
+    }
+
+    func presentSaveError(_ error: Error) {
+        appState?.presentError(error, context: "Collector sync save")
+    }
 
     func start(container: ModelContainer) {
         self.container = container
@@ -52,7 +61,6 @@ final class CollectorScheduler {
                 }
                 watcher.start()
                 watchers[sourceID] = watcher
-                // Always run once at startup to catch changes since last session
                 syncSource(id: sourceID)
             } else {
                 guard let interval = source.scheduleInterval, interval > 0 else { continue }
@@ -75,24 +83,30 @@ final class CollectorScheduler {
     private func syncSource(id: UUID) {
         guard let container else { return }
 
-        Task.detached(priority: .utility) { [weak self] in
-            let context = ModelContext(container)
-            let descriptor = FetchDescriptor<DataSource>(predicate: #Predicate<DataSource> { $0.id == id })
-            guard let source = try? context.fetch(descriptor).first else { return }
+        Task {
+            let sourceID = await MainActor.run { () -> PersistentIdentifier? in
+                let context = ModelContext(container)
+                let descriptor = FetchDescriptor<DataSource>(predicate: #Predicate<DataSource> { $0.id == id })
+                return try? context.fetch(descriptor).first?.persistentModelID
+            }
+            guard let sourceID else { return }
 
-            await DataCollectorService.shared.sync(source: source, container: container)
+            await DataCollectorService.shared.sync(sourceID: sourceID, container: container)
 
-            try? context.save()
             await MainActor.run {
-                self?.activeSources[id] = Date()
+                activeSources[id] = Date()
             }
         }
     }
 
     func runNow(source: DataSource) {
         guard let container else { return }
+        let sourceID = source.persistentModelID
         Task {
-            await DataCollectorService.shared.sync(source: source, container: container)
+            await DataCollectorService.shared.sync(sourceID: sourceID, container: container)
+            await MainActor.run {
+                activeSources[source.id] = Date()
+            }
         }
     }
 }

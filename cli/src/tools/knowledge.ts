@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { query } from "../core/llm";
@@ -7,6 +7,26 @@ import { query } from "../core/llm";
 function notifyAppSync(): void {
   try {
     execSync("notifyutil -p com.deepthink.workspace.changed 2>/dev/null || true", { stdio: "ignore" });
+  } catch {}
+}
+
+function atomicWrite(targetPath: string, content: string): void {
+  const tmp = `${targetPath}.tmp-${process.pid}-${Date.now()}`;
+  writeFileSync(tmp, content, "utf-8");
+  renameSync(tmp, targetPath);
+}
+
+function cleanupTempFiles(targetPath: string): void {
+  const dir = targetPath.includes("/") ? targetPath.slice(0, targetPath.lastIndexOf("/")) : ".";
+  const base = targetPath.includes("/") ? targetPath.slice(targetPath.lastIndexOf("/") + 1) : targetPath;
+  try {
+    for (const f of readdirSync(dir)) {
+      if (f.startsWith(`${base}.tmp-`)) {
+        try {
+          unlinkSync(join(dir, f));
+        } catch {}
+      }
+    }
   } catch {}
 }
 
@@ -193,91 +213,122 @@ export function listIntegrations(): { source: string; channels: string[] }[] {
 // MARK: - Archive & Compress
 
 export async function compressKnowledge(source: string, channel: string): Promise<string> {
-  const entries = loadIntegrationData(source, channel, 50);
-  if (entries.length === 0) return "No entries to compress.";
+  let archiveFile = "";
+  try {
+    const entries = loadIntegrationData(source, channel, 50);
+    if (entries.length === 0) return "No entries to compress.";
 
-  const combined = entries.map((e) => e.content).join("\n\n---\n\n");
-  const charLimit = 32000;
-  if (combined.length > charLimit)
-    console.warn(`[compress] Truncating ${combined.length} chars to ${charLimit} for ${source}/${channel}`);
-  const compressed = await query(
-    `Compress this knowledge into dense, structured bullet points. Keep all facts, dates, names, decisions. Remove filler:\n\n${combined.slice(0, charLimit)}`,
-    "You compress information. Output structured markdown bullets. Preserve all key data."
-  );
+    const combined = entries.map((e) => e.content).join("\n\n---\n\n");
+    const charLimit = 32000;
+    if (combined.length > charLimit)
+      console.warn(`[compress] Truncating ${combined.length} chars to ${charLimit} for ${source}/${channel}`);
 
-  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
-  const archiveFile = join(KNOWLEDGE_DIRS.archive, `${source}_${slugify(channel)}_${timestamp()}.md`);
-  const content = `# Compressed: ${source}/${channel}\nEntries: ${entries.length} | ${new Date().toISOString()}\n\n${compressed}`;
-  writeFileSync(archiveFile, content, "utf-8");
-
-  const chDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
-  for (const entry of entries) {
+    let compressed: string;
     try {
-      unlinkSync(join(chDir, entry.file));
-    } catch {}
-  }
+      compressed = await query(
+        `Compress this knowledge into dense, structured bullet points. Keep all facts, dates, names, decisions. Remove filler:\n\n${combined.slice(0, charLimit)}`,
+        "You compress information. Output structured markdown bullets. Preserve all key data."
+      );
+    } catch (err: any) {
+      throw new Error(`compression failed for ${source}/${channel}: ${err?.message ?? String(err)}`);
+    }
 
-  notifyAppSync();
-  return archiveFile;
+    mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
+    archiveFile = join(KNOWLEDGE_DIRS.archive, `${source}_${slugify(channel)}_${timestamp()}.md`);
+    const content = `# Compressed: ${source}/${channel}\nEntries: ${entries.length} | ${new Date().toISOString()}\n\n${compressed}`;
+    atomicWrite(archiveFile, content);
+
+    const chDir = join(KNOWLEDGE_DIRS.integrations, source.toLowerCase(), slugify(channel));
+    for (const entry of entries) {
+      try {
+        unlinkSync(join(chDir, entry.file));
+      } catch (err) {
+        console.warn(`[compress] could not delete original ${entry.file}: ${err}`);
+      }
+    }
+
+    notifyAppSync();
+    return archiveFile;
+  } catch (err) {
+    if (archiveFile) cleanupTempFiles(archiveFile);
+    throw err;
+  }
 }
 
 export async function archiveProject(project: string): Promise<string> {
-  const k = loadProjectKnowledge(project);
-  const hasContent = k.context || k.decisions || k.artifacts.length > 0;
-  if (!hasContent) return "No content to archive.";
-
-  const parts: string[] = [];
-  if (k.context) parts.push(`## Context\n${k.context}`);
-  if (k.decisions) parts.push(`## Decisions\n${k.decisions}`);
-  if (k.artifacts.length > 0) {
-    const artDir = join(KNOWLEDGE_DIRS.projects, slugify(project), "artifacts");
-    const artContents = k.artifacts
-      .map((f) => {
-        try {
-          return readFileSync(join(artDir, f), "utf-8");
-        } catch {
-          return "";
-        }
-      })
-      .filter(Boolean);
-    if (artContents.length > 0) parts.push(`## Artifacts\n${artContents.join("\n\n---\n\n")}`);
-  }
-
-  const combined = parts.join("\n\n");
-  const charLimit = 32000;
-  if (combined.length > charLimit)
-    console.warn(`[archive] Truncating ${combined.length} chars to ${charLimit} for project ${project}`);
-  const compressed = await query(
-    `Compress this project knowledge into dense, structured summary. Keep all key decisions, facts, dates:\n\n${combined.slice(0, charLimit)}`,
-    "You compress project knowledge. Output structured markdown. Preserve all key data."
-  );
-
-  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
-  const archiveFile = join(KNOWLEDGE_DIRS.archive, `${slugify(project)}_${timestamp()}.md`);
-  const content = `# Archived: ${project}\n${new Date().toISOString()}\n\n${compressed}`;
-  writeFileSync(archiveFile, content, "utf-8");
-
-  // Delete original project files after successful archive
-  const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
-  const contextPath = join(projectDir, "context.md");
-  const decisionsPath = join(projectDir, "decisions.md");
+  let archiveFile = "";
   try {
-    if (existsSync(contextPath)) unlinkSync(contextPath);
-  } catch {}
-  try {
-    if (existsSync(decisionsPath)) unlinkSync(decisionsPath);
-  } catch {}
-  if (k.artifacts.length > 0) {
-    const artDir = join(projectDir, "artifacts");
-    for (const f of k.artifacts) {
-      try {
-        unlinkSync(join(artDir, f));
-      } catch {}
+    const k = loadProjectKnowledge(project);
+    const hasContent = k.context || k.decisions || k.artifacts.length > 0;
+    if (!hasContent) return "No content to archive.";
+
+    const parts: string[] = [];
+    if (k.context) parts.push(`## Context\n${k.context}`);
+    if (k.decisions) parts.push(`## Decisions\n${k.decisions}`);
+    if (k.artifacts.length > 0) {
+      const artDir = join(KNOWLEDGE_DIRS.projects, slugify(project), "artifacts");
+      const artContents = k.artifacts
+        .map((f) => {
+          try {
+            return readFileSync(join(artDir, f), "utf-8");
+          } catch {
+            return "";
+          }
+        })
+        .filter(Boolean);
+      if (artContents.length > 0) parts.push(`## Artifacts\n${artContents.join("\n\n---\n\n")}`);
     }
-  }
 
-  notifyAppSync();
-  return archiveFile;
+    const combined = parts.join("\n\n");
+    const charLimit = 32000;
+    if (combined.length > charLimit)
+      console.warn(`[archive] Truncating ${combined.length} chars to ${charLimit} for project ${project}`);
+
+    let compressed: string;
+    try {
+      compressed = await query(
+        `Compress this project knowledge into dense, structured summary. Keep all key decisions, facts, dates:\n\n${combined.slice(0, charLimit)}`,
+        "You compress project knowledge. Output structured markdown. Preserve all key data."
+      );
+    } catch (err: any) {
+      throw new Error(`compression failed for project ${project}: ${err?.message ?? String(err)}`);
+    }
+
+    mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
+    archiveFile = join(KNOWLEDGE_DIRS.archive, `${slugify(project)}_${timestamp()}.md`);
+    const content = `# Archived: ${project}\n${new Date().toISOString()}\n\n${compressed}`;
+    atomicWrite(archiveFile, content);
+
+    const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
+    const contextPath = join(projectDir, "context.md");
+    const decisionsPath = join(projectDir, "decisions.md");
+    try {
+      if (existsSync(contextPath)) unlinkSync(contextPath);
+    } catch (err) {
+      console.warn(`[archive] could not delete context.md: ${err}`);
+    }
+    try {
+      if (existsSync(decisionsPath)) unlinkSync(decisionsPath);
+    } catch (err) {
+      console.warn(`[archive] could not delete decisions.md: ${err}`);
+    }
+    if (k.artifacts.length > 0) {
+      const artDir = join(projectDir, "artifacts");
+      for (const f of k.artifacts) {
+        try {
+          unlinkSync(join(artDir, f));
+        } catch (err) {
+          console.warn(`[archive] could not delete artifact ${f}: ${err}`);
+        }
+      }
+    }
+
+    notifyAppSync();
+    return archiveFile;
+  } catch (err) {
+    if (archiveFile) cleanupTempFiles(archiveFile);
+    throw err;
+  }
 }
 
 // MARK: - Index

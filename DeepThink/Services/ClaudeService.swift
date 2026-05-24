@@ -51,6 +51,11 @@ final class ClaudeService {
     private var container: ModelContainer?
     private var usageContext: ModelContext?
     private var currentSession: UsageSession?
+    weak var appState: AppState?
+
+    func configure(appState: AppState) {
+        self.appState = appState
+    }
 
     func start(container: ModelContainer) {
         self.container = container
@@ -58,7 +63,11 @@ final class ClaudeService {
         usageContext = context
         let session = UsageSession()
         context.insert(session)
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            appState?.presentError(error, context: "Usage session save")
+        }
         currentSession = session
 
         let descriptor = FetchDescriptor<UsageSession>()

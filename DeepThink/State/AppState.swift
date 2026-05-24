@@ -1,6 +1,13 @@
 import Foundation
 import SwiftUI
 
+struct PresentedError: Identifiable, Equatable {
+    let id = UUID()
+    let title: String
+    let message: String
+    let context: String
+}
+
 struct NavSnapshot: Equatable {
     var selectedSection: SidebarSection?
     var workspaceTab: WorkspaceTab
@@ -81,6 +88,7 @@ final class AppState {
     var pendingSkillExecution: SkillFile?
     var disabledRuleIDs: Set<String>
     var externalSyncToken: Int = 0
+    var presentedError: PresentedError?
 
     private var syncObserver: NSObjectProtocol?
 
@@ -98,6 +106,17 @@ final class AppState {
 
     deinit {
         if let obs = syncObserver { NotificationCenter.default.removeObserver(obs) }
+    }
+
+    func presentError(_ error: Error, context: String) {
+        Task { @MainActor in
+            presentedError = PresentedError(
+                title: "Something went wrong",
+                message: error.localizedDescription,
+                context: context
+            )
+            ToastState.shared.showError("\(context): \(error.localizedDescription)")
+        }
     }
 
     func toggleRuleDisabled(_ id: String) {

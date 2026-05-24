@@ -66,8 +66,14 @@ actor ArchiveActor {
                 VectorStore.shared.enqueuePendingReindex(entryID: "task:\(subtask.id.uuidString)", entryType: "task")
             }
         }
+    }
 
-        try? modelContext.save()
+    func saveWithErrorReporting() {
+        do {
+            try modelContext.save()
+        } catch {
+            ArchiveService.shared.reportSaveError(error)
+        }
     }
 }
 
@@ -77,6 +83,15 @@ final class ArchiveService {
 
     private var container: ModelContainer?
     private var timer: Timer?
+    weak var appState: AppState?
+
+    func configure(appState: AppState) {
+        self.appState = appState
+    }
+
+    func reportSaveError(_ error: Error) {
+        appState?.presentError(error, context: "Archive save")
+    }
 
     func start(container: ModelContainer) {
         self.container = container
@@ -103,6 +118,7 @@ final class ArchiveService {
         let days = ud.integer(forKey: "archiveDaysThreshold")
         let threshold = days > 0 ? days : 3
         await actor.run(autoArchiveTasks: autoArchiveTasks, threshold: threshold)
+        await actor.saveWithErrorReporting()
     }
 
     static func archiveProjectTasks(_ project: Project, context: ModelContext) {
@@ -118,7 +134,11 @@ final class ArchiveService {
             note.isArchived = true
             VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            ArchiveService.shared.reportSaveError(error)
+        }
     }
 
     static func unarchiveProjectTasks(_ project: Project, context: ModelContext) {
@@ -145,6 +165,10 @@ final class ArchiveService {
             note.isArchived = false
             VectorStore.shared.enqueuePendingReindex(entryID: "note:\(note.id.uuidString)", entryType: "note")
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            ArchiveService.shared.reportSaveError(error)
+        }
     }
 }
