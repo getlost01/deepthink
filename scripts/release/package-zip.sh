@@ -40,6 +40,13 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   } >> "$GITHUB_ENV"
 fi
 
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+  {
+    echo "zip_name=$ZIP_NAME"
+    echo "sha256=$SHA256"
+  } >> "$GITHUB_OUTPUT"
+fi
+
 echo "ZIP_NAME=$ZIP_NAME"
 echo "VERSION=$VERSION"
 echo "SHA256=$SHA256"
