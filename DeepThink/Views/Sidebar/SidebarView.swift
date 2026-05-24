@@ -118,8 +118,8 @@ struct SidebarView: View {
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.vertical, DS.Spacing.sm)
         }
-        .frame(width: isExpanded ? DS.Layout.sidebarWidth : 52)
-        .background(DS.Colors.surface)
+        .frame(width: isExpanded ? DS.Layout.sidebarWidth : DS.Layout.sidebarCollapsedWidth)
+        .dsChromeBar()
         .animation(DS.Animation.standard, value: isExpanded)
     }
 }
@@ -140,7 +140,7 @@ private struct SidebarItem: View {
                 Image(systemName: section.icon)
                     .font(.system(size: DS.IconSize.md, weight: .medium))
                     .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textTertiary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: DS.Layout.sidebarIconSlot, height: DS.Layout.sidebarIconSlot)
 
                 if isExpanded {
                     Text(section.rawValue)
@@ -155,7 +155,7 @@ private struct SidebarItem: View {
                             .fontWeight(.bold)
                             .foregroundStyle(DS.Colors.onAccent)
                             .padding(.horizontal, DS.Spacing.xs)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(DS.Colors.danger, in: Capsule())
                     }
                 } else if badge > 0 {
@@ -170,7 +170,7 @@ private struct SidebarItem: View {
             .background(
                 isSelected
                     ? DS.Colors.accentFill
-                    : (isHovered ? DS.Colors.fillSecondary : .clear),
+                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .overlay(alignment: .leading) {
@@ -179,7 +179,7 @@ private struct SidebarItem: View {
                         .fill(DS.Colors.accent)
                         .frame(width: 2.5)
                         .padding(.vertical, DS.Spacing.xs)
-                        .padding(.leading, 1)
+                        .padding(.leading, DS.Spacing.xxxs)
                 }
             }
         }

@@ -185,7 +185,7 @@ struct AIChatView: View {
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xs)
                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.accent.opacity(0.2), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.badgeBorder(DS.Colors.accent), lineWidth: 1))
                     .buttonStyle(.plainPointer)
                     .disabled(isSavingKnowledge)
                     .help("Summarize this conversation and save key insights to knowledge base")
@@ -212,7 +212,7 @@ struct AIChatView: View {
                         Image(systemName: "gearshape")
                             .font(.system(size: DS.IconSize.sm, weight: .medium))
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .frame(width: 28, height: 28)
+                            .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                     }
                     .menuStyle(.borderlessButton)
                     .frame(width: 28)
@@ -239,7 +239,7 @@ struct AIChatView: View {
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
-        .background(DS.Colors.surfaceElevated)
+        .background(DS.Colors.page)
     }
 
     // MARK: - Messages
@@ -251,7 +251,7 @@ struct AIChatView: View {
                     VStack(spacing: 0) {
                         if !ClaudeService.shared.isAvailable {
                             ClaudeNotInstalledView()
-                                .padding(.top, 80)
+                                .padding(.top, DS.Layout.commandPaletteTopInset)
                         } else if appState.chatMessages.isEmpty, !appState.isChatProcessing {
                             WelcomePrompts(
                                 onSelect: { prompt in
@@ -264,7 +264,7 @@ struct AIChatView: View {
                                 projectCount: projects.count,
                                 knowledgeCount: knowledgeService.entries.count
                             )
-                            .padding(.top, 80)
+                            .padding(.top, DS.Layout.commandPaletteTopInset)
                         }
 
                         LazyVStack(spacing: 0) {
@@ -308,7 +308,7 @@ struct AIChatView: View {
                                 .padding(.vertical, DS.Spacing.md)
                             }
 
-                            Color.clear.frame(height: 1).id("bottom")
+                            DS.Colors.transparent.frame(height: 1).id("bottom")
                         }
                         .frame(maxWidth: 880)
                         .frame(maxWidth: .infinity)
@@ -316,7 +316,7 @@ struct AIChatView: View {
                     .padding(.bottom, DS.Spacing.lg)
                     .background(
                         GeometryReader { geo in
-                            Color.clear.preference(
+                            DS.Colors.transparent.preference(
                                 key: ScrollOffsetKey.self,
                                 value: geo.frame(in: .named("chatScroll")).maxY
                             )
@@ -349,7 +349,7 @@ struct AIChatView: View {
                                 .font(.system(size: DS.IconSize.sm, weight: .semibold))
                                 .foregroundStyle(DS.Colors.textSecondary)
                                 .frame(width: 32, height: 32)
-                                .background(.ultraThinMaterial, in: Circle())
+                                .background(DS.Colors.fillSecondary, in: Circle())
                                 .overlay(Circle().strokeBorder(DS.Colors.border, lineWidth: 1))
                                 .shadow(color: DS.Colors.subtleShadow, radius: 4, y: 2)
                         }
@@ -409,6 +409,7 @@ struct AIChatView: View {
 
                 TextField("Ask DeepThink anything...", text: $inputText, axis: .vertical)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .lineLimit(2...3)
                     .font(DS.Font.body)
                     .focused($inputFocused)
@@ -458,7 +459,7 @@ struct AIChatView: View {
 
                     Text("⏎ Send")
                         .font(DS.Font.micro)
-                        .foregroundStyle(DS.Colors.textTertiary.opacity(0.6))
+                        .foregroundStyle(DS.Colors.textTertiary.opacity(DS.Opacity.muted))
 
                     if appState.isChatProcessing || appState.chatMessages.last?.isStreaming == true {
                         Button {
@@ -489,7 +490,7 @@ struct AIChatView: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surface)
+            .background(DS.Colors.card)
             .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
@@ -1167,7 +1168,7 @@ struct FollowUpChipsView: View {
         HStack(alignment: .top, spacing: DS.Spacing.sm) {
             Image(systemName: "sparkles")
                 .font(.system(size: DS.IconSize.sm, weight: .medium))
-                .foregroundStyle(DS.Colors.accent.opacity(0.6))
+                .foregroundStyle(DS.Colors.accent.opacity(DS.Opacity.muted))
                 .padding(.top, DS.Spacing.xs)
 
             FlowLayout(spacing: DS.Spacing.xs) {

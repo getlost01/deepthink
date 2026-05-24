@@ -136,7 +136,7 @@ struct AllTasksView: View {
                                 Image(systemName: "xmark")
                                     .font(.system(size: DS.IconSize.xs, weight: .semibold))
                                     .foregroundStyle(DS.Colors.textTertiary)
-                                    .frame(width: 22, height: 22)
+                                    .frame(width: DS.Layout.sidebarIconSlot, height: DS.Layout.sidebarIconSlot)
                                     .background(DS.Colors.fill, in: Circle())
                                     .contentShape(Circle())
                             }
@@ -164,21 +164,9 @@ struct AllTasksView: View {
     private var smartFilterChips: some View {
         HStack(spacing: DS.Spacing.xs) {
             ForEach(SmartFilter.allCases, id: \.self) { filter in
-                Button {
+                DSFilterChip(label: filter.rawValue, isSelected: smartFilter == filter) {
                     withAnimation(DS.Animation.quick) { smartFilter = filter }
-                } label: {
-                    Text(filter.rawValue)
-                        .font(DS.Font.caption)
-                        .fontWeight(smartFilter == filter ? .semibold : .regular)
-                        .foregroundStyle(smartFilter == filter ? DS.Colors.accent : DS.Colors.textSecondary)
-                        .padding(.horizontal, DS.Spacing.sm + 2)
-                        .padding(.vertical, DS.Spacing.xs + 1)
-                        .background(
-                            smartFilter == filter ? DS.Colors.accentFill : DS.Colors.fill,
-                            in: Capsule()
-                        )
                 }
-                .buttonStyle(.plainPointer)
             }
         }
     }
@@ -267,7 +255,7 @@ struct AllTasksView: View {
                                     taskRow(task)
                                         .padding(.horizontal, DS.Spacing.sm)
                                         .padding(.vertical, DS.Spacing.xxs)
-                                        .background(isSelected ? DS.Colors.accentFill : .clear)
+                                        .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plainPointer)
@@ -305,7 +293,7 @@ struct AllTasksView: View {
                     }
                 }
             }
-            .background(DS.Colors.surface)
+            .dsListPanel()
         } right: {
             if let task = selectedTask {
                 TaskDetailView(task: task)

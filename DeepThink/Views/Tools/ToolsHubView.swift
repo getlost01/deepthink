@@ -66,7 +66,7 @@ struct ToolsHubView: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.page)
 
             Divider()
 
@@ -82,7 +82,7 @@ struct ToolsHubView: View {
                                 .foregroundStyle(selectedCategory == cat ? DS.Colors.textPrimary : DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, DS.Spacing.xs)
-                                .background(selectedCategory == cat ? DS.Colors.accentFill : .clear, in: Capsule())
+                                .background(selectedCategory == cat ? DS.Colors.accentFill : DS.Colors.transparent, in: Capsule())
                         }
                         .buttonStyle(.plainPointer)
                     }
@@ -90,13 +90,7 @@ struct ToolsHubView: View {
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
             }
-            .mask(
-                HStack(spacing: 0) {
-                    Rectangle().frame(maxWidth: .infinity)
-                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: DS.Spacing.xl)
-                }
-            )
+            .dsHorizontalScrollFade()
 
             if filteredServers.isEmpty {
                 DSEmptyState(
@@ -135,7 +129,7 @@ struct ToolsHubView: View {
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.surfaceElevated)
+                .background(DS.Colors.page)
             }
         }
         .sheet(isPresented: $showAddSheet) {
@@ -352,8 +346,6 @@ private struct EditServerSheet: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.surfaceElevated)
-
             Divider()
 
             ScrollView {
@@ -439,6 +431,7 @@ private struct EditServerSheet: View {
         }
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
         .onAppear {
             name = server.name
             command = server.command
@@ -505,7 +498,7 @@ private struct AddServerSheet: View {
                                 .foregroundStyle(inputMode == mode ? DS.Colors.accent : DS.Colors.textTertiary)
                                 .padding(.horizontal, DS.Spacing.md)
                                 .padding(.vertical, DS.Spacing.xs + 2)
-                                .background(inputMode == mode ? DS.Colors.accentFill : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                .background(inputMode == mode ? DS.Colors.accentFill : DS.Colors.transparent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                         .buttonStyle(.plainPointer)
                     }
@@ -519,7 +512,6 @@ private struct AddServerSheet: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -553,6 +545,7 @@ private struct AddServerSheet: View {
         }
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
     }
 
     private var canAdd: Bool {
@@ -758,7 +751,7 @@ private struct PresetServersSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -786,13 +779,7 @@ private struct PresetServersSheet: View {
                     .padding(.leading, DS.Spacing.lg)
                     .padding(.trailing, DS.Spacing.sm)
                 }
-                .mask(
-                    HStack(spacing: 0) {
-                        Rectangle().frame(maxWidth: .infinity)
-                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                            .frame(width: DS.Spacing.xl)
-                    }
-                )
+                .dsHorizontalScrollFade()
 
                 Text("\(filteredPackages.count) servers")
                     .font(DS.Font.small)
@@ -859,6 +846,7 @@ private struct PresetServersSheet: View {
             }
         }
         .frame(width: 640, height: 560)
+        .dsModalChrome()
         .sheet(item: $packageToInstall) { pkg in
             CatalogInstallSheet(package: pkg) { server in
                 onAdd(server)
@@ -946,7 +934,6 @@ private struct CatalogInstallSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -991,8 +978,7 @@ private struct CatalogInstallSheet: View {
                         }
                         .padding(DS.Spacing.sm)
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(DS.Colors.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+                        .dsWarningCard()
                     }
 
                     VStack(alignment: .leading, spacing: DS.Spacing.xs) {
@@ -1048,6 +1034,7 @@ private struct CatalogInstallSheet: View {
         }
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
         .onAppear {
             if !knownKeys.isEmpty {
                 envVars = knownKeys.map { "\($0)=" }.joined(separator: "\n")
@@ -1157,7 +1144,7 @@ private struct CatalogRow: View {
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm + 2)
-        .background(isHovered ? DS.Colors.fillSecondary : .clear)
+        .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent)
         .contentShape(Rectangle())
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)

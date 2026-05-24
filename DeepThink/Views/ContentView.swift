@@ -8,57 +8,60 @@ struct ContentView: View {
     @State private var isReady = false
 
     var body: some View {
-        if !hasCompletedOnboarding {
-            WelcomeView {
-                withAnimation(.easeInOut(duration: 0.4)) {
-                    hasCompletedOnboarding = true
+        DSThemeRoot {
+            if !hasCompletedOnboarding {
+                WelcomeView {
+                    withAnimation(.easeInOut(duration: 0.4)) {
+                        hasCompletedOnboarding = true
+                    }
                 }
-            }
-        } else if !isReady {
-            SplashView()
-                .onAppear {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        withAnimation(.easeOut(duration: 0.3)) {
-                            isReady = true
+            } else if !isReady {
+                SplashView()
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                isReady = true
+                            }
                         }
                     }
-                }
-        } else {
-            HStack(spacing: 0) {
-                SidebarView()
+            } else {
+                HStack(spacing: 0) {
+                    SidebarView()
 
-                Divider()
-
-                VStack(spacing: 0) {
-                    GlobalHeader()
                     Divider()
-                    ContentRouter()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                }
-            }
-            .overlay {
-                if appState.showCommandPalette {
-                    CommandPaletteView()
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                }
-            }
-            .overlay(alignment: .bottom) {
-                DSToastView()
-                    .padding(.bottom, DS.Spacing.xl)
-            }
-            .alert(item: Binding(
-                get: { appState.presentedError },
-                set: { appState.presentedError = $0 }
-            )) { err in
-                Alert(
-                    title: Text(err.title),
-                    message: Text("\(err.context): \(err.message)"),
-                    dismissButton: .default(Text("OK")) {
-                        appState.presentedError = nil
+
+                    VStack(spacing: 0) {
+                        GlobalHeader()
+                        Divider()
+                        ContentRouter()
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
-                )
+                    .background(DS.Colors.page)
+                }
+                .overlay {
+                    if appState.showCommandPalette {
+                        CommandPaletteView()
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    DSToastView()
+                        .padding(.bottom, DS.Spacing.xl)
+                }
+                .alert(item: Binding(
+                    get: { appState.presentedError },
+                    set: { appState.presentedError = $0 }
+                )) { err in
+                    Alert(
+                        title: Text(err.title),
+                        message: Text("\(err.context): \(err.message)"),
+                        dismissButton: .default(Text("OK")) {
+                            appState.presentedError = nil
+                        }
+                    )
+                }
+                .transition(.opacity)
             }
-            .transition(.opacity)
         }
     }
 }
@@ -93,12 +96,12 @@ private struct GlobalHeader: View {
                     }
                     .foregroundStyle(DS.Colors.textTertiary)
                     .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                 }
                 .padding(.horizontal, DS.Spacing.md)
-                .frame(height: 28)
+                .frame(height: DS.Layout.searchFieldHeight)
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
@@ -129,7 +132,7 @@ private struct GlobalHeader: View {
         }
         .frame(height: DS.Layout.toolbarHeight)
         .padding(.horizontal, DS.Spacing.lg)
-        .background(DS.Colors.surface)
+        .dsChromeBar()
         .sheet(isPresented: $showDailyBrief) {
             DailyBriefModal(refreshID: $dailyBriefRefreshID)
         }
@@ -169,7 +172,7 @@ private struct SplashView: View {
                 .frame(width: 120, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DS.Colors.surface)
+        .background(DS.Colors.page)
         .onReceive(timer) { _ in
             dotCount = (dotCount + 1) % 4
         }

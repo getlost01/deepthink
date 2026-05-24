@@ -55,7 +55,7 @@ private struct ProjectInspectorContent: View {
                             .overlay {
                                 if project.color == hex {
                                     Image(systemName: "checkmark")
-                                        .font(.caption2)
+                                        .font(DS.Font.micro)
                                         .fontWeight(.bold)
                                         .foregroundStyle(DS.Colors.onAccent)
                                 }

@@ -40,13 +40,13 @@ struct QuickCaptureView: View {
         }
         .frame(width: 720, height: 620)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
+        .background(DS.Colors.modal, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.xl)
                 .strokeBorder(DS.Colors.borderHover, lineWidth: 1)
         )
         .shadow(color: DS.Colors.overlayBg, radius: 30, y: 10)
-        .shadow(color: .black.opacity(0.12), radius: 2, y: 1)
+        .shadow(color: DS.Colors.cardShadow, radius: 2, y: 1)
         .onAppear {
             titleFocused = true
             loadProjects()
@@ -111,12 +111,12 @@ struct QuickCaptureView: View {
                     }
                     .foregroundStyle(captureType == type ? DS.Colors.accent : DS.Colors.textSecondary)
                     .padding(.horizontal, DS.Spacing.sm + 2)
-                    .padding(.vertical, 5)
+                    .padding(.vertical, DS.Spacing.xs4)
                     .contentShape(Rectangle())
                     .background(
                         captureType == type
                             ? AnyShapeStyle(DS.Colors.accentFill)
-                            : AnyShapeStyle(.clear),
+                            : AnyShapeStyle(DS.Colors.transparent),
                         in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                     )
                 }
@@ -141,13 +141,7 @@ struct QuickCaptureView: View {
                     .textFieldStyle(.plain)
                     .font(DS.Font.body)
                     .focused($titleFocused)
-                    .padding(.horizontal, DS.Spacing.lg)
-                    .padding(.vertical, DS.Spacing.md)
-                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DS.Radius.md)
-                            .strokeBorder(DS.Colors.border, lineWidth: 1)
-                    )
+                    .dsInputField()
             }
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
@@ -239,6 +233,7 @@ struct QuickCaptureView: View {
                 .foregroundStyle(DS.Colors.textTertiary)
             TextField("Tags (comma separated)", text: $tags)
                 .textFieldStyle(.plain)
+                .dsThemedTextInput()
                 .font(DS.Font.caption)
         }
         .padding(.horizontal, DS.Spacing.sm + 2)
@@ -279,7 +274,7 @@ struct QuickCaptureView: View {
                         Text("Save")
                         Text("\u{2318}\u{21a9}")
                             .font(DS.Font.micro)
-                            .opacity(0.7)
+                            .opacity(DS.Opacity.muted)
                     }
                 }
                 .buttonStyle(DSPrimaryButtonStyle())

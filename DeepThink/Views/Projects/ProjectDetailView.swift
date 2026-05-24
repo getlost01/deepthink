@@ -30,8 +30,9 @@ struct ProjectDetailView: View {
                     TaskDetailView(task: task)
                         .id(task.id)
                 }
+                .dsDetailCanvas()
             } else {
-                Color.clear.onAppear {
+                DS.Colors.transparent.onAppear {
                     withAnimation(DS.Animation.standard) { appState.backToProjectOverview() }
                 }
             }
@@ -43,8 +44,9 @@ struct ProjectDetailView: View {
                     NoteEditorView(note: note)
                         .id(note.id)
                 }
+                .dsDetailCanvas()
             } else {
-                Color.clear.onAppear {
+                DS.Colors.transparent.onAppear {
                     withAnimation(DS.Animation.standard) { appState.backToProjectOverview() }
                 }
             }
@@ -108,6 +110,7 @@ struct ProjectDetailView: View {
 
                     TextField("Give your project a name", text: $project.name)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.title)
                         .disabled(project.isArchived)
                 }
@@ -137,6 +140,7 @@ struct ProjectDetailView: View {
                     } else {
                         TextField("Describe what this project is about...", text: $project.summary, axis: .vertical)
                             .textFieldStyle(.plain)
+                            .dsThemedTextInput()
                             .font(DS.Font.caption)
                             .foregroundStyle(DS.Colors.textSecondary)
                             .lineLimit(3)
@@ -253,6 +257,7 @@ struct ProjectDetailView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .dsDetailCanvas()
         .onChange(of: project.name) { project.modifiedAt = Date() }
         .onChange(of: project.summary) { project.modifiedAt = Date() }
         .onAppear {

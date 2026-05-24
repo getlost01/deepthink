@@ -57,7 +57,6 @@ struct NoteEditorView: View {
             ))
     }
 
-    @ViewBuilder
     private var mainColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
             if note.isArchived { archivedBanner }
@@ -105,7 +104,6 @@ struct NoteEditorView: View {
         cachedLinkPreviews = [:]
     }
 
-    @ViewBuilder
     private var archivedBanner: some View {
         HStack(spacing: DS.Spacing.sm) {
             Image(systemName: "archivebox.fill")
@@ -129,11 +127,11 @@ struct NoteEditorView: View {
         .overlay(Divider(), alignment: .bottom)
     }
 
-    @ViewBuilder
     private var noteHeader: some View {
         HStack(spacing: DS.Spacing.md) {
             TextField("Give your note a title...", text: $note.title)
                 .textFieldStyle(.plain)
+                .dsThemedTextInput()
                 .font(DS.Font.title)
                 .focused($titleFocused)
                 .disabled(note.isArchived)
@@ -151,7 +149,6 @@ struct NoteEditorView: View {
         .padding(.vertical, DS.Spacing.md)
     }
 
-    @ViewBuilder
     private var projectMenu: some View {
         Menu {
             Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
@@ -186,7 +183,6 @@ struct NoteEditorView: View {
         .disabled(note.isArchived)
     }
 
-    @ViewBuilder
     private var skillsMenu: some View {
         Menu {
             ForEach(SkillFileService.shared.skills) { skill in
@@ -218,30 +214,15 @@ struct NoteEditorView: View {
         .help("Run AI skill on this note")
     }
 
-    @ViewBuilder
     private var deadLinksBanner: some View {
-        HStack(spacing: DS.Spacing.sm) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: DS.IconSize.xs))
-                .foregroundStyle(DS.Colors.warning)
-            Text("This note contains broken links to deleted items")
-                .font(DS.Font.small)
-                .foregroundStyle(DS.Colors.textSecondary)
-            Spacer()
-            Button("Fix") {
-                cleanDeadLinksRequest = UUID()
-            }
-            .font(DS.Font.small)
-            .foregroundStyle(DS.Colors.warning)
-            .buttonStyle(.plainPointer)
+        DSWarningStrip(
+            message: "This note contains broken links to deleted items",
+            actionTitle: "Fix"
+        ) {
+            cleanDeadLinksRequest = UUID()
         }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.xs)
-        .frame(maxWidth: .infinity)
-        .background(DS.Colors.warning.opacity(0.08))
     }
 
-    @ViewBuilder
     private var editorArea: some View {
         NoteEditorMarkdownPane(
             content: $note.content,
@@ -434,7 +415,7 @@ private struct NoteEditorPlaceholder: View {
         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
             Text("Start writing…")
                 .font(DS.Font.body)
-                .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
+                .foregroundStyle(DS.Colors.textTertiary.opacity(DS.Opacity.disabled))
             HStack(spacing: DS.Spacing.xs) {
                 ForEach(hints, id: \.icon) { hint in
                     HStack(spacing: DS.Spacing.xxs) {
@@ -485,7 +466,7 @@ private struct BacklinksPanel: View {
                 }
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(isHeaderHovered ? DS.Colors.fill : .clear)
+                .background(isHeaderHovered ? DS.Colors.fill : DS.Colors.transparent)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plainPointer)

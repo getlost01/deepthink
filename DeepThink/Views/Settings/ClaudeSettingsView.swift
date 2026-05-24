@@ -66,7 +66,7 @@ struct ClaudeSettingsView: View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(DS.Colors.warning.opacity(0.15))
+                    .fill(DS.Colors.warningFill)
                     .frame(width: 36, height: 36)
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: DS.IconSize.lg))
@@ -110,7 +110,7 @@ struct ClaudeSettingsView: View {
         }
         .padding(DS.Spacing.md)
         .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.badgeBorder(DS.Colors.warning), lineWidth: 1))
     }
 
     // MARK: - Rate Limit Banner
@@ -119,7 +119,7 @@ struct ClaudeSettingsView: View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(DS.Colors.warning.opacity(0.15))
+                    .fill(DS.Colors.warningFill)
                     .frame(width: 36, height: 36)
                 Image(systemName: "timer")
                     .font(.system(size: DS.IconSize.lg))
@@ -151,14 +151,14 @@ struct ClaudeSettingsView: View {
                 .foregroundStyle(DS.Colors.warning)
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.warning.opacity(0.3), lineWidth: 1))
+                .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.badgeBorder(DS.Colors.warning), lineWidth: 1))
             }
             .buttonStyle(.plainPointer)
         }
         .padding(DS.Spacing.md)
         .background(DS.Colors.warning.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.warning.opacity(0.25), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.badgeBorder(DS.Colors.warning), lineWidth: 1))
     }
 
     // MARK: - No Credits Banner
@@ -167,7 +167,7 @@ struct ClaudeSettingsView: View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(DS.Colors.danger.opacity(0.15))
+                    .fill(DS.Colors.badgeFill(DS.Colors.danger))
                     .frame(width: 36, height: 36)
                 Image(systemName: "creditcard.trianglebadge.exclamationmark")
                     .font(.system(size: DS.IconSize.lg))
@@ -216,7 +216,7 @@ struct ClaudeSettingsView: View {
         }
         .padding(DS.Spacing.md)
         .background(DS.Colors.danger.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.md))
-        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.danger.opacity(0.25), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.badgeBorder(DS.Colors.danger), lineWidth: 1))
     }
 
     // MARK: - Status Hero
@@ -226,7 +226,7 @@ struct ClaudeSettingsView: View {
         HStack(spacing: DS.Spacing.md) {
             ZStack {
                 Circle()
-                    .fill(claude.isAvailable ? DS.Colors.success.opacity(0.12) : DS.Colors.danger.opacity(0.12))
+                    .fill(claude.isAvailable ? DS.Colors.badgeFill(DS.Colors.success) : DS.Colors.badgeFill(DS.Colors.danger))
                     .frame(width: 44, height: 44)
 
                 if claude.isAvailable {
@@ -256,7 +256,7 @@ struct ClaudeSettingsView: View {
                         .foregroundStyle(DS.Colors.warning)
                         .padding(.horizontal, DS.Spacing.sm)
                         .padding(.vertical, DS.Spacing.xxs)
-                        .background(DS.Colors.warning.opacity(0.1), in: Capsule())
+                        .background(DS.Colors.warningFill, in: Capsule())
                     }
                 }
 
@@ -294,7 +294,7 @@ struct ClaudeSettingsView: View {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.fill, in: Circle())
                 }
                 .buttonStyle(.plainPointer)
@@ -306,7 +306,7 @@ struct ClaudeSettingsView: View {
             RoundedRectangle(cornerRadius: DS.Radius.md)
                 .fill(
                     LinearGradient(
-                        colors: [(claude.isAvailable ? DS.Colors.success : DS.Colors.danger).opacity(0.03), .clear],
+                        colors: [(claude.isAvailable ? DS.Colors.success : DS.Colors.danger).opacity(0.03), DS.Colors.transparent],
                         startPoint: .leading, endPoint: .trailing
                     )
                 )
@@ -438,8 +438,8 @@ struct ClaudeSettingsView: View {
                             .foregroundStyle(DS.Colors.textPrimary)
                         Text("\(cliCommands.count)")
                             .font(DS.Font.micro)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, DS.Spacing.xs4)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(DS.Colors.fillSecondary, in: Capsule())
                             .foregroundStyle(DS.Colors.textTertiary)
                         Spacer()
@@ -711,7 +711,7 @@ struct ClaudeSettingsView: View {
                         value: formatCost(claude.totalCostUSD),
                         note: claude.lastQueryCostUSD.map { "last \(formatCost($0))" }
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "bubble.left.and.bubble.right",
                         color: DS.Colors.accent,
@@ -719,7 +719,7 @@ struct ClaudeSettingsView: View {
                         value: "\(claude.totalQueries)",
                         note: claude.totalQueries > 0 ? "avg \(formatCost(claude.totalCostUSD / Double(claude.totalQueries)))" : nil
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "clock",
                         color: DS.Colors.warning,
@@ -730,7 +730,7 @@ struct ClaudeSettingsView: View {
                             return avg > 10000 ? "slow" : avg > 4000 ? "moderate" : "fast"
                         }() : nil
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "creditcard",
                         color: DS.Colors.knowledge,
@@ -753,7 +753,7 @@ struct ClaudeSettingsView: View {
                         value: formatTokens(claude.totalInputTokens),
                         note: "all time"
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "arrow.up.circle",
                         color: DS.Colors.accent,
@@ -763,7 +763,7 @@ struct ClaudeSettingsView: View {
                             .totalInputTokens > 0 ? "ratio \(String(format: "%.1f", Double(claude.totalOutputTokens) / Double(claude.totalInputTokens)))x" :
                             nil
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "bolt.circle",
                         color: DS.Colors.success,
@@ -773,7 +773,7 @@ struct ClaudeSettingsView: View {
                             ? "\(Int(Double(claude.totalCacheReadTokens) / Double(claude.totalInputTokens + claude.totalCacheReadTokens) * 100))% hit rate"
                             : "no cache yet"
                     )
-                    Divider().padding(.leading, 28)
+                    Divider().padding(.leading, DS.Layout.settingsDividerInset)
                     usageRow(
                         icon: "circle.grid.2x2",
                         color: DS.Colors.textSecondary,
@@ -882,7 +882,7 @@ struct ClaudeSettingsView: View {
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DS.Colors.fillSecondary.opacity(0.5))
+        .background(DS.Colors.fillSecondary.opacity(DS.Opacity.disabled))
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
@@ -992,7 +992,7 @@ private struct VersionPill: View {
                     Text("Latest")
                         .font(DS.Font.badge)
                         .foregroundStyle(DS.Colors.onAccent)
-                        .padding(.horizontal, 3)
+                        .padding(.horizontal, DS.Spacing.xs3)
                         .padding(.vertical, 1)
                         .background(version.family.color, in: Capsule())
                 }
@@ -1001,21 +1001,24 @@ private struct VersionPill: View {
                     Text(suffix)
                         .font(.system(size: DS.IconSize.micro, weight: .medium))
                         .foregroundStyle(DS.Colors.warning)
-                        .padding(.horizontal, 3)
+                        .padding(.horizontal, DS.Spacing.xs3)
                         .padding(.vertical, 1)
-                        .background(DS.Colors.warning.opacity(0.15), in: Capsule())
+                        .background(DS.Colors.warningFill, in: Capsule())
                 }
             }
             .foregroundStyle(isSelected ? version.family.color : DS.Colors.textSecondary)
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.vertical, DS.Spacing.xs)
             .background(
-                isSelected ? version.family.color.opacity(0.10) : (isHovered ? DS.Colors.fill : .clear),
+                isSelected ? DS.Colors.badgeFill(version.family.color) : (isHovered ? DS.Colors.fill : DS.Colors.transparent),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
-                    .strokeBorder(isSelected ? version.family.color.opacity(0.3) : .clear, lineWidth: 1)
+                    .strokeBorder(
+                        isSelected ? DS.Colors.badgeBorder(version.family.color) : DS.Colors.transparent,
+                        lineWidth: 1
+                    )
             )
         }
         .buttonStyle(.plainPointer)

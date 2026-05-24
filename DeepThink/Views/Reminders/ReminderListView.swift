@@ -145,7 +145,7 @@ struct ReminderListView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.Spacing.xs) {
                     ForEach(FilterMode.allCases, id: \.self) { filter in
-                        filterChip(filter.rawValue, isActive: filterMode == filter) { filterMode = filter }
+                        DSFilterChip(label: filter.rawValue, isSelected: filterMode == filter) { filterMode = filter }
                     }
                     Divider()
                         .frame(height: 16)
@@ -153,18 +153,16 @@ struct ReminderListView: View {
                     ForEach(PriorityFilter.allCases, id: \.self) { pf in
                         let pfColor: Color = pf == .high ? DS.Colors.danger : pf == .medium ? DS.Colors.warning : pf == .low ? DS.Colors.success : DS.Colors
                             .textSecondary
-                        filterChip(pf.rawValue, isActive: priorityFilter == pf, activeColor: pf == .all ? DS.Colors.accent : pfColor) { priorityFilter = pf }
+                        DSFilterChip(
+                            label: pf.rawValue,
+                            isSelected: priorityFilter == pf,
+                            activeColor: pf == .all ? DS.Colors.accent : pfColor
+                        ) { priorityFilter = pf }
                     }
                 }
                 .padding(.horizontal, DS.Spacing.lg)
             }
-            .mask(
-                HStack(spacing: 0) {
-                    Rectangle().frame(maxWidth: .infinity)
-                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: DS.Spacing.xl)
-                }
-            )
+            .dsHorizontalScrollFade()
             .padding(.bottom, DS.Spacing.sm)
 
             if !allReminders.isEmpty {
@@ -195,7 +193,7 @@ struct ReminderListView: View {
                                 ReminderRowView(reminder: reminder)
                                     .padding(.horizontal, DS.Spacing.sm)
                                     .padding(.vertical, DS.Spacing.xxs)
-                                    .background(isSelected ? DS.Colors.accentFill : .clear)
+                                    .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                     .contentShape(Rectangle())
                             }
                             .id(reminder.id)
@@ -253,6 +251,7 @@ struct ReminderListView: View {
                 }
             }
         }
+        .dsListPanel()
     }
 
     private func navigateList(by delta: Int, proxy: ScrollViewProxy) {
@@ -268,20 +267,6 @@ struct ReminderListView: View {
             appState.selectedReminderID = target?.id
             if let id = target?.id { proxy.scrollTo(id, anchor: .center) }
         }
-    }
-
-    private func filterChip(_ label: String, isActive: Bool, activeColor: Color = DS.Colors.accent, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(DS.Font.small)
-                .fontWeight(isActive ? .semibold : .regular)
-                .foregroundStyle(isActive ? activeColor : DS.Colors.textSecondary)
-                .padding(.horizontal, DS.Spacing.sm)
-                .padding(.vertical, DS.Spacing.xs)
-                .background(isActive ? activeColor.opacity(0.12) : DS.Colors.fill, in: Capsule())
-                .overlay(Capsule().strokeBorder(isActive ? activeColor.opacity(0.3) : DS.Colors.border, lineWidth: 1))
-        }
-        .buttonStyle(.plainPointer)
     }
 
     private func createReminder() {
@@ -394,8 +379,8 @@ private struct NotificationPermissionBanner: View {
             Image(systemName: "bell.slash.fill")
                 .font(.system(size: DS.IconSize.sm, weight: .medium))
                 .foregroundStyle(DS.Colors.warning)
-                .frame(width: 22, height: 22)
-                .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .frame(width: DS.Layout.sidebarIconSlot, height: DS.Layout.sidebarIconSlot)
+                .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
             HStack(spacing: DS.Spacing.xs) {
                 Text(isDenied ? "Notifications Disabled" : "Notifications Not Enabled")
@@ -419,7 +404,7 @@ private struct NotificationPermissionBanner: View {
                     .foregroundStyle(DS.Colors.warning)
                     .frame(height: 20)
                     .padding(.horizontal, DS.Spacing.xs2)
-                    .background(DS.Colors.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
             .buttonStyle(.plainPointer)
 
@@ -435,6 +420,6 @@ private struct NotificationPermissionBanner: View {
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DS.Colors.fill)
+        .background(DS.Colors.warningFill)
     }
 }

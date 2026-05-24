@@ -79,7 +79,7 @@ struct KnowledgeBrowserView: View {
                         Image(systemName: "plus")
                             .font(.system(size: DS.IconSize.sm, weight: .medium))
                             .foregroundStyle(DS.Colors.textSecondary)
-                            .frame(width: 28, height: 28)
+                            .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                             .overlay(
                                 RoundedRectangle(cornerRadius: DS.Radius.sm)
@@ -196,6 +196,7 @@ struct KnowledgeBrowserView: View {
                     }
                 }
             }
+            .dsListPanel()
         } right: {
             if let entry = selectedEntry {
                 KnowledgeDetailView(entry: entry, onDelete: {
@@ -322,7 +323,7 @@ private struct EntryRow: View {
                     color: isSelected ? DS.Colors.accent : DS.Colors.textSecondary,
                     background: isSelected ? DS.Colors.accentFill : DS.Colors.fillSecondary
                 )
-                .padding(.top, 1)
+                .padding(.top, DS.Spacing.xxxs)
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     HStack {
@@ -364,44 +365,8 @@ private struct EntryRow: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md + 2)
-            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
+            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent))
             .contentShape(Rectangle())
-        }
-        .buttonStyle(.plainPointer)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
-    }
-}
-
-private struct BucketPill: View {
-    let label: String
-    let count: Int
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovered = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: DS.Spacing.xs) {
-                Text(label)
-                    .font(DS.Font.small)
-                    .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? DS.Colors.accent : DS.Colors.textSecondary)
-                Text("\(count)")
-                    .font(DS.Font.micro)
-                    .fontWeight(.medium)
-                    .foregroundStyle(isSelected ? DS.Colors.accent.opacity(0.7) : DS.Colors.textTertiary)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .background(isSelected ? DS.Colors.accent.opacity(0.12) : DS.Colors.fillSecondary, in: Capsule())
-            }
-            .padding(.horizontal, DS.Spacing.sm)
-            .padding(.vertical, DS.Spacing.xs)
-            .background(
-                isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fill : .clear),
-                in: Capsule()
-            )
-            .overlay(Capsule().strokeBorder(isSelected ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
@@ -449,6 +414,7 @@ struct KnowledgeDetailView: View {
             VStack(alignment: .leading, spacing: DS.Spacing.md) {
                 TextField("Entry title", text: $editableTitle)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
                     .onSubmit { commitTitleEdit() }
@@ -599,7 +565,7 @@ struct KnowledgeDetailView: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.page)
 
             Divider()
 
@@ -745,7 +711,6 @@ struct URLScrapeSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -787,6 +752,7 @@ struct URLScrapeSheet: View {
         }
         .frame(width: 450)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
     }
 
     @MainActor
@@ -842,7 +808,6 @@ struct NewKnowledgeSheet: View {
                 .disabled(title.isEmpty)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -855,6 +820,7 @@ struct NewKnowledgeSheet: View {
 
                     TextField("Enter a title...", text: $title)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.body)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.md)
@@ -909,6 +875,7 @@ struct NewKnowledgeSheet: View {
                             .foregroundStyle(DS.Colors.textTertiary)
                         TextField("Tags (comma separated)", text: $tags)
                             .textFieldStyle(.plain)
+                            .dsThemedTextInput()
                             .font(DS.Font.caption)
                     }
                     .padding(.horizontal, DS.Spacing.sm + 2)
@@ -922,6 +889,7 @@ struct NewKnowledgeSheet: View {
             .padding(.vertical, DS.Spacing.lg)
         }
         .frame(width: 600, height: 520)
+        .dsModalChrome()
     }
 
     private func save() {
@@ -951,7 +919,6 @@ struct ScriptRunSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -997,6 +964,7 @@ struct ScriptRunSheet: View {
         }
         .frame(width: 480)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
     }
 
     @MainActor
@@ -1032,7 +1000,6 @@ private struct NewBucketSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -1065,5 +1032,6 @@ private struct NewBucketSheet: View {
         }
         .frame(width: 380)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
     }
 }

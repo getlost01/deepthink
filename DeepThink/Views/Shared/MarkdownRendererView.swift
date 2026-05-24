@@ -5,19 +5,11 @@ struct MarkdownRendererView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                if let attributed = try? AttributedString(markdown: markdown, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-                    Text(attributed)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    Text(markdown)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-            .padding(DS.Spacing.lg)
+            ChatMarkdownView(markdown: markdown)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DS.Spacing.lg)
         }
+        .dsPage()
     }
 }
 
@@ -38,7 +30,7 @@ struct MarkdownSplitEditor: View {
                 .padding(.trailing, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.xs)
             }
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.card)
 
             Divider()
 
@@ -46,11 +38,13 @@ struct MarkdownSplitEditor: View {
                 MarkdownRendererView(markdown: text)
             } else {
                 TextEditor(text: $text)
-                    .font(.body.monospaced())
+                    .font(DS.Font.mono)
                     .scrollContentBackground(.hidden)
                     .padding(.horizontal, DS.Spacing.md)
                     .padding(.top, DS.Spacing.xs)
+                    .background(DS.Colors.page)
             }
         }
+        .background(DS.Colors.page)
     }
 }

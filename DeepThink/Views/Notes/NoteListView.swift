@@ -115,7 +115,7 @@ struct NoteListView: View {
                                 }
                                 .padding(.vertical, DS.Spacing.sm)
                                 .padding(.horizontal, DS.Spacing.sm)
-                                .background(isSelected ? DS.Colors.accentFill : .clear)
+                                .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plainPointer)
@@ -168,6 +168,7 @@ struct NoteListView: View {
                 }
             } // ScrollViewReader
         }
+        .dsListPanel()
         .onChange(of: searchText) {
             searchTask?.cancel()
             searchTask = Task {

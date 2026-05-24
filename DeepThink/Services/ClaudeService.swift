@@ -235,9 +235,9 @@ final class ClaudeService {
 
         var color: Color {
             switch self {
-            case .haiku: .cyan
-            case .sonnet: Color(hue: 0.08, saturation: 0.75, brightness: 0.95)
-            case .opus: Color(hue: 0.75, saturation: 0.6, brightness: 0.85)
+            case .haiku: DS.Colors.teal
+            case .sonnet: DS.Colors.amber
+            case .opus: DS.Colors.purple
             }
         }
 

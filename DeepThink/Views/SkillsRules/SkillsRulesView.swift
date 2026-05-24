@@ -83,6 +83,7 @@ struct SkillsListView: View {
                         }
                     }
                 }
+                .dsListPanel()
             } right: {
                 if let skill = selectedSkill {
                     SkillInlineEditor(skill: skill) {
@@ -215,6 +216,7 @@ struct RulesListView: View {
                         }
                     }
                 }
+                .dsListPanel()
             } right: {
                 if let rule = selectedRule {
                     RuleInlineEditor(rule: rule) {
@@ -309,7 +311,7 @@ private struct SkillRow: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
+            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -390,7 +392,7 @@ private struct RuleRow: View {
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
             .opacity(rule.isDisabled ? 0.6 : 1.0)
-            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
+            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -471,7 +473,7 @@ private struct SkillInlineEditor: View {
                     Image(systemName: icon)
                         .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                 }
@@ -498,6 +500,7 @@ private struct SkillInlineEditor: View {
 
                 TextField("Skill name", text: $name)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.heading)
                     .onChange(of: name) { scheduleSave() }
 
@@ -555,7 +558,7 @@ private struct SkillInlineEditor: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -569,6 +572,7 @@ private struct SkillInlineEditor: View {
                             .foregroundStyle(DS.Colors.textTertiary)
                         TextField(skill.commandName, text: $command)
                             .textFieldStyle(.plain)
+                            .dsThemedTextInput()
                             .font(DS.Font.monoSmall)
                             .foregroundStyle(DS.Colors.textTertiary)
                             .lineLimit(1)
@@ -584,6 +588,7 @@ private struct SkillInlineEditor: View {
 
                 TextEditor(text: $systemPrompt)
                     .font(DS.Font.monoSmall)
+                    .dsThemedTextInput()
                     .scrollContentBackground(.hidden)
                     .frame(height: 80)
                     .padding(.horizontal, DS.Spacing.sm)
@@ -712,7 +717,7 @@ private struct RuleInlineEditor: View {
                     Image(systemName: icon)
                         .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                 }
@@ -739,6 +744,7 @@ private struct RuleInlineEditor: View {
 
                 TextField("Rule name", text: $name)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.heading)
                     .onChange(of: name) { scheduleSave() }
 
@@ -759,7 +765,7 @@ private struct RuleInlineEditor: View {
                 }
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -774,6 +780,7 @@ private struct RuleInlineEditor: View {
 
                 TextField("e.g. always, tag:meeting, content:web", text: $trigger)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.mono)
                     .padding(.horizontal, DS.Spacing.lg)
                     .padding(.vertical, DS.Spacing.xs)
@@ -923,7 +930,7 @@ private struct TriggerPickChip: View {
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xxs + 1)
                 .background(isHovered ? DS.Colors.accentFill : DS.Colors.fill, in: Capsule())
-                .overlay(Capsule().strokeBorder(isHovered ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
+                .overlay(Capsule().strokeBorder(isHovered ? DS.Colors.badgeBorder(DS.Colors.accent) : DS.Colors.border, lineWidth: 1))
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
@@ -948,7 +955,7 @@ struct SkillRunSheet: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radius.sm)
                         .fill(DS.Colors.accentFill)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                     Image(systemName: skill.icon)
                         .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
@@ -970,7 +977,7 @@ struct SkillRunSheet: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -995,7 +1002,8 @@ struct SkillRunSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, DS.Spacing.sm + 2)
                         .background(
-                            (isRunning || (input.isEmpty && skill.promptTemplate.contains("{{input}}"))) ? DS.Colors.accent.opacity(0.5) : DS.Colors.accent,
+                            (isRunning || (input.isEmpty && skill.promptTemplate.contains("{{input}}"))) ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS
+                                .Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.md)
                         )
                     }
@@ -1043,7 +1051,7 @@ struct SkillRunSheet: View {
             }
         }
         .frame(width: 540, height: 580)
-        .background(DS.Colors.surface)
+        .dsModalChrome()
     }
 
     @MainActor

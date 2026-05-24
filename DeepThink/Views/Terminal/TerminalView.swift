@@ -64,6 +64,7 @@ final class TerminalTab: Identifiable {
 
 struct DeepThinkTerminalView: View {
     @Environment(AppState.self) private var appState
+    @Bindable private var theme = DSThemeManager.shared
     private var tabs: [TerminalTab] {
         appState.terminalTabs
     }
@@ -93,6 +94,7 @@ struct DeepThinkTerminalView: View {
             searchBar
             terminalContent
         }
+        .background(theme.palette.page.opacity(0.001))
         .onAppear {
             if tabs.isEmpty { addTab() }
         }
@@ -107,6 +109,7 @@ struct DeepThinkTerminalView: View {
             Text(err)
         }
         .overlay(alignment: .topLeading) { terminalKeyboardShortcuts }
+        .dsPage()
     }
 
     /// Hidden zero-size buttons that register keyboard shortcuts at the app-menu level,
@@ -397,6 +400,7 @@ private struct TerminalPaneView: View {
             .padding(DS.Spacing.sm)
             .background(DS.Colors.terminal)
             .contentShape(Rectangle())
+            .pointerOnHover()
             .onTapGesture { onTap() }
     }
 
@@ -452,6 +456,7 @@ private struct TerminalSearchBar: View {
             TextField("Search terminal output...", text: $query)
                 .font(DS.Font.caption)
                 .textFieldStyle(.plain)
+                .dsThemedTextInput()
                 .focused($isFocused)
                 .onSubmit { onSearch() }
 
@@ -493,7 +498,7 @@ private struct TerminalSearchBar: View {
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.xs + 2)
-        .background(DS.Colors.surfaceElevated)
+        .background(DS.Colors.page)
         .onAppear { isFocused = true }
         .onKeyPress(.escape) {
             onDismiss()
@@ -536,27 +541,17 @@ struct TerminalAnalysisSheet: View {
                     .foregroundStyle(DS.Colors.accent)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
             ScrollView {
-                if let attributed = try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-                    Text(attributed)
-                        .font(DS.Font.body)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(DS.Spacing.lg)
-                } else {
-                    Text(text)
-                        .font(DS.Font.body)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(DS.Spacing.lg)
-                }
+                ChatMarkdownView(markdown: text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(DS.Spacing.lg)
             }
         }
         .frame(width: 560, height: 460)
+        .dsModalChrome()
     }
 }
 
@@ -583,6 +578,7 @@ private struct TerminalTabButton: View {
                     TextField("", text: $editTitle)
                         .font(DS.Font.caption)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .frame(width: 80)
                         .onSubmit { commitRename() }
                         .onKeyPress(.escape) {
@@ -616,7 +612,7 @@ private struct TerminalTabButton: View {
             .background(
                 isActive
                     ? DS.Colors.accentFill
-                    : (isHovered ? DS.Colors.fillSecondary : .clear),
+                    : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .foregroundStyle(isActive ? DS.Colors.textPrimary : DS.Colors.textSecondary)

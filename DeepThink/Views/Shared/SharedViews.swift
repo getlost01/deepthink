@@ -25,7 +25,7 @@ struct TagChip: View {
             .foregroundStyle(Color(hex: tag.color))
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.vertical, DS.Spacing.xs)
-            .background(Color(hex: tag.color).opacity(0.12), in: Capsule())
+            .background(DS.Colors.badgeFill(Color(hex: tag.color)), in: Capsule())
     }
 }
 
@@ -158,7 +158,7 @@ struct DeepLinkPickerSheet: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -169,6 +169,7 @@ struct DeepLinkPickerSheet: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("Search \(linkLabel.lowercased())s...", text: $search)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.body)
                     .focused($searchFocused)
                 if !search.isEmpty {
@@ -239,7 +240,7 @@ struct DeepLinkPickerSheet: View {
             }
         }
         .frame(width: 420, height: 480)
-        .background(DS.Colors.surface)
+        .dsModalChrome()
         .onAppear { searchFocused = true }
     }
 
@@ -379,7 +380,7 @@ struct WikiLinkPickerSheet: View {
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.modal)
 
             Divider()
 
@@ -389,6 +390,7 @@ struct WikiLinkPickerSheet: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("Search knowledge...", text: $search)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.body)
                     .focused($searchFocused)
                 if !search.isEmpty {
@@ -478,7 +480,7 @@ struct WikiLinkPickerSheet: View {
             }
         }
         .frame(width: 480, height: 520)
-        .background(DS.Colors.surface)
+        .dsModalChrome()
         .onAppear { searchFocused = true }
     }
 }
@@ -524,7 +526,7 @@ private struct WikiLinkPickerRow: View {
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xs)
                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.accent.opacity(0.3), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.badgeBorder(DS.Colors.accent), lineWidth: 1))
                 }
                 .buttonStyle(.plainPointer)
 
@@ -579,7 +581,7 @@ private struct DeepLinkPickerRow: View {
                             .font(.system(size: DS.IconSize.nano, weight: .bold))
                             .foregroundStyle(DS.Colors.onAccent)
                             .padding(2)
-                            .background(DS.Colors.textTertiary, in: RoundedRectangle(cornerRadius: 3))
+                            .background(DS.Colors.textTertiary, in: RoundedRectangle(cornerRadius: DS.Radius.xs))
                             .offset(x: 4, y: 4)
                     }
                 }
@@ -613,7 +615,7 @@ private struct DeepLinkPickerRow: View {
 
                 Image(systemName: isHovered ? "plus.circle.fill" : "plus.circle")
                     .font(.system(size: DS.IconSize.md))
-                    .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textTertiary.opacity(0.4))
+                    .foregroundStyle(isHovered ? DS.Colors.accent : DS.Colors.textTertiary.opacity(DS.Opacity.faint))
             }
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)

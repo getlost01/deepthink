@@ -27,6 +27,7 @@ struct ObsidianImportView: View {
         }
         .frame(width: 500)
         .fixedSize(horizontal: false, vertical: true)
+        .dsModalChrome()
     }
 
     // MARK: - Header
@@ -47,7 +48,6 @@ struct ObsidianImportView: View {
                 .foregroundStyle(DS.Colors.textSecondary)
         }
         .padding(DS.Spacing.lg)
-        .background(DS.Colors.surfaceElevated)
     }
 
     // MARK: - Config

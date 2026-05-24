@@ -89,6 +89,7 @@
 		D5A59CA9651B9337A12970DD /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BAAE89EE8E1949037A2AC7 /* MCPServer.swift */; };
 		D6D0841635A4FB2A684639EC /* NoteInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A892F8CF9A4456973A67EBB1 /* NoteInspectorView.swift */; };
 		D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */; };
+		E8F4A2B91C3D5E6F7A8B9C0E /* DSThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */; };
 		DF281343B81BD514360F45C7 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BFA5828C333E058B73C0C4 /* Constants.swift */; };
 		E3A6451D6DCC41DC7A2CF240 /* TerminalSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */; };
 		E6B8A5C72B10B7C14529FA3A /* MCPCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */; };
@@ -189,6 +190,7 @@
 		AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOverviewView.swift; sourceTree = "<group>"; };
 		AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPCatalogService.swift; sourceTree = "<group>"; };
 		AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepThinkCLIService.swift; sourceTree = "<group>"; };
+		E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSThemeManager.swift; sourceTree = "<group>"; };
 		AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFileService.swift; sourceTree = "<group>"; };
 		AF9E6132F8AE996DC61C10F3 /* SlashCommandMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandMenu.swift; sourceTree = "<group>"; };
 		B054E6D2E053FBEB803CD468 /* InstallationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallationManager.swift; sourceTree = "<group>"; };
@@ -358,6 +360,7 @@
 				84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */,
 				CAC8C58D5D50E6DB600A51F3 /* DeadLinkScanner.swift */,
 				AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */,
+				E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */,
 				39AF85031C16E190ABD50E4B /* EmbeddingService.swift */,
 				889E22A7596C1B768A368CBF /* GlobalHotKey.swift */,
 				B054E6D2E053FBEB803CD468 /* InstallationManager.swift */,
@@ -693,6 +696,7 @@
 				B2EE3CE5FA78E8E1D31465B8 /* DeadLinkScanner.swift in Sources */,
 				4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */,
 				D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */,
+				E8F4A2B91C3D5E6F7A8B9C0E /* DSThemeManager.swift in Sources */,
 				04CD8E96C33891BBF10AF4F3 /* DeepThinkError.swift in Sources */,
 				9356DECAB0CFE77A9A4D6BF5 /* DesignSystem.swift in Sources */,
 				F86BB6DF71BFDC2FEACF6C00 /* EmbeddingService.swift in Sources */,

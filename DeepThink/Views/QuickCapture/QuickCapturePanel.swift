@@ -27,6 +27,8 @@ final class QuickCaptureWindowController: NSWindowController {
     static let shared = QuickCaptureWindowController()
     private var currentContainer: ModelContainer?
     private var currentAppState: AppState?
+    private var lastThemeRevision = -1
+    private var themeObserver: NSObjectProtocol?
 
     private init() {
         let panel = QuickCapturePanel(
@@ -50,6 +52,14 @@ final class QuickCaptureWindowController: NSWindowController {
             let y = (screen.frame.height - 620) / 2 + 100
             panel.setFrameOrigin(NSPoint(x: x, y: y))
         }
+
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: .dsThemeDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.rebuildContentIfVisible()
+        }
     }
 
     @available(*, unavailable)
@@ -60,22 +70,44 @@ final class QuickCaptureWindowController: NSWindowController {
     func show(with container: ModelContainer, appState: AppState) {
         guard NSApp.isActive else { return }
 
-        if currentContainer !== container || currentAppState !== appState || window?.contentView == nil {
+        let revision = DSThemeManager.shared.themeRevision
+        let needsRebuild = currentContainer !== container
+            || currentAppState !== appState
+            || window?.contentView == nil
+            || revision != lastThemeRevision
+
+        if needsRebuild {
             currentContainer = container
             currentAppState = appState
-            let view = QuickCaptureView(
+            lastThemeRevision = revision
+            installContent(container: container, appState: appState)
+        }
+
+        window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func installContent(container: ModelContainer, appState: AppState) {
+        let view = DSThemeRoot {
+            QuickCaptureView(
                 onDismiss: { [weak self] in self?.dismiss() },
                 modelContainer: container
             )
             .environment(appState)
-            let hostingView = TransparentHostingView(rootView: view)
-            hostingView.wantsLayer = true
-            hostingView.layer?.cornerRadius = 14
-            hostingView.layer?.masksToBounds = true
-            window?.contentView = hostingView
         }
+        let hostingView = TransparentHostingView(rootView: view)
+        hostingView.wantsLayer = true
+        hostingView.layer?.cornerRadius = DS.Radius.xl
+        hostingView.layer?.masksToBounds = true
+        window?.contentView = hostingView
+        window?.appearance = NSApp.appearance
+    }
 
-        window?.makeKeyAndOrderFront(nil)
+    private func rebuildContentIfVisible() {
+        guard window?.isVisible == true,
+              let container = currentContainer,
+              let appState = currentAppState else { return }
+        lastThemeRevision = DSThemeManager.shared.themeRevision
+        installContent(container: container, appState: appState)
     }
 
     func showPrefilled(with container: ModelContainer, appState: AppState, content: String) {

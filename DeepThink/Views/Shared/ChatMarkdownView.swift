@@ -23,28 +23,38 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
         let config = WKWebViewConfiguration()
         config.userContentController.add(context.coordinator, name: "copyCode")
         config.userContentController.add(context.coordinator, name: "contentHeight")
+        let palette = DSThemeManager.shared.palette
+        let isLight = DSThemeManager.shared.effectiveAppearance == .light
+        if let themeScript = palette.chatThemeUserScript(isLight: isLight) {
+            config.userContentController.addUserScript(themeScript)
+        }
 
         let webView = ScrollPassthroughWebView(frame: .zero, configuration: config)
         webView.setValue(false, forKey: "drawsBackground")
         webView.navigationDelegate = context.coordinator
         context.coordinator.webView = webView
         context.coordinator.lastMarkdown = markdown
-        loadContent(webView: webView)
+        loadContent(webView: webView, coordinator: context.coordinator)
         return webView
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         if context.coordinator.lastMarkdown != markdown {
             context.coordinator.lastMarkdown = markdown
-            loadContent(webView: webView)
+            loadContent(webView: webView, coordinator: context.coordinator)
         }
+        context.coordinator.applyChatThemeIfNeeded()
     }
 
-    private func loadContent(webView: WKWebView) {
+    private func loadContent(webView: WKWebView, coordinator: Coordinator) {
         let escaped = markdown
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "`", with: "\\`")
             .replacingOccurrences(of: "$", with: "\\$")
+
+        let palette = DSThemeManager.shared.palette
+        let cssRoot = palette.cssRootBlock(from: palette.chatMarkdownCSSVariables)
+        let isLight = DSThemeManager.shared.effectiveAppearance == .light
 
         let html = """
         <!DOCTYPE html>
@@ -52,20 +62,8 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
         <head>
         <meta charset="utf-8">
         <style>
-            @media (prefers-color-scheme: dark) {
-                :root {
-                    --text: #e0e0e0; --text2: #888; --bg-code: rgba(255,255,255,0.04);
-                    --border: rgba(255,255,255,0.08); --accent: #4dacf7;
-                    --bg-hover: rgba(255,255,255,0.04); --bg-inline: rgba(255,255,255,0.07);
-                }
-            }
-            @media (prefers-color-scheme: light) {
-                :root {
-                    --text: #1d1d1f; --text2: #888; --bg-code: rgba(0,0,0,0.03);
-                    --border: rgba(0,0,0,0.08); --accent: #1a8ad4;
-                    --bg-hover: rgba(0,0,0,0.03); --bg-inline: rgba(0,0,0,0.05);
-                }
-            }
+            \(cssRoot)
+            html { color-scheme: \(isLight ? "light" : "dark"); }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             html, body { overflow: hidden; pointer-events: none; }
             a, button, .copy-btn { pointer-events: auto; }
@@ -88,7 +86,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             a:hover { border-bottom-color: var(--accent); }
             strong { font-weight: 600; }
             em { font-style: italic; }
-
             code {
                 font-family: 'SF Mono', Menlo, monospace;
                 font-size: 11.5px;
@@ -96,7 +93,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 padding: 1px 5px;
                 border-radius: 4px;
             }
-
             .code-block-wrapper {
                 position: relative;
                 margin: 10px 0;
@@ -129,20 +125,9 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 transition: all 0.15s;
             }
             .copy-btn:hover { background: var(--bg-code); color: var(--text); border-color: var(--text2); }
-            .copy-btn.copied { color: #34c759; border-color: #34c759; }
-
-            pre {
-                margin: 0;
-                padding: 12px 14px;
-                overflow-x: auto;
-            }
-            pre code {
-                background: none;
-                padding: 0;
-                font-size: 11.5px;
-                line-height: 1.55;
-            }
-
+            .copy-btn.copied { color: var(--success); border-color: var(--success); }
+            pre { margin: 0; padding: 12px 14px; overflow-x: auto; }
+            pre code { background: none; padding: 0; font-size: 11.5px; line-height: 1.55; }
             blockquote {
                 border-left: 3px solid var(--accent);
                 margin: 8px 0;
@@ -151,7 +136,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 background: var(--bg-code);
                 border-radius: 0 6px 6px 0;
             }
-
             .callout {
                 margin: 10px 0; padding: 10px 14px; border-radius: 8px;
                 border: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start;
@@ -159,11 +143,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             .callout-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
             .callout-content { flex: 1; min-width: 0; }
             .callout-content p:first-child { margin-top: 0; }
-            .callout-tip { background: rgba(52, 199, 89, 0.08); border-color: rgba(52, 199, 89, 0.2); }
-            .callout-warning { background: rgba(255, 149, 0, 0.08); border-color: rgba(255, 149, 0, 0.2); }
+            .callout-tip { background: var(--success-subtle); border-color: var(--success); }
+            .callout-warning { background: var(--warning-subtle); border-color: var(--warning); }
             .callout-note { background: var(--bg-code); border-color: var(--border); }
-            .callout-important { background: rgba(255, 59, 48, 0.08); border-color: rgba(255, 59, 48, 0.2); }
-
+            .callout-important { background: var(--danger-subtle); border-color: var(--danger); }
             table {
                 border-collapse: collapse; width: 100%; margin: 10px 0;
                 font-size: 12px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);
@@ -171,12 +154,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             th, td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
             th { font-weight: 600; background: var(--bg-code); font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; color: var(--text2); }
             tr:hover td { background: var(--bg-hover); }
-
             ul, ol { padding-left: 22px; margin: 6px 0; }
             li { margin: 3px 0; }
             li > p { margin: 1px 0; }
             li::marker { color: var(--text2); }
-
             ul.task-list { list-style: none; padding-left: 0; }
             .task-list-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; }
             .task-checkbox {
@@ -185,16 +166,33 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 display: flex; align-items: center; justify-content: center; cursor: default;
             }
             .task-checkbox.checked { background: var(--accent); border-color: var(--accent); }
-            .task-checkbox.checked::after { content: '✓'; color: white; font-size: 10px; font-weight: 700; }
+            .task-checkbox.checked::after { content: '✓'; color: var(--on-accent); font-size: 10px; font-weight: 700; }
             .task-list-item.done .task-text { text-decoration: line-through; color: var(--text2); }
-
             hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
             img { max-width: 100%; border-radius: 8px; margin: 6px 0; }
         </style>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" media="(prefers-color-scheme: dark)">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" media="(prefers-color-scheme: light)">
+        <link id="hljs-theme" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+        <script>
+            window.setChatTheme = function(vars, isLight) {
+                var root = document.documentElement;
+                Object.keys(vars).forEach(function(k) {
+                    if (k === 'color-scheme') return;
+                    root.style.setProperty('--' + k, vars[k]);
+                });
+                if (vars['color-scheme']) {
+                    root.style.colorScheme = vars['color-scheme'];
+                }
+                root.dataset.theme = isLight ? 'light' : 'dark';
+                var link = document.getElementById('hljs-theme');
+                if (link) {
+                    link.href = isLight
+                        ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
+                        : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css';
+                }
+            };
+        </script>
         </head>
         <body>
         <div id="content"></div>
@@ -219,7 +217,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                     '<pre><code class="hljs language-' + language + '">' + highlighted + '</code></pre>' +
                     '<textarea style="display:none">' + src.replace(/</g, '&lt;') + '</textarea></div>';
             };
-
             renderer.listitem = function(text, task, checked) {
                 const t = typeof text === 'object' ? text.text : text;
                 const isTask = typeof text === 'object' ? text.task : task;
@@ -233,7 +230,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 }
                 return '<li>' + t + '</li>';
             };
-
             renderer.list = function(body, ordered, start) {
                 const b = typeof body === 'object' ? body.body : body;
                 const isOrdered = typeof body === 'object' ? body.ordered : ordered;
@@ -244,9 +240,7 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 }
                 return isOrdered ? '<ol>' + b + '</ol>' : '<ul>' + b + '</ul>';
             };
-
             marked.setOptions({ renderer, gfm: true, breaks: false });
-
             function processCallouts(html) {
                 return html.replace(/<blockquote>\\n?<p>\\[!(TIP|NOTE|WARNING|IMPORTANT)\\](.*?)<\\/p>/gi,
                     function(match, type, content) {
@@ -257,11 +251,9 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                             '<div class="callout-content"><p>' + content;
                     });
             }
-
             let rendered = marked.parse(`\(escaped)`);
             rendered = processCallouts(rendered);
             document.getElementById('content').innerHTML = rendered;
-
             function copyCode(btn) {
                 const wrapper = btn.closest('.code-block-wrapper');
                 const textarea = wrapper.querySelector('textarea');
@@ -271,7 +263,6 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
                 btn.classList.add('copied');
                 setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
             }
-
             function reportHeight() {
                 const h = document.body.scrollHeight;
                 window.webkit.messageHandlers.contentHeight.postMessage(h);
@@ -284,15 +275,53 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
         </html>
         """
         webView.loadHTMLString(html, baseURL: nil)
+        coordinator.scheduleThemeApply()
     }
 
     class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         weak var webView: WKWebView?
         var parent: ChatMarkdownWebView
         var lastMarkdown: String = ""
+        private var lastThemeRevision: Int = -1
+        private var themeObserver: NSObjectProtocol?
+        private var pendingThemeApply = false
 
         init(parent: ChatMarkdownWebView) {
             self.parent = parent
+            super.init()
+            themeObserver = NotificationCenter.default.addObserver(
+                forName: .dsThemeDidChange,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.applyChatThemeIfNeeded()
+            }
+        }
+
+        deinit {
+            if let themeObserver {
+                NotificationCenter.default.removeObserver(themeObserver)
+            }
+        }
+
+        func scheduleThemeApply() {
+            pendingThemeApply = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                self?.applyChatThemeIfNeeded(force: true)
+            }
+        }
+
+        func applyChatThemeIfNeeded(force: Bool = false) {
+            let manager = DSThemeManager.shared
+            let revision = manager.themeRevision
+            guard force || revision != lastThemeRevision else { return }
+            lastThemeRevision = revision
+            guard let webView else { return }
+            webView.underPageBackgroundColor = NSColor(manager.palette.page)
+            let isLight = manager.effectiveAppearance == .light
+            guard let js = manager.palette.chatThemeJavaScript(isLight: isLight) else { return }
+            webView.evaluateJavaScript(js)
+            pendingThemeApply = false
         }
 
         func userContentController(_ uc: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -319,6 +348,10 @@ private struct ChatMarkdownWebView: NSViewRepresentable {
             } else {
                 decisionHandler(.allow)
             }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            applyChatThemeIfNeeded(force: true)
         }
     }
 }

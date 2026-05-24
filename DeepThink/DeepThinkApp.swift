@@ -132,6 +132,8 @@ struct DeepThinkApp: App {
                 )
                 .handlesExternalEvents(preferring: ["main"], allowing: ["main"])
                 .onAppear {
+                    DSThemeManager.shared.refreshPalette()
+                    DSThemeManager.shared.observeSystemAppearanceChanges()
                     notificationDelegate.appState = appState
                     notificationDelegate.modelContainer = sharedModelContainer
                     NotificationDelegate.registerCategories()

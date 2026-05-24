@@ -26,23 +26,12 @@ struct TaskDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             if hasDeadLinks {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: DS.IconSize.xs))
-                        .foregroundStyle(DS.Colors.warning)
-                    Text("Contains broken links to deleted items")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Spacer()
-                    Button("Fix") { cleanDeadLinksRequest = UUID() }
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.warning)
-                        .buttonStyle(.plainPointer)
+                DSWarningStrip(
+                    message: "Contains broken links to deleted items",
+                    actionTitle: "Fix"
+                ) {
+                    cleanDeadLinksRequest = UUID()
                 }
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.xs)
-                .frame(maxWidth: .infinity)
-                .background(DS.Colors.warning.opacity(0.08))
             }
 
             if task.isArchived {
@@ -71,6 +60,7 @@ struct TaskDetailView: View {
 
             TextField("What needs to be done?", text: $task.title)
                 .textFieldStyle(.plain)
+                .dsThemedTextInput()
                 .font(DS.Font.title)
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.top, DS.Spacing.lg)
@@ -223,7 +213,7 @@ struct TaskDetailView: View {
                             }
                             .padding(.horizontal, DS.Spacing.xl)
                             .padding(.vertical, DS.Spacing.xs2)
-                            .background(hoveredSubtaskID == sub.id ? DS.Colors.fill : .clear)
+                            .background(hoveredSubtaskID == sub.id ? DS.Colors.fill : DS.Colors.transparent)
                             .contentShape(Rectangle())
                             .onHover { isHovering in
                                 hoveredSubtaskID = isHovering ? sub.id : nil
@@ -239,6 +229,7 @@ struct TaskDetailView: View {
 
                             TextField("Add subtask...", text: $newSubtaskTitle)
                                 .textFieldStyle(.plain)
+                                .dsThemedTextInput()
                                 .font(DS.Font.body)
                                 .onSubmit {
                                     addSubtask()
@@ -393,7 +384,7 @@ private struct DeepLinkBacklinksPanel: View {
                 }
                 .padding(.horizontal, DS.Spacing.xl)
                 .padding(.vertical, DS.Spacing.sm)
-                .background(isHeaderHovered ? DS.Colors.fill : .clear)
+                .background(isHeaderHovered ? DS.Colors.fill : DS.Colors.transparent)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plainPointer)
@@ -458,6 +449,7 @@ private struct CustomPointsSheet: View {
         }
         .padding(DS.Spacing.xl)
         .frame(width: 240)
+        .dsModalChrome()
     }
 
     private func apply() {

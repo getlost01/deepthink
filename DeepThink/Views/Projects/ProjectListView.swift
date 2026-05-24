@@ -51,7 +51,7 @@ struct ProjectListView: View {
                                 ProjectCard(project: project)
                                     .padding(.horizontal, DS.Spacing.sm)
                                     .padding(.vertical, DS.Spacing.xxs)
-                                    .background(isSelected ? DS.Colors.accentFill : .clear)
+                                    .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                     .contentShape(Rectangle())
                             }
                             .id(project.id)
@@ -135,6 +135,7 @@ struct ProjectListView: View {
         } message: {
             Text("This will permanently delete \"\(projectToDelete?.name ?? "")\" and all its notes, tasks, and reminders.")
         }
+        .dsListPanel()
     }
 
     private func createProject() {

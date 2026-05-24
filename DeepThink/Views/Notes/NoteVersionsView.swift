@@ -25,7 +25,7 @@ struct NoteVersionsView: View {
                             .foregroundStyle(DS.Colors.textSecondary)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                    .padding(.vertical, DS.Layout.emptyStateVerticalPadding)
                     .listRowSeparator(.hidden)
                 } else {
                     ForEach(versions) { version in
@@ -34,7 +34,7 @@ struct NoteVersionsView: View {
                                 Text("v\(version.versionNumber)")
                                     .font(DS.Font.small)
                                     .fontWeight(.bold)
-                                    .padding(.horizontal, 6)
+                                    .padding(.horizontal, DS.Spacing.xs2)
                                     .padding(.vertical, DS.Spacing.xxs)
                                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                                 Spacer()
@@ -56,7 +56,7 @@ struct NoteVersionsView: View {
                 }
             }
             .listStyle(.plain)
-            .background(DS.Colors.surface)
+            .dsListPanel()
         } right: {
             if let version = selectedVersion {
                 VStack(alignment: .leading, spacing: 0) {
@@ -75,7 +75,7 @@ struct NoteVersionsView: View {
                         .controlSize(.small)
                     }
                     .padding(DS.Spacing.md)
-                    .background(DS.Colors.surfaceElevated)
+                    .background(DS.Colors.page)
 
                     Divider()
 

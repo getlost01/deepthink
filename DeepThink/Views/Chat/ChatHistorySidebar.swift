@@ -66,6 +66,7 @@ struct ChatHistorySidebar: View {
                     .foregroundStyle(DS.Colors.textTertiary)
                 TextField("Search...", text: $searchText)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
                     .font(DS.Font.caption)
             }
             .padding(.horizontal, DS.Spacing.sm)
@@ -116,7 +117,7 @@ struct ChatHistorySidebar: View {
                 }
             }
         }
-        .background(DS.Colors.surfaceElevated)
+        .background(DS.Colors.page)
     }
 }
 
@@ -170,14 +171,14 @@ private struct HistoryRow: View {
             .padding(.vertical, DS.Spacing.sm2)
             .background(
                 isSelected ? DS.Colors.accentFill :
-                    (isHovered ? DS.Colors.fillSecondary : .clear),
+                    (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent),
                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
                     .strokeBorder(
-                        isSelected ? DS.Colors.accent.opacity(0.3) :
-                            (isHovered ? DS.Colors.borderHover : .clear),
+                        isSelected ? DS.Colors.badgeBorder(DS.Colors.accent) :
+                            (isHovered ? DS.Colors.borderHover : DS.Colors.transparent),
                         lineWidth: 1
                     )
             )

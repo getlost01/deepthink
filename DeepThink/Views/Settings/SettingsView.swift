@@ -43,5 +43,6 @@ struct SettingsView: View {
                 GeneralSettingsView()
             }
         }
+        .dsPage()
     }
 }

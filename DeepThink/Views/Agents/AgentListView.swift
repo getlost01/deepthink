@@ -86,6 +86,7 @@ struct AgentListView: View {
                         }
                     }
                 }
+                .dsListPanel()
             } right: {
                 if let agent = selectedAgent {
                     AgentDetailEditor(agent: agent) {
@@ -257,7 +258,6 @@ private struct AgentTemplateSheet: View {
                     .foregroundStyle(DS.Colors.textSecondary)
             }
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surfaceElevated)
 
             Divider()
 
@@ -274,6 +274,7 @@ private struct AgentTemplateSheet: View {
             }
         }
         .frame(width: 640, height: 480)
+        .dsModalChrome()
     }
 }
 
@@ -289,7 +290,7 @@ private struct TemplateCard: View {
                     Image(systemName: template.icon)
                         .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
                     VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
@@ -370,7 +371,7 @@ private struct AgentRow: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : .clear))
+            .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -480,7 +481,7 @@ private struct AgentDetailEditor: View {
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm)
-        .background(DS.Colors.surfaceElevated)
+        .background(DS.Colors.fillSecondary)
     }
 
     private var editorFields: some View {
@@ -492,7 +493,7 @@ private struct AgentDetailEditor: View {
                     Image(systemName: icon)
                         .font(.system(size: DS.IconSize.md, weight: .medium))
                         .foregroundStyle(DS.Colors.accent)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
@@ -508,10 +509,12 @@ private struct AgentDetailEditor: View {
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     TextField("Assistant name", text: $name)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.title)
                         .onChange(of: name) { scheduleSave() }
                     TextField("What does this assistant help with?", text: $role)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .onChange(of: role) { scheduleSave() }
@@ -531,6 +534,7 @@ private struct AgentDetailEditor: View {
                         .foregroundStyle(DS.Colors.textSecondary)
                     TextField("e.g. Swift, macOS, UI design", text: $knowledgeScope)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.caption)
                         .foregroundStyle(DS.Colors.textSecondary)
                         .onChange(of: knowledgeScope) { scheduleSave() }

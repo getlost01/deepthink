@@ -193,7 +193,7 @@ struct RecentView: View {
             }
             .padding(DS.Spacing.xl)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .dsPage()
     }
 
     private var greeting: String {
@@ -222,17 +222,7 @@ struct RecentView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(DS.Spacing.md)
-            .background(
-                LinearGradient(
-                    colors: [color.opacity(0.06), color.opacity(0.02)],
-                    startPoint: .topLeading, endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: DS.Radius.md)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(color.opacity(0.12), lineWidth: 1)
-            )
+            .dsCardSurface()
         }
         .buttonStyle(.plainPointer)
     }
@@ -287,11 +277,7 @@ struct RecentView: View {
                     .buttonStyle(.plainPointer)
                 }
             }
-            .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .strokeBorder(DS.Colors.border, lineWidth: 1)
-            )
+            .dsCardSurface()
         }
     }
 
@@ -344,7 +330,7 @@ private struct RecentItemRow: View {
             HStack(spacing: DS.Spacing.md) {
                 ZStack {
                     RoundedRectangle(cornerRadius: DS.Radius.sm)
-                        .fill(item.iconColor.opacity(0.1))
+                        .fill(DS.Colors.iconBadgeFill(item.iconColor))
                         .frame(width: 32, height: 32)
                     Image(systemName: item.icon)
                         .font(.system(size: DS.IconSize.sm, weight: .medium))
@@ -386,7 +372,7 @@ private struct RecentItemRow: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .background(isHovered ? DS.Colors.fillSecondary : .clear)
+            .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -400,7 +386,7 @@ private struct RecentItemRow: View {
             .foregroundStyle(item.kind.badgeColor)
             .padding(.horizontal, DS.Spacing.sm)
             .padding(.vertical, DS.Spacing.xxs)
-            .background(item.kind.badgeColor.opacity(0.1), in: Capsule())
+            .background(DS.Colors.badgeFill(item.kind.badgeColor), in: Capsule())
     }
 }
 
@@ -502,7 +488,7 @@ private struct AgentsSection: View {
             Image(systemName: agent.icon)
                 .font(DS.Font.caption).fontWeight(.semibold)
                 .foregroundStyle(DS.Colors.accent)
-                .frame(width: 22, height: 22)
+                .frame(width: DS.Layout.sidebarIconSlot, height: DS.Layout.sidebarIconSlot)
                 .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             VStack(alignment: .leading, spacing: 1) {
                 Text(agent.name)
@@ -729,7 +715,7 @@ struct DailyBriefModal: View {
                     Image(systemName: "xmark")
                         .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.fillSecondary, in: Circle())
                 }
                 .buttonStyle(.plainPointer)
@@ -750,7 +736,7 @@ struct DailyBriefModal: View {
             }
         }
         .frame(minWidth: 660, idealWidth: 720, minHeight: 560)
-        .background(DS.Colors.surfaceElevated)
+        .dsModalChrome()
     }
 }
 
@@ -792,7 +778,7 @@ private struct InsightsStrip: View {
                             if !insights.isEmpty {
                                 Text("\(insights.count)")
                                     .font(DS.Font.micro)
-                                    .padding(.horizontal, 5).padding(.vertical, 2)
+                                    .padding(.horizontal, DS.Spacing.xs4).padding(.vertical, DS.Spacing.xxs)
                                     .background(DS.Colors.fillSecondary, in: Capsule())
                                     .foregroundStyle(DS.Colors.textTertiary)
                             }
@@ -815,7 +801,7 @@ private struct InsightsStrip: View {
                     if isExpanded, !insights.isEmpty {
                         Divider()
                         ForEach(Array(insights.enumerated()), id: \.element.id) { idx, insight in
-                            if idx > 0 { Divider().padding(.leading, 40) }
+                            if idx > 0 { Divider().padding(.leading, DS.Layout.recentDividerInset) }
                             insightRow(insight)
                         }
                     }
@@ -835,7 +821,7 @@ private struct InsightsStrip: View {
                 .font(.system(size: DS.IconSize.xs, weight: .semibold))
                 .foregroundStyle(severityColor(insight.severity))
                 .frame(width: 20, height: 20)
-                .background(severityColor(insight.severity).opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(DS.Colors.badgeFill(severityColor(insight.severity)), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(insight.title)

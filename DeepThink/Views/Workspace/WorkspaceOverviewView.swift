@@ -56,10 +56,10 @@ struct WorkspaceOverviewView: View {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 // Stat cards
                 HStack(spacing: DS.Spacing.md) {
-                    statCard(icon: "folder", label: "Projects", count: projects.count, color: DS.Colors.accent)
-                    statCard(icon: "doc.text", label: "Notes", count: notes.count, color: DS.Colors.knowledge)
-                    statCard(icon: "checklist", label: "Tasks", count: tasks.count, color: DS.Colors.success)
-                    statCard(icon: "circle.lefthalf.filled", label: "In Progress", count: inProgressCount, color: DS.Colors.warning)
+                    DSStatCard(icon: "folder", label: "Projects", value: "\(projects.count)", color: DS.Colors.accent)
+                    DSStatCard(icon: "doc.text", label: "Notes", value: "\(notes.count)", color: DS.Colors.knowledge)
+                    DSStatCard(icon: "checklist", label: "Tasks", value: "\(tasks.count)", color: DS.Colors.success)
+                    DSStatCard(icon: "circle.lefthalf.filled", label: "In Progress", value: "\(inProgressCount)", color: DS.Colors.warning)
                 }
 
                 // Completion progress
@@ -128,7 +128,7 @@ struct WorkspaceOverviewView: View {
                                 .buttonStyle(.plainPointer)
 
                                 if task.id != overdueTasks.prefix(3).last?.id {
-                                    Divider().padding(.leading, 20 + DS.Spacing.md)
+                                    Divider().padding(.leading, DS.Layout.nestedListDividerInset + DS.Spacing.md)
                                 }
                             }
                         }
@@ -215,7 +215,7 @@ struct WorkspaceOverviewView: View {
                                 }
                                 .buttonStyle(.plainPointer)
                                 if reminder.id != todayReminders.prefix(4).last?.id {
-                                    Divider().padding(.leading, 20 + DS.Spacing.md)
+                                    Divider().padding(.leading, DS.Layout.nestedListDividerInset + DS.Spacing.md)
                                 }
                             }
                         }
@@ -271,7 +271,7 @@ struct WorkspaceOverviewView: View {
                                     .buttonStyle(.plainPointer)
 
                                     if note.id != recentNotes.last?.id {
-                                        Divider().padding(.leading, 20 + DS.Spacing.md)
+                                        Divider().padding(.leading, DS.Layout.nestedListDividerInset + DS.Spacing.md)
                                     }
                                 }
                             }
@@ -318,7 +318,7 @@ struct WorkspaceOverviewView: View {
                                     .buttonStyle(.plainPointer)
 
                                     if task.id != recentActiveTasks.last?.id {
-                                        Divider().padding(.leading, 20 + DS.Spacing.md)
+                                        Divider().padding(.leading, DS.Layout.nestedListDividerInset + DS.Spacing.md)
                                     }
                                 }
                             }
@@ -367,37 +367,7 @@ struct WorkspaceOverviewView: View {
             }
             .padding(DS.Spacing.xl)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func statCard(icon: String, label: String, count: Int, color: Color) -> some View {
-        VStack(spacing: DS.Spacing.sm) {
-            Image(systemName: icon)
-                .font(.system(size: DS.IconSize.lg, weight: .medium))
-                .foregroundStyle(color.opacity(0.7))
-
-            Text("\(count)")
-                .font(DS.Font.title)
-                .fontWeight(.bold)
-                .foregroundStyle(DS.Colors.textPrimary)
-
-            Text(label)
-                .font(DS.Font.caption)
-                .foregroundStyle(DS.Colors.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(DS.Spacing.lg)
-        .background(
-            LinearGradient(
-                colors: [color.opacity(0.06), color.opacity(0.02)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: DS.Radius.md)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.md)
-                .strokeBorder(color.opacity(0.12), lineWidth: 1)
-        )
+        .dsPage()
     }
 
     @ViewBuilder

@@ -4,6 +4,8 @@ import SwiftUI
 struct CommandPaletteView: View {
     @Environment(AppState.self) private var appState
     @Environment(CommandPaletteState.self) private var state
+    @Environment(\.dsPalette) private var palette
+    @Bindable private var theme = DSThemeManager.shared
     @Query private var notes: [Note]
     @Query private var tasks: [TaskItem]
     @Query private var projects: [Project]
@@ -31,12 +33,13 @@ struct CommandPaletteView: View {
                                 .fontWeight(.medium)
                                 .foregroundStyle(DS.Colors.onAccent)
                                 .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, 3)
+                                .padding(.vertical, DS.Spacing.xs3)
                                 .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
 
                         TextField(placeholderText(state.activePrefix), text: $state.query)
                             .textFieldStyle(.plain)
+                            .dsThemedTextInput()
                             .font(.system(size: DS.IconSize.lg))
                             .focused($isSearchFocused)
                             .onSubmit {
@@ -88,6 +91,7 @@ struct CommandPaletteView: View {
                                         let itemIndex = flatItems.firstIndex(where: { $0.id == item.id }) ?? 0
                                         PaletteItemRow(item: item, isSelected: itemIndex == state.selectedIndex)
                                             .id(item.id)
+                                            .pointerOnHover()
                                             .onTapGesture {
                                                 switch item {
                                                 case let .command(cmd): cmd.action()
@@ -170,8 +174,8 @@ struct CommandPaletteView: View {
                             Image(systemName: preview.icon)
                                 .font(.system(size: DS.IconSize.sm, weight: .medium))
                                 .foregroundStyle(preview.color)
-                                .frame(width: 28, height: 28)
-                                .background(preview.color.opacity(0.12), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                                .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
+                                .background(DS.Colors.badgeFill(preview.color), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(preview.title)
                                     .font(DS.Font.caption)
@@ -197,14 +201,16 @@ struct CommandPaletteView: View {
                 }
             }
             .frame(width: selectedPreview != nil ? 760 : 540)
-            .background(.ultraThickMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
+            .background(palette.modal, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay {
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
-                    .strokeBorder(DS.Colors.fill, lineWidth: 0.5)
+                    .strokeBorder(palette.border, lineWidth: 1)
             }
-            .shadow(color: DS.Colors.modalShadow, radius: 30, y: 10)
-            .padding(.top, 80)
+            .shadow(color: palette.modalShadow, radius: 30, y: 10)
+            .padding(.top, DS.Layout.commandPaletteTopInset)
             .frame(maxHeight: .infinity, alignment: .top)
+            .preferredColorScheme(theme.resolvedColorScheme)
+            .id(theme.themeRevision)
         }
         .onAppear {
             state.reset()
@@ -409,7 +415,7 @@ private struct PaletteItemRow: View {
                 if let subtitle = itemSubtitle, !subtitle.isEmpty {
                     Text(subtitle)
                         .font(DS.Font.small)
-                        .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.6) : DS.Colors.textTertiary)
+                        .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(DS.Opacity.onAccentMuted) : DS.Colors.textTertiary)
                         .lineLimit(1)
                 }
             }
@@ -419,17 +425,17 @@ private struct PaletteItemRow: View {
             if item.isArchived {
                 Image(systemName: "archivebox")
                     .font(.system(size: DS.IconSize.xs, weight: .medium))
-                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.6) : DS.Colors.textTertiary)
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(DS.Opacity.onAccentMuted) : DS.Colors.textTertiary)
             }
 
             if let shortcut = itemShortcut {
                 Text(shortcut)
                     .font(.system(size: DS.IconSize.sm, weight: .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.7) : DS.Colors.textTertiary)
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(DS.Opacity.onAccentSoft) : DS.Colors.textTertiary)
                     .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, DS.Spacing.xs3)
                     .background(
-                        isSelected ? AnyShapeStyle(DS.Colors.onAccent.opacity(0.15)) : AnyShapeStyle(DS.Colors.border),
+                        isSelected ? AnyShapeStyle(DS.Colors.onAccent.opacity(DS.Opacity.accentSelection)) : AnyShapeStyle(DS.Colors.border),
                         in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                     )
             }
@@ -437,7 +443,7 @@ private struct PaletteItemRow: View {
             if let section = itemSection {
                 Text(section)
                     .font(DS.Font.small)
-                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(0.5) : DS.Colors.textTertiary)
+                    .foregroundStyle(isSelected ? DS.Colors.onAccent.opacity(DS.Opacity.onAccentFaint) : DS.Colors.textTertiary)
             }
         }
         .padding(.horizontal, DS.Spacing.md)
@@ -445,7 +451,7 @@ private struct PaletteItemRow: View {
         .background(
             isSelected
                 ? AnyShapeStyle(LinearGradient(colors: [DS.Colors.accent, DS.Colors.accent.opacity(0.8)], startPoint: .leading, endPoint: .trailing))
-                : isHovered ? AnyShapeStyle(DS.Colors.fillSecondary) : AnyShapeStyle(Color.clear),
+                : isHovered ? AnyShapeStyle(DS.Colors.fillSecondary) : AnyShapeStyle(DS.Colors.transparent),
             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
         )
         .contentShape(RoundedRectangle(cornerRadius: DS.Radius.sm))

@@ -56,7 +56,7 @@ struct MarkdownEditorWithToggle: View {
                             .padding(.horizontal, DS.Spacing.md)
                             .padding(.vertical, DS.Spacing.xs + 2)
                             .contentShape(Rectangle())
-                            .background(mode == m ? DS.Colors.accentFill : .clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .background(mode == m ? DS.Colors.accentFill : DS.Colors.transparent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                         .buttonStyle(.plainPointer)
                     }
@@ -107,7 +107,7 @@ struct MarkdownEditorWithToggle: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.page)
 
             Divider()
 
@@ -221,7 +221,7 @@ struct RawMarkdownEditor: View {
                     .allowsHitTesting(false)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(DS.Colors.page)
     }
 }
 
@@ -264,6 +264,7 @@ struct ResizableSplitView<Left: View, Right: View>: View {
 
                 right
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(DS.Colors.page)
             }
         }
     }

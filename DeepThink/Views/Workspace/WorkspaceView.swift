@@ -56,7 +56,7 @@ struct WorkspaceView: View {
     private var projectsContent: some View {
         ResizableSplitView(minLeftWidth: 240, minRightWidth: 400) {
             ProjectListView()
-                .background(DS.Colors.surface)
+                .dsListPanel()
         } right: {
             if let project = selectedProject {
                 ProjectDetailView(project: project)

@@ -87,7 +87,7 @@ struct TaskListView: View {
                     Image(systemName: filterStatus == nil ? "line.3.horizontal.decrease.circle" : "line.3.horizontal.decrease.circle.fill")
                         .font(.system(size: DS.IconSize.sm, weight: .medium))
                         .foregroundStyle(filterStatus == nil ? DS.Colors.textSecondary : DS.Colors.accent)
-                        .frame(width: 28, height: 28)
+                        .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
@@ -122,20 +122,17 @@ struct TaskListView: View {
                                 .padding(.horizontal, DS.Spacing.sm)
                                 .padding(.vertical, DS.Spacing.xs)
                                 .background(smartFilter == filter ? DS.Colors.accentFill : DS.Colors.fill, in: Capsule())
-                                .overlay(Capsule().strokeBorder(smartFilter == filter ? DS.Colors.accent.opacity(0.3) : DS.Colors.border, lineWidth: 1))
+                                .overlay(Capsule().strokeBorder(
+                                    smartFilter == filter ? DS.Colors.badgeBorder(DS.Colors.accent) : DS.Colors.border,
+                                    lineWidth: 1
+                                ))
                         }
                         .buttonStyle(.plainPointer)
                     }
                 }
                 .padding(.horizontal, DS.Spacing.md)
             }
-            .mask(
-                HStack(spacing: 0) {
-                    Rectangle().frame(maxWidth: .infinity)
-                    LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                        .frame(width: DS.Spacing.xl)
-                }
-            )
+            .dsHorizontalScrollFade()
             .padding(.bottom, DS.Spacing.sm)
 
             if let projectName = filterProjectName {
@@ -190,7 +187,7 @@ struct TaskListView: View {
                                         TaskRowView(task: task)
                                             .padding(.horizontal, DS.Spacing.sm)
                                             .padding(.vertical, DS.Spacing.xxs)
-                                            .background(isSelected ? DS.Colors.accentFill : .clear)
+                                            .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                             .contentShape(Rectangle())
                                     }
                                     .id(task.id)
@@ -251,7 +248,7 @@ struct TaskListView: View {
                                 .padding(.horizontal, DS.Spacing.md)
                                 .padding(.vertical, DS.Spacing.xs)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(DS.Colors.surfaceElevated)
+                                .background(DS.Colors.card)
                             }
                         }
                     }
@@ -277,6 +274,7 @@ struct TaskListView: View {
                 }
             }
         }
+        .dsListPanel()
         .onChange(of: searchText) {
             searchTask?.cancel()
             searchTask = Task {

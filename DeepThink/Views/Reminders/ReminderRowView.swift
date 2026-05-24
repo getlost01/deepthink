@@ -60,7 +60,7 @@ struct ReminderRowView: View {
                 if reminder.notificationScheduled, reminder.reminderDate != nil {
                     Image(systemName: "bell.badge.fill")
                         .font(.system(size: DS.IconSize.xs))
-                        .foregroundStyle(DS.Colors.accent.opacity(0.6))
+                        .foregroundStyle(DS.Colors.accent.opacity(DS.Opacity.muted))
                 }
             }
         }

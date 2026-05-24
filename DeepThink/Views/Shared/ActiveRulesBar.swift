@@ -166,7 +166,7 @@ private struct RuleDropdownRow: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.xs + 1)
-            .background(isHovered ? DS.Colors.fillSecondary : .clear)
+            .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)

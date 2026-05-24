@@ -30,12 +30,13 @@ struct ChatBubble: View {
                 VStack(alignment: .trailing, spacing: DS.Spacing.xs) {
                     TextField("Edit message...", text: $editText, axis: .vertical)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .lineLimit(2...6)
                         .font(DS.Font.body)
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.md)
                         .background(DS.Colors.accent.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.xl))
-                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.accent.opacity(0.25), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.xl).strokeBorder(DS.Colors.badgeBorder(DS.Colors.accent), lineWidth: 1))
 
                     HStack(spacing: DS.Spacing.sm) {
                         Button {
@@ -56,7 +57,7 @@ struct ChatBubble: View {
                                 .fontWeight(.semibold)
                                 .foregroundStyle(DS.Colors.onAccent)
                                 .padding(.horizontal, DS.Spacing.sm)
-                                .padding(.vertical, 3)
+                                .padding(.vertical, DS.Spacing.xs3)
                                 .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                         .buttonStyle(.plainPointer)
@@ -104,7 +105,7 @@ struct ChatBubble: View {
                             } label: {
                                 Image(systemName: "chevron.left")
                                     .font(.system(size: DS.IconSize.xs, weight: .bold))
-                                    .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                                    .foregroundStyle(info.current > 0 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(DS.Opacity.faint))
                             }
                             .buttonStyle(.plainPointer)
                             .disabled(info.current <= 0)
@@ -118,14 +119,14 @@ struct ChatBubble: View {
                             } label: {
                                 Image(systemName: "chevron.right")
                                     .font(.system(size: DS.IconSize.xs, weight: .bold))
-                                    .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(0.4))
+                                    .foregroundStyle(info.current < info.total - 1 ? DS.Colors.textSecondary : DS.Colors.textTertiary.opacity(DS.Opacity.faint))
                             }
                             .buttonStyle(.plainPointer)
                             .disabled(info.current >= info.total - 1)
                         }
                         .padding(.horizontal, DS.Spacing.sm)
-                        .padding(.vertical, 3)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .padding(.vertical, DS.Spacing.xs3)
+                        .background(DS.Colors.fillSecondary, in: Capsule())
                         .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 0.5))
                         .padding(.top, DS.Spacing.xs)
                     }
@@ -134,8 +135,8 @@ struct ChatBubble: View {
 
             ZStack {
                 Circle()
-                    .fill(DS.Colors.accent.opacity(0.12))
-                    .frame(width: 28, height: 28)
+                    .fill(DS.Colors.accentFill)
+                    .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
                 Text("Y")
                     .font(.system(size: DS.IconSize.sm, weight: .semibold, design: .rounded))
                     .foregroundStyle(DS.Colors.accent)
@@ -151,8 +152,8 @@ struct ChatBubble: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 28, height: 28)
-                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .frame(width: DS.Layout.iconButtonSize, height: DS.Layout.iconButtonSize)
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.sm))
                 .padding(.top, DS.Spacing.sm)
 
             VStack(alignment: .leading, spacing: 0) {
@@ -276,7 +277,7 @@ struct ChatBubble: View {
                     .font(.system(size: DS.IconSize.sm, weight: .semibold))
                     .foregroundStyle(errorBubbleColor(kind))
             }
-            .padding(.top, 2)
+            .padding(.top, DS.Spacing.xxs)
 
             VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                 Text(errorBubbleTitle(kind))
@@ -362,7 +363,7 @@ struct ChatBubble: View {
     }
 
     private func errorBubbleIconBg(_ kind: ChatErrorKind) -> Color {
-        errorBubbleColor(kind).opacity(0.12)
+        DS.Colors.badgeFill(errorBubbleColor(kind))
     }
 
     private func errorBubbleIcon(_ kind: ChatErrorKind) -> String {

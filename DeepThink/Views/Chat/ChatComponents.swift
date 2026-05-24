@@ -86,13 +86,13 @@ struct WelcomePrompts: View {
             VStack(spacing: DS.Spacing.md) {
                 ZStack {
                     Circle()
-                        .fill(DS.Colors.accent.opacity(0.06))
+                        .fill(DS.Colors.accentFill)
                         .frame(width: 72, height: 72)
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
                         .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
                 }
 
                 Text(greeting)
@@ -177,10 +177,10 @@ struct SuggestionChip: View {
             .padding(.vertical, DS.Spacing.sm + 1)
             .background(
                 isHovered ? DS.Colors.fillSecondary : DS.Colors.fill,
-                in: RoundedRectangle(cornerRadius: 20)
+                in: RoundedRectangle(cornerRadius: DS.Radius.pill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: DS.Radius.pill)
                     .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.border, lineWidth: 1)
             )
         }
@@ -283,7 +283,7 @@ struct ChatEditButton: View {
                 .foregroundStyle(isHovered ? DS.Colors.textPrimary : DS.Colors.textTertiary)
                 .frame(width: 18, height: 18)
                 .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: Circle())
-                .overlay(Circle().strokeBorder(isHovered ? DS.Colors.borderHover : .clear, lineWidth: 1))
+                .overlay(Circle().strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.transparent, lineWidth: 1))
         }
         .buttonStyle(.plainPointer)
         .onHover { isHovered = $0 }
@@ -316,7 +316,7 @@ struct ChatActionButton: View {
             .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
-                    .strokeBorder(isHovered ? DS.Colors.borderHover : .clear, lineWidth: 1)
+                    .strokeBorder(isHovered ? DS.Colors.borderHover : DS.Colors.transparent, lineWidth: 1)
             )
         }
         .buttonStyle(.plainPointer)

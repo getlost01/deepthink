@@ -100,7 +100,7 @@ struct WelcomeView: View {
     var body: some View {
         ZStack {
             currentColor
-                .opacity(0.04)
+                .opacity(DS.Opacity.decorative)
                 .ignoresSafeArea()
                 .animation(DS.Animation.standard, value: currentStep)
 
@@ -131,7 +131,7 @@ struct WelcomeView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(DS.Colors.page)
         .focusable()
         .focused($isFocused)
         .onAppear { isFocused = true }
@@ -254,7 +254,7 @@ struct WelcomeView: View {
                         .tracking(1.2)
                 }
             } else {
-                Color.clear.frame(height: 13)
+                DS.Colors.transparent.frame(height: 13)
             }
         }
         .padding(.bottom, DS.Spacing.xxl)
@@ -384,7 +384,7 @@ private struct FeatureRow: View {
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm + 2)
         .background(
-            isHovered ? color.opacity(0.05) : Color.clear,
+            isHovered ? DS.Colors.badgeFill(color) : DS.Colors.transparent,
             in: Rectangle()
         )
     }
@@ -421,13 +421,13 @@ private struct SetupStepView: View {
 
             VStack(spacing: 0) {
                 InstallRow(label: "DeepThink CLI  →  ~/.local/bin/deepthink", state: installer.cliState)
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, DS.Layout.welcomeDividerInset)
                 InstallRow(label: "MCP server  →  ~/.local/bin/deepthink-mcp", state: installer.mcpState)
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, DS.Layout.welcomeDividerInset)
                 InstallRow(label: "Register MCP with Claude", state: installer.mcpRegisterState)
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, DS.Layout.welcomeDividerInset)
                 InstallRow(label: "Add ~/.local/bin to shell PATH", state: installer.pathState)
-                Divider().padding(.leading, 52)
+                Divider().padding(.leading, DS.Layout.welcomeDividerInset)
                 InstallRow(label: "Claude Code commands  →  ~/.claude/commands/deepthink/", state: installer.commandsState)
             }
             .frame(maxWidth: 440)

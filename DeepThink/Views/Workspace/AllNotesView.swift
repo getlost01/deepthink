@@ -102,7 +102,7 @@ struct AllNotesView: View {
                                             noteRow(note)
                                                 .padding(.horizontal, DS.Spacing.sm)
                                                 .padding(.vertical, DS.Spacing.xxs)
-                                                .background(isSelected ? DS.Colors.accentFill : .clear)
+                                                .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                                 .contentShape(Rectangle())
                                         }
                                         .buttonStyle(.plainPointer)
@@ -118,7 +118,7 @@ struct AllNotesView: View {
                                         noteRow(note)
                                             .padding(.horizontal, DS.Spacing.sm)
                                             .padding(.vertical, DS.Spacing.xxs)
-                                            .background(isSelected ? DS.Colors.accentFill : .clear)
+                                            .background(isSelected ? DS.Colors.accentFill : DS.Colors.transparent)
                                             .contentShape(Rectangle())
                                     }
                                     .buttonStyle(.plainPointer)
@@ -135,7 +135,7 @@ struct AllNotesView: View {
                     }
                 }
             }
-            .background(DS.Colors.surface)
+            .dsListPanel()
         } right: {
             if let note = selectedNote {
                 NoteEditorView(note: note)

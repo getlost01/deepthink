@@ -6,12 +6,54 @@ struct GeneralSettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.Spacing.xl) {
                 UpdatesSettingsSection()
+                AppearanceSettingsSection()
                 ArchiveSettingsSection()
                 BackupSettingsSection()
             }
             .padding(DS.Spacing.xl)
         }
         .dsPage()
+    }
+}
+
+// MARK: - Appearance Section
+
+private struct AppearanceSettingsSection: View {
+    @Bindable private var theme = DSThemeManager.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "Appearance")
+
+            HStack(spacing: DS.Spacing.md) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xs) {
+                    Text("Theme")
+                        .font(DS.Font.body)
+                        .foregroundStyle(DS.Colors.textPrimary)
+                    Text("Choose how DeepThink looks. System matches your Mac’s light or dark setting.")
+                        .font(DS.Font.caption)
+                        .foregroundStyle(DS.Colors.textTertiary)
+                }
+
+                Spacer()
+
+                Picker("Theme", selection: $theme.appearance) {
+                    ForEach(AppAppearance.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .frame(minWidth: 96)
+            }
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.md)
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.md)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
+        }
     }
 }
 
@@ -75,7 +117,7 @@ private struct UpdatesSettingsSection: View {
                             if let error = updater.lastGitHubError {
                                 Text(error)
                                     .font(DS.Font.small)
-                                    .foregroundStyle(DS.Colors.danger.opacity(0.9))
+                                    .foregroundStyle(DS.Colors.danger)
                             }
                         }
                     }
@@ -198,7 +240,7 @@ private struct UpdatesSettingsSection: View {
                     .padding(DS.Spacing.lg)
                     .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                     .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
-                    .padding(.top, 2)
+                    .padding(.top, DS.Spacing.xxs)
                     .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
             }
@@ -347,8 +389,8 @@ private struct BackupSettingsSection: View {
                             .foregroundStyle(DS.Colors.textSecondary)
                         Text("\(backup.snapshots.count)")
                             .font(DS.Font.micro)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, DS.Spacing.xs4)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(DS.Colors.fillSecondary, in: Capsule())
                             .foregroundStyle(DS.Colors.textTertiary)
                         Spacer()
@@ -450,7 +492,7 @@ private struct BackupSettingsSection: View {
                     }
                     .foregroundStyle(DS.Colors.textSecondary)
                     .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
             }
@@ -586,8 +628,8 @@ private struct SnapshotRowView: View {
                     .foregroundStyle(DS.Colors.textPrimary)
                 Text(snap.isManual ? "Manual" : "Auto")
                     .font(DS.Font.caption)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, DS.Spacing.xs2)
+                    .padding(.vertical, DS.Spacing.xxs)
                     .background(DS.Colors.fillSecondary, in: Capsule())
                     .foregroundStyle(DS.Colors.textSecondary)
                 Text("·")

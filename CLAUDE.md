@@ -10,7 +10,10 @@
 All UI must use the design system defined in `DeepThink/Views/Shared/DesignSystem.swift`.
 **No raw values allowed.** Every color, font size, spacing value, corner radius, and opacity MUST come from a DS token. If a needed token doesn't exist, add it to DesignSystem.swift first — never inline a raw literal.
 
-- **Colors:** `DS.Colors.*` — never use `Color.white`, `Color.black`, `Color.red`, `.white`, `.black`, or any raw `Color(...)`. Use `DS.Colors.onAccent` for white-on-colored-bg, `DS.Colors.danger` for red, `DS.Colors.cardShadow`/`subtleShadow`/`modalShadow` for shadow colors.
+- **Colors:** `DS.Colors.*` — theme-aware tokens from `DSThemeManager` (light/dark/system). Never use `Color.white`, `Color.black`, `Color.primary`, system materials, or raw `Color(...)`. Use `DS.Colors.onAccent` on accent backgrounds, `DS.Colors.danger` for errors, shadow tokens for shadows. User picks appearance in Settings → General.
+- **Theme root:** Wrap top-level windows in `DSThemeRoot { }` so palette changes re-render. Markdown editor, chat markdown, and terminal sync via `DSThemeManager`.
+- **Surface roles:** Tight neutral ramp — `page` (base) → `surfaceElevated` (sidebar + global header, ~1 step lighter) → `modal`/`card` (dialogs/cards, slightly more lift). Content column uses `page` everywhere (`.dsPage()`, `.dsListPanel()`, `DSToolbarBar`). Chrome: `SidebarView`, `GlobalHeader`. Overlays: `.dsModalChrome()`.
+- **Chips/badges:** Use `DS.Colors.badgeFill(_:)` and `DS.Colors.badgeBorder(_:)` — never ad-hoc `.opacity(0.1)` on semantic colors.
 - **Typography:** `DS.Font.*` (hero, display, titleLarge, titleSmall, title, heading, body, bodySmall, caption, small, micro, badge, mono, monoSmall) — no `.font(.system(size: <number>))` calls. For icons with custom weight, use `DS.IconSize.*` for the size: `.font(.system(size: DS.IconSize.xs, weight: .semibold))`.
 - **Spacing:** `DS.Spacing.*` (xxs=2, xs=4, xs2=6, sm=8, sm2=10, md=12, lg=16, xl=24, xxl=32) — consistent padding/gaps
 - **Radius:** `DS.Radius.*` (sm=6, md=8, lg=12, xl=14, pill=20) — rounded corners

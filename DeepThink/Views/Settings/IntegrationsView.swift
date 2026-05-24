@@ -57,6 +57,7 @@ struct IntegrationsView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .dsPage()
         .onChange(of: appState.agentConfigTab) { _, newTab in
             if appState.selectedSection == .integrations {
                 switch newTab {

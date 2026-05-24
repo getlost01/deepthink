@@ -45,6 +45,7 @@ struct ReminderDetailView: View {
                 TextField("What to remember?", text: $reminder.title)
                     .font(DS.Font.title)
                     .textFieldStyle(.plain)
+                    .dsThemedTextInput()
             }
             .padding(.horizontal, DS.Spacing.xl)
             .padding(.top, DS.Spacing.lg)
@@ -95,7 +96,10 @@ struct ReminderDetailView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                .strokeBorder(reminder.isOverdue ? DS.Colors.danger.opacity(0.4) : DS.Colors.border, lineWidth: 1)
+                                .strokeBorder(
+                                    reminder.isOverdue ? DS.Colors.badgeBorder(DS.Colors.danger) : DS.Colors.border,
+                                    lineWidth: 1
+                                )
                         )
                     }
                     .buttonStyle(.plainPointer)
@@ -139,13 +143,17 @@ struct ReminderDetailView: View {
                         .padding(.horizontal, DS.Spacing.sm2)
                         .padding(.vertical, DS.Spacing.xs2)
                         .background(
-                            reminder.priority != .none ? reminder.priority.color.opacity(0.1) : DS.Colors.fillSecondary,
+                            reminder.priority != .none
+                                ? DS.Colors.badgeFill(reminder.priority.color)
+                                : DS.Colors.fillSecondary,
                             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
                                 .strokeBorder(
-                                    reminder.priority != .none ? reminder.priority.color.opacity(0.25) : DS.Colors.border,
+                                    reminder.priority != .none
+                                        ? DS.Colors.badgeBorder(reminder.priority.color)
+                                        : DS.Colors.border,
                                     lineWidth: 1
                                 )
                         )
@@ -180,7 +188,7 @@ struct ReminderDetailView: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: DS.Radius.sm)
                                 .strokeBorder(
-                                    reminder.repeatInterval != .none ? DS.Colors.accent.opacity(0.25) : DS.Colors.border,
+                                    reminder.repeatInterval != .none ? DS.Colors.badgeBorder(DS.Colors.accent) : DS.Colors.border,
                                     lineWidth: 1
                                 )
                         )
@@ -223,7 +231,7 @@ struct ReminderDetailView: View {
                         .foregroundStyle(DS.Colors.danger)
                         .padding(.horizontal, DS.Spacing.sm2)
                         .padding(.vertical, DS.Spacing.xs2)
-                        .background(DS.Colors.danger.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.badgeFill(DS.Colors.danger), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     }
                 }
                 .padding(.horizontal, DS.Spacing.xl)
@@ -234,23 +242,12 @@ struct ReminderDetailView: View {
                 .padding(.top, DS.Spacing.xs)
 
             if hasDeadLinks {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: DS.IconSize.xs))
-                        .foregroundStyle(DS.Colors.warning)
-                    Text("Contains broken links to deleted items")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Spacer()
-                    Button("Fix") { cleanDeadLinksRequest = UUID() }
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.warning)
-                        .buttonStyle(.plainPointer)
+                DSWarningStrip(
+                    message: "Contains broken links to deleted items",
+                    actionTitle: "Fix"
+                ) {
+                    cleanDeadLinksRequest = UUID()
                 }
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.xs)
-                .frame(maxWidth: .infinity)
-                .background(DS.Colors.warning.opacity(0.08))
             }
 
             RichMarkdownEditor(
@@ -432,7 +429,7 @@ private struct PriorityPickerPopover: View {
         }
         .frame(width: 200)
         .padding(.bottom, DS.Spacing.sm)
-        .background(DS.Colors.surface)
+        .background(DS.Colors.modal)
     }
 }
 
@@ -468,7 +465,7 @@ private struct RepeatPickerPopover: View {
         }
         .frame(width: 180)
         .padding(.bottom, DS.Spacing.sm)
-        .background(DS.Colors.surface)
+        .background(DS.Colors.modal)
     }
 }
 
@@ -501,7 +498,7 @@ private struct PickerOptionRow: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(isSelected || isHovered ? DS.Colors.fillSecondary : Color.clear)
+            .background(isSelected || isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
@@ -547,7 +544,7 @@ private struct ReminderDatePickerPopover: View {
             actionsRow
         }
         .frame(width: 280)
-        .background(DS.Colors.surface)
+        .background(DS.Colors.modal)
     }
 
     // MARK: Shortcuts
@@ -614,7 +611,7 @@ private struct ReminderDatePickerPopover: View {
                             }
                         }
                     } else {
-                        Color.clear.frame(width: 32, height: 32)
+                        DS.Colors.transparent.frame(width: 32, height: 32)
                     }
                 }
             }
@@ -870,7 +867,7 @@ private struct CalendarDayCell: View {
                     .fill(
                         isSelected ? DS.Colors.accent
                             : isHovered ? DS.Colors.fillSecondary
-                            : .clear
+                            : DS.Colors.transparent
                     )
                 if isToday, !isSelected {
                     Circle()
@@ -882,7 +879,7 @@ private struct CalendarDayCell: View {
                     .foregroundStyle(
                         isSelected ? DS.Colors.onAccent
                             : isToday ? DS.Colors.accent
-                            : isPast ? DS.Colors.textTertiary.opacity(0.5)
+                            : isPast ? DS.Colors.textTertiary.opacity(DS.Opacity.disabled)
                             : DS.Colors.textPrimary
                     )
             }

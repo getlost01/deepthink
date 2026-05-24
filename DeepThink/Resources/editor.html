@@ -6,32 +6,27 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  /* Fallback matches DSThemePalette.dark — Swift injects palette via window.setTheme at document start. */
   :root {
     --bg: transparent;
-    --text: #d4d4d4;
-    --text-dim: #808080;
-    --border: rgba(255,255,255,0.08);
-    --accent: #007AFF;
-    --code-bg: rgba(255,255,255,0.06);
-    --code-text: #e5c07b;
-    --block-bg: rgba(255,255,255,0.04);
-    --toolbar-bg: #1e1e1e;
-    --toolbar-border: rgba(255,255,255,0.10);
-    --highlight: rgba(255,230,0,0.25);
-  }
-
-  @media (prefers-color-scheme: light) {
-    :root {
-      --text: #1d1d1f;
-      --text-dim: #86868b;
-      --border: rgba(0,0,0,0.08);
-      --code-bg: rgba(0,0,0,0.05);
-      --code-text: #9a6700;
-      --block-bg: rgba(0,0,0,0.025);
-      --toolbar-bg: #f5f5f5;
-      --toolbar-border: rgba(0,0,0,0.10);
-      --highlight: rgba(255,230,0,0.35);
-    }
+    --text: #E6EDF3;
+    --text-dim: #6B7380;
+    --border: rgba(230,237,243,0.08);
+    --accent: #66A0F2;
+    --on-accent: #ffffff;
+    --code-bg: rgba(230,237,243,0.08);
+    --code-text: #C29433;
+    --block-bg: rgba(230,237,243,0.05);
+    --toolbar-bg: #0C1017;
+    --toolbar-border: rgba(230,237,243,0.12);
+    --highlight: rgba(194,148,51,0.24);
+    --accent-subtle: rgba(102,160,242,0.12);
+    --accent-subtle-hover: rgba(102,160,242,0.24);
+    --accent-dashed: rgba(102,160,242,0.50);
+    --selection: rgba(102,160,242,0.28);
+    --shadow: rgba(0,0,0,0.22);
+    --success: #4AAD5C;
+    color-scheme: dark;
   }
 
   body {
@@ -73,7 +68,7 @@
     flex-shrink: 0;
   }
   .tb-btn:hover { background: var(--border); color: var(--text); }
-  .tb-btn.active { background: var(--accent); color: white; }
+  .tb-btn.active { background: var(--accent); color: var(--on-accent, #ffffff); }
   .tb-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
   .tb-sep {
@@ -185,7 +180,7 @@
     margin: 0;
   }
   .ProseMirror table .selectedCell {
-    background: rgba(0, 122, 255, 0.12);
+    background: var(--accent-subtle);
   }
   .ProseMirror table .column-resize-handle {
     position: absolute;
@@ -209,9 +204,7 @@
     min-width: 200px;
     max-height: 320px;
     overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 24px var(--shadow);
   }
   .slash-item {
     display: flex;
@@ -341,15 +334,15 @@
 
   .wiki-link {
     color: var(--accent);
-    background: rgba(0, 122, 255, 0.08);
+    background: var(--accent-subtle);
     border-radius: 3px;
     padding: 0 3px;
     cursor: pointer;
-    border-bottom: 1px dashed rgba(0, 122, 255, 0.3);
+    border-bottom: 1px dashed var(--accent-dashed);
     font-style: italic;
   }
   .wiki-link:hover {
-    background: rgba(0, 122, 255, 0.15);
+    background: var(--accent-subtle-hover);
   }
   .wiki-link-resolved {
     border-bottom-style: solid;
@@ -367,9 +360,7 @@
     max-width: 320px;
     max-height: 240px;
     overflow-y: auto;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 24px var(--shadow);
   }
   .wiki-ac-item {
     padding: 6px 10px;
@@ -392,9 +383,7 @@
     border-radius: 8px;
     padding: 10px 12px;
     max-width: 260px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 6px 20px var(--shadow);
     pointer-events: none;
   }
   .lp-title { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
@@ -408,7 +397,7 @@
     opacity: 0.6;
   }
 
-  .ProseMirror ::selection { background: rgba(0, 122, 255, 0.25); }
+  .ProseMirror ::selection { background: var(--selection); }
 </style>
 </head>
 <body>
@@ -509,6 +498,21 @@
 
 <div id="editor"></div>
 
+<script>
+  window.setTheme = function(vars) {
+    var root = document.documentElement;
+    Object.keys(vars).forEach(function(key) {
+      if (key === 'color-scheme') return;
+      root.style.setProperty('--' + key, vars[key]);
+    });
+    if (vars['color-scheme']) {
+      root.style.colorScheme = vars['color-scheme'];
+      root.dataset.theme = vars['color-scheme'];
+    } else {
+      root.dataset.theme = 'dark';
+    }
+  };
+</script>
 <script src="editor.bundle.js"></script>
 </body>
 </html>

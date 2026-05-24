@@ -55,7 +55,7 @@ struct SlashCommandMenu: View {
                                 .background(
                                     index == selectedIndex
                                         ? DS.Colors.accentFill
-                                        : Color.clear,
+                                        : DS.Colors.transparent,
                                     in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                                 )
                             }

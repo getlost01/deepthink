@@ -121,7 +121,7 @@ struct TaskBoardView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(DS.Spacing.sm)
         .background(
-            isDropTarget ? status.color.opacity(0.06) : .clear,
+            isDropTarget ? status.color.opacity(0.06) : DS.Colors.transparent,
             in: RoundedRectangle(cornerRadius: DS.Radius.md)
         )
         .animation(DS.Animation.quick, value: isDropTarget)
@@ -151,12 +151,12 @@ struct TaskBoardView: View {
     private func emptyColumnPlaceholder(isDropTarget: Bool) -> some View {
         RoundedRectangle(cornerRadius: DS.Radius.md)
             .strokeBorder(
-                isDropTarget ? DS.Colors.accent.opacity(0.5) : DS.Colors.border,
+                isDropTarget ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.border,
                 style: StrokeStyle(lineWidth: 1, dash: isDropTarget ? [] : [6, 4])
             )
             .background(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
-                    .fill(isDropTarget ? DS.Colors.accentFill : .clear)
+                    .fill(isDropTarget ? DS.Colors.accentFill : DS.Colors.transparent)
             )
             .frame(height: 60)
             .overlay(
@@ -262,12 +262,12 @@ struct TaskBoardView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(DS.Spacing.lg)
-            .background(DS.Colors.surface, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.card, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(
-                        isSelected ? DS.Colors.accent.opacity(0.5) : DS.Colors.border,
-                        lineWidth: 1
+                        isSelected ? DS.Colors.borderFocused : DS.Colors.border,
+                        lineWidth: isSelected ? 1.5 : 1
                     )
             )
             .shadow(color: DS.Colors.cardShadow, radius: 2, y: 1)

@@ -36,12 +36,12 @@ private struct ContextEdge: Identifiable {
 
 private func colorForSource(_ source: String) -> Color {
     let s = source.lowercased()
-    if s.contains("slack") { return Color(hue: 0.57, saturation: 0.7, brightness: 0.9) }
-    if s.contains("github") { return Color(hue: 0.08, saturation: 0.0, brightness: 0.4) }
-    if s.contains("rss") { return Color(hue: 0.09, saturation: 0.75, brightness: 0.9) }
-    if s.contains("web") { return Color(hue: 0.55, saturation: 0.6, brightness: 0.85) }
-    if s.contains("file") { return Color(hue: 0.38, saturation: 0.55, brightness: 0.75) }
-    return Color(hue: 0.72, saturation: 0.5, brightness: 0.85)
+    if s.contains("slack") { return DS.Colors.info }
+    if s.contains("github") { return DS.Colors.slate }
+    if s.contains("rss") { return DS.Colors.amber }
+    if s.contains("web") { return DS.Colors.teal }
+    if s.contains("file") { return DS.Colors.success }
+    return DS.Colors.purple
 }
 
 private func labelForSource(_ source: String) -> String {
@@ -107,7 +107,9 @@ struct ContextGraphView: View {
     private let maxSteps = 400
     private let idealEdgeLength: CGFloat = 160
     private let idealExplicitEdgeLength: CGFloat = 100
-    private let explicitEdgeColor = Color(hue: 0.45, saturation: 0.65, brightness: 0.75).opacity(1)
+    private var explicitEdgeColor: Color {
+        DS.Colors.teal
+    }
 
     private var selectedNeighborIDs: Set<String> {
         guard let sel = selectedNodeID else { return [] }
@@ -160,7 +162,7 @@ struct ContextGraphView: View {
             HStack(spacing: 0) {
                 GeometryReader { geo in
                     ZStack {
-                        DS.Colors.surface
+                        DS.Colors.page
 
                         if isBuilding {
                             VStack(spacing: DS.Spacing.md) {
@@ -230,6 +232,7 @@ struct ContextGraphView: View {
                 }
             }
         }
+        .dsPage()
     }
 
     // MARK: - Toolbar
@@ -275,7 +278,7 @@ struct ContextGraphView: View {
                     }
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xs2)
-                    .background(showSemanticEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .background(showSemanticEdges ? DS.Colors.fill : DS.Colors.transparent, in: Capsule())
                     .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
                     .opacity(showSemanticEdges ? 1 : 0.45)
                 }
@@ -293,7 +296,7 @@ struct ContextGraphView: View {
                     }
                     .padding(.horizontal, DS.Spacing.sm)
                     .padding(.vertical, DS.Spacing.xs2)
-                    .background(showExplicitEdges ? DS.Colors.fill : Color.clear, in: Capsule())
+                    .background(showExplicitEdges ? DS.Colors.fill : DS.Colors.transparent, in: Capsule())
                     .overlay(Capsule().strokeBorder(DS.Colors.border, lineWidth: 1))
                     .opacity(showExplicitEdges ? 1 : 0.45)
                 }
@@ -314,7 +317,7 @@ struct ContextGraphView: View {
                                 .lineLimit(1)
                             Image(systemName: "chevron.down")
                                 .font(.system(size: DS.IconSize.nano, weight: .bold))
-                                .foregroundStyle(activeBucketFilter != nil ? DS.Colors.onAccent.opacity(0.7) : DS.Colors.textTertiary)
+                                .foregroundStyle(activeBucketFilter != nil ? DS.Colors.onAccent.opacity(DS.Opacity.onAccentSoft) : DS.Colors.textTertiary)
                         }
                         .padding(.horizontal, DS.Spacing.sm)
                         .padding(.vertical, DS.Spacing.xs2)
@@ -335,6 +338,7 @@ struct ContextGraphView: View {
 
                     TextField("Search knowledge…", text: $query)
                         .textFieldStyle(.plain)
+                        .dsThemedTextInput()
                         .font(DS.Font.body)
                         .frame(minWidth: 180, maxWidth: 300)
 
@@ -385,7 +389,7 @@ struct ContextGraphView: View {
                             .padding(.horizontal, DS.Spacing.xs2)
                             .padding(.vertical, DS.Spacing.xxs)
                             .background(
-                                searchScope != .all ? DS.Colors.accent.opacity(0.1) : Color.clear,
+                                searchScope != .all ? DS.Colors.accentFill : DS.Colors.transparent,
                                 in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                             )
                     }
@@ -394,10 +398,10 @@ struct ContextGraphView: View {
                 }
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs2)
-                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: 10))
+                .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.lg))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10).strokeBorder(
-                        query.isEmpty ? DS.Colors.border : DS.Colors.accent.opacity(0.6),
+                    RoundedRectangle(cornerRadius: DS.Radius.lg).strokeBorder(
+                        query.isEmpty ? DS.Colors.border : DS.Colors.accent.opacity(DS.Opacity.muted),
                         lineWidth: 1.5
                     )
                 )
@@ -478,7 +482,7 @@ struct ContextGraphView: View {
                                             .foregroundStyle(isActive ? DS.Colors.onAccent : DS.Colors.textSecondary)
                                     }
                                     .padding(.horizontal, DS.Spacing.xs)
-                                    .padding(.vertical, 3)
+                                    .padding(.vertical, DS.Spacing.xs3)
                                     .background(isActive ? DS.Colors.accent : DS.Colors.fill, in: Capsule())
                                     .overlay(Capsule().strokeBorder(
                                         isActive ? DS.Colors.accent : DS.Colors.border, lineWidth: 1
@@ -488,13 +492,7 @@ struct ContextGraphView: View {
                             }
                         }
                     }
-                    .mask(
-                        HStack(spacing: 0) {
-                            Rectangle().frame(maxWidth: .infinity)
-                            LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
-                                .frame(width: DS.Spacing.xl)
-                        }
-                    )
+                    .dsHorizontalScrollFade()
                 }
 
                 Spacer()
@@ -570,7 +568,7 @@ struct ContextGraphView: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.surfaceElevated)
+            .background(DS.Colors.page)
 
             Divider()
         }
@@ -598,7 +596,7 @@ struct ContextGraphView: View {
                 .foregroundStyle(DS.Colors.textTertiary)
             HStack(spacing: DS.Spacing.sm) {
                 Rectangle()
-                    .fill(LinearGradient(colors: [DS.Colors.accent.opacity(0.5), DS.Colors.accent], startPoint: .leading, endPoint: .trailing))
+                    .fill(LinearGradient(colors: [DS.Colors.accent.opacity(DS.Opacity.disabled), DS.Colors.accent], startPoint: .leading, endPoint: .trailing))
                     .frame(width: 22, height: 2)
                 Text("Semantic (TF-IDF similarity)").font(DS.Font.caption).foregroundStyle(DS.Colors.textSecondary)
             }
@@ -657,9 +655,9 @@ struct ContextGraphView: View {
                             .foregroundStyle(DS.Colors.accent)
                     }
                 }
-                .padding(.vertical, 5)
+                .padding(.vertical, DS.Spacing.xs4)
                 .padding(.horizontal, DS.Spacing.sm)
-                .background(activeBucketFilter == nil ? DS.Colors.fill : Color.clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(activeBucketFilter == nil ? DS.Colors.fill : DS.Colors.transparent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }
             .buttonStyle(.plainPointer)
 
@@ -687,9 +685,9 @@ struct ContextGraphView: View {
                                 .foregroundStyle(DS.Colors.accent)
                         }
                     }
-                    .padding(.vertical, 5)
+                    .padding(.vertical, DS.Spacing.xs4)
                     .padding(.horizontal, DS.Spacing.sm)
-                    .background(activeBucketFilter == bucket ? DS.Colors.fill : Color.clear, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(activeBucketFilter == bucket ? DS.Colors.fill : DS.Colors.transparent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
                 .buttonStyle(.plainPointer)
             }
@@ -774,7 +772,7 @@ struct ContextGraphView: View {
                     for c in 0...cols {
                         context.fill(
                             Path(ellipseIn: CGRect(x: CGFloat(c) * spacing - dot, y: CGFloat(r) * spacing - dot, width: dot * 2, height: dot * 2)),
-                            with: .color(Color.primary.opacity(0.05))
+                            with: .color(DS.Colors.gridDot)
                         )
                     }
                 }
@@ -876,7 +874,7 @@ struct ContextGraphView: View {
         let ringColor: Color = {
             if isSelected { return DS.Colors.accent }
             if isHovered { return DS.Colors.accent.opacity(0.85) }
-            if isNeighbor { return DS.Colors.accent.opacity(0.5) }
+            if isNeighbor { return DS.Colors.accent.opacity(DS.Opacity.disabled) }
             if isQueryMatch { return nodeColor }
             return nodeColor.opacity(0.45)
         }()
@@ -889,7 +887,7 @@ struct ContextGraphView: View {
             // outer glow for selected / query match
             if isSelected {
                 Circle()
-                    .fill(DS.Colors.accent.opacity(0.15))
+                    .fill(DS.Colors.accentFill)
                     .frame(width: radius + 22, height: radius + 22)
                     .blur(radius: 10)
             } else if isQueryMatch {
@@ -921,7 +919,7 @@ struct ContextGraphView: View {
                 .overlay(
                     Circle()
                         .fill(LinearGradient(
-                            colors: [DS.Colors.onAccent.opacity(0.18), Color.clear],
+                            colors: [DS.Colors.onAccent.opacity(0.18), DS.Colors.transparent],
                             startPoint: .topLeading, endPoint: .bottomTrailing
                         ))
                         .frame(width: radius, height: radius)
@@ -945,10 +943,10 @@ struct ContextGraphView: View {
                     .frame(width: isHovered ? 160 : 100)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 3)
+                    .padding(.vertical, DS.Spacing.xs3)
                     .background(
                         RoundedRectangle(cornerRadius: DS.Radius.sm)
-                            .fill(DS.Colors.surfaceElevated.opacity(isHovered ? 0.97 : 0.75))
+                            .fill(DS.Colors.card.opacity(isHovered ? 0.95 : 0.80))
                             .shadow(color: DS.Colors.cardShadow.opacity(isHovered ? 0.14 : 0.06), radius: isHovered ? 5 : 2)
                     )
                     .animation(DS.Animation.quick, value: isHovered)
@@ -963,7 +961,7 @@ struct ContextGraphView: View {
                             .font(DS.Font.micro)
                             .foregroundStyle(DS.Colors.onAccent)
                             .padding(.horizontal, 4)
-                            .padding(.vertical, 2)
+                            .padding(.vertical, DS.Spacing.xxs)
                             .background(nodeColor, in: Capsule())
                             .offset(x: 6, y: -radius / 2)
                     }
@@ -1068,7 +1066,7 @@ struct ContextGraphView: View {
                                 .font(DS.Font.caption)
                                 .foregroundStyle(DS.Colors.textSecondary)
                                 .padding(.horizontal, DS.Spacing.xs)
-                                .padding(.vertical, 3)
+                                .padding(.vertical, DS.Spacing.xs3)
                                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         }
                     }
@@ -1084,7 +1082,7 @@ struct ContextGraphView: View {
                                         .font(DS.Font.small)
                                         .foregroundStyle(DS.Colors.textSecondary)
                                         .padding(.horizontal, DS.Spacing.xs)
-                                        .padding(.vertical, 2)
+                                        .padding(.vertical, DS.Spacing.xxs)
                                         .background(DS.Colors.fill, in: Capsule())
                                 }
                             }
@@ -1138,7 +1136,7 @@ struct ContextGraphView: View {
                                                 .monospacedDigit()
                                         }
                                     }
-                                    .padding(.vertical, 5)
+                                    .padding(.vertical, DS.Spacing.xs4)
                                     .padding(.horizontal, DS.Spacing.xs)
                                     .background(
                                         isExplicit ? explicitEdgeColor.opacity(0.08) : DS.Colors.fill,
@@ -1158,7 +1156,7 @@ struct ContextGraphView: View {
             }
         }
         .frame(width: 240)
-        .background(DS.Colors.surface)
+        .background(DS.Colors.page)
         .overlay(alignment: .leading) { Divider() }
     }
 
