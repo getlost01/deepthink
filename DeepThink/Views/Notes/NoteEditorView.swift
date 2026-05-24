@@ -39,50 +39,70 @@ struct NoteEditorView: View {
     }
 
     var body: some View {
+        mainColumn
+            .modifier(NoteEditorLifecycleModifier(
+                note: note,
+                allNotesCount: allNotes.count,
+                allTasksCount: allTasks.count,
+                allRemindersCount: allReminders.count,
+                onContentChange: {
+                    debouncedSave()
+                    scheduleScanDeadLinks()
+                },
+                onTitleChange: { debouncedSave() },
+                onAppear: onAppearActions,
+                onNoteIDChange: onNoteIdChange,
+                onDisappear: onDisappearActions,
+                onCatalogChange: { buildLinkPreviews() }
+            ))
+    }
+
+    @ViewBuilder
+    private var mainColumn: some View {
         VStack(alignment: .leading, spacing: 0) {
             if note.isArchived { archivedBanner }
             noteHeader
             Divider()
             if hasDeadLinks { deadLinksBanner }
             editorArea
-            if !noteBacklinks.isEmpty {
-                Divider()
-                BacklinksPanel(
-                    backlinks: noteBacklinks,
-                    isExpanded: $showBacklinks,
-                    onNavigate: { appState.navigateToNote($0) }
-                )
-            }
+            backlinksFooter
         }
         .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: note.content) {
-            debouncedSave()
-            scheduleScanDeadLinks()
+    }
+
+    @ViewBuilder
+    private var backlinksFooter: some View {
+        if !noteBacklinks.isEmpty {
+            Divider()
+            BacklinksPanel(
+                backlinks: noteBacklinks,
+                isExpanded: $showBacklinks,
+                onNavigate: { appState.navigateToNote($0) }
+            )
         }
-        .onChange(of: note.title) { debouncedSave() }
-        .onAppear {
-            if note.title.isEmpty { titleFocused = true }
-            publishNoteContext()
-            scheduleScanDeadLinks()
-            buildLinkPreviews()
+    }
+
+    private func onAppearActions() {
+        if note.title.isEmpty { titleFocused = true }
+        publishNoteContext()
+        scheduleScanDeadLinks()
+        buildLinkPreviews()
+    }
+
+    private func onDisappearActions() {
+        if appState.pendingSkillExecution == nil {
+            appState.currentNoteContent = nil
+            appState.currentNoteTitle = nil
+            appState.currentNoteTags = []
         }
-        .onChange(of: allNotes.count) { buildLinkPreviews() }
-        .onChange(of: allTasks.count) { buildLinkPreviews() }
-        .onChange(of: allReminders.count) { buildLinkPreviews() }
-        .onDisappear {
-            if appState.pendingSkillExecution == nil {
-                appState.currentNoteContent = nil
-                appState.currentNoteTitle = nil
-                appState.currentNoteTags = []
-            }
-        }
-        .onChange(of: note.id) {
-            publishNoteContext()
-            deadLinkUUIDs = []
-            hasDeadLinks = false
-            cachedLinkPreviews = [:]
-        }
+    }
+
+    private func onNoteIdChange() {
+        publishNoteContext()
+        deadLinkUUIDs = []
+        hasDeadLinks = false
+        cachedLinkPreviews = [:]
     }
 
     @ViewBuilder
@@ -223,75 +243,26 @@ struct NoteEditorView: View {
 
     @ViewBuilder
     private var editorArea: some View {
-        ZStack(alignment: .topLeading) {
-            RichMarkdownEditor(
-                text: $note.content,
-                isReadOnly: note.isArchived,
-                onLinkClick: { url in appState.handleDeepLink(url) },
-                onRequestLinkInsert: { type in linkPickerType = type },
-                onWikiLinkClick: handleWikiLinkClick,
-                linkInsertRequest: linkInsertRequest,
-                wikiLinks: wikiLinksByTitle,
-                linkPreviews: cachedLinkPreviews,
-                deadLinkUUIDs: deadLinkUUIDs,
-                onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
-                cleanDeadLinksRequest: cleanDeadLinksRequest
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            if note.content.isEmpty, !note.isArchived {
-                editorPlaceholder
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipped()
-        .sheet(isPresented: linkPickerPresented) {
-            if let type = linkPickerType {
-                DeepLinkPickerSheet(type: type, onSelect: { title, url in
-                    linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
-                    linkPickerType = nil
-                }, onDismiss: { linkPickerType = nil })
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var editorPlaceholder: some View {
-        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-            Text("Start writing…")
-                .font(DS.Font.body)
-                .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
-            HStack(spacing: DS.Spacing.xs) {
-                ForEach(editorHints, id: \.icon) { hint in
-                    HStack(spacing: DS.Spacing.xxs) {
-                        Image(systemName: hint.icon)
-                            .font(.system(size: DS.IconSize.nano))
-                        Text(hint.label)
-                            .font(DS.Font.micro)
-                    }
-                    .foregroundStyle(DS.Colors.textTertiary)
-                    .padding(.horizontal, DS.Spacing.xs2)
-                    .padding(.vertical, DS.Spacing.xxs)
-                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DS.Radius.sm)
-                            .strokeBorder(DS.Colors.border, lineWidth: 0.5)
-                    )
-                }
-            }
-        }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.top, DS.Spacing.md)
-        .allowsHitTesting(false)
-    }
-
-    private var editorHints: [(icon: String, label: String)] {
-        [
-            ("sparkles", "/ for skills"),
-            ("link", "[[ to link"),
-            ("bold", "**bold**"),
-            ("italic", "_italic_")
-        ]
+        NoteEditorMarkdownPane(
+            content: $note.content,
+            isArchived: note.isArchived,
+            linkInsertRequest: linkInsertRequest,
+            wikiLinks: wikiLinksByTitle,
+            linkPreviews: cachedLinkPreviews,
+            deadLinkUUIDs: deadLinkUUIDs,
+            cleanDeadLinksRequest: cleanDeadLinksRequest,
+            linkPickerPresented: linkPickerPresented,
+            linkPickerType: linkPickerType,
+            onLinkClick: { appState.handleDeepLink($0) },
+            onRequestLinkInsert: { linkPickerType = $0 },
+            onWikiLinkClick: handleWikiLinkClick,
+            onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
+            onLinkPickerSelect: { title, url in
+                linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
+                linkPickerType = nil
+            },
+            onLinkPickerDismiss: { linkPickerType = nil }
+        )
     }
 
     private func handleWikiLinkClick(_ title: String) {
@@ -371,6 +342,121 @@ struct NoteEditorView: View {
         appState.currentNoteContent = note.content
         appState.currentNoteTitle = note.title
         appState.currentNoteTags = note.tags.map(\.name)
+    }
+}
+
+private struct NoteEditorLifecycleModifier: ViewModifier {
+    let note: Note
+    let allNotesCount: Int
+    let allTasksCount: Int
+    let allRemindersCount: Int
+    let onContentChange: () -> Void
+    let onTitleChange: () -> Void
+    let onAppear: () -> Void
+    let onNoteIDChange: () -> Void
+    let onDisappear: () -> Void
+    let onCatalogChange: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: note.content) { onContentChange() }
+            .onChange(of: note.title) { onTitleChange() }
+            .onAppear(perform: onAppear)
+            .onChange(of: allNotesCount) { onCatalogChange() }
+            .onChange(of: allTasksCount) { onCatalogChange() }
+            .onChange(of: allRemindersCount) { onCatalogChange() }
+            .onDisappear(perform: onDisappear)
+            .onChange(of: note.id) { onNoteIDChange() }
+    }
+}
+
+private struct NoteEditorMarkdownPane: View {
+    @Binding var content: String
+    let isArchived: Bool
+    let linkInsertRequest: DeepLinkInsertRequest?
+    let wikiLinks: [String: String]
+    let linkPreviews: [String: [String: String]]
+    let deadLinkUUIDs: Set<String>
+    let cleanDeadLinksRequest: UUID?
+    let linkPickerPresented: Binding<Bool>
+    let linkPickerType: String?
+    let onLinkClick: (URL) -> Void
+    let onRequestLinkInsert: (String) -> Void
+    let onWikiLinkClick: (String) -> Void
+    let onRequestDeadLinkClean: () -> Void
+    let onLinkPickerSelect: (String, URL) -> Void
+    let onLinkPickerDismiss: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RichMarkdownEditor(
+                text: $content,
+                isReadOnly: isArchived,
+                onLinkClick: onLinkClick,
+                onRequestLinkInsert: onRequestLinkInsert,
+                onWikiLinkClick: onWikiLinkClick,
+                linkInsertRequest: linkInsertRequest,
+                wikiLinks: wikiLinks,
+                linkPreviews: linkPreviews,
+                deadLinkUUIDs: deadLinkUUIDs,
+                onRequestDeadLinkClean: onRequestDeadLinkClean,
+                cleanDeadLinksRequest: cleanDeadLinksRequest
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if content.isEmpty, !isArchived {
+                NoteEditorPlaceholder()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .sheet(isPresented: linkPickerPresented) {
+            if let type = linkPickerType {
+                DeepLinkPickerSheet(
+                    type: type,
+                    onSelect: onLinkPickerSelect,
+                    onDismiss: onLinkPickerDismiss
+                )
+            }
+        }
+    }
+}
+
+private struct NoteEditorPlaceholder: View {
+    private let hints: [(icon: String, label: String)] = [
+        ("sparkles", "/ for skills"),
+        ("link", "[[ to link"),
+        ("bold", "**bold**"),
+        ("italic", "_italic_")
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text("Start writing…")
+                .font(DS.Font.body)
+                .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
+            HStack(spacing: DS.Spacing.xs) {
+                ForEach(hints, id: \.icon) { hint in
+                    HStack(spacing: DS.Spacing.xxs) {
+                        Image(systemName: hint.icon)
+                            .font(.system(size: DS.IconSize.nano))
+                        Text(hint.label)
+                            .font(DS.Font.micro)
+                    }
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.horizontal, DS.Spacing.xs2)
+                    .padding(.vertical, DS.Spacing.xxs)
+                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.sm)
+                            .strokeBorder(DS.Colors.border, lineWidth: 0.5)
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.top, DS.Spacing.md)
+        .allowsHitTesting(false)
     }
 }
 
