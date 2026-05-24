@@ -21,204 +21,37 @@ struct NoteEditorView: View {
     @State private var showBacklinks = true
     @State private var cachedLinkPreviews: [String: [String: String]] = [:]
 
+    private var noteBacklinks: [Note] {
+        BacklinkService.shared.backlinks(for: note.id, context: modelContext)
+            .compactMap { link in allNotes.first { $0.id == link.sourceNoteID } }
+            .filter { $0.id != note.id }
+    }
+
+    private var wikiLinksByTitle: [String: String] {
+        Dictionary(
+            allNotes.filter { !$0.title.isEmpty }.map { ($0.title, $0.id.uuidString) },
+            uniquingKeysWith: { first, _ in first }
+        )
+    }
+
+    private var linkPickerPresented: Binding<Bool> {
+        Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if note.isArchived {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "archivebox.fill")
-                        .font(.system(size: DS.IconSize.xs, weight: .medium))
-                    Text("Archived — unarchive to edit")
-                        .font(DS.Font.caption)
-                        .fontWeight(.medium)
-                    Spacer()
-                    Button("Unarchive") {
-                        note.isArchived = false
-                        note.modifiedAt = Date()
-                    }
-                    .font(DS.Font.caption)
-                    .buttonStyle(.plainPointer)
-                    .foregroundStyle(DS.Colors.accent)
-                }
-                .foregroundStyle(DS.Colors.textSecondary)
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.sm)
-                .background(DS.Colors.fillSecondary)
-                .overlay(Divider(), alignment: .bottom)
-            }
-
-            HStack(spacing: DS.Spacing.md) {
-                TextField("Give your note a title...", text: $note.title)
-                    .textFieldStyle(.plain)
-                    .font(DS.Font.title)
-                    .focused($titleFocused)
-                    .disabled(note.isArchived)
-
-                Spacer()
-
-                Text("\(note.wordCount) words")
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.textTertiary)
-
-                Menu {
-                    Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
-                    Divider()
-                    ForEach(projects) { project in
-                        Button {
-                            note.project = project
-                            note.modifiedAt = Date()
-                        } label: {
-                            Label(project.name, systemImage: "folder")
-                        }
-                    }
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "folder")
-                            .font(.system(size: DS.IconSize.sm))
-                            .foregroundStyle(note.project.map { Color(hex: $0.color) } ?? DS.Colors.textTertiary)
-                        Text(note.project?.name ?? "Project")
-                            .font(DS.Font.caption)
-                            .foregroundStyle(note.project != nil ? DS.Colors.textPrimary : DS.Colors.textTertiary)
-                    }
-                    .padding(.horizontal, DS.Spacing.sm2)
-                    .padding(.vertical, DS.Spacing.xs2)
-                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DS.Radius.sm)
-                            .strokeBorder(DS.Colors.border, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plainPointer)
-                .fixedSize()
-                .disabled(note.isArchived)
-
-                Menu {
-                    ForEach(SkillFileService.shared.skills) { skill in
-                        Button {
-                            appState.navigate(to: .aiAssistant)
-                            appState.pendingSkillExecution = skill
-                        } label: {
-                            Label(skill.name, systemImage: skill.icon)
-                        }
-                    }
-                } label: {
-                    HStack(spacing: DS.Spacing.xs) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: DS.IconSize.sm))
-                        Text("Skills")
-                            .font(DS.Font.caption)
-                    }
-                    .padding(.horizontal, DS.Spacing.sm2)
-                    .padding(.vertical, DS.Spacing.xs2)
-                    .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DS.Radius.sm)
-                            .strokeBorder(DS.Colors.border, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plainPointer)
-                .fixedSize()
-                .disabled(note.isArchived)
-                .help("Run AI skill on this note")
-            }
-            .padding(.horizontal, DS.Spacing.xl)
-            .padding(.vertical, DS.Spacing.md)
-
+            if note.isArchived { archivedBanner }
+            noteHeader
             Divider()
-
-            if hasDeadLinks {
-                HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: DS.IconSize.xs))
-                        .foregroundStyle(DS.Colors.warning)
-                    Text("This note contains broken links to deleted items")
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textSecondary)
-                    Spacer()
-                    Button("Fix") {
-                        cleanDeadLinksRequest = UUID()
-                    }
-                    .font(DS.Font.small)
-                    .foregroundStyle(DS.Colors.warning)
-                    .buttonStyle(.plainPointer)
-                }
-                .padding(.horizontal, DS.Spacing.xl)
-                .padding(.vertical, DS.Spacing.xs)
-                .frame(maxWidth: .infinity)
-                .background(DS.Colors.warning.opacity(0.08))
-            }
-
-            let backlinks = BacklinkService.shared.backlinks(for: note.id, context: modelContext)
-                .compactMap { link in allNotes.first { $0.id == link.sourceNoteID } }
-                .filter { $0.id != note.id }
-
-            ZStack(alignment: .topLeading) {
-                RichMarkdownEditor(
-                    text: $note.content,
-                    isReadOnly: note.isArchived,
-                    onLinkClick: { url in appState.handleDeepLink(url) },
-                    onRequestLinkInsert: { type in linkPickerType = type },
-                    onWikiLinkClick: { title in
-                        guard !title.isEmpty,
-                              let target = allNotes.first(where: { $0.title.lowercased() == title.lowercased() }) else { return }
-                        appState.navigateToNote(target.id)
-                    },
-                    linkInsertRequest: linkInsertRequest,
-                    wikiLinks: Dictionary(allNotes.filter { !$0.title.isEmpty }.map { ($0.title, $0.id.uuidString) }, uniquingKeysWith: { first, _ in first }),
-                    linkPreviews: cachedLinkPreviews,
-                    deadLinkUUIDs: deadLinkUUIDs,
-                    onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
-                    cleanDeadLinksRequest: cleanDeadLinksRequest
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if note.content.isEmpty, !note.isArchived {
-                    VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                        Text("Start writing…")
-                            .font(DS.Font.body)
-                            .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
-                        HStack(spacing: DS.Spacing.xs) {
-                            ForEach([
-                                ("sparkles", "/ for skills"),
-                                ("link", "[[ to link"),
-                                ("bold", "**bold**"),
-                                ("italic", "_italic_")
-                            ], id: \.0) { icon, label in
-                                HStack(spacing: DS.Spacing.xxs) {
-                                    Image(systemName: icon)
-                                        .font(.system(size: DS.IconSize.nano))
-                                    Text(label)
-                                        .font(DS.Font.micro)
-                                }
-                                .foregroundStyle(DS.Colors.textTertiary)
-                                .padding(.horizontal, DS.Spacing.xs2)
-                                .padding(.vertical, DS.Spacing.xxs)
-                                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: DS.Radius.sm)
-                                        .strokeBorder(DS.Colors.border, lineWidth: 0.5)
-                                )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, DS.Spacing.xl)
-                    .padding(.top, DS.Spacing.md)
-                    .allowsHitTesting(false)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
-            .sheet(isPresented: Binding(get: { linkPickerType != nil }, set: { if !$0 { linkPickerType = nil } })) {
-                if let type = linkPickerType {
-                    DeepLinkPickerSheet(type: type, onSelect: { title, url in
-                        linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
-                        linkPickerType = nil
-                    }, onDismiss: { linkPickerType = nil })
-                }
-            }
-
-            if !backlinks.isEmpty {
+            if hasDeadLinks { deadLinksBanner }
+            editorArea
+            if !noteBacklinks.isEmpty {
                 Divider()
-                BacklinksPanel(backlinks: backlinks, isExpanded: $showBacklinks, onNavigate: { appState.navigateToNote($0) })
+                BacklinksPanel(
+                    backlinks: noteBacklinks,
+                    isExpanded: $showBacklinks,
+                    onNavigate: { appState.navigateToNote($0) }
+                )
             }
         }
         .clipped()
@@ -250,6 +83,221 @@ struct NoteEditorView: View {
             hasDeadLinks = false
             cachedLinkPreviews = [:]
         }
+    }
+
+    @ViewBuilder
+    private var archivedBanner: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: "archivebox.fill")
+                .font(.system(size: DS.IconSize.xs, weight: .medium))
+            Text("Archived — unarchive to edit")
+                .font(DS.Font.caption)
+                .fontWeight(.medium)
+            Spacer()
+            Button("Unarchive") {
+                note.isArchived = false
+                note.modifiedAt = Date()
+            }
+            .font(DS.Font.caption)
+            .buttonStyle(.plainPointer)
+            .foregroundStyle(DS.Colors.accent)
+        }
+        .foregroundStyle(DS.Colors.textSecondary)
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.sm)
+        .background(DS.Colors.fillSecondary)
+        .overlay(Divider(), alignment: .bottom)
+    }
+
+    @ViewBuilder
+    private var noteHeader: some View {
+        HStack(spacing: DS.Spacing.md) {
+            TextField("Give your note a title...", text: $note.title)
+                .textFieldStyle(.plain)
+                .font(DS.Font.title)
+                .focused($titleFocused)
+                .disabled(note.isArchived)
+
+            Spacer()
+
+            Text("\(note.wordCount) words")
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textTertiary)
+
+            projectMenu
+            skillsMenu
+        }
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.md)
+    }
+
+    @ViewBuilder
+    private var projectMenu: some View {
+        Menu {
+            Button { note.project = nil; note.modifiedAt = Date() } label: { Text("None") }
+            Divider()
+            ForEach(projects) { project in
+                Button {
+                    note.project = project
+                    note.modifiedAt = Date()
+                } label: {
+                    Label(project.name, systemImage: "folder")
+                }
+            }
+        } label: {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: "folder")
+                    .font(.system(size: DS.IconSize.sm))
+                    .foregroundStyle(note.project.map { Color(hex: $0.color) } ?? DS.Colors.textTertiary)
+                Text(note.project?.name ?? "Project")
+                    .font(DS.Font.caption)
+                    .foregroundStyle(note.project != nil ? DS.Colors.textPrimary : DS.Colors.textTertiary)
+            }
+            .padding(.horizontal, DS.Spacing.sm2)
+            .padding(.vertical, DS.Spacing.xs2)
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plainPointer)
+        .fixedSize()
+        .disabled(note.isArchived)
+    }
+
+    @ViewBuilder
+    private var skillsMenu: some View {
+        Menu {
+            ForEach(SkillFileService.shared.skills) { skill in
+                Button {
+                    appState.navigate(to: .aiAssistant)
+                    appState.pendingSkillExecution = skill
+                } label: {
+                    Label(skill.name, systemImage: skill.icon)
+                }
+            }
+        } label: {
+            HStack(spacing: DS.Spacing.xs) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: DS.IconSize.sm))
+                Text("Skills")
+                    .font(DS.Font.caption)
+            }
+            .padding(.horizontal, DS.Spacing.sm2)
+            .padding(.vertical, DS.Spacing.xs2)
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(DS.Colors.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plainPointer)
+        .fixedSize()
+        .disabled(note.isArchived)
+        .help("Run AI skill on this note")
+    }
+
+    @ViewBuilder
+    private var deadLinksBanner: some View {
+        HStack(spacing: DS.Spacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: DS.IconSize.xs))
+                .foregroundStyle(DS.Colors.warning)
+            Text("This note contains broken links to deleted items")
+                .font(DS.Font.small)
+                .foregroundStyle(DS.Colors.textSecondary)
+            Spacer()
+            Button("Fix") {
+                cleanDeadLinksRequest = UUID()
+            }
+            .font(DS.Font.small)
+            .foregroundStyle(DS.Colors.warning)
+            .buttonStyle(.plainPointer)
+        }
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.xs)
+        .frame(maxWidth: .infinity)
+        .background(DS.Colors.warning.opacity(0.08))
+    }
+
+    @ViewBuilder
+    private var editorArea: some View {
+        ZStack(alignment: .topLeading) {
+            RichMarkdownEditor(
+                text: $note.content,
+                isReadOnly: note.isArchived,
+                onLinkClick: { url in appState.handleDeepLink(url) },
+                onRequestLinkInsert: { type in linkPickerType = type },
+                onWikiLinkClick: handleWikiLinkClick,
+                linkInsertRequest: linkInsertRequest,
+                wikiLinks: wikiLinksByTitle,
+                linkPreviews: cachedLinkPreviews,
+                deadLinkUUIDs: deadLinkUUIDs,
+                onRequestDeadLinkClean: { hasDeadLinks = false; deadLinkUUIDs = [] },
+                cleanDeadLinksRequest: cleanDeadLinksRequest
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if note.content.isEmpty, !note.isArchived {
+                editorPlaceholder
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipped()
+        .sheet(isPresented: linkPickerPresented) {
+            if let type = linkPickerType {
+                DeepLinkPickerSheet(type: type, onSelect: { title, url in
+                    linkInsertRequest = DeepLinkInsertRequest(text: title, url: url)
+                    linkPickerType = nil
+                }, onDismiss: { linkPickerType = nil })
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var editorPlaceholder: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+            Text("Start writing…")
+                .font(DS.Font.body)
+                .foregroundStyle(DS.Colors.textTertiary.opacity(0.5))
+            HStack(spacing: DS.Spacing.xs) {
+                ForEach(editorHints, id: \.icon) { hint in
+                    HStack(spacing: DS.Spacing.xxs) {
+                        Image(systemName: hint.icon)
+                            .font(.system(size: DS.IconSize.nano))
+                        Text(hint.label)
+                            .font(DS.Font.micro)
+                    }
+                    .foregroundStyle(DS.Colors.textTertiary)
+                    .padding(.horizontal, DS.Spacing.xs2)
+                    .padding(.vertical, DS.Spacing.xxs)
+                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: DS.Radius.sm)
+                            .strokeBorder(DS.Colors.border, lineWidth: 0.5)
+                    )
+                }
+            }
+        }
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.top, DS.Spacing.md)
+        .allowsHitTesting(false)
+    }
+
+    private var editorHints: [(icon: String, label: String)] {
+        [
+            ("sparkles", "/ for skills"),
+            ("link", "[[ to link"),
+            ("bold", "**bold**"),
+            ("italic", "_italic_")
+        ]
+    }
+
+    private func handleWikiLinkClick(_ title: String) {
+        guard !title.isEmpty,
+              let target = allNotes.first(where: { $0.title.lowercased() == title.lowercased() }) else { return }
+        appState.navigateToNote(target.id)
     }
 
     private func scheduleScanDeadLinks() {
