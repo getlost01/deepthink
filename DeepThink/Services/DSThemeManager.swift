@@ -157,7 +157,7 @@ private enum DSColor {
         NSColor(srgbRed: r, green: g, blue: b, alpha: a)
     }
 
-    /// Muted GitHub Primer accents — readable but not neon against the neutral ramp.
+    /// Material UI default palette — primary, semantic, and grey ramp.
     struct Semantic {
         let accent: Color
         let success: Color
@@ -174,35 +174,35 @@ private enum DSColor {
         let sunrise: Color
 
         static let light = Semantic(
-            accent: srgb(0.047, 0.412, 0.843),
-            success: srgb(0.118, 0.525, 0.235),
-            warning: srgb(0.580, 0.420, 0.050),
-            danger: srgb(0.780, 0.165, 0.195),
-            knowledge: srgb(0.435, 0.280, 0.520),
-            info: srgb(0.047, 0.412, 0.843),
-            teal: srgb(0.055, 0.565, 0.545),
-            purple: srgb(0.435, 0.280, 0.520),
-            amber: srgb(0.580, 0.420, 0.050),
-            lime: srgb(0.325, 0.585, 0.135),
-            slate: srgb(0.390, 0.430, 0.490),
-            gold: srgb(0.580, 0.420, 0.050),
-            sunrise: srgb(0.780, 0.320, 0.110)
+            accent: srgb(0.098, 0.463, 0.824),
+            success: srgb(0.180, 0.490, 0.196),
+            warning: srgb(0.929, 0.424, 0.008),
+            danger: srgb(0.827, 0.184, 0.184),
+            knowledge: srgb(0.612, 0.153, 0.690),
+            info: srgb(0.008, 0.533, 0.820),
+            teal: srgb(0.000, 0.537, 0.482),
+            purple: srgb(0.612, 0.153, 0.690),
+            amber: srgb(1.000, 0.596, 0.000),
+            lime: srgb(0.298, 0.686, 0.314),
+            slate: srgb(0.459, 0.459, 0.459),
+            gold: srgb(1.000, 0.757, 0.027),
+            sunrise: srgb(1.000, 0.341, 0.133)
         )
 
         static let dark = Semantic(
-            accent: srgb(0.400, 0.620, 0.950),
-            success: srgb(0.290, 0.680, 0.360),
-            warning: srgb(0.760, 0.580, 0.200),
-            danger: srgb(0.920, 0.380, 0.360),
-            knowledge: srgb(0.600, 0.460, 0.880),
-            info: srgb(0.400, 0.620, 0.950),
-            teal: srgb(0.320, 0.660, 0.660),
-            purple: srgb(0.600, 0.460, 0.880),
-            amber: srgb(0.760, 0.580, 0.200),
-            lime: srgb(0.290, 0.680, 0.360),
-            slate: srgb(0.520, 0.555, 0.595),
-            gold: srgb(0.760, 0.580, 0.200),
-            sunrise: srgb(0.920, 0.500, 0.340)
+            accent: srgb(0.565, 0.792, 0.976),
+            success: srgb(0.298, 0.686, 0.314),
+            warning: srgb(1.000, 0.792, 0.361),
+            danger: srgb(0.937, 0.325, 0.314),
+            knowledge: srgb(0.808, 0.576, 0.898),
+            info: srgb(0.259, 0.769, 0.929),
+            teal: srgb(0.302, 0.714, 0.675),
+            purple: srgb(0.808, 0.576, 0.898),
+            amber: srgb(1.000, 0.792, 0.361),
+            lime: srgb(0.298, 0.686, 0.314),
+            slate: srgb(0.620, 0.620, 0.620),
+            gold: srgb(1.000, 0.843, 0.251),
+            sunrise: srgb(1.000, 0.541, 0.396)
         )
     }
 }
@@ -212,34 +212,33 @@ extension DSThemePalette {
         let sem = DSColor.Semantic.light
         let accent = sem.accent
         let warning = sem.warning
-        // Blue-slate ink — same hue family as dark neutrals, inverted for light surfaces.
-        let inkR = 0.098
-        let inkG = 0.118
-        let inkB = 0.152
+        let inkR = 0.129
+        let inkG = 0.129
+        let inkB = 0.129
         return DSThemePalette(
-            page: DSColor.srgb(0.965, 0.972, 0.988),
-            surface: DSColor.srgb(0.972, 0.978, 0.992),
-            surfaceElevated: DSColor.srgb(0.988, 0.992, 1.0),
+            page: DSColor.srgb(0.980, 0.980, 0.980),
+            surface: DSColor.srgb(0.961, 0.961, 0.961),
+            surfaceElevated: DSColor.srgb(1.0, 1.0, 1.0),
             modal: DSColor.srgb(1.0, 1.0, 1.0),
-            card: DSColor.srgb(0.992, 0.995, 1.0),
-            fill: DSColor.srgb(0.047, 0.412, 0.843, 0.045),
-            fillSecondary: DSColor.srgb(0.047, 0.412, 0.843, 0.085),
+            card: DSColor.srgb(1.0, 1.0, 1.0),
+            fill: DSColor.srgb(0, 0, 0, 0.04),
+            fillSecondary: DSColor.srgb(0, 0, 0, 0.08),
             textPrimary: DSColor.srgb(inkR, inkG, inkB),
-            textSecondary: DSColor.srgb(0.400, 0.440, 0.500),
-            textTertiary: DSColor.srgb(0.520, 0.560, 0.615),
+            textSecondary: DSColor.srgb(0.459, 0.459, 0.459),
+            textTertiary: DSColor.srgb(0.620, 0.620, 0.620),
             onAccent: DSColor.srgb(1, 1, 1),
-            border: DSColor.srgb(0.047, 0.412, 0.843, 0.11),
-            borderHover: DSColor.srgb(0.047, 0.412, 0.843, 0.18),
+            border: DSColor.srgb(0, 0, 0, 0.12),
+            borderHover: DSColor.srgb(0, 0, 0, 0.23),
             borderFocused: accent.opacity(0.50),
-            cardShadow: DSColor.srgb(0.047, 0.118, 0.196, 0.045),
-            modalShadow: DSColor.srgb(0.047, 0.118, 0.196, 0.10),
-            subtleShadow: DSColor.srgb(0.047, 0.118, 0.196, 0.06),
-            overlayBg: DSColor.srgb(inkR, inkG, inkB, 0.32),
-            scrollMaskOpaque: DSColor.srgb(0.965, 0.972, 0.988),
+            cardShadow: DSColor.srgb(0, 0, 0, 0.08),
+            modalShadow: DSColor.srgb(0, 0, 0, 0.16),
+            subtleShadow: DSColor.srgb(0, 0, 0, 0.06),
+            overlayBg: DSColor.srgb(0, 0, 0, 0.50),
+            scrollMaskOpaque: DSColor.srgb(0.980, 0.980, 0.980),
             scrollMaskFade: Color.clear,
-            gridDot: DSColor.srgb(0.047, 0.412, 0.843, 0.12),
-            terminal: DSColor.srgb(0.972, 0.978, 0.992),
-            terminalNS: DSColor.nsrgb(0.972, 0.978, 0.992),
+            gridDot: DSColor.srgb(0, 0, 0, 0.12),
+            terminal: DSColor.srgb(0.980, 0.980, 0.980),
+            terminalNS: DSColor.nsrgb(0.980, 0.980, 0.980),
             terminalForegroundNS: DSColor.nsrgb(inkR, inkG, inkB),
             accent: accent,
             accentFill: accent.opacity(0.10),
@@ -269,30 +268,30 @@ extension DSThemePalette {
         let accent = sem.accent
         let warning = sem.warning
         return DSThemePalette(
-            page: DSColor.srgb(0.051, 0.067, 0.090),
-            surface: DSColor.srgb(0.059, 0.075, 0.098),
-            surfaceElevated: DSColor.srgb(0.067, 0.082, 0.106),
-            modal: DSColor.srgb(0.090, 0.106, 0.129),
-            card: DSColor.srgb(0.078, 0.094, 0.118),
-            fill: DSColor.srgb(0.902, 0.929, 0.953, 0.05),
-            fillSecondary: DSColor.srgb(0.902, 0.929, 0.953, 0.08),
-            textPrimary: DSColor.srgb(0.902, 0.929, 0.953),
-            textSecondary: DSColor.srgb(0.520, 0.555, 0.595),
-            textTertiary: DSColor.srgb(0.420, 0.450, 0.490),
-            onAccent: DSColor.srgb(1, 1, 1),
-            border: DSColor.srgb(0.902, 0.929, 0.953, 0.08),
-            borderHover: DSColor.srgb(0.902, 0.929, 0.953, 0.12),
+            page: DSColor.srgb(0.071, 0.071, 0.071),
+            surface: DSColor.srgb(0.118, 0.118, 0.118),
+            surfaceElevated: DSColor.srgb(0.137, 0.137, 0.137),
+            modal: DSColor.srgb(0.149, 0.149, 0.149),
+            card: DSColor.srgb(0.118, 0.118, 0.118),
+            fill: DSColor.srgb(1, 1, 1, 0.04),
+            fillSecondary: DSColor.srgb(1, 1, 1, 0.08),
+            textPrimary: DSColor.srgb(1, 1, 1, 0.87),
+            textSecondary: DSColor.srgb(1, 1, 1, 0.70),
+            textTertiary: DSColor.srgb(1, 1, 1, 0.50),
+            onAccent: DSColor.srgb(0.071, 0.071, 0.071),
+            border: DSColor.srgb(1, 1, 1, 0.12),
+            borderHover: DSColor.srgb(1, 1, 1, 0.23),
             borderFocused: accent.opacity(0.50),
-            cardShadow: DSColor.srgb(0, 0, 0, 0.12),
-            modalShadow: DSColor.srgb(0, 0, 0, 0.22),
-            subtleShadow: DSColor.srgb(0, 0, 0, 0.08),
-            overlayBg: DSColor.srgb(0.020, 0.031, 0.051, 0.55),
-            scrollMaskOpaque: DSColor.srgb(0.051, 0.067, 0.090),
+            cardShadow: DSColor.srgb(0, 0, 0, 0.24),
+            modalShadow: DSColor.srgb(0, 0, 0, 0.40),
+            subtleShadow: DSColor.srgb(0, 0, 0, 0.16),
+            overlayBg: DSColor.srgb(0, 0, 0, 0.60),
+            scrollMaskOpaque: DSColor.srgb(0.071, 0.071, 0.071),
             scrollMaskFade: Color.clear,
-            gridDot: DSColor.srgb(0.902, 0.929, 0.953, 0.06),
-            terminal: DSColor.srgb(0.047, 0.063, 0.086),
-            terminalNS: DSColor.nsrgb(0.047, 0.063, 0.086),
-            terminalForegroundNS: DSColor.nsrgb(0.902, 0.929, 0.953),
+            gridDot: DSColor.srgb(1, 1, 1, 0.12),
+            terminal: DSColor.srgb(0.071, 0.071, 0.071),
+            terminalNS: DSColor.nsrgb(0.071, 0.071, 0.071),
+            terminalForegroundNS: DSColor.nsrgb(1, 1, 1, 0.87),
             accent: accent,
             accentFill: accent.opacity(0.12),
             accentGradient: LinearGradient(
