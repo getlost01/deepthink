@@ -167,13 +167,13 @@ struct QuickCaptureView: View {
                     onExternalEscape: onDismiss,
                     compactChrome: true
                 )
-                    .frame(maxHeight: .infinity)
-                    .background(DS.Colors.page, in: RoundedRectangle(cornerRadius: DS.Radius.md))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DS.Radius.md)
-                            .strokeBorder(DS.Colors.border, lineWidth: 1)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
+                .frame(maxHeight: .infinity)
+                .background(DS.Colors.page, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .overlay(
+                    RoundedRectangle(cornerRadius: DS.Radius.md)
+                        .strokeBorder(DS.Colors.border, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.md))
             }
 
             HStack(spacing: DS.Spacing.sm) {

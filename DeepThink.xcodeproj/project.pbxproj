@@ -59,6 +59,7 @@
 		7F75AC9BA40C413F194E836A /* ClaudeSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */; };
 		81D50A098EF35CD8F47578C3 /* ChatBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05F1A0F50C47FEEFD23BB385 /* ChatBubble.swift */; };
 		81D83727AC261D9DFF3DC6B3 /* GlobalHotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889E22A7596C1B768A368CBF /* GlobalHotKey.swift */; };
+		824D5BB53EC8C3F7B71C66F3 /* DSThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA7BD3F177366244561A7CD4 /* DSThemeManager.swift */; };
 		85363F2FF493ED244D2143B7 /* KnowledgeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */; };
 		866353BCAA3F9EF09DF6E835 /* AgentListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24730C11D122CF0AEB59686 /* AgentListView.swift */; };
 		8AF9EBDF670E306EA30DA428 /* Tag.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37D86BA082EAA0134C406EC5 /* Tag.swift */; };
@@ -89,7 +90,6 @@
 		D5A59CA9651B9337A12970DD /* MCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60BAAE89EE8E1949037A2AC7 /* MCPServer.swift */; };
 		D6D0841635A4FB2A684639EC /* NoteInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A892F8CF9A4456973A67EBB1 /* NoteInspectorView.swift */; };
 		D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */; };
-		E8F4A2B91C3D5E6F7A8B9C0E /* DSThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */; };
 		DF281343B81BD514360F45C7 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51BFA5828C333E058B73C0C4 /* Constants.swift */; };
 		E3A6451D6DCC41DC7A2CF240 /* TerminalSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE32127EC258D8F8AD5FE327 /* TerminalSession.swift */; };
 		E6B8A5C72B10B7C14529FA3A /* MCPCatalogService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */; };
@@ -190,7 +190,6 @@
 		AAB9090CEF95EE602265DCBD /* WorkspaceOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceOverviewView.swift; sourceTree = "<group>"; };
 		AD2B49972E49AD10D6AF9870 /* MCPCatalogService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MCPCatalogService.swift; sourceTree = "<group>"; };
 		AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepThinkCLIService.swift; sourceTree = "<group>"; };
-		E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSThemeManager.swift; sourceTree = "<group>"; };
 		AED82D05D2A5A5C2ECA5AFCE /* AgentFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgentFileService.swift; sourceTree = "<group>"; };
 		AF9E6132F8AE996DC61C10F3 /* SlashCommandMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlashCommandMenu.swift; sourceTree = "<group>"; };
 		B054E6D2E053FBEB803CD468 /* InstallationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallationManager.swift; sourceTree = "<group>"; };
@@ -214,6 +213,7 @@
 		E3F4FB3354B14BF6E35411D4 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		E425ADB9CED0B98F528774FB /* CLISyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLISyncService.swift; sourceTree = "<group>"; };
 		E6D4DBF219661F83A81948C4 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
+		EA7BD3F177366244561A7CD4 /* DSThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSThemeManager.swift; sourceTree = "<group>"; };
 		ECD984C2D8AA7167A72F4992 /* ProjectListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectListView.swift; sourceTree = "<group>"; };
 		EE3B3F89EA7F9BAF3FD80471 /* Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Extensions.swift; sourceTree = "<group>"; };
 		EE774C4B2C861B287E9C4233 /* TaskItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskItem.swift; sourceTree = "<group>"; };
@@ -360,7 +360,7 @@
 				84119FFD8B6CDCC0DAC18E5C /* DataCollectorService.swift */,
 				CAC8C58D5D50E6DB600A51F3 /* DeadLinkScanner.swift */,
 				AEA5D22420FB007D78576051 /* DeepThinkCLIService.swift */,
-				E8F4A2B91C3D5E6F7A8B9C0D /* DSThemeManager.swift */,
+				EA7BD3F177366244561A7CD4 /* DSThemeManager.swift */,
 				39AF85031C16E190ABD50E4B /* EmbeddingService.swift */,
 				889E22A7596C1B768A368CBF /* GlobalHotKey.swift */,
 				B054E6D2E053FBEB803CD468 /* InstallationManager.swift */,
@@ -691,12 +691,12 @@
 				E6D4556D32629B0BE64F0758 /* ContextEngine.swift in Sources */,
 				378ABD90185E4DCEBD2F5F1F /* ContextGraphView.swift in Sources */,
 				404E1248FFBA043A7FFE2D78 /* Conversation.swift in Sources */,
+				824D5BB53EC8C3F7B71C66F3 /* DSThemeManager.swift in Sources */,
 				AFE71788914D6B5412632786 /* DataCollectorService.swift in Sources */,
 				09A5B19621F51B4465925EFD /* DataSource.swift in Sources */,
 				B2EE3CE5FA78E8E1D31465B8 /* DeadLinkScanner.swift in Sources */,
 				4911E32F39D230A3A82B477F /* DeepThinkApp.swift in Sources */,
 				D8907DD1D48E6DBD7D75EB30 /* DeepThinkCLIService.swift in Sources */,
-				E8F4A2B91C3D5E6F7A8B9C0E /* DSThemeManager.swift in Sources */,
 				04CD8E96C33891BBF10AF4F3 /* DeepThinkError.swift in Sources */,
 				9356DECAB0CFE77A9A4D6BF5 /* DesignSystem.swift in Sources */,
 				F86BB6DF71BFDC2FEACF6C00 /* EmbeddingService.swift in Sources */,
