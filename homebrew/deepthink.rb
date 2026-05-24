@@ -1,5 +1,5 @@
 cask "deepthink" do
-  version "1.0.1"
+  version "1.0.2"
   sha256 "f56861adcd8865a3054ad72c859314d352da5093f4d9fc54b4ba1e9fa62d29e9"
 
   url "https://github.com/getlost01/deepthink/releases/download/v#{version}/DeepThink-#{version}.zip"
