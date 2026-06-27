@@ -18,7 +18,7 @@ DeepThink has three connected surfaces that share one local data directory (`~/D
         │ MCP stdio                  │                          ▼
         ▼                            │              ┌────────────────────────────┐
   deepthink-mcp                      │              │    macOS App (SwiftUI)     │
-  51 tools · any agent               │              │ Workspace · Knowledge      │
+  19 tools · any agent               │              │ Workspace · Knowledge      │
   readonly flag                      │              │ AI Chat · Terminal · ⌘K   │
         │                            │              └──────────────┬─────────────┘
         └────────────────────────────┘                             │
@@ -187,9 +187,9 @@ Full row snapshot saved before every hard delete:
 
 ### Read/Write Boundary
 
-All read-only MCP tools carry `readonly: true` in their tool definition. Mutating tools do not. This allows MCP clients that support capability inspection to distinguish safe read operations from state-changing ones.
+CRUD is consolidated into one tool per entity (`workspace_task`, `workspace_note`, `workspace_project`, `workspace_reminder`, `knowledge_project`, `knowledge_integration`, `agent`, `rule`, `skill`) that takes an `action` parameter. Read vs. write is therefore determined by the `action`: `list` / `get` / `load` are read-only; `create` / `update` / `delete` / `save` / `capture` / `compress` / `archive` mutate.
 
-Read-only tools: `workspace_list_tasks`, `workspace_get_task`, `workspace_list_notes`, `workspace_get_note`, `workspace_list_projects`, `workspace_get_project`, `workspace_list_reminders`, `workspace_get_reminder`, `workspace_summary`, and all smart/context query tools.
+Always-read-only tools: `workspace_summary`, `knowledge_search`, `knowledge_stats`, `workspace_resolve_deeplink`, and all smart/context query tools (`smart_query`, `knowledge_context`, `workspace_context`, `unified_search`, `deepthink_overview`).
 
 ### SwiftData Cascade Deletes
 
@@ -302,7 +302,7 @@ Source at `cli/src/`, compiled to `cli/out/deepthink` and `cli/out/deepthink-mcp
 | File | Role |
 |------|------|
 | `index.ts` | CLI entry point and command routing |
-| `mcp-server.ts` | MCP server - registers all 51 tools and 8 resources |
+| `mcp-server.ts` | MCP server - registers all 19 tools and 8 resources |
 
 ---
 

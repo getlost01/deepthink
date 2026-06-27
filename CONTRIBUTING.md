@@ -47,7 +47,7 @@ deepthink/
 ├── cli/                        # Bun/TypeScript CLI
 │   └── src/
 │       ├── index.ts            # Entry point + command routing
-│       ├── mcp-server.ts       # MCP server (45 tools)
+│       ├── mcp-server.ts       # MCP server (19 tools)
 │       ├── core/               # Context engine + embedding
 │       ├── agents/             # Planner, executor, writer agents
 │       └── tools/              # Tool implementations

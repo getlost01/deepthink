@@ -11,52 +11,100 @@ export interface MCPTool {
 
 export const KNOWLEDGE_TOOLS: MCPTool[] = [
   {
-    name: "knowledge_stats",
-    description: "Get knowledge base overview: project count, integration channels, archives.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => knowledge.knowledgeStats(),
-  },
-  {
-    name: "knowledge_list_projects",
-    description: "List all knowledge projects.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => {
-      const projects = knowledge.listProjects();
-      return { projects, count: projects.length };
-    },
-  },
-  {
-    name: "knowledge_load_project",
-    description: "Load all knowledge for a project: context, decisions, and artifacts.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        project: { type: "string", description: "Project name" },
-      },
-      required: ["project"],
-    },
-    execute: (p) => knowledge.loadProjectKnowledge(p.project),
-  },
-  {
-    name: "knowledge_save_project",
+    name: "knowledge_project",
     description:
-      "Save knowledge to a project. Types: 'context' (general info), 'decision' (decisions log), 'artifact' (timestamped artifact).",
+      "Work with knowledge projects (context, decisions, artifacts). Set `action`:\n" +
+      "- list: all knowledge projects\n" +
+      "- load: requires project → all context, decisions, and artifacts for it\n" +
+      "- save: requires project, content; optional type (context|decision|artifact, default context)\n" +
+      "- archive: requires project → compress its knowledge into a summary file",
     inputSchema: {
       type: "object",
       properties: {
-        project: { type: "string", description: "Project name" },
-        content: { type: "string", description: "Knowledge content (markdown)" },
+        action: { type: "string", enum: ["list", "load", "save", "archive"], description: "Operation to perform" },
+        project: { type: "string", description: "Project name (load/save/archive)" },
+        content: { type: "string", description: "Knowledge content, markdown (save)" },
         type: {
           type: "string",
           enum: ["context", "decision", "artifact"],
-          description: "Knowledge type (default: context)",
+          description: "Knowledge type for save (default: context)",
         },
       },
-      required: ["project", "content"],
+      required: ["action"],
     },
-    execute: (p) => {
-      const path = knowledge.saveProjectKnowledge(p.project, p.content, p.type ?? "context");
-      return { project: p.project, type: p.type ?? "context", path };
+    execute: async (p) => {
+      switch (p.action) {
+        case "list": {
+          const projects = knowledge.listProjects();
+          return { projects, count: projects.length };
+        }
+        case "load":
+          if (!p.project) throw new Error(`'project' is required for action 'load'`);
+          return knowledge.loadProjectKnowledge(p.project);
+        case "save": {
+          if (!p.project || !p.content) throw new Error(`'project' and 'content' are required for action 'save'`);
+          const path = knowledge.saveProjectKnowledge(p.project, p.content, p.type ?? "context");
+          return { project: p.project, type: p.type ?? "context", path };
+        }
+        case "archive": {
+          if (!p.project) throw new Error(`'project' is required for action 'archive'`);
+          const path = await knowledge.archiveProject(p.project);
+          return { project: p.project, path };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: list, load, save, archive`);
+      }
+    },
+  },
+  {
+    name: "knowledge_integration",
+    description:
+      "Work with integration data captured from external sources (slack, github, web, …). Set `action`:\n" +
+      "- list: all integration sources and their channels\n" +
+      "- load: requires source; optional channel, limit (default 20) → recent entries\n" +
+      "- capture: requires source, channel, content; optional title, tags, metadata\n" +
+      "- compress: requires source, channel → compress a channel's entries into a dense archive and delete originals",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["list", "load", "capture", "compress"], description: "Operation to perform" },
+        source: { type: "string", description: "Integration source, e.g. 'slack', 'github', 'web'" },
+        channel: { type: "string", description: "Channel/category name" },
+        content: { type: "string", description: "Content to capture, markdown (capture)" },
+        title: { type: "string", description: "Descriptive title (capture; auto-derived if omitted)" },
+        tags: { type: "array", items: { type: "string" }, description: "Optional tags (capture)" },
+        metadata: {
+          type: "object",
+          description: "Optional key-value metadata (capture)",
+          additionalProperties: { type: "string" },
+        },
+        limit: { type: "number", description: "Max entries for load (default 20)" },
+      },
+      required: ["action"],
+    },
+    execute: async (p) => {
+      switch (p.action) {
+        case "list":
+          return knowledge.listIntegrations();
+        case "load": {
+          if (!p.source) throw new Error(`'source' is required for action 'load'`);
+          const entries = knowledge.loadIntegrationData(p.source, p.channel, p.limit ?? 20);
+          return { entries, count: entries.length };
+        }
+        case "capture": {
+          if (!p.source || !p.channel || !p.content)
+            throw new Error(`'source', 'channel', and 'content' are required for action 'capture'`);
+          const path = knowledge.saveIntegrationData(p.source, p.channel, p.content, p.metadata ?? {}, p.title, p.tags);
+          return { source: p.source, channel: p.channel, title: p.title, path };
+        }
+        case "compress": {
+          if (!p.source || !p.channel) throw new Error(`'source' and 'channel' are required for action 'compress'`);
+          const path = await knowledge.compressKnowledge(p.source, p.channel);
+          return { source: p.source, channel: p.channel, path };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: list, load, capture, compress`);
+      }
     },
   },
   {
@@ -77,86 +125,10 @@ export const KNOWLEDGE_TOOLS: MCPTool[] = [
     },
   },
   {
-    name: "knowledge_list_integrations",
-    description: "List all integration sources and their channels.",
+    name: "knowledge_stats",
+    description: "Get knowledge base overview: project count, integration channels, archives.",
     inputSchema: { type: "object", properties: {} },
-    execute: () => knowledge.listIntegrations(),
-  },
-  {
-    name: "knowledge_load_integration",
-    description: "Load recent entries from an integration source/channel.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        source: { type: "string", description: "Integration source (e.g. 'slack', 'github')" },
-        channel: { type: "string", description: "Channel name (optional, loads all if omitted)" },
-        limit: { type: "number", description: "Max entries (default: 20)" },
-      },
-      required: ["source"],
-    },
-    execute: (p) => {
-      const entries = knowledge.loadIntegrationData(p.source, p.channel, p.limit ?? 20);
-      return { entries, count: entries.length };
-    },
-  },
-  {
-    name: "knowledge_capture",
-    description: "Capture data from an external source into the knowledge base.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        source: { type: "string", description: "Source name (e.g. 'slack', 'github', 'web')" },
-        channel: { type: "string", description: "Channel/category name" },
-        content: { type: "string", description: "Content to capture (markdown)" },
-        title: {
-          type: "string",
-          description: "Descriptive title for this entry (auto-derived from content if omitted)",
-        },
-        tags: { type: "array", items: { type: "string" }, description: "Optional tags for categorisation" },
-        metadata: {
-          type: "object",
-          description: "Optional key-value metadata",
-          additionalProperties: { type: "string" },
-        },
-      },
-      required: ["source", "channel", "content"],
-    },
-    execute: (p) => {
-      const path = knowledge.saveIntegrationData(p.source, p.channel, p.content, p.metadata ?? {}, p.title, p.tags);
-      return { source: p.source, channel: p.channel, title: p.title, path };
-    },
-  },
-
-  {
-    name: "knowledge_compress",
-    description: "Compress an integration channel's entries into a dense archive and delete the originals.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        source: { type: "string", description: "Integration source (e.g. 'slack')" },
-        channel: { type: "string", description: "Channel name" },
-      },
-      required: ["source", "channel"],
-    },
-    execute: async (p) => {
-      const path = await knowledge.compressKnowledge(p.source, p.channel);
-      return { source: p.source, channel: p.channel, path };
-    },
-  },
-  {
-    name: "knowledge_archive_project",
-    description: "Archive a project's knowledge (context, decisions, artifacts) into a compressed summary file.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        project: { type: "string", description: "Project name" },
-      },
-      required: ["project"],
-    },
-    execute: async (p) => {
-      const path = await knowledge.archiveProject(p.project);
-      return { project: p.project, path };
-    },
+    execute: () => knowledge.knowledgeStats(),
   },
 ];
 

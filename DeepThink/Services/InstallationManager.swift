@@ -231,7 +231,7 @@ final class InstallationManager {
 
     ## Step 3 — Capture to DeepThink
 
-    Call `mcp__deepthink__knowledge_capture` with:
+    Call `mcp__deepthink__knowledge_integration` with `action: "capture"` and:
     - `source`: `"claude-code"`
     - `channel`: project slug (lowercase, spaces as hyphens)
     - `content`: full markdown from Step 2

@@ -21,11 +21,12 @@ Today's date: ${today}
 ${toolDocs}
 
 ## Instructions
-Given a natural language request, respond with ONLY a JSON array of tool calls:
-[{"tool": "workspace_create_task", "params": {"title": "...", ...}}]
+Given a natural language request, respond with ONLY a JSON array of tool calls.
+Each entity tool (workspace_task, workspace_note, workspace_project, workspace_reminder) takes an "action" param (list, get, create, update, delete):
+[{"tool": "workspace_task", "params": {"action": "create", "title": "...", ...}}]
 
 Rules:
-- If you need to read before writing (e.g. "move all backlog tasks"), emit reads first.
+- If you need to read before writing (e.g. "move all backlog tasks"), emit reads (action: list/get) first.
 - For relative dates ("Friday", "next week"), compute the absolute YYYY-MM-DD date.
 - For "done" or "complete" requests, set status to "Done".
 - When referencing existing items, use the "ref" param with ID or name.
@@ -78,7 +79,7 @@ export class WorkspaceAgent extends Agent {
       }
       try {
         const result = tool.execute(action.params);
-        const summary = formatResult(action.tool, result);
+        const summary = formatResult(action.tool, action.params?.action, result);
         results.push(`✓ ${summary}`);
       } catch (e: any) {
         results.push(`✗ ${action.tool}: ${e.message}`);
@@ -89,22 +90,22 @@ export class WorkspaceAgent extends Agent {
   }
 }
 
-function formatResult(toolName: string, result: any): string {
-  if (toolName.includes("create")) {
-    return `created ${toolName.replace("workspace_create_", "")} #${result.pk}: ${result.title ?? result.name}`;
+function formatResult(toolName: string, action: string | undefined, result: any): string {
+  const entity = toolName.replace("workspace_", "");
+  switch (action) {
+    case "create":
+      return `created ${entity} #${result.pk}: ${result.title ?? result.name}`;
+    case "update":
+      return `updated ${entity} #${result.pk} (${result.updated.join(", ")})`;
+    case "delete":
+      return `deleted ${entity} #${result.pk}`;
+    case "list": {
+      const items = Array.isArray(result) ? result : (result?.tasks ?? result?.notes ?? result?.projects ?? []);
+      return `${items.length} ${entity} found`;
+    }
+    case "get":
+      return `${entity}: ${result.title ?? result.name} (#${result.pk})`;
+    default:
+      return JSON.stringify(result);
   }
-  if (toolName.includes("update")) {
-    return `updated ${toolName.replace("workspace_update_", "")} #${result.pk} (${result.updated.join(", ")})`;
-  }
-  if (toolName.includes("delete")) {
-    return `deleted ${toolName.replace("workspace_delete_", "")} #${result.pk}`;
-  }
-  if (toolName.includes("list")) {
-    const items = Array.isArray(result) ? result : [];
-    return `${items.length} ${toolName.replace("workspace_list_", "")} found`;
-  }
-  if (toolName.includes("get")) {
-    return `${toolName.replace("workspace_get_", "")}: ${result.title ?? result.name} (#${result.pk})`;
-  }
-  return JSON.stringify(result);
 }

@@ -24,6 +24,62 @@ interface RPCResponse {
   error?: { code: number; message: string };
 }
 
+/**
+ * Legacy tool name → consolidated { tool, action } mapping.
+ * The suite still calls the old granular names; this rewrites each call to the
+ * new per-entity tool with an `action` arg so the consolidated server is what
+ * actually gets exercised over the wire.
+ */
+const LEGACY_TOOL_MAP: Record<string, { tool: string; action?: string }> = {
+  workspace_list_tasks: { tool: "workspace_task", action: "list" },
+  workspace_get_task: { tool: "workspace_task", action: "get" },
+  workspace_create_task: { tool: "workspace_task", action: "create" },
+  workspace_update_task: { tool: "workspace_task", action: "update" },
+  workspace_delete_task: { tool: "workspace_task", action: "delete" },
+  workspace_list_notes: { tool: "workspace_note", action: "list" },
+  workspace_get_note: { tool: "workspace_note", action: "get" },
+  workspace_create_note: { tool: "workspace_note", action: "create" },
+  workspace_update_note: { tool: "workspace_note", action: "update" },
+  workspace_delete_note: { tool: "workspace_note", action: "delete" },
+  workspace_list_projects: { tool: "workspace_project", action: "list" },
+  workspace_get_project: { tool: "workspace_project", action: "get" },
+  workspace_create_project: { tool: "workspace_project", action: "create" },
+  workspace_update_project: { tool: "workspace_project", action: "update" },
+  workspace_delete_project: { tool: "workspace_project", action: "delete" },
+  workspace_list_reminders: { tool: "workspace_reminder", action: "list" },
+  workspace_get_reminder: { tool: "workspace_reminder", action: "get" },
+  workspace_create_reminder: { tool: "workspace_reminder", action: "create" },
+  workspace_update_reminder: { tool: "workspace_reminder", action: "update" },
+  workspace_delete_reminder: { tool: "workspace_reminder", action: "delete" },
+  workspace_resolve_deeplinks: { tool: "workspace_resolve_deeplink" },
+  knowledge_list_projects: { tool: "knowledge_project", action: "list" },
+  knowledge_load_project: { tool: "knowledge_project", action: "load" },
+  knowledge_save_project: { tool: "knowledge_project", action: "save" },
+  knowledge_archive_project: { tool: "knowledge_project", action: "archive" },
+  knowledge_list_integrations: { tool: "knowledge_integration", action: "list" },
+  knowledge_load_integration: { tool: "knowledge_integration", action: "load" },
+  knowledge_capture: { tool: "knowledge_integration", action: "capture" },
+  knowledge_compress: { tool: "knowledge_integration", action: "compress" },
+  agent_list: { tool: "agent", action: "list" },
+  agent_get: { tool: "agent", action: "get" },
+  agent_create: { tool: "agent", action: "create" },
+  agent_delete: { tool: "agent", action: "delete" },
+  rule_list: { tool: "rule", action: "list" },
+  rule_get: { tool: "rule", action: "get" },
+  rule_create: { tool: "rule", action: "create" },
+  rule_delete: { tool: "rule", action: "delete" },
+  skill_list: { tool: "skill", action: "list" },
+  skill_get: { tool: "skill", action: "get" },
+  skill_create: { tool: "skill", action: "create" },
+  skill_delete: { tool: "skill", action: "delete" },
+};
+
+function translateCall(name: string, args: Record<string, any>): { name: string; args: Record<string, any> } {
+  const mapped = LEGACY_TOOL_MAP[name];
+  if (!mapped) return { name, args };
+  return { name: mapped.tool, args: mapped.action ? { action: mapped.action, ...args } : { ...args } };
+}
+
 class MCPClient {
   private proc: Subprocess;
   private stdin: FileSink;
@@ -107,7 +163,8 @@ class MCPClient {
 
   /** Calls a tool. Throws if the tool returns isError. */
   async call(name: string, args: Record<string, any> = {}): Promise<any> {
-    const res = await this.send("tools/call", { name, arguments: args });
+    const t = translateCall(name, args);
+    const res = await this.send("tools/call", { name: t.name, arguments: t.args });
     if (res.isError) throw new Error(res.content?.[0]?.text ?? "tool error");
     const text = res.content?.[0]?.text ?? "{}";
     try {
@@ -122,7 +179,8 @@ class MCPClient {
     name: string,
     args: Record<string, any> = {}
   ): Promise<{ result: any; isError: boolean; text: string }> {
-    const res = await this.send("tools/call", { name, arguments: args });
+    const t = translateCall(name, args);
+    const res = await this.send("tools/call", { name: t.name, arguments: t.args });
     const text = res.content?.[0]?.text ?? "";
     return { result: res, isError: !!res.isError, text };
   }
@@ -214,31 +272,14 @@ async function run() {
     section("Tool Discovery");
     const tools = await client.listTools();
     assert("tools/list returns array", Array.isArray(tools));
-    assert("at least 40 tools registered", tools.length >= 40, `got ${tools.length}`);
+    assert("at least 18 tools registered", tools.length >= 18, `got ${tools.length}`);
     const toolNames = new Set(tools.map((t: any) => t.name));
     const REQUIRED_TOOLS = [
-      "workspace_list_tasks",
-      "workspace_get_task",
-      "workspace_create_task",
-      "workspace_update_task",
-      "workspace_delete_task",
-      "workspace_list_notes",
-      "workspace_get_note",
-      "workspace_create_note",
-      "workspace_update_note",
-      "workspace_delete_note",
-      "workspace_list_projects",
-      "workspace_get_project",
-      "workspace_create_project",
-      "workspace_update_project",
-      "workspace_delete_project",
-      "workspace_list_reminders",
-      "workspace_get_reminder",
-      "workspace_create_reminder",
-      "workspace_update_reminder",
-      "workspace_delete_reminder",
+      "workspace_task",
+      "workspace_note",
+      "workspace_project",
+      "workspace_reminder",
       "workspace_resolve_deeplink",
-      "workspace_resolve_deeplinks",
       "workspace_summary",
       "workspace_reindex",
       "deepthink_overview",
@@ -247,27 +288,12 @@ async function run() {
       "workspace_context",
       "knowledge_context",
       "knowledge_stats",
-      "knowledge_list_projects",
-      "knowledge_load_project",
-      "knowledge_save_project",
+      "knowledge_project",
+      "knowledge_integration",
       "knowledge_search",
-      "knowledge_list_integrations",
-      "knowledge_load_integration",
-      "knowledge_capture",
-      "knowledge_compress",
-      "knowledge_archive_project",
-      "agent_list",
-      "agent_get",
-      "agent_create",
-      "agent_delete",
-      "rule_list",
-      "rule_get",
-      "rule_create",
-      "rule_delete",
-      "skill_list",
-      "skill_get",
-      "skill_create",
-      "skill_delete",
+      "agent",
+      "rule",
+      "skill",
     ];
     for (const t of REQUIRED_TOOLS) {
       assert(`tool "${t}" registered`, toolNames.has(t));

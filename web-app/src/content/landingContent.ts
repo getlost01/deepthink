@@ -93,9 +93,9 @@ export const landingContent = {
     tools: [
       'smart_query - token-budgeted context retrieval',
       'unified_search - hybrid BM25 + semantic across workspace',
-      'workspace_task_* - create, list, and update tasks',
-      'knowledge_capture - ingest URLs and files into the index',
-      'agent_* / skill_* / rule_* - manage AI configuration as files',
+      'workspace_task / note / project / reminder - one tool per entity, action-based CRUD',
+      'knowledge_integration {action:"capture"} - ingest URLs and files into the index',
+      'agent / skill / rule - manage AI configuration as files',
     ],
   },
   whyLocalFirst: {
@@ -214,7 +214,7 @@ export const landingContent = {
     {
       title: 'MCP server - any compatible host',
       description:
-        '51 tools across smart, workspace, knowledge, and config namespaces. Works with Claude Code, Cursor, Windsurf, VS Code Copilot, and other MCP-capable clients.',
+        '19 tools across smart, workspace, knowledge, and config namespaces. Works with Claude Code, Cursor, Windsurf, VS Code Copilot, and other MCP-capable clients.',
       points: [
         'smart_query, unified_search, workspace_*, knowledge_*',
         'Some tools only search; others create or edit tasks, notes, and knowledge',

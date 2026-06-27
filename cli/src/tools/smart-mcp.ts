@@ -108,7 +108,7 @@ export const SMART_TOOLS: MCPTool[] = [
         return {
           mode: "full",
           intent: "full_data",
-          hint: "Use workspace_list_tasks, workspace_list_notes, knowledge_load_project, etc. for full data access.",
+          hint: "Use workspace_task/note/project/reminder {action:'list'} or knowledge_project {action:'load'} for full data access.",
           workspace: {
             projects: db.listProjects(),
             tasks: db.listTasks(),
@@ -131,7 +131,7 @@ export const SMART_TOOLS: MCPTool[] = [
         intent: classifyIntent(p.query),
         results: unified,
         totalResults: unified.length,
-        tip: "Need full data? Call again with mode='full' or use specific workspace_list_* / knowledge_load_* tools.",
+        tip: "Need full data? Call again with mode='full' or use workspace_* {action:'list'} / knowledge_project {action:'load'}.",
       };
     },
   },
@@ -173,7 +173,7 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "workspace_context",
     description:
-      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_list_tasks + workspace_list_notes when you need context, not full data.",
+      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_task/note {action:'list'} when you need context, not full data.",
     inputSchema: {
       type: "object",
       properties: {
@@ -247,7 +247,7 @@ export const SMART_TOOLS: MCPTool[] = [
           projects: kProjects,
           integrationSources: kIntegrations.map((i) => `${i.source} (${i.channels.length} channels)`),
         },
-        hint: "Use smart_query for relevant context, or workspace_list_*/knowledge_load_* for full data.",
+        hint: "Use smart_query for relevant context, or workspace_* {action:'list'} / knowledge_project {action:'load'} for full data.",
       };
     },
   },

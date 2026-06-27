@@ -57,7 +57,7 @@ For Cursor / VS Code / Windsurf, add to your MCP config:
 }
 ```
 
-**3. Query with context** - connected agents can use 51 tools to list tasks, search knowledge, read project notes, create entries, and more.
+**3. Query with context** - connected agents can use 19 tools to list tasks, search knowledge, read project notes, create entries, and more.
 
 ```bash
 deepthink ask "what's blocked on the API project?"
@@ -268,7 +268,7 @@ claude mcp add deepthink -- ~/.local/bin/deepthink-mcp
 }
 ```
 
-The MCP server works with **any MCP-compatible AI agent** - Claude is not required. 51 tools across `smart_query`, `unified_search`, `workspace_*`, and `knowledge_*` namespaces: some only search your workspace, others create or edit items. Every change is audited and synced to the app.
+The MCP server works with **any MCP-compatible AI agent** - Claude is not required. 19 tools across `smart_query`, `unified_search`, `workspace_*`, and `knowledge_*` namespaces: some only search your workspace, others create or edit items. Every change is audited and synced to the app.
 
 Full tool reference: [docs/mcp-integration.md](docs/mcp-integration.md)
 
@@ -299,7 +299,7 @@ DeepThink/
 
 cli/
 ├── src/index.ts               # CLI entrypoint (Bun)
-├── src/mcp-server.ts          # MCP server (stdio transport; 51 tools in src/tools/*)
+├── src/mcp-server.ts          # MCP server (stdio transport; 19 tools in src/tools/*)
 ├── src/agents/                # 13 autonomous agents (research, planner, react, writer, …)
 ├── src/memory/                # agent memory manager + compressor
 ├── src/tools/                 # workspace, knowledge, config, analytics, search tools

@@ -15,641 +15,436 @@ export interface WorkspaceTool {
   description: string;
   inputSchema: Record<string, any>;
   execute: (params: Record<string, any>) => any;
-  readonly?: boolean;
 }
 
 const STATUS_ENUM = ["Backlog", "To Do", "In Progress", "Done", "Cancelled"];
 const PRIORITY_ENUM = ["None", "Low", "Medium", "High", "Urgent"];
+const CRUD_ACTIONS = ["list", "get", "create", "update", "delete"];
+
+function paginate<T>(all: T[], key: string, p: Record<string, any>) {
+  const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
+  const offset = typeof p.offset === "number" ? p.offset : 0;
+  return {
+    [key]: all.slice(offset, offset + limit),
+    total: all.length,
+    limit,
+    offset,
+    hasMore: offset + limit < all.length,
+  };
+}
+
+// ── Deeplink resolution (shared by single + batch) ──
+
+function resolveDeeplink(url: string): unknown {
+  const match = url.match(/^deepthink:\/\/([^/?]+)\/?([^?]*)?(\?.*)?$/);
+  if (!match) throw new Error(`Invalid deepthink:// URL: ${url}`);
+
+  const type = match[1];
+  const rawUUID = match[2] ?? "";
+  const queryString = match[3] ?? "";
+
+  if (type === "knowledge") {
+    const params = new URLSearchParams(queryString.replace(/^\?/, ""));
+    const id = params.get("id") ?? rawUUID;
+    return { type: "knowledge", entryId: id, note: "Use knowledge_search tool to find this entry's content" };
+  }
+
+  const normalizedUUID = rawUUID.replace(/-/g, "").toUpperCase();
+
+  if (type === "task") {
+    const found = db.listTasks({ excludeArchived: false }).find((t) => t.id === normalizedUUID);
+    if (!found) throw new Error(`task not found for URL: ${url}`);
+    return found.isArchived ? { ...found, _warning: "This task is archived" } : found;
+  }
+  if (type === "note") {
+    const found = db.listNotes({ excludeArchived: false }).find((n) => n.id === normalizedUUID);
+    if (!found) throw new Error(`note not found for URL: ${url}`);
+    return found.isArchived ? { ...found, _warning: "This note is archived" } : found;
+  }
+  if (type === "project") {
+    const found = db.listProjects().find((pr) => pr.id === normalizedUUID);
+    if (!found) throw new Error(`project not found for URL: ${url}`);
+    return found;
+  }
+  if (type === "reminder") {
+    const found = db.listReminders({}).find((r) => r.id === normalizedUUID);
+    if (!found) throw new Error(`reminder not found for URL: ${url}`);
+    return found;
+  }
+
+  throw new Error(`Unsupported deepthink:// type "${type}" in URL: ${url}`);
+}
 
 export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Tasks ──
   {
-    name: "workspace_list_tasks",
-    readonly: true,
-    description: "List tasks with optional filters. Returns paginated results (default 50 per page).",
+    name: "workspace_task",
+    description:
+      "Create, read, update, delete, or list tasks. Set `action`:\n" +
+      "- list: optional status, priority, project, limit, offset → paginated list\n" +
+      "- get: requires ref (ID or name)\n" +
+      "- create: requires title; optional detail, status, priority, storyPoints, dueDate, project\n" +
+      "- update: requires ref; any of title, detail, status, priority, storyPoints, dueDate ('none' to clear), project ('none' to unassign)\n" +
+      "- delete: requires ref",
     inputSchema: {
       type: "object",
       properties: {
-        status: { type: "string", enum: STATUS_ENUM, description: "Filter by status" },
-        priority: { type: "string", enum: PRIORITY_ENUM, description: "Filter by priority" },
-        project: { type: "string", description: "Filter by project name or ID" },
-        limit: { type: "number", description: "Max results to return (default 50)" },
-        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
-      },
-    },
-    execute: (p) => {
-      const all = db.listTasks({ status: p.status, priority: p.priority, project: p.project });
-      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
-      const offset = typeof p.offset === "number" ? p.offset : 0;
-      return {
-        tasks: all.slice(offset, offset + limit),
-        total: all.length,
-        limit,
-        offset,
-        hasMore: offset + limit < all.length,
-      };
-    },
-  },
-  {
-    name: "workspace_get_task",
-    readonly: true,
-    description: "Get a single task by ID (number) or name (fuzzy match).",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Task ID or name" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const t = db.getTask(p.ref);
-      if (!t) throw new Error(`task not found: ${p.ref}`);
-      return t;
-    },
-  },
-  {
-    name: "workspace_create_task",
-    description: "Create a new task.",
-    inputSchema: {
-      type: "object",
-      properties: {
+        action: { type: "string", enum: CRUD_ACTIONS, description: "Operation to perform" },
+        ref: { type: "string", description: "Task ID or name (get/update/delete)" },
         title: { type: "string", description: "Task title" },
         detail: { type: "string", description: "Task description/details" },
-        status: { type: "string", enum: STATUS_ENUM, description: "Task status (default: To Do)" },
-        priority: { type: "string", enum: PRIORITY_ENUM, description: "Priority level (default: None)" },
+        status: { type: "string", enum: STATUS_ENUM, description: "Task status (default: To Do on create)" },
+        priority: { type: "string", enum: PRIORITY_ENUM, description: "Priority level (default: None on create)" },
         storyPoints: { type: "number", description: "Story points estimate" },
-        dueDate: { type: "string", description: "Due date in YYYY-MM-DD format" },
-        project: { type: "string", description: "Project name or ID to assign to" },
+        dueDate: { type: "string", description: "Due date YYYY-MM-DD (or 'none' to clear on update)" },
+        project: { type: "string", description: "Project name or ID (or 'none' to unassign on update)" },
+        limit: { type: "number", description: "list: max results (default 50)" },
+        offset: { type: "number", description: "list: skip first N (default 0)" },
       },
-      required: ["title"],
+      required: ["action"],
     },
     execute: (p) => {
-      const { pk, id } = db.createTask(p.title, {
-        detail: p.detail,
-        status: p.status,
-        priority: p.priority,
-        storyPoints: p.storyPoints,
-        dueDate: p.dueDate,
-        project: p.project,
-      });
-      indexEntry({
-        id: `task:${hexToUUID(id)}`,
-        type: "task",
-        title: p.title,
-        content: taskContent(p.title, p.detail ?? "", p.status ?? "To Do", false),
-        tags: [],
-        source: "task",
-        importedAt: new Date(),
-      });
-      return { pk, title: p.title, status: p.status ?? "To Do" };
-    },
-  },
-  {
-    name: "workspace_update_task",
-    description: "Update an existing task's fields. Only provided fields are changed.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: { type: "string", description: "Task ID or name" },
-        title: { type: "string" },
-        detail: { type: "string" },
-        status: { type: "string", enum: STATUS_ENUM },
-        priority: { type: "string", enum: PRIORITY_ENUM },
-        storyPoints: { type: "number" },
-        dueDate: { type: "string", description: "YYYY-MM-DD or 'none' to clear" },
-        project: { type: "string", description: "Project name/ID or 'none' to unassign" },
-      },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const t = db.getTask(p.ref);
-      if (!t) throw new Error(`task not found: ${p.ref}`);
-      if (t.isArchived) throw new Error(`task is archived and cannot be edited. Unarchive it first.`);
-      const { ref, ...fields } = p;
-      if (fields.dueDate === "none") fields.dueDate = null;
-      db.updateTask(t.pk, fields);
-      const updated = db.getTask(t.pk.toString());
-      if (updated)
-        indexEntry({
-          id: `task:${hexToUUID(t.id)}`,
-          type: "task",
-          title: updated.title,
-          content: taskContent(updated.title, updated.detail, updated.status, updated.isArchived),
-          tags: [],
-          source: updated.isArchived ? "archive" : "task",
-          importedAt: updated.modifiedAt,
-        });
-      return { pk: t.pk, updated: Object.keys(fields) };
-    },
-  },
-  {
-    name: "workspace_delete_task",
-    description: "Delete a task permanently.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Task ID or name" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const t = db.getTask(p.ref);
-      if (!t) throw new Error(`task not found: ${p.ref}`);
-      for (const subId of listSubtaskIds(t.pk)) {
-        deleteChunksForEntry(`task:${hexToUUID(subId)}`);
+      switch (p.action) {
+        case "list": {
+          const all = db.listTasks({ status: p.status, priority: p.priority, project: p.project });
+          return paginate(all, "tasks", p);
+        }
+        case "get": {
+          const t = db.getTask(p.ref);
+          if (!t) throw new Error(`task not found: ${p.ref}`);
+          return t;
+        }
+        case "create": {
+          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          const { pk, id } = db.createTask(p.title, {
+            detail: p.detail,
+            status: p.status,
+            priority: p.priority,
+            storyPoints: p.storyPoints,
+            dueDate: p.dueDate,
+            project: p.project,
+          });
+          indexEntry({
+            id: `task:${hexToUUID(id)}`,
+            type: "task",
+            title: p.title,
+            content: taskContent(p.title, p.detail ?? "", p.status ?? "To Do", false),
+            tags: [],
+            source: "task",
+            importedAt: new Date(),
+          });
+          return { pk, title: p.title, status: p.status ?? "To Do" };
+        }
+        case "update": {
+          const t = db.getTask(p.ref);
+          if (!t) throw new Error(`task not found: ${p.ref}`);
+          if (t.isArchived) throw new Error(`task is archived and cannot be edited. Unarchive it first.`);
+          const { action, ref, limit, offset, ...fields } = p;
+          if (fields.dueDate === "none") fields.dueDate = null;
+          db.updateTask(t.pk, fields);
+          const updated = db.getTask(t.pk.toString());
+          if (updated)
+            indexEntry({
+              id: `task:${hexToUUID(t.id)}`,
+              type: "task",
+              title: updated.title,
+              content: taskContent(updated.title, updated.detail, updated.status, updated.isArchived),
+              tags: [],
+              source: updated.isArchived ? "archive" : "task",
+              importedAt: updated.modifiedAt,
+            });
+          return { pk: t.pk, updated: Object.keys(fields) };
+        }
+        case "delete": {
+          const t = db.getTask(p.ref);
+          if (!t) throw new Error(`task not found: ${p.ref}`);
+          for (const subId of listSubtaskIds(t.pk)) deleteChunksForEntry(`task:${hexToUUID(subId)}`);
+          deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
+          db.deleteTask(t.pk);
+          return { pk: t.pk, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: ${CRUD_ACTIONS.join(", ")}`);
       }
-      deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
-      db.deleteTask(t.pk);
-      return { pk: t.pk, deleted: true };
     },
   },
 
   // ── Notes ──
   {
-    name: "workspace_list_notes",
-    readonly: true,
-    description: "List notes with optional filters. Returns paginated results (default 50 per page).",
+    name: "workspace_note",
+    description:
+      "Create, read, update, delete, or list notes. Set `action`:\n" +
+      "- list: optional project, pinned, limit, offset → paginated list\n" +
+      "- get: requires ref (ID or title)\n" +
+      "- create: requires title; optional content (markdown), pinned, project\n" +
+      "- update: requires ref; any of title, content, pinned, project ('none' to unassign)\n" +
+      "- delete: requires ref",
     inputSchema: {
       type: "object",
       properties: {
-        project: { type: "string", description: "Filter by project name or ID" },
-        pinned: { type: "boolean", description: "Filter pinned notes only" },
-        limit: { type: "number", description: "Max results to return (default 50)" },
-        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
-      },
-    },
-    execute: (p) => {
-      const all = db.listNotes({ project: p.project, pinned: p.pinned });
-      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
-      const offset = typeof p.offset === "number" ? p.offset : 0;
-      return {
-        notes: all.slice(offset, offset + limit),
-        total: all.length,
-        limit,
-        offset,
-        hasMore: offset + limit < all.length,
-      };
-    },
-  },
-  {
-    name: "workspace_get_note",
-    readonly: true,
-    description: "Get a single note by ID or name.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Note ID or title" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const n = db.getNote(p.ref);
-      if (!n) throw new Error(`note not found: ${p.ref}`);
-      return n;
-    },
-  },
-  {
-    name: "workspace_create_note",
-    description: "Create a new note.",
-    inputSchema: {
-      type: "object",
-      properties: {
+        action: { type: "string", enum: CRUD_ACTIONS, description: "Operation to perform" },
+        ref: { type: "string", description: "Note ID or title (get/update/delete)" },
         title: { type: "string", description: "Note title" },
         content: { type: "string", description: "Note body content (markdown supported)" },
         pinned: { type: "boolean", description: "Pin this note" },
-        project: { type: "string", description: "Project name or ID" },
+        project: { type: "string", description: "Project name or ID (or 'none' to unassign on update)" },
+        limit: { type: "number", description: "list: max results (default 50)" },
+        offset: { type: "number", description: "list: skip first N (default 0)" },
       },
-      required: ["title"],
+      required: ["action"],
     },
     execute: (p) => {
-      const { pk, id } = db.createNote(p.title, {
-        content: p.content,
-        pinned: p.pinned,
-        project: p.project,
-      });
-      indexEntry({
-        id: `note:${hexToUUID(id)}`,
-        type: "note",
-        title: p.title,
-        content: noteContent(p.title, p.content ?? "", false),
-        tags: [],
-        source: "note",
-        importedAt: new Date(),
-      });
-      return { pk, title: p.title };
-    },
-  },
-  {
-    name: "workspace_update_note",
-    description: "Update an existing note's fields.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: { type: "string", description: "Note ID or title" },
-        title: { type: "string" },
-        content: { type: "string" },
-        pinned: { type: "boolean" },
-        project: { type: "string", description: "Project name/ID or 'none' to unassign" },
-      },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const n = db.getNote(p.ref);
-      if (!n) throw new Error(`note not found: ${p.ref}`);
-      if (n.isArchived) throw new Error(`note is archived and cannot be edited. Unarchive it first.`);
-      const { ref, ...fields } = p;
-      db.updateNote(n.pk, fields);
-      const updated = db.getNote(n.pk.toString());
-      if (updated)
-        indexEntry({
-          id: `note:${hexToUUID(n.id)}`,
-          type: "note",
-          title: updated.title,
-          content: noteContent(updated.title, updated.content, updated.isArchived),
-          tags: [],
-          source: updated.isArchived ? "archive" : "note",
-          importedAt: updated.modifiedAt,
-        });
-      return { pk: n.pk, updated: Object.keys(fields) };
-    },
-  },
-  {
-    name: "workspace_delete_note",
-    description: "Delete a note permanently.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Note ID or title" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const n = db.getNote(p.ref);
-      if (!n) throw new Error(`note not found: ${p.ref}`);
-      deleteChunksForEntry(`note:${hexToUUID(n.id)}`);
-      db.deleteNote(n.pk);
-      return { pk: n.pk, deleted: true };
+      switch (p.action) {
+        case "list": {
+          const all = db.listNotes({ project: p.project, pinned: p.pinned });
+          return paginate(all, "notes", p);
+        }
+        case "get": {
+          const n = db.getNote(p.ref);
+          if (!n) throw new Error(`note not found: ${p.ref}`);
+          return n;
+        }
+        case "create": {
+          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          const { pk, id } = db.createNote(p.title, { content: p.content, pinned: p.pinned, project: p.project });
+          indexEntry({
+            id: `note:${hexToUUID(id)}`,
+            type: "note",
+            title: p.title,
+            content: noteContent(p.title, p.content ?? "", false),
+            tags: [],
+            source: "note",
+            importedAt: new Date(),
+          });
+          return { pk, title: p.title };
+        }
+        case "update": {
+          const n = db.getNote(p.ref);
+          if (!n) throw new Error(`note not found: ${p.ref}`);
+          if (n.isArchived) throw new Error(`note is archived and cannot be edited. Unarchive it first.`);
+          const { action, ref, limit, offset, ...fields } = p;
+          db.updateNote(n.pk, fields);
+          const updated = db.getNote(n.pk.toString());
+          if (updated)
+            indexEntry({
+              id: `note:${hexToUUID(n.id)}`,
+              type: "note",
+              title: updated.title,
+              content: noteContent(updated.title, updated.content, updated.isArchived),
+              tags: [],
+              source: updated.isArchived ? "archive" : "note",
+              importedAt: updated.modifiedAt,
+            });
+          return { pk: n.pk, updated: Object.keys(fields) };
+        }
+        case "delete": {
+          const n = db.getNote(p.ref);
+          if (!n) throw new Error(`note not found: ${p.ref}`);
+          deleteChunksForEntry(`note:${hexToUUID(n.id)}`);
+          db.deleteNote(n.pk);
+          return { pk: n.pk, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: ${CRUD_ACTIONS.join(", ")}`);
+      }
     },
   },
 
   // ── Projects ──
   {
-    name: "workspace_list_projects",
-    readonly: true,
-    description: "List all projects with task/note counts. Returns paginated results (default 50 per page).",
+    name: "workspace_project",
+    description:
+      "Create, read, update, delete, or list projects. Set `action`:\n" +
+      "- list: optional limit, offset → paginated list with task/note counts\n" +
+      "- get: requires ref (ID or name)\n" +
+      "- create: requires name; optional summary, color (hex like #007AFF)\n" +
+      "- update: requires ref; any of name, summary, color, archived (boolean; pass archived:false to unarchive)\n" +
+      "- delete: requires ref (tasks and notes in it become unassigned)",
     inputSchema: {
       type: "object",
       properties: {
-        limit: { type: "number", description: "Max results to return (default 50)" },
-        offset: { type: "number", description: "Skip first N results for pagination (default 0)" },
-      },
-    },
-    execute: (p) => {
-      const all = db.listProjects();
-      const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
-      const offset = typeof p.offset === "number" ? p.offset : 0;
-      return {
-        projects: all.slice(offset, offset + limit),
-        total: all.length,
-        limit,
-        offset,
-        hasMore: offset + limit < all.length,
-      };
-    },
-  },
-  {
-    name: "workspace_get_project",
-    readonly: true,
-    description: "Get a single project by ID or name.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Project ID or name" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const pr = db.getProject(p.ref);
-      if (!pr) throw new Error(`project not found: ${p.ref}`);
-      return pr;
-    },
-  },
-  {
-    name: "workspace_create_project",
-    description: "Create a new project.",
-    inputSchema: {
-      type: "object",
-      properties: {
+        action: { type: "string", enum: CRUD_ACTIONS, description: "Operation to perform" },
+        ref: { type: "string", description: "Project ID or name (get/update/delete)" },
         name: { type: "string", description: "Project name" },
         summary: { type: "string", description: "Project description" },
         color: { type: "string", description: "Hex color (e.g. #007AFF)" },
+        archived: { type: "boolean", description: "Archive/unarchive (update only)" },
+        limit: { type: "number", description: "list: max results (default 50)" },
+        offset: { type: "number", description: "list: skip first N (default 0)" },
       },
-      required: ["name"],
+      required: ["action"],
     },
     execute: (p) => {
-      const { pk, id } = db.createProject(p.name, { summary: p.summary, color: p.color });
-      indexEntry({
-        id: `project:${hexToUUID(id)}`,
-        type: "project",
-        title: p.name,
-        content: projectContent(p.name, p.summary, false),
-        tags: [],
-        source: "project",
-        importedAt: new Date(),
-      });
-      return { pk, name: p.name };
-    },
-  },
-  {
-    name: "workspace_update_project",
-    description: "Update an existing project's fields.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: { type: "string", description: "Project ID or name" },
-        name: { type: "string" },
-        summary: { type: "string" },
-        color: { type: "string" },
-        archived: { type: "boolean" },
-      },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const pr = db.getProject(p.ref);
-      if (!pr) throw new Error(`project not found: ${p.ref}`);
-      if (pr.isArchived && !("archived" in p))
-        throw new Error(
-          `project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`
-        );
-      const { ref, ...fields } = p;
-      db.updateProject(pr.pk, fields);
-      const updated2 = db.getProject(pr.pk.toString());
-      if (updated2)
-        indexEntry({
-          id: `project:${hexToUUID(pr.id)}`,
-          type: "project",
-          title: updated2.name,
-          content: projectContent(updated2.name, updated2.summary, updated2.isArchived),
-          tags: [],
-          source: updated2.isArchived ? "archive" : "project",
-          importedAt: updated2.modifiedAt,
-        });
-      return { pk: pr.pk, updated: Object.keys(fields) };
-    },
-  },
-  {
-    name: "workspace_delete_project",
-    description: "Delete a project. Tasks and notes in it become unassigned.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Project ID or name" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const pr = db.getProject(p.ref);
-      if (!pr) throw new Error(`project not found: ${p.ref}`);
-      deleteChunksForEntry(`project:${hexToUUID(pr.id)}`);
-      db.deleteProject(pr.pk);
-      return { pk: pr.pk, deleted: true };
+      switch (p.action) {
+        case "list":
+          return paginate(db.listProjects(), "projects", p);
+        case "get": {
+          const pr = db.getProject(p.ref);
+          if (!pr) throw new Error(`project not found: ${p.ref}`);
+          return pr;
+        }
+        case "create": {
+          if (!p.name) throw new Error(`'name' is required for action 'create'`);
+          const { pk, id } = db.createProject(p.name, { summary: p.summary, color: p.color });
+          indexEntry({
+            id: `project:${hexToUUID(id)}`,
+            type: "project",
+            title: p.name,
+            content: projectContent(p.name, p.summary, false),
+            tags: [],
+            source: "project",
+            importedAt: new Date(),
+          });
+          return { pk, name: p.name };
+        }
+        case "update": {
+          const pr = db.getProject(p.ref);
+          if (!pr) throw new Error(`project not found: ${p.ref}`);
+          if (pr.isArchived && !("archived" in p))
+            throw new Error(
+              `project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`
+            );
+          const { action, ref, limit, offset, ...fields } = p;
+          db.updateProject(pr.pk, fields);
+          const updated = db.getProject(pr.pk.toString());
+          if (updated)
+            indexEntry({
+              id: `project:${hexToUUID(pr.id)}`,
+              type: "project",
+              title: updated.name,
+              content: projectContent(updated.name, updated.summary, updated.isArchived),
+              tags: [],
+              source: updated.isArchived ? "archive" : "project",
+              importedAt: updated.modifiedAt,
+            });
+          return { pk: pr.pk, updated: Object.keys(fields) };
+        }
+        case "delete": {
+          const pr = db.getProject(p.ref);
+          if (!pr) throw new Error(`project not found: ${p.ref}`);
+          deleteChunksForEntry(`project:${hexToUUID(pr.id)}`);
+          db.deleteProject(pr.pk);
+          return { pk: pr.pk, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: ${CRUD_ACTIONS.join(", ")}`);
+      }
     },
   },
 
   // ── Reminders ──
   {
-    name: "workspace_list_reminders",
-    readonly: true,
-    description: "List all reminders. Optionally filter by completion status.",
+    name: "workspace_reminder",
+    description:
+      "Create, read, update, delete, or list reminders. Set `action`:\n" +
+      "- list: optional completed (boolean) → all reminders\n" +
+      "- get: requires ref (ID or title)\n" +
+      "- create: requires title; optional notes, reminderDate (ISO 8601 e.g. 2026-05-05T14:00:00)\n" +
+      "- update: requires ref; any of title, notes, completed, reminderDate ('none' to clear)\n" +
+      "- delete: requires ref",
     inputSchema: {
       type: "object",
       properties: {
-        completed: { type: "boolean", description: "Filter by completion status" },
-      },
-    },
-    execute: (p) => db.listReminders({ completed: p.completed }),
-  },
-  {
-    name: "workspace_get_reminder",
-    readonly: true,
-    description: "Get a single reminder by ID (number) or title (fuzzy match).",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Reminder ID or title" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const r = db.getReminder(p.ref);
-      if (!r) throw new Error(`reminder not found: ${p.ref}`);
-      return r;
-    },
-  },
-  {
-    name: "workspace_create_reminder",
-    description: "Create a new reminder with an optional date/time to be reminded.",
-    inputSchema: {
-      type: "object",
-      properties: {
+        action: { type: "string", enum: CRUD_ACTIONS, description: "Operation to perform" },
+        ref: { type: "string", description: "Reminder ID or title (get/update/delete)" },
         title: { type: "string", description: "Reminder title" },
         notes: { type: "string", description: "Additional notes" },
-        reminderDate: {
-          type: "string",
-          description: "When to remind, in ISO 8601 format (e.g. 2026-05-05T14:00:00). Optional.",
-        },
+        completed: { type: "boolean", description: "list: filter by completion status; update: set completion status" },
+        reminderDate: { type: "string", description: "ISO 8601 date/time (or 'none' to clear on update)" },
       },
-      required: ["title"],
+      required: ["action"],
     },
     execute: (p) => {
-      const { pk, id } = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
-      indexEntry({
-        id: `reminder:${hexToUUID(id)}`,
-        type: "reminder",
-        title: p.title,
-        content: reminderContent(p.title, p.notes, false),
-        tags: [],
-        source: "reminder",
-        importedAt: new Date(),
-      });
-      return { pk, title: p.title, reminderDate: p.reminderDate ?? null };
-    },
-  },
-  {
-    name: "workspace_update_reminder",
-    description: "Update an existing reminder. Only provided fields are changed.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        ref: { type: "string", description: "Reminder ID or title" },
-        title: { type: "string" },
-        notes: { type: "string" },
-        completed: { type: "boolean" },
-        reminderDate: { type: "string", description: "ISO 8601 date or 'none' to clear" },
-      },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const r = db.getReminder(p.ref);
-      if (!r) throw new Error(`reminder not found: ${p.ref}`);
-      const { ref, ...fields } = p;
-      if (fields.reminderDate === "none") fields.reminderDate = null;
-      db.updateReminder(r.pk, fields);
-      const updated = db.getReminder(r.pk.toString());
-      if (updated)
-        indexEntry({
-          id: `reminder:${hexToUUID(r.id)}`,
-          type: "reminder",
-          title: updated.title,
-          content: reminderContent(updated.title, updated.notes, updated.isCompleted),
-          tags: [],
-          source: "reminder",
-          importedAt: updated.modifiedAt,
-        });
-      return { pk: r.pk, updated: Object.keys(fields) };
-    },
-  },
-  {
-    name: "workspace_delete_reminder",
-    description: "Delete a reminder permanently.",
-    inputSchema: {
-      type: "object",
-      properties: { ref: { type: "string", description: "Reminder ID or title" } },
-      required: ["ref"],
-    },
-    execute: (p) => {
-      const r = db.getReminder(p.ref);
-      if (!r) throw new Error(`reminder not found: ${p.ref}`);
-      deleteChunksForEntry(`reminder:${hexToUUID(r.id)}`);
-      db.deleteReminder(r.pk);
-      return { pk: r.pk, deleted: true };
+      switch (p.action) {
+        case "list":
+          return db.listReminders({ completed: p.completed });
+        case "get": {
+          const r = db.getReminder(p.ref);
+          if (!r) throw new Error(`reminder not found: ${p.ref}`);
+          return r;
+        }
+        case "create": {
+          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          const { pk, id } = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
+          indexEntry({
+            id: `reminder:${hexToUUID(id)}`,
+            type: "reminder",
+            title: p.title,
+            content: reminderContent(p.title, p.notes, false),
+            tags: [],
+            source: "reminder",
+            importedAt: new Date(),
+          });
+          return { pk, title: p.title, reminderDate: p.reminderDate ?? null };
+        }
+        case "update": {
+          const r = db.getReminder(p.ref);
+          if (!r) throw new Error(`reminder not found: ${p.ref}`);
+          const { action, ref, ...fields } = p;
+          if (fields.reminderDate === "none") fields.reminderDate = null;
+          db.updateReminder(r.pk, fields);
+          const updated = db.getReminder(r.pk.toString());
+          if (updated)
+            indexEntry({
+              id: `reminder:${hexToUUID(r.id)}`,
+              type: "reminder",
+              title: updated.title,
+              content: reminderContent(updated.title, updated.notes, updated.isCompleted),
+              tags: [],
+              source: "reminder",
+              importedAt: updated.modifiedAt,
+            });
+          return { pk: r.pk, updated: Object.keys(fields) };
+        }
+        case "delete": {
+          const r = db.getReminder(p.ref);
+          if (!r) throw new Error(`reminder not found: ${p.ref}`);
+          deleteChunksForEntry(`reminder:${hexToUUID(r.id)}`);
+          db.deleteReminder(r.pk);
+          return { pk: r.pk, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: ${CRUD_ACTIONS.join(", ")}`);
+      }
     },
   },
 
-  // ── Deeplink ──
+  // ── Deeplink (single or batch) ──
   {
     name: "workspace_resolve_deeplink",
     description:
-      "Resolve any deepthink:// URL to its full content. Use this when you encounter a deepthink:// link in a note or task and want to read the referenced item. Supports task, note, project, and reminder URLs.",
+      "Resolve deepthink:// URLs to their full content. Pass `url` for one, or `urls` for many (returns a map of URL → item or error). Supports task, note, project, reminder, and knowledge URLs.",
     inputSchema: {
       type: "object",
       properties: {
-        url: {
-          type: "string",
-          description: "A deepthink:// URL, e.g. deepthink://task/UUID-WITH-DASHES or deepthink://note/UUID",
-        },
-      },
-      required: ["url"],
-    },
-    execute: (p) => {
-      const url: string = p.url;
-      const match = url.match(/^deepthink:\/\/([^/?]+)\/?([^?]*)?(\?.*)?$/);
-      if (!match) throw new Error(`Invalid deepthink:// URL: ${url}`);
-
-      const type = match[1];
-      const rawUUID = match[2] ?? "";
-      const queryString = match[3] ?? "";
-
-      if (type === "knowledge") {
-        const params = new URLSearchParams(queryString.replace(/^\?/, ""));
-        const id = params.get("id") ?? rawUUID;
-        return {
-          type: "knowledge",
-          entryId: id,
-          note: "Use knowledge_search tool to find this entry's content",
-        };
-      }
-
-      const normalizedUUID = rawUUID.replace(/-/g, "").toUpperCase();
-
-      if (type === "task") {
-        const found = db.listTasks({ excludeArchived: false }).find((t) => t.id === normalizedUUID);
-        if (!found) throw new Error(`task not found for URL: ${url}`);
-        if (found.isArchived) return { ...found, _warning: "This task is archived" };
-        return found;
-      }
-      if (type === "note") {
-        const found = db.listNotes({ excludeArchived: false }).find((n) => n.id === normalizedUUID);
-        if (!found) throw new Error(`note not found for URL: ${url}`);
-        if (found.isArchived) return { ...found, _warning: "This note is archived" };
-        return found;
-      }
-      if (type === "project") {
-        const found = db.listProjects().find((p) => p.id === normalizedUUID);
-        if (!found) throw new Error(`project not found for URL: ${url}`);
-        return found;
-      }
-      if (type === "reminder") {
-        const found = db.listReminders({}).find((r) => r.id === normalizedUUID);
-        if (!found) throw new Error(`reminder not found for URL: ${url}`);
-        return found;
-      }
-
-      throw new Error(`Unsupported deepthink:// type "${type}" in URL: ${url}`);
-    },
-  },
-
-  // ── Batch Deeplink ──
-  {
-    name: "workspace_resolve_deeplinks",
-    description:
-      "Resolve multiple deepthink:// URLs at once. Returns a map of URL → resolved item (or error message). More efficient than calling workspace_resolve_deeplink in a loop.",
-    inputSchema: {
-      type: "object",
-      properties: {
+        url: { type: "string", description: "A single deepthink:// URL, e.g. deepthink://task/UUID-WITH-DASHES" },
         urls: {
           type: "array",
           items: { type: "string" },
-          description: "Array of deepthink:// URLs to resolve",
+          description: "Multiple deepthink:// URLs to resolve at once",
         },
       },
-      required: ["urls"],
     },
     execute: (p) => {
-      const urls: string[] = p.urls;
-      const results: Record<string, unknown> = {};
-      for (const url of urls) {
-        try {
-          const match = url.match(/^deepthink:\/\/([^/?]+)\/?([^?]*)?(\?.*)?$/);
-          if (!match) {
-            results[url] = { error: `Invalid deepthink:// URL: ${url}` };
-            continue;
+      if (Array.isArray(p.urls)) {
+        const results: Record<string, unknown> = {};
+        for (const url of p.urls) {
+          try {
+            results[url] = resolveDeeplink(url);
+          } catch (e: any) {
+            results[url] = { error: e.message };
           }
-
-          const type = match[1];
-          const rawUUID = match[2] ?? "";
-          const queryString = match[3] ?? "";
-
-          if (type === "knowledge") {
-            const params = new URLSearchParams(queryString.replace(/^\?/, ""));
-            const id = params.get("id") ?? rawUUID;
-            results[url] = { type: "knowledge", entryId: id, note: "Use knowledge_search to find content" };
-            continue;
-          }
-
-          const normalizedUUID = rawUUID.replace(/-/g, "").toUpperCase();
-
-          if (type === "task") {
-            const found = db.listTasks({ excludeArchived: false }).find((t) => t.id === normalizedUUID);
-            results[url] = found
-              ? found.isArchived
-                ? { ...found, _warning: "This task is archived" }
-                : found
-              : { error: `task not found: ${url}` };
-          } else if (type === "note") {
-            const found = db.listNotes({ excludeArchived: false }).find((n) => n.id === normalizedUUID);
-            results[url] = found
-              ? found.isArchived
-                ? { ...found, _warning: "This note is archived" }
-                : found
-              : { error: `note not found: ${url}` };
-          } else if (type === "project") {
-            const found = db.listProjects().find((p) => p.id === normalizedUUID);
-            results[url] = found ?? { error: `project not found: ${url}` };
-          } else if (type === "reminder") {
-            const found = db.listReminders({}).find((r) => r.id === normalizedUUID);
-            results[url] = found ?? { error: `reminder not found: ${url}` };
-          } else {
-            results[url] = { error: `Unsupported type "${type}"` };
-          }
-        } catch (e: any) {
-          results[url] = { error: e.message };
         }
+        return results;
       }
-      return results;
+      if (!p.url) throw new Error(`provide 'url' (string) or 'urls' (array)`);
+      return resolveDeeplink(p.url);
     },
   },
 
   // ── Summary ──
   {
     name: "workspace_summary",
-    readonly: true,
     description: "Get a summary of the entire workspace: project, task, and note counts plus recent items.",
     inputSchema: { type: "object", properties: {} },
     execute: () => {
@@ -693,6 +488,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
       };
     },
   },
+
   // ── Reindex ──
   {
     name: "workspace_reindex",

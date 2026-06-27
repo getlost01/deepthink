@@ -1070,8 +1070,11 @@ function cmdHelp() {
   smart_query          auto-routes: hybrid retrieval (BM25 + semantic)
   knowledge_context    hybrid knowledge retrieval (~90% token savings)
   workspace_context    query-relevant workspace snapshot
+  unified_search       single ranked list across all data types
   deepthink_overview   compact counts + top items (~200 tokens)
-  + all workspace_*, knowledge_*, agent_*, rule_*, skill_* tools
+  workspace_task|note|project|reminder   CRUD via { action: list|get|create|update|delete }
+  knowledge_project|knowledge_integration   CRUD via { action }
+  agent|rule|skill     CRUD via { action: list|get|create|delete }
 `);
 }
 

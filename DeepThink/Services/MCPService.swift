@@ -98,45 +98,48 @@ final class MCPService {
 
         All tools called as `mcp__deepthink__<tool>`.
 
-        | Intent signals | Tool |
+        CRUD tools take an `action` param. Entity tools: `workspace_task`, `workspace_note`, `workspace_project`, `workspace_reminder` (action: list|get|create|update|delete); `agent`, `rule`, `skill` (action: list|get|create|delete). Knowledge: `knowledge_project` (action: list|load|save|archive), `knowledge_integration` (action: list|load|capture|compress).
+
+        | Intent signals | Tool + action |
         |---|---|
         | **Search / retrieve** | |
         | search / find / look for / do I have / any notes on / show me / where is | `unified_search` |
         | what do I know about / context on / brief me on / catch me up | `knowledge_context` |
         | knowledge stats / how much stored / how many items | `knowledge_stats` |
         | **Knowledge** | |
-        | save / capture / remember / store / log / keep / record / note this | `knowledge_capture` |
-        | load project knowledge / context for project | `knowledge_load_project` |
+        | save / capture / remember / store / log / keep / record / note this | `knowledge_integration` {action:"capture"} |
+        | load project knowledge / context for project | `knowledge_project` {action:"load"} |
+        | save project knowledge / decision / artifact | `knowledge_project` {action:"save"} |
         | **Workspace** | |
         | summary / overview / digest / status / what's going on | `workspace_summary` |
-        | **Tasks** | |
-        | tasks / todos / pending / what's next / backlog / in progress | `workspace_list_tasks` |
-        | add task / new task / create task | `workspace_create_task` |
-        | update task / mark done / complete / change task | `workspace_update_task` |
-        | delete task / remove task | `workspace_delete_task` |
-        | show task / get task details | `workspace_get_task` |
-        | **Notes** | |
-        | notes / my notes / show notes / what did I write | `workspace_list_notes` |
-        | new note / create note / add note / jot down | `workspace_create_note` |
-        | update note / edit note | `workspace_update_note` |
-        | delete note / remove note | `workspace_delete_note` |
-        | **Projects** | |
-        | projects / active projects / project status | `workspace_list_projects` |
-        | new project / create project | `workspace_create_project` |
-        | update project / rename project | `workspace_update_project` |
-        | delete project | `workspace_delete_project` |
-        | **Reminders** | |
-        | reminders / upcoming / what's scheduled | `workspace_list_reminders` |
-        | remind me / set reminder / don't forget | `workspace_create_reminder` |
-        | update reminder / reschedule | `workspace_update_reminder` |
-        | delete reminder / cancel reminder | `workspace_delete_reminder` |
+        | **Tasks** (`workspace_task`) | |
+        | tasks / todos / pending / what's next / backlog / in progress | {action:"list"} |
+        | add task / new task / create task | {action:"create"} |
+        | update task / mark done / complete / change task | {action:"update"} |
+        | delete task / remove task | {action:"delete"} |
+        | show task / get task details | {action:"get"} |
+        | **Notes** (`workspace_note`) | |
+        | notes / my notes / show notes / what did I write | {action:"list"} |
+        | new note / create note / add note / jot down | {action:"create"} |
+        | update note / edit note | {action:"update"} |
+        | delete note / remove note | {action:"delete"} |
+        | **Projects** (`workspace_project`) | |
+        | projects / active projects / project status | {action:"list"} |
+        | new project / create project | {action:"create"} |
+        | update project / rename project | {action:"update"} |
+        | delete project | {action:"delete"} |
+        | **Reminders** (`workspace_reminder`) | |
+        | reminders / upcoming / what's scheduled | {action:"list"} |
+        | remind me / set reminder / don't forget | {action:"create"} |
+        | update reminder / reschedule | {action:"update"} |
+        | delete reminder / cancel reminder | {action:"delete"} |
         | **Agents / Skills / Rules** | |
-        | agents / my agents | `agent_list` |
-        | create agent / new agent | `agent_create` |
-        | skills / my skills | `skill_list` |
-        | create skill / new skill | `skill_create` |
-        | rules / my rules | `rule_list` |
-        | create rule / new rule | `rule_create` |
+        | agents / my agents | `agent` {action:"list"} |
+        | create agent / new agent | `agent` {action:"create"} |
+        | skills / my skills | `skill` {action:"list"} |
+        | create skill / new skill | `skill` {action:"create"} |
+        | rules / my rules | `rule` {action:"list"} |
+        | create rule / new rule | `rule` {action:"create"} |
         | **Reasoning** | |
         | what / why / how / explain / analyze / compare / suggest / help me think / ideas | `smart_query` |
         | **Overview** | |
@@ -150,8 +153,8 @@ final class MCPService {
         ## Multi-step
         Chain calls for compound requests:
         - "Search X then summarize" → `unified_search` → `smart_query` with results
-        - "Create a task and a reminder" → `workspace_create_task` → `workspace_create_reminder`
-        - "Find notes on X and update the project" → `unified_search` → `workspace_update_project`
+        - "Create a task and a reminder" → `workspace_task` {action:"create"} → `workspace_reminder` {action:"create"}
+        - "Find notes on X and update the project" → `unified_search` → `workspace_project` {action:"update"}
 
         ## Output
         Return tool results directly. No preamble. No tool-name explanation.

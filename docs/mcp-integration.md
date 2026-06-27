@@ -78,13 +78,13 @@ Mutating operations (create/update/delete) go through `db.ts`, which:
 
 ---
 
-## readonly Flag
+## Reads vs. writes
 
-All read-only tools declare `readonly: true` in their tool definition. Mutating tools do not carry this field. MCP clients that support capability inspection can use this to distinguish safe reads from state-changing operations.
+CRUD is consolidated into one tool per entity that takes an `action` parameter, so read vs. write is determined by the `action`, not the tool: `list` and `get` (and `load`) are read-only; `create` / `update` / `delete` (and `save` / `capture` / `compress` / `archive`) mutate. The dedicated query tools (`smart_query`, `knowledge_context`, `workspace_context`, `unified_search`, `deepthink_overview`, `knowledge_search`, `knowledge_stats`, `workspace_summary`, `workspace_resolve_deeplink`) are always read-only.
 
 ---
 
-## Tool Reference (51 tools)
+## Tool Reference (19 tools)
 
 ### Smart / Context Tools
 
@@ -98,52 +98,23 @@ These run hybrid BM25 + semantic retrieval and are the recommended starting poin
 | `unified_search` | true | Single call across all four types (knowledge, task, note, reminder); content field fully populated for workspace items; supports type filter |
 | `deepthink_overview` | true | Compact system overview ~200 tokens: project count, task counts by status, note count, knowledge stats, recent activity |
 
-### Workspace - Tasks
 
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `workspace_list_tasks` | true | List tasks with filters: status, priority, project, due date. Paginated (50/page). |
-| `workspace_get_task` | true | Get a single task by ID or fuzzy name match. |
-| `workspace_create_task` | - | Create a task: title, status, priority, due date, project. Logs to dt_audit_log. |
-| `workspace_update_task` | - | Update task fields. Only provided fields changed. Logs to dt_audit_log. |
-| `workspace_delete_task` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
+### Workspace - Entities (CRUD)
 
-### Workspace - Notes
+Each entity is a single tool that takes an `action` of `list` / `get` / `create` / `update` / `delete`. `list` and `get` are read-only; `create` / `update` / `delete` mutate (log to `dt_audit_log`, snapshot to `dt_trash` on delete, cascade vector-chunk cleanup).
 
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `workspace_list_notes` | true | List notes with optional project/pinned filters. Paginated. |
-| `workspace_get_note` | true | Get a note by ID or name. Returns full markdown content. |
-| `workspace_create_note` | - | Create a note: title, content (markdown), project, tags, pinned. Logs to dt_audit_log. |
-| `workspace_update_note` | - | Update note fields. Only provided fields changed. Logs to dt_audit_log. |
-| `workspace_delete_note` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
-
-### Workspace - Projects
-
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `workspace_list_projects` | true | List all projects with task and note counts. Paginated. |
-| `workspace_get_project` | true | Get a project by ID or name with full stats. |
-| `workspace_create_project` | - | Create a project: name, summary, color. Logs to dt_audit_log. |
-| `workspace_update_project` | - | Update project fields including archive status. Logs to dt_audit_log. |
-| `workspace_delete_project` | - | Soft-snapshot to dt_trash, then hard delete. Tasks and notes become unassigned. Cascade-deletes all project vector chunks. |
-
-### Workspace - Reminders
-
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `workspace_list_reminders` | true | List reminders, optionally filter by completion status. |
-| `workspace_get_reminder` | true | Get a reminder by ID or fuzzy title match. |
-| `workspace_create_reminder` | - | Create a reminder: title, notes, optional due date/time. Logs to dt_audit_log. |
-| `workspace_update_reminder` | - | Update reminder fields. Logs to dt_audit_log. |
-| `workspace_delete_reminder` | - | Soft-snapshot to dt_trash, then hard delete. Cascade-deletes vector chunks. |
+| Tool | `action` values | Description |
+|------|-----------------|-------------|
+| `workspace_task` | list, get, create, update, delete | Tasks. `list` filters by status/priority/project, paginated (50/page); `get` by ID or fuzzy name; `create` needs `title`; `update`/`delete` need `ref`. `dueDate`/`project` accept `'none'` to clear. |
+| `workspace_note` | list, get, create, update, delete | Notes. `list` filters by project/pinned, paginated; `create` needs `title` (+ markdown `content`); `update`/`delete` need `ref`. `project` accepts `'none'` to unassign. |
+| `workspace_project` | list, get, create, update, delete | Projects. `list` returns task/note counts, paginated; `create` needs `name`; `update` toggles archive via `archived`; `delete` unassigns its tasks/notes. |
+| `workspace_reminder` | list, get, create, update, delete | Reminders. `list` filters by `completed`; `create` needs `title` (+ optional ISO `reminderDate`); `update` sets `completed`/`reminderDate` (`'none'` clears). |
 
 ### Workspace - Deep Links
 
 | Tool | readonly | Description |
 |------|----------|-------------|
-| `workspace_resolve_deeplink` | true | Resolve a single `deepthink://type/UUID` URL to full item content. |
-| `workspace_resolve_deeplinks` | true | Resolve multiple URLs in one call. Returns map of URL → item (or error). More efficient than looping single resolve. |
+| `workspace_resolve_deeplink` | true | Resolve `deepthink://type/UUID` URLs to full item content. Pass `url` for one, or `urls` (array) to resolve many in one call (returns map of URL → item or error). |
 
 URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://project/UUID`, `deepthink://reminder/UUID`, `deepthink://knowledge?id=<id>`.
 
@@ -156,45 +127,22 @@ URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://proje
 
 ### Knowledge Base
 
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `knowledge_stats` | true | Overview: project count, integration channels, archive count. |
-| `knowledge_list_projects` | true | List all knowledge projects (slugs, titles). |
-| `knowledge_load_project` | true | Load all knowledge for a project: context.md, decisions.md, and artifacts. |
-| `knowledge_save_project` | - | Save to a project. Types: `context`, `decision`, `artifact`. |
-| `knowledge_search` | true | Keyword search across integration data and captured entries. |
-| `knowledge_list_integrations` | true | List all integration sources and their channels. |
-| `knowledge_load_integration` | true | Load recent entries from an integration source/channel. |
-| `knowledge_capture` | - | Capture data from an external source into the knowledge base. |
-| `knowledge_compress` | - | Compress an integration channel's entries into a dense archive. |
-| `knowledge_archive_project` | - | Archive a project's knowledge into a compressed summary file. |
+| Tool | `action` values | Description |
+|------|-----------------|-------------|
+| `knowledge_project` | list, load, save, archive | Knowledge projects. `list` all projects; `load` a project's context/decisions/artifacts; `save` needs `content` (+ `type`: `context`/`decision`/`artifact`); `archive` compresses a project into a summary file. |
+| `knowledge_integration` | list, load, capture, compress | Integration data. `list` sources + channels; `load` recent entries; `capture` needs `source`/`channel`/`content` (+ optional `title`/`tags`/`metadata`); `compress` archives a channel's entries. |
+| `knowledge_search` | _(read-only)_ | Keyword search across integration data and captured entries. |
+| `knowledge_stats` | _(read-only)_ | Overview: project count, integration channels, archive count. |
 
-### Config - Agents
+### Config - Agents / Rules / Skills
 
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `agent_list` | true | List all agents: roles, icons, models, knowledge scopes. |
-| `agent_get` | true | Get full agent details including system prompt. |
-| `agent_create` | - | Create an agent: name, role, system prompt, knowledge scope. |
-| `agent_delete` | - | Delete an agent by name. |
+Each is a single tool taking an `action` of `list` / `get` / `create` / `delete`. `list` and `get` are read-only.
 
-### Config - Rules
-
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `rule_list` | true | List all rules: triggers, categories, instructions. |
-| `rule_get` | true | Get full rule details including instruction text. |
-| `rule_create` | - | Create a rule: trigger, category, priority, instructions. |
-| `rule_delete` | - | Delete a rule by name. |
-
-### Config - Skills
-
-| Tool | readonly | Description |
-|------|----------|-------------|
-| `skill_list` | true | List all slash-command skills: categories, triggers. |
-| `skill_get` | true | Get full skill details including system prompt and template. |
-| `skill_create` | - | Create a skill: name, category, system prompt, template variables. |
-| `skill_delete` | - | Delete a skill by name. |
+| Tool | `action` values | Description |
+|------|-----------------|-------------|
+| `agent` | list, get, create, delete | AI agents. `create` needs `name`, `role`, `systemPrompt` (+ optional `icon`, `model`, `skills`, `knowledgeScope`). |
+| `rule` | list, get, create, delete | Prompt-injection rules. `create` needs `name`, `trigger`, `instruction` (+ optional `icon`, `category`). |
+| `skill` | list, get, create, delete | Slash-command skills. `create` needs `name`, `promptTemplate` (+ optional `category`, `icon`, `model`, `trigger`, `systemPrompt`). |
 
 ---
 
@@ -229,24 +177,24 @@ The macOS app's `CLISyncService.swift` listens for this Darwin notification and 
 ### Morning standup prep
 
 ```text
-1. deepthink_overview          → orient: counts + recent activity
-2. workspace_list_tasks        → filter status="In Progress"
-3. knowledge_context           → query="blockers or decisions from last week"
+1. deepthink_overview                    → orient: counts + recent activity
+2. workspace_task {action:"list"}        → filter status="In Progress"
+3. knowledge_context                     → query="blockers or decisions from last week"
 ```
 
 ### Research and capture
 
 ```text
-1. smart_query                 → query="everything about auth architecture"
-2. knowledge_save_project      → save findings as decision or artifact
+1. smart_query                              → query="everything about auth architecture"
+2. knowledge_project {action:"save"}        → save findings as decision or artifact
 ```
 
 ### Create tasks from a meeting
 
 ```text
-1. workspace_list_projects     → find the right project ID
-2. workspace_create_task       → one call per action item
-3. workspace_create_note       → save meeting notes with full markdown
+1. workspace_project {action:"list"}      → find the right project ID
+2. workspace_task {action:"create"}       → one call per action item
+3. workspace_note {action:"create"}       → save meeting notes with full markdown
 ```
 
 ### Audit recent changes

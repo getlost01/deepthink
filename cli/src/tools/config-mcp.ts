@@ -175,252 +175,222 @@ function loadSkills(): SkillInfo[] {
 
 // ── MCP Tools ──
 
+function findAgent(name: string) {
+  return loadAgents().find(
+    (a) => a.name.toLowerCase() === name.toLowerCase() || a.filename === name || a.filename === `${slugify(name)}.md`
+  );
+}
+
+function findRule(name: string) {
+  return loadRules().find((r) => r.name.toLowerCase() === name.toLowerCase() || r.filename === `${slugify(name)}.md`);
+}
+
+function findSkill(name: string) {
+  const q = name.toLowerCase();
+  return loadSkills().find(
+    (s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(name)}.md`
+  );
+}
+
 export const CONFIG_TOOLS: MCPTool[] = [
   // ── Agents ──
   {
-    name: "agent_list",
-    description: "List all AI agents with their roles, icons, models, and knowledge scopes.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => {
-      const agents = loadAgents();
-      return { agents: agents.map(({ systemPrompt: _, ...a }) => a), count: agents.length };
-    },
-  },
-  {
-    name: "agent_get",
-    description: "Get full details of an agent by name, including system prompt.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Agent name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const agent = loadAgents().find(
-        (a) =>
-          a.name.toLowerCase() === p.name.toLowerCase() ||
-          a.filename === p.name ||
-          a.filename === `${slugify(p.name)}.md`
-      );
-      if (!agent) throw new Error(`agent not found: ${p.name}`);
-      return agent;
-    },
-  },
-  {
-    name: "agent_create",
-    description: "Create a new AI agent with a name, role, system prompt, and optional knowledge scope.",
+    name: "agent",
+    description:
+      "Manage AI agents. Set `action`:\n" +
+      "- list: all agents (roles, icons, models, knowledge scopes)\n" +
+      "- get: requires name → full details including system prompt\n" +
+      "- create: requires name, role, systemPrompt; optional icon, model, skills, knowledgeScope\n" +
+      "- delete: requires name",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Agent name" },
-        role: { type: "string", description: "Short role description" },
-        icon: { type: "string", description: "SF Symbol icon name (default: person.circle)" },
-        model: { type: "string", description: "Model override (e.g. claude-sonnet-4-6)" },
-        systemPrompt: { type: "string", description: "System prompt / instructions for the agent" },
-        skills: { type: "array", items: { type: "string" }, description: "Skill names this agent can use" },
+        action: { type: "string", enum: ["list", "get", "create", "delete"], description: "Operation to perform" },
+        name: { type: "string", description: "Agent name (get/create/delete)" },
+        role: { type: "string", description: "Short role description (create)" },
+        icon: { type: "string", description: "SF Symbol icon name (create, default: person.circle)" },
+        model: { type: "string", description: "Model override, e.g. claude-sonnet-4-6 (create)" },
+        systemPrompt: { type: "string", description: "System prompt / instructions (create)" },
+        skills: { type: "array", items: { type: "string" }, description: "Skill names this agent can use (create)" },
         knowledgeScope: {
           type: "array",
           items: { type: "string" },
-          description: "Knowledge scope tags for RAG filtering",
+          description: "Knowledge scope tags for RAG filtering (create)",
         },
       },
-      required: ["name", "role", "systemPrompt"],
+      required: ["action"],
     },
     execute: (p) => {
-      ensureDir(AGENTS_DIR);
-      const filename = `${slugify(p.name)}.md`;
-      const filepath = join(AGENTS_DIR, filename);
-
-      let md = buildFrontmatter({
-        name: p.name,
-        role: p.role,
-        icon: p.icon ?? "person.circle",
-        model: p.model,
-        skills: p.skills?.length ? `[${p.skills.join(", ")}]` : undefined,
-        knowledge_scope: p.knowledgeScope?.length ? `[${p.knowledgeScope.join(", ")}]` : undefined,
-      });
-      md += p.systemPrompt;
-
-      writeFileSync(filepath, md, "utf-8");
-      return { name: p.name, filename, created: true };
-    },
-  },
-  {
-    name: "agent_delete",
-    description: "Delete an agent by name.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Agent name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const agent = loadAgents().find(
-        (a) => a.name.toLowerCase() === p.name.toLowerCase() || a.filename === `${slugify(p.name)}.md`
-      );
-      if (!agent) throw new Error(`agent not found: ${p.name}`);
-      unlinkSync(join(AGENTS_DIR, agent.filename));
-      return { name: agent.name, deleted: true };
+      switch (p.action) {
+        case "list": {
+          const agents = loadAgents();
+          return { agents: agents.map(({ systemPrompt: _, ...a }) => a), count: agents.length };
+        }
+        case "get": {
+          if (!p.name) throw new Error(`'name' is required for action 'get'`);
+          const agent = findAgent(p.name);
+          if (!agent) throw new Error(`agent not found: ${p.name}`);
+          return agent;
+        }
+        case "create": {
+          if (!p.name || !p.role || !p.systemPrompt)
+            throw new Error(`'name', 'role', and 'systemPrompt' are required for action 'create'`);
+          ensureDir(AGENTS_DIR);
+          const filename = `${slugify(p.name)}.md`;
+          let md = buildFrontmatter({
+            name: p.name,
+            role: p.role,
+            icon: p.icon ?? "person.circle",
+            model: p.model,
+            skills: p.skills?.length ? `[${p.skills.join(", ")}]` : undefined,
+            knowledge_scope: p.knowledgeScope?.length ? `[${p.knowledgeScope.join(", ")}]` : undefined,
+          });
+          md += p.systemPrompt;
+          writeFileSync(join(AGENTS_DIR, filename), md, "utf-8");
+          return { name: p.name, filename, created: true };
+        }
+        case "delete": {
+          if (!p.name) throw new Error(`'name' is required for action 'delete'`);
+          const agent = findAgent(p.name);
+          if (!agent) throw new Error(`agent not found: ${p.name}`);
+          unlinkSync(join(AGENTS_DIR, agent.filename));
+          return { name: agent.name, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: list, get, create, delete`);
+      }
     },
   },
 
   // ── Rules ──
   {
-    name: "rule_list",
-    description: "List all AI rules with their triggers, categories, and instructions.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => {
-      const rules = loadRules();
-      return { rules: rules.map(({ instruction: _, ...r }) => r), count: rules.length };
-    },
-  },
-  {
-    name: "rule_get",
-    description: "Get full details of a rule by name, including the instruction text.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Rule name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const rule = loadRules().find(
-        (r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`
-      );
-      if (!rule) throw new Error(`rule not found: ${p.name}`);
-      return rule;
-    },
-  },
-  {
-    name: "rule_create",
-    description: "Create a new AI rule. Rules auto-inject instructions into prompts based on triggers.",
+    name: "rule",
+    description:
+      "Manage AI rules (auto-inject instructions into prompts based on triggers). Set `action`:\n" +
+      "- list: all rules (triggers, categories)\n" +
+      "- get: requires name → full details including instruction text\n" +
+      "- create: requires name, trigger, instruction; optional icon, category\n" +
+      "- delete: requires name",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Rule name" },
+        action: { type: "string", enum: ["list", "get", "create", "delete"], description: "Operation to perform" },
+        name: { type: "string", description: "Rule name (get/create/delete)" },
         trigger: {
           type: "string",
-          description: "When to activate: 'always', 'note.tagged.X', 'content_type.code', etc.",
+          description: "When to activate: 'always', 'note.tagged.X', 'content_type.code', etc. (create)",
         },
-        icon: { type: "string", description: "SF Symbol icon name (default: bolt)" },
-        category: { type: "string", description: "Category for grouping (default: General)" },
-        instruction: { type: "string", description: "The instruction text injected into the system prompt" },
+        icon: { type: "string", description: "SF Symbol icon name (create, default: bolt)" },
+        category: { type: "string", description: "Category for grouping (create, default: General)" },
+        instruction: { type: "string", description: "Instruction text injected into the system prompt (create)" },
       },
-      required: ["name", "trigger", "instruction"],
+      required: ["action"],
     },
     execute: (p) => {
-      ensureDir(RULES_DIR);
-      const filename = `${slugify(p.name)}.md`;
-      const filepath = join(RULES_DIR, filename);
-
-      let md = buildFrontmatter({
-        name: p.name,
-        trigger: p.trigger,
-        icon: p.icon ?? "bolt",
-        category: p.category ?? "General",
-      });
-      md += p.instruction;
-
-      writeFileSync(filepath, md, "utf-8");
-      return { name: p.name, trigger: p.trigger, filename, created: true };
-    },
-  },
-  {
-    name: "rule_delete",
-    description: "Delete a rule by name.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Rule name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const rule = loadRules().find(
-        (r) => r.name.toLowerCase() === p.name.toLowerCase() || r.filename === `${slugify(p.name)}.md`
-      );
-      if (!rule) throw new Error(`rule not found: ${p.name}`);
-      unlinkSync(join(RULES_DIR, rule.filename));
-      return { name: rule.name, deleted: true };
+      switch (p.action) {
+        case "list": {
+          const rules = loadRules();
+          return { rules: rules.map(({ instruction: _, ...r }) => r), count: rules.length };
+        }
+        case "get": {
+          if (!p.name) throw new Error(`'name' is required for action 'get'`);
+          const rule = findRule(p.name);
+          if (!rule) throw new Error(`rule not found: ${p.name}`);
+          return rule;
+        }
+        case "create": {
+          if (!p.name || !p.trigger || !p.instruction)
+            throw new Error(`'name', 'trigger', and 'instruction' are required for action 'create'`);
+          ensureDir(RULES_DIR);
+          const filename = `${slugify(p.name)}.md`;
+          let md = buildFrontmatter({
+            name: p.name,
+            trigger: p.trigger,
+            icon: p.icon ?? "bolt",
+            category: p.category ?? "General",
+          });
+          md += p.instruction;
+          writeFileSync(join(RULES_DIR, filename), md, "utf-8");
+          return { name: p.name, trigger: p.trigger, filename, created: true };
+        }
+        case "delete": {
+          if (!p.name) throw new Error(`'name' is required for action 'delete'`);
+          const rule = findRule(p.name);
+          if (!rule) throw new Error(`rule not found: ${p.name}`);
+          unlinkSync(join(RULES_DIR, rule.filename));
+          return { name: rule.name, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: list, get, create, delete`);
+      }
     },
   },
 
   // ── Skills ──
   {
-    name: "skill_list",
-    description: "List all slash-command skills with their categories and triggers.",
-    inputSchema: { type: "object", properties: {} },
-    execute: () => {
-      const skills = loadSkills();
-      return {
-        skills: skills.map(({ systemPrompt: _, promptTemplate: __, ...s }) => s),
-        count: skills.length,
-      };
-    },
-  },
-  {
-    name: "skill_get",
-    description: "Get full details of a skill by name, including system prompt and prompt template.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Skill name or command name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const q = p.name.toLowerCase();
-      const skill = loadSkills().find(
-        (s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`
-      );
-      if (!skill) throw new Error(`skill not found: ${p.name}`);
-      return skill;
-    },
-  },
-  {
-    name: "skill_create",
-    description: "Create a new slash-command skill. Skills are reusable AI prompts with {{input}} interpolation.",
+    name: "skill",
+    description:
+      "Manage slash-command skills (reusable AI prompts with {{input}} interpolation). Set `action`:\n" +
+      "- list: all skills (categories, triggers)\n" +
+      "- get: requires name (or command name) → full details including system prompt and prompt template\n" +
+      "- create: requires name, promptTemplate; optional category, icon, model, trigger, systemPrompt\n" +
+      "- delete: requires name (or command name)",
     inputSchema: {
       type: "object",
       properties: {
-        name: { type: "string", description: "Skill name (becomes /command-name)" },
-        category: { type: "string", description: "Category for grouping (default: General)" },
-        icon: { type: "string", description: "SF Symbol icon name (default: sparkles)" },
-        model: { type: "string", description: "Model override" },
-        trigger: { type: "string", description: "Trigger type (default: manual)" },
-        systemPrompt: { type: "string", description: "System prompt for the skill" },
-        promptTemplate: { type: "string", description: "Prompt template. Use {{input}} for user input." },
+        action: { type: "string", enum: ["list", "get", "create", "delete"], description: "Operation to perform" },
+        name: {
+          type: "string",
+          description: "Skill name or command name (get/create/delete). On create becomes /command-name",
+        },
+        category: { type: "string", description: "Category for grouping (create, default: General)" },
+        icon: { type: "string", description: "SF Symbol icon name (create, default: sparkles)" },
+        model: { type: "string", description: "Model override (create)" },
+        trigger: { type: "string", description: "Trigger type (create, default: manual)" },
+        systemPrompt: { type: "string", description: "System prompt for the skill (create)" },
+        promptTemplate: { type: "string", description: "Prompt template; use {{input}} for user input (create)" },
       },
-      required: ["name", "promptTemplate"],
+      required: ["action"],
     },
     execute: (p) => {
-      ensureDir(SKILLS_DIR);
-      const filename = `${slugify(p.name)}.md`;
-      const filepath = join(SKILLS_DIR, filename);
-
-      let md = buildFrontmatter({
-        name: p.name,
-        trigger: p.trigger ?? "manual",
-        icon: p.icon ?? "sparkles",
-        model: p.model,
-        category: p.category ?? "General",
-      });
-      if (p.systemPrompt) md += `${p.systemPrompt}\n\n---\n\n`;
-      md += p.promptTemplate;
-
-      writeFileSync(filepath, md, "utf-8");
-      return { name: p.name, commandName: slugify(p.name), filename, created: true };
-    },
-  },
-  {
-    name: "skill_delete",
-    description: "Delete a skill by name.",
-    inputSchema: {
-      type: "object",
-      properties: { name: { type: "string", description: "Skill name or command name" } },
-      required: ["name"],
-    },
-    execute: (p) => {
-      const q = p.name.toLowerCase();
-      const skill = loadSkills().find(
-        (s) => s.name.toLowerCase() === q || s.commandName === q || s.filename === `${slugify(p.name)}.md`
-      );
-      if (!skill) throw new Error(`skill not found: ${p.name}`);
-      unlinkSync(join(SKILLS_DIR, skill.filename));
-      return { name: skill.name, deleted: true };
+      switch (p.action) {
+        case "list": {
+          const skills = loadSkills();
+          return { skills: skills.map(({ systemPrompt: _, promptTemplate: __, ...s }) => s), count: skills.length };
+        }
+        case "get": {
+          if (!p.name) throw new Error(`'name' is required for action 'get'`);
+          const skill = findSkill(p.name);
+          if (!skill) throw new Error(`skill not found: ${p.name}`);
+          return skill;
+        }
+        case "create": {
+          if (!p.name || !p.promptTemplate)
+            throw new Error(`'name' and 'promptTemplate' are required for action 'create'`);
+          ensureDir(SKILLS_DIR);
+          const filename = `${slugify(p.name)}.md`;
+          let md = buildFrontmatter({
+            name: p.name,
+            trigger: p.trigger ?? "manual",
+            icon: p.icon ?? "sparkles",
+            model: p.model,
+            category: p.category ?? "General",
+          });
+          if (p.systemPrompt) md += `${p.systemPrompt}\n\n---\n\n`;
+          md += p.promptTemplate;
+          writeFileSync(join(SKILLS_DIR, filename), md, "utf-8");
+          return { name: p.name, commandName: slugify(p.name), filename, created: true };
+        }
+        case "delete": {
+          if (!p.name) throw new Error(`'name' is required for action 'delete'`);
+          const skill = findSkill(p.name);
+          if (!skill) throw new Error(`skill not found: ${p.name}`);
+          unlinkSync(join(SKILLS_DIR, skill.filename));
+          return { name: skill.name, deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: list, get, create, delete`);
+      }
     },
   },
 ];
