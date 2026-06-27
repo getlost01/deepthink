@@ -111,7 +111,9 @@ struct DeepThinkApp: App {
             alert.addButton(withTitle: "Quit")
             alert.alertStyle = .critical
             if alert.runModal() == .alertFirstButtonReturn {
-                try? FileManager.default.removeItem(at: StorageService.shared.storeURL)
+                // Salvage the (possibly recoverable) store before deleting, so a transient
+                // open failure — e.g. a stale lock — never loses data irreversibly.
+                Self.salvageAndRemoveStore()
                 if let recovered = try? ModelContainer(for: schema, configurations: [config]) {
                     return recovered
                 }
@@ -119,6 +121,27 @@ struct DeepThinkApp: App {
             exit(1)
         }
     }()
+
+    /// Copies the store and its WAL/SHM sidecars into a timestamped recovery folder,
+    /// then removes all three so a fresh store can open. Never deletes without a copy.
+    private static func salvageAndRemoveStore() {
+        let fm = FileManager.default
+        let store = StorageService.shared.storeURL
+        // Core Data / SQLite WAL stores keep .store plus -wal and -shm sidecars.
+        let sidecars = [store,
+                        URL(fileURLWithPath: store.path + "-wal"),
+                        URL(fileURLWithPath: store.path + "-shm")]
+        let existing = sidecars.filter { fm.fileExists(atPath: $0.path) }
+        guard !existing.isEmpty else { return }
+
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        let recoveryDir = StorageService.shared.dataURL.appendingPathComponent("recovered-\(stamp)")
+        try? fm.createDirectory(at: recoveryDir, withIntermediateDirectories: true)
+        for url in existing {
+            try? fm.copyItem(at: url, to: recoveryDir.appendingPathComponent(url.lastPathComponent))
+            try? fm.removeItem(at: url)
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -403,6 +426,7 @@ struct DeepThinkApp: App {
             let tasks = (try? context.fetch(FetchDescriptor<TaskItem>())) ?? []
             let notes = (try? context.fetch(FetchDescriptor<Note>())) ?? []
             let reminders = (try? context.fetch(FetchDescriptor<Reminder>())) ?? []
+            let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
 
             var items: [(id: String, type: String, title: String, content: String, tags: [String], modifiedAt: Date)] = []
 
@@ -430,16 +454,26 @@ struct DeepThinkApp: App {
                     tags: [], modifiedAt: reminder.modifiedAt
                 ))
             }
+            for project in projects {
+                items.append((
+                    id: "project:\(project.id.uuidString)", type: "project",
+                    title: project.name,
+                    content: EmbeddingService.projectContent(name: project.name, summary: project.summary, isArchived: project.isArchived),
+                    tags: [], modifiedAt: project.modifiedAt
+                ))
+            }
 
             EmbeddingService.shared.indexWorkspaceItems(items)
 
             let validTaskIDs = Set(tasks.map { "task:\($0.id.uuidString)" })
             let validNoteIDs = Set(notes.map { "note:\($0.id.uuidString)" })
             let validReminderIDs = Set(reminders.map { "reminder:\($0.id.uuidString)" })
+            let validProjectIDs = Set(projects.map { "project:\($0.id.uuidString)" })
 
             VectorStore.shared.pruneStaleEntries(validIDs: validTaskIDs, entryType: "task")
             VectorStore.shared.pruneStaleEntries(validIDs: validNoteIDs, entryType: "note")
             VectorStore.shared.pruneStaleEntries(validIDs: validReminderIDs, entryType: "reminder")
+            VectorStore.shared.pruneStaleEntries(validIDs: validProjectIDs, entryType: "project")
         }
     }
 

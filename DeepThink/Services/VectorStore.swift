@@ -4,6 +4,18 @@ import SQLite3
 final class VectorStore {
     static let shared = VectorStore()
 
+    /// Canonical vector-store entry ID. Workspace UUIDs are lowercased so the app
+    /// (`UUID.uuidString`, uppercase) and the CLI (`hexToUUID`, lowercase) converge on
+    /// the same key in `vectors.db`. Non-workspace keys (e.g. knowledge) are untouched.
+    static func canonicalEntryID(_ entryID: String) -> String {
+        let parts = entryID.split(separator: ":", maxSplits: 1)
+        guard parts.count == 2,
+              ["task", "note", "reminder", "project"].contains(String(parts[0])),
+              UUID(uuidString: String(parts[1])) != nil
+        else { return entryID }
+        return "\(parts[0]):\(parts[1].lowercased())"
+    }
+
     private var db: OpaquePointer?
     private let dbPath: String
     private let queue = DispatchQueue(label: "com.deepthink.vectorstore", attributes: .concurrent)
@@ -172,6 +184,7 @@ final class VectorStore {
     }
 
     func deleteChunksForEntry(_ entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             let sql = "DELETE FROM chunks WHERE entry_id = ?"
@@ -183,6 +196,7 @@ final class VectorStore {
     }
 
     func replaceChunksForEntry(_ entryID: String, with chunks: [VectorChunk]) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             exec("BEGIN TRANSACTION")
             var delStmt: OpaquePointer?
@@ -210,6 +224,7 @@ final class VectorStore {
     }
 
     func pruneStaleEntries(validIDs: Set<String>, entryType: String) {
+        let validIDs = Set(validIDs.map(Self.canonicalEntryID))
         let existing = allEntryIDs(forType: entryType)
         let stale = existing.subtracting(validIDs)
         guard !stale.isEmpty else { return }
@@ -232,6 +247,7 @@ final class VectorStore {
     // MARK: - Pending Reindex Queue
 
     func enqueuePendingReindex(entryID: String, entryType: String, operation: String = "upsert") {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.async(flags: .barrier) { [weak self] in
             guard let self else { return }
             // Preserve retry_count on re-enqueue so the cap isn't reset by every keystroke
@@ -274,6 +290,7 @@ final class VectorStore {
     }
 
     func deletePendingReindex(entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, "DELETE FROM pending_reindex WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK else { return }
@@ -284,6 +301,7 @@ final class VectorStore {
     }
 
     func incrementPendingRetry(entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, "UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK
@@ -307,7 +325,8 @@ final class VectorStore {
     // MARK: - Query
 
     func contentHash(forEntry entryID: String) -> UInt64? {
-        queue.sync {
+        let entryID = Self.canonicalEntryID(entryID)
+        return queue.sync {
             var stmt: OpaquePointer?
             let sql = "SELECT content_hash FROM chunks WHERE entry_id = ? LIMIT 1"
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }

@@ -441,13 +441,15 @@ export function drainPendingReindex(): { processed: number; failed: number } {
   return { processed, failed };
 }
 
-// Start a 30-second background reconciler that drains the pending_reindex queue.
+// Background reconciler that drains the pending_reindex queue. Matches the app's 60s
+// cadence (EmbeddingService.startReconcilerTimer) to minimize redundant work when both
+// run; drains are idempotent and serialized by SQLite busy_timeout, so overlap is safe.
 export function startReconciler(): void {
   setInterval(() => {
     try {
       drainPendingReindex();
     } catch {}
-  }, 30_000);
+  }, 60_000);
 }
 
 // MARK: - Content string builders (canonical format — keep in sync with Swift side)
