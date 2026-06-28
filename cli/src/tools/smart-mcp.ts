@@ -1,6 +1,38 @@
 import { retrieveContextHybrid, unifiedSearch, workspaceContext } from "../core/context-engine";
 import * as db from "../core/db";
+import { embeddingStats } from "../core/embedding-service";
+import { chunkCount, getPendingReindex } from "../core/vector-store";
+import { linkedProject, peekBucket } from "./buckets";
 import * as knowledge from "./knowledge";
+
+// The project to softly boost for a query. An explicit name wins; otherwise we
+// peek the bucket for `cwd` (defaulting to the MCP server's cwd, i.e. the repo
+// Claude Code was launched in) WITHOUT registering it. Returns undefined when
+// there's no matching bucket, leaving search unscoped.
+function currentProjectScope(opts: { cwd?: string; bucket?: string }): string | undefined {
+  if (opts.bucket) return opts.bucket;
+  try {
+    const b = peekBucket({ cwd: opts.cwd ?? process.cwd() });
+    return b ? linkedProject(b) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Resolve both scope keys for the current repo: `projectScope` (the project NAME,
+// for fuzzy boosting of workspace items + knowledge projects) and `bucketScope`
+// (the exact bucket ID, for structured boosting of sessions/notes tagged
+// `bucket:<id>`). An explicit `bucket` is treated as the name; the id is only known
+// when resolved from `cwd`.
+function currentScope(opts: { cwd?: string; bucket?: string }): { projectScope?: string; bucketScope?: string } {
+  if (opts.bucket) return { projectScope: opts.bucket };
+  try {
+    const b = peekBucket({ cwd: opts.cwd ?? process.cwd() });
+    return b ? { projectScope: linkedProject(b), bucketScope: b.id } : {};
+  } catch {
+    return {};
+  }
+}
 
 export interface MCPTool {
   name: string;
@@ -85,7 +117,7 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "smart_query",
     description:
-      "Intelligent auto-routing query. Analyzes intent and returns either compact summary context (for understanding/planning) or full data (for mutations/exports). Use this as your DEFAULT tool — it picks the right depth automatically. Saves ~80-90% tokens vs raw data retrieval for context-only queries.",
+      "Intelligent auto-routing query. Analyzes intent and returns either compact summary context (for understanding/planning) or full data (for mutations/exports). Use this as your DEFAULT tool — it picks the right depth automatically. Saves ~80-90% tokens vs raw data retrieval for context-only queries. Results from the current repo's project are boosted automatically (resolved from the working dir); pass `cwd`/`bucket` to target a different one.",
     inputSchema: {
       type: "object",
       properties: {
@@ -97,12 +129,19 @@ export const SMART_TOOLS: MCPTool[] = [
             "Override auto-detection: 'summary' for context/understanding, 'full' for mutations/exports. Default: 'auto' (recommended)",
         },
         maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000)" },
+        cwd: {
+          type: "string",
+          description:
+            "Repo working directory — boosts results from the matching project. Defaults to the server's cwd.",
+        },
+        bucket: { type: "string", description: "Explicit bucket/project name to boost (overrides cwd resolution)." },
       },
       required: ["query"],
     },
     execute: (p) => {
       const rawMode = p.mode && p.mode !== "auto" ? p.mode : classifyIntent(p.query);
       const actualMode = rawMode === "auto" ? "summary" : rawMode;
+      const { projectScope, bucketScope } = currentScope(p);
 
       if (actualMode === "full") {
         return {
@@ -124,11 +163,16 @@ export const SMART_TOOLS: MCPTool[] = [
       }
 
       // Summary mode — unified search (BM25 + semantic, all types, RRF-fused)
-      const unified = unifiedSearch(p.query, { maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10 });
+      const unified = unifiedSearch(p.query, {
+        maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10,
+        projectScope,
+        bucketScope,
+      });
 
       return {
         mode: "summary",
         intent: classifyIntent(p.query),
+        ...(projectScope ? { projectScope } : {}),
         results: unified,
         totalResults: unified.length,
         tip: "Need full data? Call again with mode='full' or use workspace_* {action:'list'} / knowledge_project {action:'load'}.",
@@ -150,6 +194,7 @@ export const SMART_TOOLS: MCPTool[] = [
           description: "Token budget (default: 4000). Controls how much context is returned.",
         },
         projectScope: { type: "string", description: "Boost results from this project" },
+        bucket: { type: "string", description: "Restrict to a session bucket id (from knowledge_session)" },
         agentScope: {
           type: "array",
           items: { type: "string" },
@@ -160,10 +205,11 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
+      const agentScope = [...(p.agentScope ?? []), ...(p.bucket ? [`bucket:${p.bucket}`] : [])];
       return retrieveContextHybrid(p.query, {
         maxTokens: p.maxTokens ?? 4000,
         projectScope: p.projectScope,
-        agentScope: p.agentScope,
+        agentScope: agentScope.length > 0 ? agentScope : undefined,
         topK: p.topK ?? 10,
       });
     },
@@ -173,17 +219,22 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "workspace_context",
     description:
-      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_task/note {action:'list'} when you need context, not full data.",
+      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_task/note {action:'list'} when you need context, not full data. Items in the current repo's project are boosted automatically; pass `cwd`/`bucket` to target a different one.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "What you're working on or looking for" },
         maxItems: { type: "number", description: "Max items per category (default: 5)" },
+        cwd: {
+          type: "string",
+          description: "Repo working directory — boosts items from the matching project. Defaults to the server's cwd.",
+        },
+        bucket: { type: "string", description: "Explicit bucket/project name to boost (overrides cwd resolution)." },
       },
       required: ["query"],
     },
     execute: (p) => {
-      return workspaceContext(p.query, p.maxItems ?? 5);
+      return workspaceContext(p.query, p.maxItems ?? 5, undefined, currentProjectScope(p));
     },
   },
 
@@ -202,11 +253,27 @@ export const SMART_TOOLS: MCPTool[] = [
           items: { type: "string", enum: ["task", "note", "reminder", "knowledge"] },
           description: "Filter to specific types (default: all types)",
         },
+        bucket: {
+          type: "string",
+          description: "Restrict knowledge results to a session bucket id (from knowledge_session)",
+        },
+        cwd: {
+          type: "string",
+          description:
+            "Repo working directory — softly boosts results from the matching project. Defaults to the server's cwd.",
+        },
       },
       required: ["query"],
     },
     execute: (p) => {
-      const results = unifiedSearch(p.query, { maxItems: p.maxItems ?? 10, types: p.types });
+      const { projectScope, bucketScope } = currentScope({ cwd: p.cwd });
+      const results = unifiedSearch(p.query, {
+        maxItems: p.maxItems ?? 10,
+        types: p.types,
+        scope: p.bucket ? [`bucket:${p.bucket}`] : undefined,
+        projectScope,
+        bucketScope,
+      });
       return { results, count: results.length };
     },
   },
@@ -231,7 +298,17 @@ export const SMART_TOOLS: MCPTool[] = [
 
       const activeReminders = reminders.filter((r) => !r.isCompleted);
 
+      const embed = embeddingStats();
+      const pending = getPendingReindex().length;
+
       return {
+        index: {
+          totalChunks: chunkCount(),
+          embeddedEntries: embed.indexed,
+          semanticSearch: embed.available ? "on" : "off (BM25 only)",
+          ...(embed.available ? {} : { embedderHint: embed.reason }),
+          ...(pending > 0 ? { pendingReindex: pending } : {}),
+        },
         workspace: {
           projects: projects.length,
           tasks: { total: tasks.length, byStatus: tasksByStatus },

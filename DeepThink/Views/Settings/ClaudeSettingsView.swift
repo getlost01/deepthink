@@ -45,6 +45,7 @@ struct ClaudeSettingsView: View {
                 configurationSection
 
                 cliSection
+                otherAgentsSection
             }
             .padding(DS.Spacing.xl)
         }
@@ -54,6 +55,7 @@ struct ClaudeSettingsView: View {
                 animateStatus = true
             }
             mcp.checkGlobalMCPStatus()
+            mcp.checkCursorStatus()
         }
         .onDisappear {
             animateStatus = false
@@ -552,6 +554,134 @@ struct ClaudeSettingsView: View {
         }
         .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+    }
+
+    // MARK: - Other Agents (Cursor + portable export)
+
+    @State private var exportMessage: String?
+
+    private var otherAgentsSection: some View {
+        VStack(alignment: .leading, spacing: DS.Spacing.md) {
+            DSSectionHeader(title: "Other Agents")
+
+            Text("Use DeepThink's MCP tools and skills outside Claude Code.")
+                .font(DS.Font.caption)
+                .foregroundStyle(DS.Colors.textSecondary)
+
+            VStack(spacing: 0) {
+                // Cursor — one-click install (MCP + skills + hooks)
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "cursorarrow.rays")
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(DS.Colors.accent)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Cursor")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text("MCP + skills + auto recall/save")
+                            .font(DS.Font.small)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                    Spacer()
+                    if mcp.isCursorInstalled {
+                        HStack(spacing: 3) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: DS.IconSize.sm))
+                            Text("Installed")
+                                .font(DS.Font.small)
+                        }
+                        .foregroundStyle(DS.Colors.success)
+                        Button { mcp.uninstallCursor() } label: {
+                            Text("Remove")
+                                .font(DS.Font.small)
+                                .foregroundStyle(DS.Colors.textTertiary)
+                        }
+                        .buttonStyle(.plainPointer)
+                    } else {
+                        Button { mcp.installCursor() } label: {
+                            HStack(spacing: DS.Spacing.xs) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: DS.IconSize.xs))
+                                Text("Install")
+                                    .font(DS.Font.small)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(DS.Colors.onAccent)
+                            .padding(.horizontal, DS.Spacing.sm)
+                            .padding(.vertical, DS.Spacing.xs)
+                            .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        }
+                        .buttonStyle(.plainPointer)
+                    }
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+
+                Divider()
+
+                // Everything else — export a portable kit
+                HStack(spacing: DS.Spacing.sm) {
+                    Image(systemName: "square.and.arrow.up.on.square")
+                        .font(.system(size: DS.IconSize.sm, weight: .medium))
+                        .foregroundStyle(DS.Colors.knowledge)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Any other agent")
+                            .font(DS.Font.caption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(DS.Colors.textPrimary)
+                        Text(exportMessage ?? "Export skills + mcp.json + README to copy in")
+                            .font(DS.Font.small)
+                            .foregroundStyle(exportMessage == nil ? DS.Colors.textTertiary : DS.Colors.success)
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Button { exportSkillsKit() } label: {
+                        HStack(spacing: DS.Spacing.xs) {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.system(size: DS.IconSize.xs))
+                            Text("Export…")
+                                .font(DS.Font.small)
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(DS.Colors.textPrimary)
+                        .padding(.horizontal, DS.Spacing.sm)
+                        .padding(.vertical, DS.Spacing.xs)
+                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                    }
+                    .buttonStyle(.plainPointer)
+                }
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.sm)
+            }
+            .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
+        }
+    }
+
+    private func exportSkillsKit() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose a folder for the DeepThink skills kit"
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Export"
+        panel.begin { response in
+            guard response == .OK, let dir = panel.url else { return }
+            let target = dir.appendingPathComponent("deepthink-skills")
+            mcp.exportSkills(to: target) { ok in
+                if ok {
+                    exportMessage = "Exported to \(target.lastPathComponent)"
+                    NSWorkspace.shared.activateFileViewerSelecting([target])
+                } else {
+                    exportMessage = "Export failed — is the CLI installed?"
+                }
+            }
+        }
     }
 
     // MARK: - Troubleshoot Hints

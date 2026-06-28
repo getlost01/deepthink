@@ -12,6 +12,7 @@ import { startReconciler } from "./core/embedding-service";
 import { CONFIG_TOOL_MAP, CONFIG_TOOLS } from "./tools/config-mcp";
 import * as knowledge from "./tools/knowledge";
 import { KNOWLEDGE_TOOL_MAP, KNOWLEDGE_TOOLS } from "./tools/knowledge-mcp";
+import { SESSION_TOOL_MAP, SESSION_TOOLS } from "./tools/session-mcp";
 import { SMART_TOOL_MAP, SMART_TOOLS } from "./tools/smart-mcp";
 import { WORKSPACE_TOOL_MAP, WORKSPACE_TOOLS } from "./tools/workspace";
 
@@ -24,8 +25,14 @@ process.on("uncaughtException", (err) => {
   console.error("[deepthink-mcp] uncaught exception:", err);
 });
 
-const ALL_TOOLS = [...SMART_TOOLS, ...WORKSPACE_TOOLS, ...KNOWLEDGE_TOOLS, ...CONFIG_TOOLS];
-const ALL_TOOL_MAP = { ...SMART_TOOL_MAP, ...WORKSPACE_TOOL_MAP, ...KNOWLEDGE_TOOL_MAP, ...CONFIG_TOOL_MAP };
+const ALL_TOOLS = [...SMART_TOOLS, ...WORKSPACE_TOOLS, ...KNOWLEDGE_TOOLS, ...SESSION_TOOLS, ...CONFIG_TOOLS];
+const ALL_TOOL_MAP = {
+  ...SMART_TOOL_MAP,
+  ...WORKSPACE_TOOL_MAP,
+  ...KNOWLEDGE_TOOL_MAP,
+  ...SESSION_TOOL_MAP,
+  ...CONFIG_TOOL_MAP,
+};
 
 const server = new Server(
   { name: "deepthink-workspace", version: "3.0.0" },

@@ -195,6 +195,63 @@ final class MCPService {
         }
     }
 
+    // MARK: - Other Agents (Cursor + portable export)
+
+    var isCursorInstalled = false
+
+    static let cursorMCPPath = "\(NSHomeDirectory())/.cursor/mcp.json"
+
+    func checkCursorStatus() {
+        let txt = (try? String(contentsOfFile: Self.cursorMCPPath, encoding: .utf8)) ?? ""
+        let installed = txt.contains("deepthink")
+        DispatchQueue.main.async { self.isCursorInstalled = installed }
+    }
+
+    func installCursor() {
+        runDeepthink(["install", "--agent", "cursor", "--quiet"]) { self.checkCursorStatus() }
+    }
+
+    func uninstallCursor() {
+        runDeepthink(["uninstall", "--agent", "cursor"]) { self.checkCursorStatus() }
+    }
+
+    /// Run the bundled deepthink CLI off the main thread, then refresh on the main thread.
+    private func runDeepthink(_ args: [String], completion: @escaping @Sendable () -> Void) {
+        let cli = Self.cliInstallPath
+        guard FileManager.default.isExecutableFile(atPath: cli) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cli)
+            process.arguments = args
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+            DispatchQueue.main.async { completion() }
+        }
+    }
+
+    /// Write the portable kit (skills + mcp.json + README) to a folder the user picks,
+    /// for any agent without a first-class installer.
+    func exportSkills(to dir: URL, completion: @escaping @Sendable (Bool) -> Void) {
+        let cli = Self.cliInstallPath
+        guard FileManager.default.isExecutableFile(atPath: cli) else {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cli)
+            process.arguments = ["skills", "export", dir.path]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+            let ok = process.terminationStatus == 0
+            DispatchQueue.main.async { completion(ok) }
+        }
+    }
+
     func generateMCPConfig(servers: [MCPServer]) -> String {
         var config: [String: Any] = [:]
         var mcpServers: [String: Any] = [:]

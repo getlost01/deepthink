@@ -128,9 +128,11 @@ struct DeepThinkApp: App {
         let fm = FileManager.default
         let store = StorageService.shared.storeURL
         // Core Data / SQLite WAL stores keep .store plus -wal and -shm sidecars.
-        let sidecars = [store,
-                        URL(fileURLWithPath: store.path + "-wal"),
-                        URL(fileURLWithPath: store.path + "-shm")]
+        let sidecars = [
+            store,
+            URL(fileURLWithPath: store.path + "-wal"),
+            URL(fileURLWithPath: store.path + "-shm")
+        ]
         let existing = sidecars.filter { fm.fileExists(atPath: $0.path) }
         guard !existing.isEmpty else { return }
 

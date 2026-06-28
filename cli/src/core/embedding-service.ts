@@ -231,6 +231,13 @@ function indexEntryCore(entry: IndexableEntry, knownHashes?: Map<string, number>
     hash
   );
 
+  // No embedder on this machine (e.g. no Xcode CLT). Persist text chunks anyway so
+  // BM25/keyword retrieval still works, and don't enqueue a retry that can never succeed.
+  if (!ensureHelper()) {
+    replaceChunksForEntry(entry.id, chunks);
+    return;
+  }
+
   const texts = chunks.map((c) => `${entry.title}. ${c.content.slice(0, 500)}`);
   const embeddings = embedBatch(texts);
   const withEmbeddings = chunks.map((chunk, i) => ({ ...chunk, embedding: embeddings[i] ?? null }));
@@ -497,6 +504,10 @@ export function semanticSearch(query: string, topK: number = 10, scope?: string[
     .map(([entryID, score]) => ({ entryID, score }))
     .sort((a, b) => b.score - a.score)
     .slice(0, topK);
+}
+
+export function embeddingsAvailable(): boolean {
+  return ensureHelper();
 }
 
 export function embeddingStats(): { indexed: number; available: boolean; reason?: string } {

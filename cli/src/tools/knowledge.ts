@@ -9,9 +9,33 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
+import { indexEntry, removeEntry } from "../core/embedding-service";
 import { query } from "../core/llm";
+
+// Index a knowledge file into the vector store at write time so it's retrievable
+// immediately (no first-query indexing latency). entryId matches loadAllEntries.
+function indexKnowledgeFile(
+  filepath: string,
+  title: string,
+  body: string,
+  tags: string[],
+  source: string,
+  importedAt: Date
+): void {
+  try {
+    indexEntry({
+      id: relative(KNOWLEDGE_DIR, filepath),
+      type: "knowledge",
+      title,
+      content: body,
+      tags,
+      source,
+      importedAt,
+    });
+  } catch {}
+}
 
 function notifyAppSync(): void {
   try {
@@ -158,6 +182,7 @@ export function saveIntegrationData(
   const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
+  indexKnowledgeFile(filepath, resolvedTitle, content, tags ?? [], "integrations", new Date());
   updateIndex();
   return filepath;
 }
@@ -338,6 +363,72 @@ export async function archiveProject(project: string): Promise<string> {
     if (archiveFile) cleanupTempFiles(archiveFile);
     throw err;
   }
+}
+
+// MARK: - Session Compaction
+
+// Roll up a bucket's older session logs into a single dense summary, keeping the
+// most recent `keepRecent` intact. Prevents per-bucket session sprawl from diluting
+// retrieval. Returns the archive path, or null when nothing needed compacting.
+export async function compactSessions(bucketId: string, keepRecent = 20): Promise<string | null> {
+  const source = "sessions";
+  const channelDir = join(KNOWLEDGE_DIRS.integrations, source, slugify(bucketId));
+  if (!existsSync(channelDir)) return null;
+
+  const files = readdirSync(channelDir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()
+    .reverse(); // newest first (timestamps sort lexically)
+  if (files.length <= keepRecent) return null;
+
+  const oldFiles = files.slice(keepRecent);
+  const combined = oldFiles
+    .map((f) => {
+      try {
+        return readFileSync(join(channelDir, f), "utf-8");
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+  if (!combined) return null;
+
+  const charLimit = 32000;
+  let compressed: string;
+  try {
+    compressed = await query(
+      `Compress these older session logs into a dense, chronological summary. Preserve key decisions, recurring problems, and any still-open follow-ups:\n\n${combined.slice(0, charLimit)}`,
+      "You compress engineering session history. Output structured markdown. Preserve decisions, dates, and open items."
+    );
+  } catch (err: any) {
+    throw new Error(`session compaction failed for ${bucketId}: ${err?.message ?? String(err)}`);
+  }
+
+  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
+  const archiveFile = join(KNOWLEDGE_DIRS.archive, `sessions_${slugify(bucketId)}_${timestamp()}.md`);
+  const title = `Session history: ${bucketId} (rolled up ${oldFiles.length})`;
+  const body = `# ${title}\n${new Date().toISOString()}\n\n${compressed}`;
+  atomicWrite(archiveFile, body);
+  indexKnowledgeFile(
+    archiveFile,
+    title,
+    compressed,
+    ["session-log", `bucket:${bucketId}`, "rollup"],
+    "archive",
+    new Date()
+  );
+
+  for (const f of oldFiles) {
+    const fp = join(channelDir, f);
+    removeEntry(relative(KNOWLEDGE_DIR, fp));
+    try {
+      unlinkSync(fp);
+    } catch {}
+  }
+
+  notifyAppSync();
+  return archiveFile;
 }
 
 // MARK: - Index

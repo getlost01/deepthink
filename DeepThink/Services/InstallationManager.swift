@@ -157,103 +157,25 @@ final class InstallationManager {
 
     // MARK: - Claude Code slash commands
 
+    /// Skills are owned by the CLI (embedded from cli/skills/) — delegate so the app,
+    /// the CLI, and any agent always install the same canonical set with no drift.
     static func installClaudeCommands() {
-        let commandsDir = NSHomeDirectory() + "/.claude/commands/deepthink"
-        try? FileManager.default.createDirectory(atPath: commandsDir, withIntermediateDirectories: true)
-
-        let commands: [(filename: String, content: String)] = [
-            ("sync-session.md", syncSessionCommandContent)
-        ]
-
-        for command in commands {
-            let path = commandsDir + "/" + command.filename
-            let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
-            guard existing != command.content else { continue }
-            try? command.content.write(toFile: path, atomically: true, encoding: .utf8)
+        let cli = DeepThinkPaths.localBin + "/deepthink"
+        guard FileManager.default.isExecutableFile(atPath: cli) else {
+            StorageService.shared.writeLog("Skills install skipped — CLI not found at \(cli)", to: "app")
+            return
         }
 
-        StorageService.shared.writeLog("Claude Code commands installed → \(commandsDir)", to: "app")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: cli)
+        process.arguments = ["install", "--skills-only", "--quiet"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try? process.run()
+        process.waitUntilExit()
+
+        StorageService.shared.writeLog("Claude Code skills installed via CLI", to: "app")
     }
-
-    private static let syncSessionCommandContent = #"""
-    ---
-    description: Capture the current Claude Code session to DeepThink — what was worked on, decisions made, files changed, and open items.
-    ---
-
-    Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
-
-    ## Step 1 — Gather context
-
-    Run these shell commands to ground the summary in facts:
-
-    ```bash
-    git rev-parse --show-toplevel 2>/dev/null || pwd          # repo root
-    git branch --show-current 2>/dev/null                     # current branch
-    git log --oneline -10 2>/dev/null                         # recent commits
-    git diff --stat HEAD 2>/dev/null                          # changed files
-    date +%Y-%m-%d                                            # today's date
-    ```
-
-    Derive:
-    - **project**: `basename` of the repo root (override with `$ARGUMENTS` if provided)
-    - **branch**: current git branch (omit if not in a git repo)
-    - **date**: from `date` command above
-
-    ## Step 2 — Build the summary
-
-    Use conversation history as the primary source; use git output to fill gaps or verify file names.
-    Include only what actually happened — do not pad or invent.
-
-    ```
-    # Session: <date> — <one-line topic>
-
-    **Project:** <project>
-    **Branch:** <branch>
-    **Date:** <date>
-
-    ## What was worked on
-    <bullet list — features, bugs, refactors, investigations>
-
-    ## Key decisions
-    <bullet list — architectural, approach, or design choices made>
-
-    ## Files changed
-    <bullet list — notable files created or modified with a short reason>
-
-    ## Outcomes
-    <what was completed, fixed, or shipped>
-
-    ## Open items / follow-ups
-    <unresolved work, deferred items, or follow-ups — "none" if clean>
-    ```
-
-    Omit any section with no content.
-
-    ## Step 3 — Capture to DeepThink
-
-    Call `mcp__deepthink__knowledge_integration` with `action: "capture"` and:
-    - `source`: `"claude-code"`
-    - `channel`: project slug (lowercase, spaces as hyphens)
-    - `content`: full markdown from Step 2
-    - `title`: `"Session <date>: <one-line topic>"`
-    - `tags`: `["session-log", "<project-slug>", "<date>", "<branch>"]` (omit branch tag if not in a git repo)
-
-    ## Step 4 — Confirm
-
-    On success, output one line:
-
-    ```
-    Saved → DeepThink / <channel>: "<title>"
-    ```
-
-    If the MCP tool is unavailable, print the full summary so nothing is lost:
-
-    ```
-    DeepThink MCP not connected. Session summary:
-
-    <markdown from Step 2>
-    ```
-    """#
 
     // MARK: - PATH setup
 
