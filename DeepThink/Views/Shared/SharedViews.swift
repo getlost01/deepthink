@@ -580,7 +580,7 @@ private struct DeepLinkPickerRow: View {
                         Image(systemName: "archivebox.fill")
                             .font(.system(size: DS.IconSize.nano, weight: .bold))
                             .foregroundStyle(DS.Colors.onAccent)
-                            .padding(2)
+                            .padding(DS.Spacing.xxs)
                             .background(DS.Colors.textTertiary, in: RoundedRectangle(cornerRadius: DS.Radius.xs))
                             .offset(x: 4, y: 4)
                     }

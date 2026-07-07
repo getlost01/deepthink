@@ -129,7 +129,7 @@ struct QuickCaptureView: View {
                 .buttonStyle(.plainPointer)
             }
         }
-        .padding(3)
+        .padding(DS.Spacing.xs3)
         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
     }
 

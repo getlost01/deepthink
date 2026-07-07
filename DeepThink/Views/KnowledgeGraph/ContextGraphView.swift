@@ -640,7 +640,7 @@ struct ContextGraphView: View {
             Text("FILTER BY BUCKET")
                 .font(DS.Font.micro)
                 .foregroundStyle(DS.Colors.textTertiary)
-                .padding(.bottom, 2)
+                .padding(.bottom, DS.Spacing.xxs)
 
             Button {
                 withAnimation(DS.Animation.quick) { activeBucketFilter = nil }
@@ -971,7 +971,7 @@ struct ContextGraphView: View {
                         Text(String(format: "%.0f%%", pct * 100))
                             .font(DS.Font.micro)
                             .foregroundStyle(DS.Colors.onAccent)
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, DS.Spacing.xs)
                             .padding(.vertical, DS.Spacing.xxs)
                             .background(nodeColor, in: Capsule())
                             .offset(x: 6, y: -radius / 2)

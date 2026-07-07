@@ -503,7 +503,7 @@ private struct AddServerSheet: View {
                         .buttonStyle(.plainPointer)
                     }
                 }
-                .padding(2)
+                .padding(DS.Spacing.xxs)
                 .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.sm + 2))
 
                 Button("Cancel") { dismiss() }

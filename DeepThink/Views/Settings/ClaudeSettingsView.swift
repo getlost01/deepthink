@@ -1123,7 +1123,7 @@ private struct VersionPill: View {
                         .font(DS.Font.badge)
                         .foregroundStyle(DS.Colors.onAccent)
                         .padding(.horizontal, DS.Spacing.xs3)
-                        .padding(.vertical, 1)
+                        .padding(.vertical, DS.Spacing.xxxs)
                         .background(version.family.color, in: Capsule())
                 }
 
@@ -1132,7 +1132,7 @@ private struct VersionPill: View {
                         .font(.system(size: DS.IconSize.micro, weight: .medium))
                         .foregroundStyle(DS.Colors.warning)
                         .padding(.horizontal, DS.Spacing.xs3)
-                        .padding(.vertical, 1)
+                        .padding(.vertical, DS.Spacing.xxxs)
                         .background(DS.Colors.warningFill, in: Capsule())
                 }
             }

@@ -268,11 +268,13 @@ extension DSThemePalette {
         let accent = sem.accent
         let warning = sem.warning
         return DSThemePalette(
+            // Neutral ramp — each step a small, even lift over the last so no single
+            // boundary (e.g. page → sidebar) reads as a harder jump than any other.
             page: DSColor.srgb(0.071, 0.071, 0.071),
-            surface: DSColor.srgb(0.118, 0.118, 0.118),
-            surfaceElevated: DSColor.srgb(0.137, 0.137, 0.137),
-            modal: DSColor.srgb(0.149, 0.149, 0.149),
-            card: DSColor.srgb(0.118, 0.118, 0.118),
+            surface: DSColor.srgb(0.094, 0.094, 0.094),
+            surfaceElevated: DSColor.srgb(0.110, 0.110, 0.110),
+            modal: DSColor.srgb(0.140, 0.140, 0.140),
+            card: DSColor.srgb(0.125, 0.125, 0.125),
             fill: DSColor.srgb(1, 1, 1, 0.04),
             fillSecondary: DSColor.srgb(1, 1, 1, 0.08),
             textPrimary: DSColor.srgb(1, 1, 1, 0.87),
@@ -418,10 +420,13 @@ final class DSThemeManager {
         }
     }
 
-    /// Uses AppKit effective appearance only — not `AppleInterfaceStyle` defaults, which stay at the OS value while the app forces light/dark.
+    /// Reads the OS preference directly rather than `NSApp.effectiveAppearance`, which
+    /// hasn't synced with the system yet in the first moments after launch — querying it
+    /// too early (a race won more often in optimized Release builds than in Debug) returns
+    /// `.aqua` regardless of actual Dark Mode, until AppKit catches up a beat later.
     private static func resolvedSystemAppearance() -> AppAppearance {
-        let match = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
-        return match == .darkAqua ? .dark : .light
+        let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle")
+        return style?.localizedCaseInsensitiveContains("dark") == true ? .dark : .light
     }
 }
 

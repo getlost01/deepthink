@@ -535,7 +535,6 @@ struct DSSearchField: View {
 
 private struct DSThemedSearchFieldContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     @Binding var text: String
     let placeholder: String
     let icon: String
@@ -553,7 +552,6 @@ private struct DSThemedSearchFieldContent: View {
                 .foregroundStyle(palette.textPrimary)
                 .tint(palette.accent)
                 .onSubmit { onSubmit?() }
-                .id(theme.themeRevision)
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm + 2)
@@ -857,7 +855,6 @@ struct DSLabeledTextField: View {
 
 private struct DSLabeledTextFieldContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     let label: String
     @Binding var text: String
     let placeholder: String
@@ -875,7 +872,6 @@ private struct DSLabeledTextFieldContent: View {
                 .font(DS.Font.body)
                 .foregroundStyle(palette.textPrimary)
                 .tint(palette.accent)
-                .id(theme.themeRevision)
                 .dsInputField()
         }
     }
@@ -893,7 +889,6 @@ struct DSLabeledTextEditor: View {
 
 private struct DSLabeledTextEditorContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     let label: String
     @Binding var text: String
     let minHeight: CGFloat
@@ -911,7 +906,6 @@ private struct DSLabeledTextEditorContent: View {
                 .tint(palette.accent)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
-                .id(theme.themeRevision)
                 .padding(DS.Spacing.md)
                 .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(
@@ -1223,13 +1217,11 @@ extension View {
 
 private struct DSThemedTextInputModifier: ViewModifier {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
 
     func body(content: Content) -> some View {
         content
             .foregroundStyle(palette.textPrimary)
             .tint(palette.accent)
-            .id(theme.themeRevision)
     }
 }
 
