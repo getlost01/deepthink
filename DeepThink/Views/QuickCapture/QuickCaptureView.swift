@@ -214,7 +214,7 @@ struct QuickCaptureView: View {
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
             .padding(.vertical, DS.Spacing.xs + 2)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
     }
@@ -238,7 +238,7 @@ struct QuickCaptureView: View {
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
             .padding(.vertical, DS.Spacing.xs + 2)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
     }
@@ -255,7 +255,7 @@ struct QuickCaptureView: View {
         }
         .padding(.horizontal, DS.Spacing.sm + 2)
         .padding(.vertical, DS.Spacing.xs + 2)
-        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 
     // MARK: - Footer

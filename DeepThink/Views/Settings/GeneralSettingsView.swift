@@ -586,7 +586,7 @@ private struct BackupSettingsSection: View {
                 Image(systemName: "minus")
                     .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .frame(width: 26, height: 26)
-                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
             .buttonStyle(.plainPointer)
@@ -604,7 +604,7 @@ private struct BackupSettingsSection: View {
                 Image(systemName: "plus")
                     .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .frame(width: 26, height: 26)
-                    .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                    .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                     .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
             .buttonStyle(.plainPointer)

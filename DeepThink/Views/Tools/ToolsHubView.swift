@@ -249,7 +249,7 @@ private struct ToolCard: View {
                 }
                 .padding(.horizontal, DS.Spacing.sm)
                 .padding(.vertical, DS.Spacing.xs)
-                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
             }
             .buttonStyle(.plainPointer)
@@ -622,7 +622,7 @@ private struct AddServerSheet: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: 200)
                 .padding(DS.Spacing.sm)
-                .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
                 .onChange(of: jsonText) { _, v in validateJSON(v) }
 
@@ -955,7 +955,7 @@ private struct CatalogInstallSheet: View {
                             .padding(.horizontal, DS.Spacing.sm)
                             .padding(.vertical, DS.Spacing.xs)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                             .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                     }
 

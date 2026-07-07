@@ -183,6 +183,7 @@ struct DeepThinkApp: App {
                     ArchiveService.shared.configure(appState: appState)
                     ClaudeService.shared.configure(appState: appState)
                     KnowledgeService.shared.reload()
+                    backfillReminderRepeatInterval(container: sharedModelContainer)
                     indexWorkspaceItems(container: sharedModelContainer)
                     EmbeddingService.shared.drainPendingReindex(container: sharedModelContainer)
                     EmbeddingService.shared.startReconcilerTimer(container: sharedModelContainer)
@@ -419,6 +420,24 @@ struct DeepThinkApp: App {
                 appState.navigate(to: .knowledge)
             }
         ])
+    }
+
+    /// Older stores may have `Reminder` rows written before `repeatIntervalRaw` was
+    /// added; the column is NULL on disk even though the model has a default, which
+    /// makes Core Data log "missing mandatory text data" on every fault. Normalize
+    /// those rows once and persist the value so the warning stops recurring.
+    private func backfillReminderRepeatInterval(container: ModelContainer) {
+        let didBackfillKey = "didBackfillReminderRepeatIntervalRaw"
+        guard !UserDefaults.standard.bool(forKey: didBackfillKey) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let context = ModelContext(container)
+            let reminders = (try? context.fetch(FetchDescriptor<Reminder>())) ?? []
+            for reminder in reminders {
+                reminder.repeatIntervalRaw = reminder.repeatInterval.rawValue
+            }
+            try? context.save()
+            UserDefaults.standard.set(true, forKey: didBackfillKey)
+        }
     }
 
     private func indexWorkspaceItems(container: ModelContainer) {

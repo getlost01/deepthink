@@ -109,6 +109,14 @@ enum DS {
             p.fillSecondary
         }
 
+        static var controlFill: Color {
+            p.controlFill
+        }
+
+        static var controlFillHover: Color {
+            p.controlFillHover
+        }
+
         static var border: Color {
             p.border
         }
@@ -555,7 +563,7 @@ private struct DSThemedSearchFieldContent: View {
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm + 2)
-        .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.md)
                 .strokeBorder(palette.border, lineWidth: 1)
@@ -907,7 +915,7 @@ private struct DSLabeledTextEditorContent: View {
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
                 .padding(DS.Spacing.md)
-                .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.md)
                         .strokeBorder(palette.border, lineWidth: 1)
@@ -934,7 +942,7 @@ struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
             .pickerStyle(.menu)
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.xs)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(DS.Colors.border, lineWidth: 1)
@@ -1232,7 +1240,7 @@ private struct DSInputFieldModifier: ViewModifier {
         content
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(palette.border, lineWidth: 1)
@@ -1412,7 +1420,7 @@ struct DSSecondaryButtonStyle: ButtonStyle {
             .padding(.vertical, DS.Spacing.sm - 1)
             .background(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
-                    .fill(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill)
+                    .fill(isHovered ? DS.Colors.controlFillHover : DS.Colors.controlFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)

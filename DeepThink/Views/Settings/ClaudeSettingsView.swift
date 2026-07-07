@@ -649,7 +649,7 @@ struct ClaudeSettingsView: View {
                         .foregroundStyle(DS.Colors.textPrimary)
                         .padding(.horizontal, DS.Spacing.sm)
                         .padding(.vertical, DS.Spacing.xs)
-                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
                     }
                     .buttonStyle(.plainPointer)

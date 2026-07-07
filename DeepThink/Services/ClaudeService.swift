@@ -433,9 +433,7 @@ final class ClaudeService {
                     "json",
                     "--no-session-persistence",
                     "--model",
-                    model ?? ClaudeService.shared.fullModelID,
-                    "--max-tokens",
-                    "\(maxTokens)"
+                    model ?? ClaudeService.shared.fullModelID
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -447,6 +445,7 @@ final class ClaudeService {
                 env["HOME"] = NSHomeDirectory()
                 env["PATH"] = "\(NSHomeDirectory())/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:\(env["PATH"] ?? "")"
                 env["DEEPTHINK_HOME"] = storage.baseURL.path
+                env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "\(maxTokens)"
                 process.environment = env
 
                 storage.writeLog("Query: \(prompt.prefix(100))...", to: "claude")
@@ -569,9 +568,7 @@ final class ClaudeService {
                     "--verbose",
                     "--no-session-persistence",
                     "--model",
-                    modelID,
-                    "--max-tokens",
-                    "\(maxTok)"
+                    modelID
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -582,6 +579,7 @@ final class ClaudeService {
                 env["HOME"] = NSHomeDirectory()
                 env["PATH"] = "\(NSHomeDirectory())/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:\(env["PATH"] ?? "")"
                 env["DEEPTHINK_HOME"] = storage.baseURL.path
+                env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "\(maxTok)"
                 process.environment = env
 
                 let outPipe = Pipe()
