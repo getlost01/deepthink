@@ -9,6 +9,7 @@ enum SidebarSection: String, Identifiable {
     case knowledge = "Knowledge"
     case aiAssistant = "AI Assistant"
     case reminders = "Reminders"
+    case handoffs = "Handoffs"
     case integrations = "Integrations"
     case terminal = "Terminal"
     case contextGraph = "Context Graph"
@@ -23,7 +24,7 @@ enum SidebarSection: String, Identifiable {
     }
 
     static var mainSections: [SidebarSection] {
-        [.workspace, .knowledge, .contextGraph, .aiAssistant, .reminders]
+        [.workspace, .knowledge, .contextGraph, .aiAssistant, .handoffs, .reminders]
     }
 
     static var toolSections: [SidebarSection] {
@@ -37,6 +38,7 @@ enum SidebarSection: String, Identifiable {
         case .knowledge: "brain"
         case .aiAssistant: "message.and.waveform"
         case .reminders: "bell"
+        case .handoffs: "tray.and.arrow.down"
         case .integrations: "puzzlepiece.extension"
         case .terminal: "terminal"
         case .contextGraph: "point.3.connected.trianglepath.dotted"
@@ -51,6 +53,7 @@ enum SidebarSection: String, Identifiable {
         case .knowledge: "Save and search anything you learn"
         case .aiAssistant: "Chat, assistants, and automations"
         case .reminders: "Set reminders with optional times"
+        case .handoffs: "Context handed off between AI agents"
         case .integrations: "Add tools and services for AI to use"
         case .terminal: "Built-in terminal sessions"
         case .contextGraph: "Semantic similarity graph of your knowledge"
@@ -65,6 +68,7 @@ enum SidebarSection: String, Identifiable {
         case .knowledge: "Save articles, ideas, and research in one place"
         case .aiAssistant: "Chat with AI, manage assistants and automations"
         case .reminders: "Things to remember, with optional time alerts"
+        case .handoffs: "State passed between agents — pick up where another left off"
         case .integrations: "Connect tools and services to make AI more powerful"
         case .terminal: "Run commands and scripts"
         case .contextGraph: "Visualize how your knowledge connects semantically"
@@ -81,6 +85,9 @@ enum SidebarSection: String, Identifiable {
                 "Everything here can be used by AI to give you better answers."
         case .aiAssistant: "Chat with AI that has access to your notes and knowledge. Manage assistants and automations from the tabs."
         case .reminders: "Keep track of things you need to remember. Optionally set a date and time to get notified."
+        case .handoffs:
+            "When one AI agent finishes a chunk of work, it can hand off to the next — recording what's done, what's " +
+                "next, and the current file or branch. Open handoffs are waiting to be picked up; claim one to signal you've taken it."
         case .integrations:
             "Connections let AI access external tools like web search, databases, or file systems. " +
                 "Enable what you need, disable what you don't."

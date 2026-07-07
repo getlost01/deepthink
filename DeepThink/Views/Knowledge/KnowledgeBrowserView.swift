@@ -15,8 +15,17 @@ struct KnowledgeBrowserView: View {
     @State private var newBucketName = ""
     @State private var showObsidianImport = false
     @State private var displayedCount = 20
+    // MCP multi-agent metadata for badges, keyed by vectors.db entry_id (path relative
+    // to the knowledge dir). Loaded once per reload rather than per row.
+    @State private var entryMeta: [String: EntryMeta] = [:]
+    @State private var staleIDs: Set<String> = []
 
     private let pageSize = 20
+
+    private func loadBadgeData() {
+        entryMeta = VectorStore.shared.provenanceByEntry()
+        staleIDs = VectorStore.shared.staleEntryIDs()
+    }
     private var knowledge: KnowledgeService {
         KnowledgeService.shared
     }
@@ -151,7 +160,13 @@ struct KnowledgeBrowserView: View {
                         ScrollView {
                             LazyVStack(spacing: 0) {
                                 ForEach(visibleEntries) { entry in
-                                    EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
+                                    EntryRow(
+                                        entry: entry,
+                                        isSelected: selectedEntry?.id == entry.id,
+                                        bucketFiltered: bucketFilter != nil,
+                                        meta: entryMeta,
+                                        staleIDs: staleIDs
+                                    ) {
                                         selectedEntry = entry
                                     }
                                     .id(entry.id)
@@ -218,10 +233,14 @@ struct KnowledgeBrowserView: View {
         .onChange(of: bucketFilter) { displayedCount = pageSize }
         .onAppear {
             knowledge.reload()
+            loadBadgeData()
             // Deep link and selectedEntry refresh handled in onChange(of: knowledge.entries)
             // once the async reload actually populates entries.
         }
+        .onChange(of: appState.externalSyncToken) { _, _ in loadBadgeData() }
         .onChange(of: knowledge.entries) { _, entries in
+            // Refresh badge metadata whenever the knowledge set changes.
+            loadBadgeData()
             // Keep selectedEntry fresh after any reload (handles phantom after moveEntry too)
             if let sel = selectedEntry {
                 selectedEntry = entries.first(where: { $0.id == sel.id })
@@ -312,8 +331,26 @@ private struct EntryRow: View {
     let entry: KnowledgeEntry
     let isSelected: Bool
     let bucketFiltered: Bool
+    var meta: [String: EntryMeta] = [:]
+    var staleIDs: Set<String> = []
     let action: () -> Void
     @State private var isHovered = false
+
+    // vectors.db entry_id for this file (path relative to the knowledge dir).
+    private var relID: String {
+        let base = StorageService.shared.knowledgeURL.path
+        let p = entry.filePath.path
+        return p.hasPrefix(base + "/") ? String(p.dropFirst(base.count + 1)) : p
+    }
+
+    private var visibility: String { meta[relID]?.visibility ?? "shared" }
+    private var agentID: String? {
+        guard let a = meta[relID]?.agentID, !a.isEmpty, a != "default" else { return nil }
+        return a
+    }
+    private var isStale: Bool { staleIDs.contains(relID) }
+    private var isSuperseded: Bool { meta[relID]?.supersededBy != nil }
+    private var hasBadges: Bool { visibility != "shared" || agentID != nil || isStale || isSuperseded }
 
     var body: some View {
         Button(action: action) {
@@ -359,6 +396,25 @@ private struct EntryRow: View {
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                                 .lineLimit(1)
+                        }
+                    }
+
+                    if hasBadges {
+                        HStack(spacing: DS.Spacing.xs2) {
+                            if visibility == "private" {
+                                DSPill(text: "private", color: DS.Colors.slate)
+                            } else if visibility == "handoff" {
+                                DSPill(text: "handoff", color: DS.Colors.info)
+                            }
+                            if let agentID {
+                                DSPill(text: agentID, color: DS.Colors.purple)
+                            }
+                            if isStale {
+                                DSPill(text: "stale", color: DS.Colors.amber)
+                            }
+                            if isSuperseded {
+                                DSPill(text: "superseded", color: DS.Colors.textTertiary)
+                            }
                         }
                     }
                 }

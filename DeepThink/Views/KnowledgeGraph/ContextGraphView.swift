@@ -68,6 +68,8 @@ private enum SearchScope: String, CaseIterable {
 struct ContextGraphView: View {
     @State private var nodes: [ContextNode] = []
     @State private var edges: [ContextEdge] = []
+    // Node ids (absolute knowledge-file paths) the MCP flagged grounding-stale.
+    @State private var staleNodeIDs: Set<String> = []
     @State private var showSemanticEdges = true
     @State private var showExplicitEdges = true
 
@@ -866,6 +868,7 @@ struct ContextGraphView: View {
         let hasQueryScore = !queryScores.isEmpty
         let qScore = queryScores[node.id] ?? 0
         let isQueryMatch = hasQueryScore && qScore > 0
+        let isStale = staleNodeIDs.contains(node.id)
 
         let radius = CGFloat(max(22, min(48, 18 + node.connectionCount * 5)))
         let nodeColor = colorForSource(node.source)
@@ -927,6 +930,14 @@ struct ContextGraphView: View {
                 .overlay(
                     Circle().strokeBorder(ringColor, lineWidth: isSelected || isHovered ? 2.5 : 1.5)
                 )
+
+            // grounding-stale indicator — dashed amber ring around the node
+            if isStale {
+                Circle()
+                    .strokeBorder(DS.Colors.amber, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+                    .frame(width: radius + 8, height: radius + 8)
+                    .opacity(isDimmed ? 0.3 : 1)
+            }
 
             // initial letter
             Text(initial)
@@ -1192,11 +1203,19 @@ struct ContextGraphView: View {
 
     // MARK: - Build
 
+    // Map the MCP's grounding-stale entry ids (paths relative to the knowledge dir)
+    // to absolute node ids so nodeView can flag them.
+    private func refreshStaleNodes() {
+        let base = StorageService.shared.knowledgeURL.path
+        staleNodeIDs = Set(VectorStore.shared.staleEntryIDs().map { "\(base)/\($0)" })
+    }
+
     private func rebuild(in size: CGSize) {
         stopSimulation()
         isBuilding = true
         buildGeneration &+= 1
         let gen = buildGeneration
+        refreshStaleNodes()
 
         let knowledgeEntries = KnowledgeService.shared.entries
         DispatchQueue.global(qos: .userInitiated).async {

@@ -289,12 +289,20 @@ function stripNestedHooks(eventHooks: any[]): any[] {
     .filter((g) => !g || !Array.isArray(g.hooks) || g.hooks.length > 0);
 }
 
-function installNestedHooks(settingsPath: string, cliPath: string, steps: InstallStep[], recallOnly = false): void {
+function installNestedHooks(
+  settingsPath: string,
+  cliPath: string,
+  steps: InstallStep[],
+  recallOnly = false,
+  agentId?: string
+): void {
   try {
     const settings = readJson(settingsPath);
     const hooks = (settings.hooks ?? {}) as Record<string, any[]>;
     const recall = { type: "command", command: `"${cliPath}" session recall --quiet` };
-    const autosync = { type: "command", command: `"${cliPath}" session autosync` };
+    // Attribute unattended captures to this host so multi-agent provenance is correct.
+    const agentFlag = agentId ? ` --agent ${agentId}` : "";
+    const autosync = { type: "command", command: `"${cliPath}" session autosync${agentFlag}` };
 
     hooks.SessionStart = [
       ...stripNestedHooks(hooks.SessionStart ?? []),
@@ -368,7 +376,8 @@ const claudeCodeAdapter: HostAdapter = {
         }
       }
     }
-    if (wants(ctx, "hooks")) installNestedHooks(join(base, "settings.json"), ctx.cliPath, ctx.steps);
+    if (wants(ctx, "hooks"))
+      installNestedHooks(join(base, "settings.json"), ctx.cliPath, ctx.steps, false, "claude-code");
   },
   uninstall(ctx) {
     const base = claudeBase(ctx);
@@ -425,7 +434,7 @@ const cursorAdapter: HostAdapter = {
       else
         upsertJsonMcp(
           join(base, "mcp.json"),
-          { type: "stdio", command: ctx.mcpPath, args: [], env: {} },
+          { type: "stdio", command: ctx.mcpPath, args: [], env: { DEEPTHINK_AGENT_ID: "cursor" } },
           "mcp.json",
           ctx.steps
         );
@@ -442,7 +451,7 @@ const cursorAdapter: HostAdapter = {
         ];
         cfg.hooks.sessionEnd = [
           ...stripFlatHooks(cfg.hooks.sessionEnd),
-          { command: `"${ctx.cliPath}" session autosync` },
+          { command: `"${ctx.cliPath}" session autosync --agent cursor` },
         ];
         writeJson(path, cfg);
         ctx.steps.push({ step: "Hooks", status: "done", detail: "sessionStart recall + sessionEnd autosync" });

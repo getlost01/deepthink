@@ -6,9 +6,10 @@ import {
   projectContent,
   reindexWorkspace,
   reminderContent,
+  runMaintenance,
   taskContent,
 } from "../core/embedding-service";
-import { deleteChunksForEntry } from "../core/vector-store";
+import { addLink, deleteChunksForEntry, deleteLinksForEntity, linksFor, removeLink } from "../core/vector-store";
 
 export interface WorkspaceTool {
   name: string;
@@ -74,6 +75,38 @@ function resolveDeeplink(url: string): unknown {
 
   throw new Error(`Unsupported deepthink:// type "${type}" in URL: ${url}`);
 }
+
+// Resolve a (type, ref) pair to the canonical entryId used across the vector store
+// and links graph. Workspace items resolve via the DB (accepting pk/id/name); knowledge,
+// bucket, session, and any other type pass through as-is (the caller supplies the entryId).
+function resolveEntity(type: string, ref: string): string {
+  switch (type) {
+    case "task": {
+      const t = db.getTask(ref);
+      if (!t) throw new Error(`task not found: ${ref}`);
+      return `task:${hexToUUID(t.id)}`;
+    }
+    case "note": {
+      const n = db.getNote(ref);
+      if (!n) throw new Error(`note not found: ${ref}`);
+      return `note:${hexToUUID(n.id)}`;
+    }
+    case "project": {
+      const pr = db.getProject(ref);
+      if (!pr) throw new Error(`project not found: ${ref}`);
+      return `project:${hexToUUID(pr.id)}`;
+    }
+    case "reminder": {
+      const r = db.getReminder(ref);
+      if (!r) throw new Error(`reminder not found: ${ref}`);
+      return `reminder:${hexToUUID(r.id)}`;
+    }
+    default:
+      return ref;
+  }
+}
+
+const LINK_TYPES = ["task", "note", "project", "reminder", "knowledge", "session", "bucket"];
 
 export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   // ── Tasks ──
@@ -158,8 +191,12 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         case "delete": {
           const t = db.getTask(p.ref);
           if (!t) throw new Error(`task not found: ${p.ref}`);
-          for (const subId of listSubtaskIds(t.pk)) deleteChunksForEntry(`task:${hexToUUID(subId)}`);
+          for (const subId of listSubtaskIds(t.pk)) {
+            deleteChunksForEntry(`task:${hexToUUID(subId)}`);
+            deleteLinksForEntity("task", `task:${hexToUUID(subId)}`);
+          }
           deleteChunksForEntry(`task:${hexToUUID(t.id)}`);
+          deleteLinksForEntity("task", `task:${hexToUUID(t.id)}`);
           db.deleteTask(t.pk);
           return { pk: t.pk, deleted: true };
         }
@@ -241,6 +278,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           const n = db.getNote(p.ref);
           if (!n) throw new Error(`note not found: ${p.ref}`);
           deleteChunksForEntry(`note:${hexToUUID(n.id)}`);
+          deleteLinksForEntity("note", `note:${hexToUUID(n.id)}`);
           db.deleteNote(n.pk);
           return { pk: n.pk, deleted: true };
         }
@@ -323,6 +361,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           const pr = db.getProject(p.ref);
           if (!pr) throw new Error(`project not found: ${p.ref}`);
           deleteChunksForEntry(`project:${hexToUUID(pr.id)}`);
+          deleteLinksForEntity("project", `project:${hexToUUID(pr.id)}`);
           db.deleteProject(pr.pk);
           return { pk: pr.pk, deleted: true };
         }
@@ -400,6 +439,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           const r = db.getReminder(p.ref);
           if (!r) throw new Error(`reminder not found: ${p.ref}`);
           deleteChunksForEntry(`reminder:${hexToUUID(r.id)}`);
+          deleteLinksForEntity("reminder", `reminder:${hexToUUID(r.id)}`);
           db.deleteReminder(r.pk);
           return { pk: r.pk, deleted: true };
         }
@@ -493,11 +533,79 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   {
     name: "workspace_reindex",
     description:
-      "Re-embed all workspace items (tasks, notes, reminders) that are missing embeddings or have stale content. " +
-      "Run once after a fresh install or after upgrading from a version that lacked per-item embedding. " +
-      "Safe to call multiple times — unchanged items are skipped. Returns the count of items actually indexed.",
+      "Re-embed all workspace items (tasks, notes, reminders) that are missing embeddings or have stale content, then " +
+      "run the maintenance pass: near-duplicate detection/auto-supersede + grounding (flag knowledge that references " +
+      "deleted tasks or missing files). Run once after a fresh install/upgrade, or any time to refresh staleness. " +
+      "Safe to call repeatedly — unchanged items are skipped. Returns indexed count + a maintenance summary.",
     inputSchema: { type: "object", properties: {} },
-    execute: (_p) => reindexWorkspace(),
+    execute: (_p) => {
+      const reindex = reindexWorkspace();
+      const maintenance = runMaintenance({ autoDedup: true });
+      return {
+        ...reindex,
+        maintenance: {
+          nearDuplicates: maintenance.nearDuplicates.length,
+          autoSuperseded: maintenance.autoSuperseded,
+          groundingStale: maintenance.grounding,
+        },
+      };
+    },
+  },
+
+  // ── Links (cross-type relationship graph) ──
+  {
+    name: "workspace_link",
+    description:
+      "Connect any two items into the relationship graph — task ↔ note ↔ knowledge ↔ session ↔ project ↔ reminder. " +
+      "Lets a later query gather everything related to one thing regardless of type. Set `action`:\n" +
+      "- create: requires fromType, fromRef, toType, toRef; optional relation (default 'related')\n" +
+      "- list: requires fromType, fromRef → all edges touching it (outgoing + incoming)\n" +
+      "- delete: requires fromType, fromRef, toType, toRef; optional relation\n" +
+      "Workspace refs accept a pk, id, or name; knowledge/session/bucket refs are the entryId (e.g. from a capture).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["create", "list", "delete"], description: "Operation to perform" },
+        fromType: { type: "string", enum: LINK_TYPES, description: "Type of the source item" },
+        fromRef: { type: "string", description: "Source item ref (pk/id/name for workspace items, else entryId)" },
+        toType: { type: "string", enum: LINK_TYPES, description: "Type of the target item (create/delete)" },
+        toRef: { type: "string", description: "Target item ref (create/delete)" },
+        relation: {
+          type: "string",
+          description: "Edge label, e.g. 'references', 'blocks', 'related' (default 'related')",
+        },
+      },
+      required: ["action"],
+    },
+    execute: (p) => {
+      switch (p.action) {
+        case "create": {
+          if (!p.fromType || !p.fromRef || !p.toType || !p.toRef)
+            throw new Error(`'fromType', 'fromRef', 'toType', 'toRef' are required for action 'create'`);
+          const fromId = resolveEntity(p.fromType, p.fromRef);
+          const toId = resolveEntity(p.toType, p.toRef);
+          addLink(p.fromType, fromId, p.toType, toId, p.relation ?? "related");
+          return {
+            linked: { fromType: p.fromType, fromId, toType: p.toType, toId, relation: p.relation ?? "related" },
+          };
+        }
+        case "list": {
+          if (!p.fromType || !p.fromRef) throw new Error(`'fromType' and 'fromRef' are required for action 'list'`);
+          const id = resolveEntity(p.fromType, p.fromRef);
+          return { entity: { type: p.fromType, id }, ...linksFor(p.fromType, id) };
+        }
+        case "delete": {
+          if (!p.fromType || !p.fromRef || !p.toType || !p.toRef)
+            throw new Error(`'fromType', 'fromRef', 'toType', 'toRef' are required for action 'delete'`);
+          const fromId = resolveEntity(p.fromType, p.fromRef);
+          const toId = resolveEntity(p.toType, p.toRef);
+          removeLink(p.fromType, fromId, p.toType, toId, p.relation ?? "related");
+          return { deleted: true };
+        }
+        default:
+          throw new Error(`unknown action: ${p.action}. Use one of: create, list, delete`);
+      }
+    },
   },
 ];
 

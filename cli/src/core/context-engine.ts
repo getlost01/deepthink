@@ -2,9 +2,10 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import * as db from "./db";
-import { indexEntry, type SemanticResult, semanticSearch } from "./embedding-service";
+import { indexEntry, type SemanticResult, semanticSearch, staleEntryIds } from "./embedding-service";
 import {
   allChunks,
+  type ChunkVisibility,
   chunksForEntryIds,
   contentHash as getContentHash,
   pruneStaleEntries,
@@ -21,6 +22,8 @@ export interface IndexedEntry {
   tags: string[];
   source: string;
   importedAt: Date;
+  agentId?: string | null;
+  visibility?: ChunkVisibility;
 }
 
 export interface ContextResult {
@@ -32,10 +35,22 @@ export interface ContextResult {
     source: string;
     score: number;
     chunk?: string;
+    // 1.0 = brand new, → 0 as the entry ages past its source's half-life. Lets the
+    // consuming agent weigh how much to trust older context (Phase 3).
+    freshness?: number;
+    // Grounding: true when the entry references a deleted task or a file that no longer
+    // exists (last grounding pass). Down-ranked in scoring; flagged so the caller knows.
+    stale?: boolean;
   }[];
   totalTokensEstimate: number;
   entriesScanned: number;
   entriesReturned: number;
+}
+
+// 1.0 (fresh) decaying toward 0 with age, per the source's half-life.
+function freshnessOf(source: string, importedAt: Date): number {
+  const daysSince = (Date.now() - importedAt.getTime()) / 86400000;
+  return Math.round(Math.exp(-daysSince / decayHalfLife(source)) * 1000) / 1000;
 }
 
 // ── Stopwords ──
@@ -327,6 +342,12 @@ function loadAllEntries(): IndexedEntry[] {
           const parsed = dateStr ? new Date(dateStr) : new Date();
           const importedAt = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
 
+          const visRaw = (meta.visibility ?? "").toLowerCase();
+          const visibility: ChunkVisibility | undefined =
+            visRaw === "private" || visRaw === "handoff" || visRaw === "shared"
+              ? (visRaw as ChunkVisibility)
+              : undefined;
+
           const entry: IndexedEntry = {
             id,
             title: meta.title ?? item.name.replace(".md", ""),
@@ -334,6 +355,8 @@ function loadAllEntries(): IndexedEntry[] {
             tags,
             source,
             importedAt,
+            agentId: meta.agent_id ?? meta.agentId ?? null,
+            visibility,
           };
           _fileCache.set(id, { entry, mtimeMs });
           entries.push(entry);
@@ -435,6 +458,8 @@ function ensureIndexed(entries: IndexedEntry[]): void {
       tags: entry.tags,
       source: entry.source,
       importedAt: entry.importedAt,
+      agentId: entry.agentId,
+      visibility: entry.visibility,
     });
     _hashCache.set(entry.id, hash);
     _indexVersion++;
@@ -463,7 +488,14 @@ function decayHalfLife(source: string): number {
 
 export function retrieveContext(
   query: string,
-  opts: { maxTokens?: number; projectScope?: string; bucketScope?: string; agentScope?: string[]; topK?: number } = {}
+  opts: {
+    maxTokens?: number;
+    projectScope?: string;
+    bucketScope?: string;
+    agentScope?: string[];
+    agentId?: string;
+    topK?: number;
+  } = {}
 ): ContextResult {
   const maxTokens = opts.maxTokens ?? 4000;
   const topK = opts.topK ?? 10;
@@ -478,10 +510,18 @@ export function retrieveContext(
     return { parts: [], totalTokensEstimate: 0, entriesScanned: entries.length, entriesReturned: 0 };
 
   const queryTermSet = new Set(queryTerms);
+  const staleSet = staleEntryIds();
   const { docFreq, docTerms, entryCount: docCount } = getTFIDF(entries);
 
-  // Only score knowledge chunks — workspace chunks have no docTerms entry and would be skipped anyway
-  const chunks = allChunks({ scope: opts.agentScope, entryType: "knowledge", excludeArchive: true });
+  // Only score knowledge chunks — workspace chunks have no docTerms entry and would be skipped anyway.
+  // Visibility/supersession filtering is applied inside allChunks (private hidden unless agentId matches,
+  // superseded entries hidden).
+  const chunks = allChunks({
+    scope: opts.agentScope,
+    entryType: "knowledge",
+    excludeArchive: true,
+    agentId: opts.agentId,
+  });
 
   const scorableChunks = chunks.filter((c) => docTerms.has(c.entryId));
   const avgDocLen =
@@ -534,6 +574,10 @@ export function retrieveContext(
       score *= 1.6;
     }
 
+    // Grounding penalty: entries referencing deleted tasks / missing files rank lower
+    // (but aren't removed — the caller still sees them, flagged stale).
+    if (staleSet.has(chunk.entryId)) score *= 0.5;
+
     if (score > 0.1) scored.push({ chunk, score });
   }
 
@@ -570,6 +614,8 @@ export function retrieveContext(
       source: item.chunk.source,
       score: Math.round(item.score * 1000) / 1000,
       chunk: item.chunk.totalChunks > 1 ? `${item.chunk.chunkIndex + 1}/${item.chunk.totalChunks}` : undefined,
+      freshness: freshnessOf(item.chunk.source, item.chunk.importedAt),
+      ...(staleSet.has(item.chunk.entryId) ? { stale: true } : {}),
     });
 
     charBudget -= partSize;
@@ -587,14 +633,21 @@ export function retrieveContext(
 
 export function retrieveContextHybrid(
   query: string,
-  opts: { maxTokens?: number; projectScope?: string; bucketScope?: string; agentScope?: string[]; topK?: number } = {},
+  opts: {
+    maxTokens?: number;
+    projectScope?: string;
+    bucketScope?: string;
+    agentScope?: string[];
+    agentId?: string;
+    topK?: number;
+  } = {},
   precomputedSemantic?: SemanticResult[]
 ): ContextResult {
   const maxTokens = opts.maxTokens ?? 4000;
   const topK = opts.topK ?? 10;
 
   const bm25 = retrieveContext(query, { ...opts, maxTokens: maxTokens * 2 });
-  const semantic = precomputedSemantic ?? semanticSearch(query, 20, opts.agentScope);
+  const semantic = precomputedSemantic ?? semanticSearch(query, 20, opts.agentScope, opts.agentId);
 
   if (bm25.parts.length === 0 && semantic.length === 0) {
     return { parts: [], totalTokensEstimate: 0, entriesScanned: 0, entriesReturned: 0 };
@@ -643,6 +696,7 @@ export function retrieveContextHybrid(
   const sorted = [...fusedScores.entries()].sort((a, b) => b[1] - a[1]);
 
   const queryTermSet = new Set(tokenize(query));
+  const staleSet = staleEntryIds();
   let charBudget = maxTokens * 4;
   const parts: ContextResult["parts"] = [];
 
@@ -668,6 +722,8 @@ export function retrieveContextHybrid(
         tags: chunk.tags,
         source: chunk.source,
         score: Math.round(score * 10000) / 10000,
+        freshness: freshnessOf(chunk.source, chunk.importedAt),
+        ...(staleSet.has(entryId) ? { stale: true } : {}),
       });
       charBudget -= partSize;
     }
@@ -833,6 +889,7 @@ export function unifiedSearch(
     scope?: string[];
     projectScope?: string;
     bucketScope?: string;
+    agentId?: string;
   } = {}
 ): UnifiedResult[] {
   const maxItems = opts.maxItems ?? 10;
@@ -844,7 +901,7 @@ export function unifiedSearch(
   const notes = db.listNotes();
   const reminders = db.listReminders({ completed: false });
 
-  const semantic = semanticSearch(query, 60);
+  const semantic = semanticSearch(query, 60, undefined, opts.agentId);
 
   const taskDetail = new Map(tasks.map((t) => [t.pk, t.detail]));
   const noteContent = new Map(notes.map((n) => [n.pk, n.content]));
@@ -910,7 +967,13 @@ export function unifiedSearch(
     // Pass pre-computed semantic (trimmed to top 20) to avoid a second search
     const kn = retrieveContextHybrid(
       query,
-      { topK: 20, agentScope: opts.scope, projectScope: opts.projectScope, bucketScope: opts.bucketScope },
+      {
+        topK: 20,
+        agentScope: opts.scope,
+        projectScope: opts.projectScope,
+        bucketScope: opts.bucketScope,
+        agentId: opts.agentId,
+      },
       semantic
     );
     kn.parts.forEach((p, rank) => {

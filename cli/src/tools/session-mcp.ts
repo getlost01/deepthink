@@ -1,6 +1,9 @@
+import { relative } from "node:path";
+import { currentAgentId, currentSessionId, KNOWLEDGE_DIR } from "../config";
 import { retrieveContextHybrid } from "../core/context-engine";
 import { createProject, createTask, getProject, hexToUUID, listNotes, listTasks } from "../core/db";
 import { indexEntry, taskContent } from "../core/embedding-service";
+import { addLink, supersedeEntry } from "../core/vector-store";
 import {
   type Bucket,
   type BucketType,
@@ -10,6 +13,7 @@ import {
   resolveBucket,
   touchBucket,
 } from "./buckets";
+import * as handoffs from "./handoffs";
 import * as knowledge from "./knowledge";
 
 export interface MCPTool {
@@ -51,7 +55,34 @@ function sessionTitle(content: string): string {
   return h ? h.replace(/^#+\s*/, "").trim() : "(untitled session)";
 }
 
-type NoteKind = "decision" | "gotcha" | "snippet" | "insight" | "context";
+type NoteKind = "decision" | "gotcha" | "snippet" | "insight" | "context" | "handoff";
+
+type Visibility = "private" | "shared" | "handoff";
+
+// deepthink:// references inside captured content → real graph edges, so a session
+// note links to the tasks/notes/projects it mentions (Phase 4 auto-linking).
+const DEEPLINK_RE = /deepthink:\/\/(task|note|project|reminder|knowledge)\/([A-Za-z0-9_-]+)/g;
+
+function autoLink(fromEntryId: string, bucketId: string, content: string): number {
+  let n = 0;
+  // Always link the capture to its bucket so a project view can gather everything.
+  try {
+    addLink("knowledge", fromEntryId, "bucket", bucketId, "in-bucket");
+    n++;
+  } catch {}
+  const seen = new Set<string>();
+  for (const m of content.matchAll(DEEPLINK_RE)) {
+    const type = m[1];
+    const toId = type === "knowledge" ? m[2] : `${type}:${m[2].toLowerCase()}`;
+    if (seen.has(toId)) continue;
+    seen.add(toId);
+    try {
+      addLink("knowledge", fromEntryId, type, toId, "references");
+      n++;
+    } catch {}
+  }
+  return n;
+}
 
 // Best-effort classification of a free-form fact into a note kind, so a single
 // "remember this" capture lands with the right kind without the caller choosing.
@@ -84,25 +115,58 @@ function firstMeaningfulLine(content: string): string {
 
 // Persist a single atomic fact to a bucket's session-notes channel, indexed on its
 // own so it surfaces independently in retrieval. Shared by the `note` action and the
-// generic `remember` tool.
+// generic `remember` tool. Stamps agent/session provenance and visibility, creates
+// graph edges for any deepthink:// references, and optionally supersedes a prior entry.
 function saveNote(
   bucket: Bucket,
   content: string,
   kind: NoteKind,
-  explicitTitle?: string,
-  extraTags: string[] = []
-): { kind: NoteKind; title: string; path: string } {
-  const title = explicitTitle ?? `${kind}: ${firstMeaningfulLine(content).slice(0, 70)}`.trim();
-  const tags = bucketTags(bucket, [`kind:${kind}`, ...extraTags]);
+  opts: {
+    title?: string;
+    extraTags?: string[];
+    agentId?: string;
+    sessionId?: string;
+    visibility?: Visibility;
+    supersedes?: string;
+  } = {}
+): { kind: NoteKind; title: string; path: string; entryId: string; links: number; superseded?: string } {
+  const agentId = currentAgentId(opts.agentId);
+  const sessionId = currentSessionId(opts.sessionId);
+  const visibility: Visibility = opts.visibility ?? "shared";
+  const title = opts.title ?? `${kind}: ${firstMeaningfulLine(content).slice(0, 70)}`.trim();
+  const tags = bucketTags(bucket, [
+    `kind:${kind}`,
+    `agent:${agentId}`,
+    `visibility:${visibility}`,
+    ...(opts.extraTags ?? []),
+  ]);
   const path = knowledge.saveIntegrationData(
     "session-notes",
     bucket.id,
     content,
-    { bucket: bucket.id, bucket_type: bucket.type, kind },
+    {
+      bucket: bucket.id,
+      bucket_type: bucket.type,
+      kind,
+      agent_id: agentId,
+      visibility,
+      ...(sessionId ? { session_id: sessionId } : {}),
+    },
     title,
     tags
   );
-  return { kind, title, path };
+
+  const entryId = relative(KNOWLEDGE_DIR, path);
+  const links = autoLink(entryId, bucket.id, content);
+
+  let superseded: string | undefined;
+  if (opts.supersedes) {
+    try {
+      if (supersedeEntry(opts.supersedes, entryId) > 0) superseded = opts.supersedes;
+    } catch {}
+  }
+
+  return { kind, title, path, entryId, links, ...(superseded ? { superseded } : {}) };
 }
 
 // Normalize a task title for fuzzy duplicate detection (case/punctuation-insensitive).
@@ -177,17 +241,39 @@ export const SESSION_TOOLS: MCPTool[] = [
       "Buckets are resolved from the git remote of `cwd` (falling back to the folder name), so the same repo always maps to the same bucket. Set `action`:\n" +
       "- sync: persist a session summary to the bucket. Requires content; optional cwd, bucket, type, title, branch, date, tags, openItems, promoteOpenItems (default true → creates workspace tasks for follow-ups).\n" +
       "- note: capture a single atomic fact mid-session (a decision, gotcha, snippet, or insight) scoped to the bucket. Requires content; optional kind, title, cwd, bucket, type, tags. Indexed on its own so it's retrievable independently — prefer this over a full sync for one-off learnings.\n" +
-      "- recall: warm a new session with this bucket's recent history. Optional cwd, bucket, type, limit (default 5), query (scoped relevance search).\n" +
+      "- recall: warm a new session with this bucket's recent history. Optional cwd, bucket, type, limit (default 5), query (scoped relevance search). Surfaces OPEN HANDOFFS first.\n" +
+      "- handoff: hand off in-flight state to the next agent. Requires content (what's done, what's next, current file/branch). Optional toAgent, title, cwd, bucket. Written as visibility:handoff so recall picks it up.\n" +
+      "- claim: claim an open handoff so no other agent duplicates the work. Requires handoffId (from recall/list). Optional agent (defaults to your DEEPTHINK_AGENT_ID).\n" +
       "- list: list all known buckets with session counts and last-active time.",
     inputSchema: {
       type: "object",
       properties: {
-        action: { type: "string", enum: ["sync", "note", "recall", "list"], description: "Operation to perform" },
+        action: {
+          type: "string",
+          enum: ["sync", "note", "recall", "list", "handoff", "claim"],
+          description: "Operation to perform",
+        },
         kind: {
           type: "string",
           enum: ["decision", "gotcha", "snippet", "insight", "context"],
           description: "note: the kind of atomic fact being captured (default: context)",
         },
+        agent: {
+          type: "string",
+          description: "Agent identity for this capture/claim (defaults to env DEEPTHINK_AGENT_ID or 'default')",
+        },
+        visibility: {
+          type: "string",
+          enum: ["private", "shared", "handoff"],
+          description:
+            "note: who can retrieve this. 'private' = only this agent; 'shared' (default) = all agents; 'handoff' = surfaced first in recall.",
+        },
+        supersedes: {
+          type: "string",
+          description: "note: entryId of a prior capture this replaces — the old one is hidden from retrieval.",
+        },
+        toAgent: { type: "string", description: "handoff: address this handoff to a specific agent (optional)" },
+        handoffId: { type: "string", description: "claim: id of the handoff to claim" },
         cwd: {
           type: "string",
           description:
@@ -231,17 +317,29 @@ export const SESSION_TOOLS: MCPTool[] = [
           const branch = p.branch ?? (bucket.type === "repo" && p.cwd ? gitInfo(p.cwd).branch : undefined);
           const date = p.date ?? new Date().toISOString().slice(0, 10);
           const title = p.title ?? `Session ${date}`;
-          const tags = bucketTags(bucket, [date, ...(branch ? [branch] : []), ...(p.tags ?? [])]);
+          const agentId = currentAgentId(p.agent);
+          const sessionId = currentSessionId();
+          const tags = bucketTags(bucket, [date, `agent:${agentId}`, ...(branch ? [branch] : []), ...(p.tags ?? [])]);
 
           const path = knowledge.saveIntegrationData(
             SESSION_SOURCE,
             bucket.id,
             p.content,
-            { bucket: bucket.id, bucket_type: bucket.type, ...(branch ? { branch } : {}) },
+            {
+              bucket: bucket.id,
+              bucket_type: bucket.type,
+              agent_id: agentId,
+              visibility: "shared",
+              ...(sessionId ? { session_id: sessionId } : {}),
+              ...(branch ? { branch } : {}),
+            },
             title,
             tags
           );
           touchBucket(bucket.id);
+
+          const entryId = relative(KNOWLEDGE_DIR, path);
+          const links = autoLink(entryId, bucket.id, p.content);
 
           const openItems =
             (p.openItems as string[] | undefined) ?? extractSection(p.content, /open items|follow.?ups/i);
@@ -254,45 +352,99 @@ export const SESSION_TOOLS: MCPTool[] = [
             compactedArchive = await knowledge.compactSessions(bucket.id);
           } catch {}
 
-          return { bucket, title, path, openItems, tasksCreated, ...(compactedArchive ? { compactedArchive } : {}) };
+          return {
+            bucket,
+            title,
+            path,
+            entryId,
+            links,
+            openItems,
+            tasksCreated,
+            ...(compactedArchive ? { compactedArchive } : {}),
+          };
         }
 
         case "note": {
           if (!p.content) throw new Error(`'content' is required for action 'note'`);
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
           const kind = (p.kind as NoteKind) ?? "context";
-          const saved = saveNote(bucket, p.content, kind, p.title, p.tags ?? []);
+          const saved = saveNote(bucket, p.content, kind, {
+            title: p.title,
+            extraTags: p.tags ?? [],
+            agentId: p.agent,
+            visibility: p.visibility as Visibility | undefined,
+            supersedes: p.supersedes,
+          });
           return { bucket, ...saved };
+        }
+
+        case "handoff": {
+          if (!p.content) throw new Error(`'content' is required for action 'handoff'`);
+          const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
+          const agentId = currentAgentId(p.agent);
+          const title = p.title ?? `Handoff from ${agentId}`;
+          // Persist the human-readable state as a handoff-visibility note (retrievable),
+          // and register it in the handoff store (claimable lifecycle).
+          const saved = saveNote(bucket, p.content, "handoff", {
+            title,
+            agentId,
+            visibility: "handoff",
+            extraTags: p.toAgent ? [`to:${p.toAgent}`] : [],
+          });
+          const record = handoffs.create({
+            bucket: bucket.id,
+            fromAgent: agentId,
+            toAgent: p.toAgent,
+            title,
+            content: p.content,
+            notePath: saved.entryId,
+          });
+          return { bucket, handoff: record, note: saved };
+        }
+
+        case "claim": {
+          if (!p.handoffId) throw new Error(`'handoffId' is required for action 'claim'`);
+          const agentId = currentAgentId(p.agent);
+          const claimed = handoffs.claim(p.handoffId, agentId);
+          return { claimed, hint: `Claimed by ${agentId}. Resume from the handoff content above.` };
         }
 
         case "recall": {
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
           const limit = p.limit ?? 5;
+          const agentId = currentAgentId(p.agent);
           const entries = knowledge.loadIntegrationData(SESSION_SOURCE, bucket.id, limit);
           const sessions = entries.map((e) => ({ file: e.file, content: e.content }));
           const openFollowUps = [
             ...new Set(entries.flatMap((e) => extractSection(e.content, /open items|follow.?ups/i))),
           ];
 
+          // Open handoffs addressed to this agent (or unaddressed) come first — this is
+          // how one agent picks up where another left off.
+          const openHandoffs = handoffs.open(bucket.id, agentId);
+
           const relevant = p.query
-            ? retrieveContextHybrid(p.query, { topK: 8, agentScope: [`bucket:${bucket.id}`] }).parts
+            ? retrieveContextHybrid(p.query, { topK: 8, agentScope: [`bucket:${bucket.id}`], agentId }).parts
             : undefined;
 
           return {
             bucket,
+            openHandoffs,
             sessionCount: sessions.length,
             sessions,
             openFollowUps,
             ...(relevant ? { relevant } : {}),
             hint:
-              sessions.length === 0
-                ? "No prior sessions for this bucket yet. Run /deepthink:sync-session at the end of your work to start the history."
-                : "Use these to resume context. openFollowUps are unresolved items from past sessions.",
+              openHandoffs.length > 0
+                ? "There are OPEN HANDOFFS — claim one with action:'claim' {handoffId} before starting so no agent duplicates work."
+                : sessions.length === 0
+                  ? "No prior sessions for this bucket yet. Run /deepthink:sync-session at the end of your work to start the history."
+                  : "Use these to resume context. openFollowUps are unresolved items from past sessions.",
           };
         }
 
         default:
-          throw new Error(`unknown action: ${p.action}. Use one of: sync, note, recall, list`);
+          throw new Error(`unknown action: ${p.action}. Use one of: sync, note, recall, list, handoff, claim`);
       }
     },
   },
@@ -332,6 +484,7 @@ SESSION_TOOLS.push({
     const openFollowUps = [
       ...new Set(sessionEntries.flatMap((e) => extractSection(e.content, /open items|follow.?ups/i))),
     ];
+    const openHandoffs = handoffs.open(bucket.id);
 
     // Workspace project
     const wsProject = getProject(projName);
@@ -368,6 +521,7 @@ SESSION_TOOLS.push({
         },
       },
       sessions,
+      openHandoffs,
       openFollowUps,
       tasks: {
         open: openTasks
@@ -423,6 +577,20 @@ SESSION_TOOLS.push({
       },
       type: { type: "string", enum: ["repo", "topic", "area"], description: "Bucket type (default: repo)" },
       tags: { type: "array", items: { type: "string" }, description: "Extra tags" },
+      agent: {
+        type: "string",
+        description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID or 'default')",
+      },
+      visibility: {
+        type: "string",
+        enum: ["private", "shared", "handoff"],
+        description: "'private' = only this agent can retrieve it; 'shared' (default) = all agents",
+      },
+      supersedes: {
+        type: "string",
+        description:
+          "entryId of a prior fact this replaces — the old one is hidden from retrieval so stale context doesn't resurface.",
+      },
     },
     required: ["content"],
   },
@@ -430,7 +598,13 @@ SESSION_TOOLS.push({
     if (!p.content) throw new Error(`'content' is required`);
     const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
     const kind = (p.kind as NoteKind) ?? classifyKind(p.content);
-    const saved = saveNote(bucket, p.content, kind, p.title, p.tags ?? []);
+    const saved = saveNote(bucket, p.content, kind, {
+      title: p.title,
+      extraTags: p.tags ?? [],
+      agentId: p.agent,
+      visibility: p.visibility as Visibility | undefined,
+      supersedes: p.supersedes,
+    });
     return {
       bucket,
       ...saved,

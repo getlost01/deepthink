@@ -582,6 +582,9 @@ async function cmdSession() {
         cwd: hookCwd,
         content,
         date,
+        // Attribute the capture to the host agent when the hook passes one (else env
+        // DEEPTHINK_AGENT_ID, else "default").
+        ...(flagVal("--agent") ? { agent: flagVal("--agent") } : {}),
         // Don't spawn tasks from an unattended capture unless explicitly asked.
         promoteOpenItems: flag("--tasks"),
       });

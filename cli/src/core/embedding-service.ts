@@ -1,24 +1,31 @@
 import { execFileSync, execSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEEPTHINK_ROOT } from "../config";
+import { DEEPTHINK_ROOT, KNOWLEDGE_DIR } from "../config";
 import * as db from "./db";
 import { hexToUUID } from "./db";
 import {
+  allChunks,
   batchContentHashes,
+  type ChunkVisibility,
   chunksWithEmbeddings,
   deleteChunksForEntry,
   deleteExhaustedPendingReindex,
   deletePendingReindex,
   embeddedCount,
   enqueuePendingReindex,
+  findNearDuplicates,
   contentHash as getContentHash,
+  getMeta,
   getPendingReindex,
   incrementPendingRetry,
+  linksFor,
   pruneStaleEntries,
   replaceChunksForEntry,
   semanticChunk,
+  setMeta,
   simpleHash,
+  supersedeEntry,
 } from "./vector-store";
 
 const CACHE_DIR = join(DEEPTHINK_ROOT, ".cache");
@@ -212,6 +219,11 @@ export interface IndexableEntry {
   tags: string[];
   source: string;
   importedAt: Date;
+  // Multi-agent provenance (Phase 1). Optional so existing callers are unaffected;
+  // defaults to shared/no-agent.
+  agentId?: string | null;
+  sessionId?: string | null;
+  visibility?: ChunkVisibility;
 }
 
 // Internal: accepts a pre-loaded hash map to avoid per-entry DB queries.
@@ -228,7 +240,8 @@ function indexEntryCore(entry: IndexableEntry, knownHashes?: Map<string, number>
     entry.tags,
     entry.source,
     entry.importedAt,
-    hash
+    hash,
+    { agentId: entry.agentId, sessionId: entry.sessionId, visibility: entry.visibility }
   );
 
   // No embedder on this machine (e.g. no Xcode CLT). Persist text chunks anyway so
@@ -448,14 +461,182 @@ export function drainPendingReindex(): { processed: number; failed: number } {
   return { processed, failed };
 }
 
+// MARK: - Staleness Maintenance (Phase 3)
+
+export interface MaintenanceReport {
+  ranAt: string;
+  nearDuplicates: { keep: string; duplicate: string; similarity: number }[];
+  autoSuperseded: number;
+  grounding: number;
+}
+
+// MARK: - Grounding (Phase 3)
+
+export interface GroundingReport {
+  ranAt: string;
+  stale: { entryId: string; reasons: string[] }[];
+}
+
+// Repo root per bucket, read straight from the bucket registry (avoids a core→tools
+// import). Used to resolve file references in captured knowledge.
+function bucketRoots(): Map<string, string> {
+  const p = join(KNOWLEDGE_DIR, "buckets.json");
+  const m = new Map<string, string>();
+  if (!existsSync(p)) return m;
+  try {
+    const reg = JSON.parse(readFileSync(p, "utf-8")) as Record<string, { path?: string }>;
+    for (const k of Object.keys(reg)) if (reg[k]?.path) m.set(k, reg[k].path as string);
+  } catch {}
+  return m;
+}
+
+// Candidate source-file references: a backtick-wrapped or bare token with a path
+// separator and a file extension. The first-segment-has-a-dot guard drops domains
+// (github.com/…), and "://" drops URLs — both common false positives in prose.
+const FILE_REF_RE =
+  /`([^`\s]+\/[^`\s]+\.[a-zA-Z0-9]{1,6})`|(?:^|\s)([\w.\-]+\/[\w./\-]+\.[a-zA-Z0-9]{1,6})(?=[\s.,;:)]|$)/gm;
+
+function extractFileRefs(content: string): string[] {
+  const out = new Set<string>();
+  for (const m of content.matchAll(FILE_REF_RE)) {
+    const p = (m[1] ?? m[2] ?? "").trim();
+    if (!p || p.includes("://") || p.startsWith("http")) continue;
+    const firstSeg = p.split("/")[0];
+    if (firstSeg.includes(".")) continue; // domain-like, not a repo path
+    out.add(p);
+  }
+  return [...out];
+}
+
+// Cross-check captured knowledge against live state: a note that references a task
+// that's been deleted, or a file that no longer exists, is likely stale. Records the
+// stale set in meta so retrieval can down-rank + flag it cheaply (a Set lookup, no
+// filesystem work per query). Non-destructive — nothing is deleted or hidden outright.
+export function runGroundingCheck(): GroundingReport {
+  const roots = bucketRoots();
+  const existingTasks = new Set(db.listTasks({ excludeArchived: false }).map((t) => `task:${hexToUUID(t.id)}`));
+
+  const byEntry = new Map<string, { content: string; tags: string[] }>();
+  for (const c of allChunks({ entryType: "knowledge" })) {
+    const e = byEntry.get(c.entryId) ?? { content: "", tags: c.tags };
+    e.content += ` ${c.content}`;
+    byEntry.set(c.entryId, e);
+  }
+
+  const stale: GroundingReport["stale"] = [];
+  for (const [entryId, { content, tags }] of byEntry) {
+    const reasons: string[] = [];
+
+    // Broken task references (via the auto-link graph).
+    for (const l of linksFor("knowledge", entryId).outgoing) {
+      if (l.toType === "task" && !existingTasks.has(l.toId.toLowerCase())) {
+        reasons.push(`references deleted task ${l.toId}`);
+      }
+    }
+
+    // Missing file references — only when we can resolve the bucket's repo root.
+    const bucketTag = tags.find((t) => t.startsWith("bucket:"));
+    const root = bucketTag ? roots.get(bucketTag.slice("bucket:".length)) : undefined;
+    if (root && existsSync(root)) {
+      for (const rel of extractFileRefs(content)) {
+        const abs = rel.startsWith("/") ? rel : join(root, rel);
+        if (!existsSync(abs)) reasons.push(`missing file ${rel}`);
+      }
+    }
+
+    if (reasons.length > 0) stale.push({ entryId, reasons: reasons.slice(0, 5) });
+  }
+
+  const report: GroundingReport = { ranAt: new Date().toISOString(), stale };
+  try {
+    setMeta("grounding", JSON.stringify(report));
+  } catch {}
+  return report;
+}
+
+// Entry ids currently flagged as grounding-stale (from the last grounding pass).
+// Cheap for retrieval to consult on every query.
+export function staleEntryIds(): Set<string> {
+  const raw = getMeta("grounding");
+  if (!raw) return new Set();
+  try {
+    const r = JSON.parse(raw) as GroundingReport;
+    return new Set(r.stale.map((s) => s.entryId));
+  } catch {
+    return new Set();
+  }
+}
+
+// Detect near-duplicate knowledge entries and (optionally) auto-supersede the older
+// one in each very-high-similarity pair, so retrieval stops returning redundant copies.
+// Detection threshold is conservative; auto-supersede is gated on an even higher bar so
+// only true duplicates are hidden — distinct-but-related notes are merely reported.
+export function runMaintenance(
+  opts: { autoDedup?: boolean; detectThreshold?: number; supersedeThreshold?: number } = {}
+): MaintenanceReport {
+  const detectThreshold = opts.detectThreshold ?? 0.9;
+  const supersedeThreshold = opts.supersedeThreshold ?? 0.96;
+
+  let nearDuplicates: MaintenanceReport["nearDuplicates"] = [];
+  try {
+    nearDuplicates = findNearDuplicates(detectThreshold, { entryType: "knowledge" });
+  } catch {}
+
+  let autoSuperseded = 0;
+  if (opts.autoDedup) {
+    for (const pair of nearDuplicates) {
+      if (pair.similarity >= supersedeThreshold) {
+        try {
+          if (supersedeEntry(pair.duplicate, pair.keep) > 0) autoSuperseded++;
+        } catch {}
+      }
+    }
+  }
+
+  let grounding = 0;
+  try {
+    grounding = runGroundingCheck().stale.length;
+  } catch {}
+
+  const report: MaintenanceReport = {
+    ranAt: new Date().toISOString(),
+    nearDuplicates,
+    autoSuperseded,
+    grounding,
+  };
+  try {
+    setMeta("last_maintenance", JSON.stringify({ ...report, nearDuplicates: nearDuplicates.length }));
+  } catch {}
+  return report;
+}
+
+export function lastMaintenance(): any | null {
+  const raw = getMeta("last_maintenance");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 // Background reconciler that drains the pending_reindex queue. Matches the app's 60s
 // cadence (EmbeddingService.startReconcilerTimer) to minimize redundant work when both
 // run; drains are idempotent and serialized by SQLite busy_timeout, so overlap is safe.
+// Every 30th tick (~30 min) it also runs the staleness maintenance pass (dedup detection
+// + auto-supersede of exact duplicates).
 export function startReconciler(): void {
+  let tick = 0;
   setInterval(() => {
     try {
       drainPendingReindex();
     } catch {}
+    tick++;
+    if (tick % 30 === 0) {
+      try {
+        runMaintenance({ autoDedup: true });
+      } catch {}
+    }
   }, 60_000);
 }
 
@@ -484,11 +665,11 @@ export interface SemanticResult {
   score: number;
 }
 
-export function semanticSearch(query: string, topK: number = 10, scope?: string[]): SemanticResult[] {
+export function semanticSearch(query: string, topK: number = 10, scope?: string[], agentId?: string): SemanticResult[] {
   const queryVector = embedQuery(query);
   if (!queryVector) return [];
 
-  const entries = chunksWithEmbeddings({ scope });
+  const entries = chunksWithEmbeddings({ scope, agentId });
   // Track the best-scoring chunk per entry (not just first-seen).
   const bestScores = new Map<string, number>();
 

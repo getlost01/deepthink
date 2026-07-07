@@ -13,6 +13,7 @@ import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { indexEntry, removeEntry } from "../core/embedding-service";
 import { query } from "../core/llm";
+import { simpleHash } from "../core/vector-store";
 
 // Index a knowledge file into the vector store at write time so it's retrievable
 // immediately (no first-query indexing latency). entryId matches loadAllEntries.
@@ -22,7 +23,8 @@ function indexKnowledgeFile(
   body: string,
   tags: string[],
   source: string,
-  importedAt: Date
+  importedAt: Date,
+  provenance?: { agentId?: string | null; sessionId?: string | null; visibility?: "private" | "shared" | "handoff" }
 ): void {
   try {
     indexEntry({
@@ -33,6 +35,9 @@ function indexKnowledgeFile(
       tags,
       source,
       importedAt,
+      agentId: provenance?.agentId,
+      sessionId: provenance?.sessionId,
+      visibility: provenance?.visibility,
     });
   } catch {}
 }
@@ -182,7 +187,14 @@ export function saveIntegrationData(
   const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
-  indexKnowledgeFile(filepath, resolvedTitle, content, tags ?? [], "integrations", new Date());
+  // Provenance travels in `metadata` (→ frontmatter), so it survives re-indexing from
+  // disk. Pull it back out here to stamp the chunks at write time too.
+  const vis = metadata.visibility;
+  indexKnowledgeFile(filepath, resolvedTitle, content, tags ?? [], "integrations", new Date(), {
+    agentId: metadata.agent_id ?? null,
+    sessionId: metadata.session_id ?? null,
+    visibility: vis === "private" || vis === "handoff" || vis === "shared" ? vis : undefined,
+  });
   updateIndex();
   return filepath;
 }
@@ -382,6 +394,27 @@ export async function compactSessions(bucketId: string, keepRecent = 20): Promis
   if (files.length <= keepRecent) return null;
 
   const oldFiles = files.slice(keepRecent);
+
+  // Deterministic archive name keyed on the exact set of rolled-up files. If a prior
+  // run wrote the archive but crashed before deleting the sources, re-running lands on
+  // the same filename (idempotent) — we skip recompaction and just finish the cleanup,
+  // rather than minting a new timestamped duplicate.
+  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
+  const setKey = simpleHash(oldFiles.slice().sort().join("|")).toString(36);
+  const archiveFile = join(KNOWLEDGE_DIRS.archive, `sessions_${slugify(bucketId)}_${setKey}.md`);
+
+  if (existsSync(archiveFile)) {
+    for (const f of oldFiles) {
+      const fp = join(channelDir, f);
+      removeEntry(relative(KNOWLEDGE_DIR, fp));
+      try {
+        unlinkSync(fp);
+      } catch {}
+    }
+    notifyAppSync();
+    return archiveFile;
+  }
+
   const combined = oldFiles
     .map((f) => {
       try {
@@ -405,8 +438,6 @@ export async function compactSessions(bucketId: string, keepRecent = 20): Promis
     throw new Error(`session compaction failed for ${bucketId}: ${err?.message ?? String(err)}`);
   }
 
-  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
-  const archiveFile = join(KNOWLEDGE_DIRS.archive, `sessions_${slugify(bucketId)}_${timestamp()}.md`);
   const title = `Session history: ${bucketId} (rolled up ${oldFiles.length})`;
   const body = `# ${title}\n${new Date().toISOString()}\n\n${compressed}`;
   atomicWrite(archiveFile, body);

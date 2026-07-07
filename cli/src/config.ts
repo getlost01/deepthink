@@ -22,3 +22,18 @@ export const KNOWLEDGE_DIRS = {
 } as const;
 
 export const DEFAULT_MODEL = "claude-sonnet-4-6";
+
+// Multi-agent identity. Any agent (Claude Code, Cursor, Codex, …) identifies itself
+// by exporting DEEPTHINK_AGENT_ID; the MCP server process inherits it, so every
+// capture is stamped with who wrote it. Falls back to "default" so single-agent
+// setups behave exactly as before.
+export function currentAgentId(explicit?: string): string {
+  const id = (explicit ?? process.env.DEEPTHINK_AGENT_ID ?? process.env.DEEPTHINK_AGENT ?? "").trim();
+  return id || "default";
+}
+
+// Best-effort session identity for grouping a run's captures. Claude Code exports
+// CLAUDE_SESSION_ID; other agents can set DEEPTHINK_SESSION_ID.
+export function currentSessionId(explicit?: string): string | undefined {
+  return explicit ?? process.env.DEEPTHINK_SESSION_ID ?? process.env.CLAUDE_SESSION_ID ?? undefined;
+}

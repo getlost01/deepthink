@@ -1,6 +1,7 @@
+import { currentAgentId } from "../config";
 import { retrieveContextHybrid, unifiedSearch, workspaceContext } from "../core/context-engine";
 import * as db from "../core/db";
-import { embeddingStats } from "../core/embedding-service";
+import { embeddingStats, lastMaintenance } from "../core/embedding-service";
 import { chunkCount, getPendingReindex } from "../core/vector-store";
 import { linkedProject, peekBucket } from "./buckets";
 import * as knowledge from "./knowledge";
@@ -135,6 +136,10 @@ export const SMART_TOOLS: MCPTool[] = [
             "Repo working directory — boosts results from the matching project. Defaults to the server's cwd.",
         },
         bucket: { type: "string", description: "Explicit bucket/project name to boost (overrides cwd resolution)." },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
       },
       required: ["query"],
     },
@@ -142,6 +147,7 @@ export const SMART_TOOLS: MCPTool[] = [
       const rawMode = p.mode && p.mode !== "auto" ? p.mode : classifyIntent(p.query);
       const actualMode = rawMode === "auto" ? "summary" : rawMode;
       const { projectScope, bucketScope } = currentScope(p);
+      const agentId = currentAgentId(p.agent);
 
       if (actualMode === "full") {
         return {
@@ -167,6 +173,7 @@ export const SMART_TOOLS: MCPTool[] = [
         maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10,
         projectScope,
         bucketScope,
+        agentId,
       });
 
       return {
@@ -200,6 +207,10 @@ export const SMART_TOOLS: MCPTool[] = [
           items: { type: "string" },
           description: "Filter to these knowledge scope tags",
         },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
         topK: { type: "number", description: "Max entries to return (default: 10)" },
       },
       required: ["query"],
@@ -210,6 +221,7 @@ export const SMART_TOOLS: MCPTool[] = [
         maxTokens: p.maxTokens ?? 4000,
         projectScope: p.projectScope,
         agentScope: agentScope.length > 0 ? agentScope : undefined,
+        agentId: currentAgentId(p.agent),
         topK: p.topK ?? 10,
       });
     },
@@ -262,6 +274,10 @@ export const SMART_TOOLS: MCPTool[] = [
           description:
             "Repo working directory — softly boosts results from the matching project. Defaults to the server's cwd.",
         },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
       },
       required: ["query"],
     },
@@ -273,6 +289,7 @@ export const SMART_TOOLS: MCPTool[] = [
         scope: p.bucket ? [`bucket:${p.bucket}`] : undefined,
         projectScope,
         bucketScope,
+        agentId: currentAgentId(p.agent),
       });
       return { results, count: results.length };
     },
@@ -300,6 +317,7 @@ export const SMART_TOOLS: MCPTool[] = [
 
       const embed = embeddingStats();
       const pending = getPendingReindex().length;
+      const maint = lastMaintenance();
 
       return {
         index: {
@@ -308,6 +326,7 @@ export const SMART_TOOLS: MCPTool[] = [
           semanticSearch: embed.available ? "on" : "off (BM25 only)",
           ...(embed.available ? {} : { embedderHint: embed.reason }),
           ...(pending > 0 ? { pendingReindex: pending } : {}),
+          ...(maint ? { lastMaintenance: maint } : {}),
         },
         workspace: {
           projects: projects.length,
