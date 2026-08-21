@@ -1,6 +1,6 @@
 # DeepThink marketing site
 
-Vite + React + Tailwind. Run `npm install` then `npm run dev` from this folder.
+Vite + React + Tailwind. Requires **Node.js 24+** and **npm 11+** (see `.nvmrc`; run `nvm use` to switch). Run `npm install` then `npm run dev` from this folder.
 
 ## Vercel
 

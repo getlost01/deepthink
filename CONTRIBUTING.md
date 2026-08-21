@@ -8,6 +8,7 @@
 | Xcode | 16+ | App Store |
 | XcodeGen | latest | `brew install xcodegen` |
 | Bun | latest | `brew install oven-sh/bun/bun` |
+| Node.js | 24+ (only for `web-app/`) | `nvm install` (reads `web-app/.nvmrc`) |
 | Claude CLI | latest | [docs.anthropic.com](https://docs.anthropic.com/claude/docs/claude-cli) |
 | lefthook | latest | `brew install lefthook` |
 | SwiftLint | latest | `brew install swiftlint` (optional — build warns if missing) |
