@@ -207,7 +207,15 @@ function ensurePath(steps: InstallStep[]): void {
   const block = `\n# Added by DeepThink\nexport PATH="${USER_BIN}:$PATH"\n`;
   let touched = 0;
   for (const f of [join(HOME, ".zshrc"), join(HOME, ".bash_profile"), join(HOME, ".bashrc")]) {
-    const existing = existsSync(f) ? readFileSync(f, "utf-8") : "";
+    let existing = "";
+    try {
+      existing = readFileSync(f, "utf-8");
+    } catch (err: any) {
+      // Absent is fine — appendFileSync creates it. Anything else (unreadable, not UTF-8)
+      // means we can't tell whether our export is already there, so skip it rather than
+      // append a duplicate on every install.
+      if (err?.code !== "ENOENT") continue;
+    }
     if (existing.includes(USER_BIN)) continue;
     try {
       appendFileSync(f, block, "utf-8");
@@ -263,7 +271,11 @@ function installFlatSkills(base: string, steps: InstallStep[]): void {
     for (const [relPath, content] of Object.entries(SKILLS)) {
       const path = join(base, relPath);
       mkdirSync(dirname(path), { recursive: true });
-      if ((existsSync(path) ? readFileSync(path, "utf-8") : "") !== content) {
+      let current = "";
+      try {
+        current = readFileSync(path, "utf-8");
+      } catch {}
+      if (current !== content) {
         writeFileSync(path, content, "utf-8");
         written++;
       }
