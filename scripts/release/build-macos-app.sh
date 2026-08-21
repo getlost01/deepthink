@@ -15,12 +15,17 @@ xcodegen generate
 
 echo "=== Build DeepThink (Release, unsigned) ==="
 mkdir -p build
+# SwiftTerm 1.19+ ships a build-tool plugin, and the package is pinned as `from:`, so any
+# fresh resolve picks it up. Plugins need explicit consent, which a non-interactive build
+# cannot give — without these flags the build dies on "must be enabled before it can be used".
 xcodebuild build \
   -project DeepThink.xcodeproj \
   -scheme DeepThink \
   -configuration Release \
   -destination "platform=macOS" \
   -derivedDataPath "$DERIVED_DATA" \
+  -skipPackagePluginValidation \
+  -skipMacroValidation \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY=""

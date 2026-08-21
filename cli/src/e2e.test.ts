@@ -2178,11 +2178,7 @@ async function run() {
         () => client.call(tool, { [field]: "   " }),
         "non-empty"
       );
-      await assertThrows(
-        `create ${label} with missing ${field} throws`,
-        () => client.call(tool, {}),
-        "required"
-      );
+      await assertThrows(`create ${label} with missing ${field} throws`, () => client.call(tool, {}), "required");
     }
     await assertThrows(
       "remember with blank content throws",
@@ -2199,11 +2195,7 @@ async function run() {
       () => client.call("unified_search", { query: "   " }),
       "non-empty"
     );
-    await assertThrows(
-      "smart_query with missing query throws",
-      () => client.call("smart_query", {}),
-      "required"
-    );
+    await assertThrows("smart_query with missing query throws", () => client.call("smart_query", {}), "required");
     await assertThrows(
       "agent create with punctuation-only name throws",
       () => client.call("agent_create", { name: "!!!", role: "r", systemPrompt: "s" }),

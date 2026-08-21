@@ -494,7 +494,7 @@ function bucketRoots(): Map<string, string> {
 // separator and a file extension. The first-segment-has-a-dot guard drops domains
 // (github.com/…), and "://" drops URLs — both common false positives in prose.
 const FILE_REF_RE =
-  /`([^`\s]+\/[^`\s]+\.[a-zA-Z0-9]{1,6})`|(?:^|\s)([\w.\-]+\/[\w./\-]+\.[a-zA-Z0-9]{1,6})(?=[\s.,;:)]|$)/gm;
+  /`([^`\s]+\/[^`\s]+\.[a-zA-Z0-9]{1,6})`|(?:^|\s)([\w.-]+\/[\w./-]+\.[a-zA-Z0-9]{1,6})(?=[\s.,;:)]|$)/gm;
 
 function extractFileRefs(content: string): string[] {
   const out = new Set<string>();

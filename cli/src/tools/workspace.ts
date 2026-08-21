@@ -55,8 +55,7 @@ function requireText(p: Record<string, any>, field: string, action: string): str
 
 function requireEnum(p: Record<string, any>, field: string, allowed: string[]): void {
   if (p[field] === undefined) return;
-  if (!allowed.includes(p[field]))
-    throw new Error(`invalid ${field}: ${p[field]}. Use one of: ${allowed.join(", ")}`);
+  if (!allowed.includes(p[field])) throw new Error(`invalid ${field}: ${p[field]}. Use one of: ${allowed.join(", ")}`);
 }
 
 // Only fields the DB layer actually writes may reach it. Previously any stray key
@@ -130,8 +129,7 @@ function resolveDeeplink(url: string): unknown {
 function resolveEntity(type: string, ref: string): string {
   if (typeof ref !== "string" || ref.trim() === "")
     throw new Error(`a ${type} ref must be a non-empty string (pk/id/name for workspace items, else the entryId)`);
-  if (!LINK_TYPES.includes(type))
-    throw new Error(`unknown link type: ${type}. Use one of: ${LINK_TYPES.join(", ")}`);
+  if (!LINK_TYPES.includes(type)) throw new Error(`unknown link type: ${type}. Use one of: ${LINK_TYPES.join(", ")}`);
   switch (type) {
     case "task": {
       const t = db.getTask(ref);

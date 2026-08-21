@@ -32,8 +32,7 @@ function requireSlug(name: unknown, entity: string): string {
   if (typeof name !== "string" || name.trim() === "")
     throw new Error(`'name' is required and must be a non-empty string`);
   const slug = slugify(name);
-  if (!slug)
-    throw new Error(`'name' must contain at least one letter or digit to form a ${entity} filename: ${name}`);
+  if (!slug) throw new Error(`'name' must contain at least one letter or digit to form a ${entity} filename: ${name}`);
   return slug;
 }
 

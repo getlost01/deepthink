@@ -11,8 +11,8 @@ import {
 } from "node:fs";
 import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
-import { indexEntry, removeEntry } from "../core/embedding-service";
 import { extractRelevantWindow, tokenize } from "../core/context-engine";
+import { indexEntry, removeEntry } from "../core/embedding-service";
 import { query } from "../core/llm";
 import { simpleHash } from "../core/vector-store";
 
@@ -512,9 +512,7 @@ export function searchIntegrationData(
         const truncated = item.content.length > SEARCH_SNIPPET_MAX_LEN;
         results.push({
           ...item,
-          content: truncated
-            ? extractRelevantWindow(item.content, queryTerms, SEARCH_SNIPPET_MAX_LEN)
-            : item.content,
+          content: truncated ? extractRelevantWindow(item.content, queryTerms, SEARCH_SNIPPET_MAX_LEN) : item.content,
           truncated,
         });
       }
