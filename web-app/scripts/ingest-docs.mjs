@@ -89,6 +89,11 @@ async function ingestFromGitHub() {
     const text = await fetchBlobText(/** @type {string} */ (item.sha))
     const tail = /** @type {string} */ (item.path).slice('docs/'.length)
     const outPath = path.join(destRoot, tail)
+    // `tail` comes from a remote API response; keep a crafted path from escaping destRoot.
+    if (!path.resolve(outPath).startsWith(path.resolve(destRoot) + path.sep)) {
+      console.warn(`[ingest-docs] skipping out-of-tree path: ${item.path}`)
+      continue
+    }
     fs.mkdirSync(path.dirname(outPath), { recursive: true })
     fs.writeFileSync(outPath, text, 'utf8')
   }

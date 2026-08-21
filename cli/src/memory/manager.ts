@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { MEMORY_DIR } from "../config";
 
@@ -25,13 +25,24 @@ export class MemoryManager {
 
   private ensureFiles(): void {
     for (const f of [this.shortFile, this.longFile]) {
-      if (!existsSync(f)) writeFileSync(f, "[]", "utf-8");
+      // "wx" fails if the file already exists, so a concurrent CLI invocation can't have
+      // its freshly-written entries clobbered back to "[]" between a check and a write.
+      try {
+        writeFileSync(f, "[]", { encoding: "utf-8", flag: "wx" });
+      } catch {}
     }
   }
 
   private load(layer: "short" | "long"): MemoryEntry[] {
     const f = layer === "short" ? this.shortFile : this.longFile;
-    return JSON.parse(readFileSync(f, "utf-8"));
+    // Hand-editable on-disk JSON: a corrupt or partially-written file must not crash the
+    // CLI on every subsequent call.
+    try {
+      const parsed = JSON.parse(readFileSync(f, "utf-8"));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   private persist(layer: "short" | "long", entries: MemoryEntry[]): void {

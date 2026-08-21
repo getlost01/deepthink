@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 
@@ -55,9 +55,9 @@ export async function query(prompt: string, system: string = "", model: string =
     args.push("--append-system-prompt", system);
   }
 
-  const escaped = args.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
-
-  const result = execSync(`${claude} ${escaped}`, {
+  // Prompts and system prompts are untrusted text. Hand-rolled shell quoting worked, but
+  // execFileSync passes argv straight to the binary with no shell to quote for at all.
+  const result = execFileSync(claude, args, {
     encoding: "utf-8",
     timeout: 120_000,
     maxBuffer: 10 * 1024 * 1024,

@@ -1,4 +1,4 @@
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 interface SearchResult {
   title: string;
@@ -36,10 +36,27 @@ async function searchSerper(q: string, apiKey: string, numResults: number): Prom
   }));
 }
 
+// `q` reaches here from a CLI argument and from the `search_local` agent tool, so it must
+// never touch a shell: JSON.stringify only double-quotes, and bash still expands $(…) inside
+// double quotes, which made an agent-supplied query arbitrary command execution. execFileSync
+// passes argv directly with no shell, and `-e` / `--` keep a leading dash from parsing as a flag.
 export function searchLocal(q: string, directory = "."): string[] {
   try {
-    const result = execSync(
-      `grep -rl --include='*.ts' --include='*.js' --include='*.md' --include='*.json' --include='*.txt' --include='*.csv' ${JSON.stringify(q)} ${JSON.stringify(directory)}`,
+    const result = execFileSync(
+      "grep",
+      [
+        "-rl",
+        "--include=*.ts",
+        "--include=*.js",
+        "--include=*.md",
+        "--include=*.json",
+        "--include=*.txt",
+        "--include=*.csv",
+        "-e",
+        q,
+        "--",
+        directory,
+      ],
       { encoding: "utf-8", timeout: 10000 }
     );
     return result

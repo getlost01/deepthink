@@ -128,16 +128,31 @@ export function saveProjectKnowledge(
   return filepath;
 }
 
+// Read straight from a try/catch instead of existsSync-then-read. The app, another CLI
+// invocation, and the MCP server all touch these files, so a check can go stale before the
+// read — and "missing" and "vanished mid-read" want the same empty fallback either way.
+function readTextIfPresent(path: string): string {
+  try {
+    return readFileSync(path, "utf-8");
+  } catch {
+    return "";
+  }
+}
+
+function readDirIfPresent(path: string): string[] {
+  try {
+    return readdirSync(path);
+  } catch {
+    return [];
+  }
+}
+
 export function loadProjectKnowledge(project: string): { context: string; decisions: string; artifacts: string[] } {
   const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
 
-  const contextFile = join(projectDir, "context.md");
-  const decisionsFile = join(projectDir, "decisions.md");
-  const artifactsDir = join(projectDir, "artifacts");
-
-  const context = existsSync(contextFile) ? readFileSync(contextFile, "utf-8") : "";
-  const decisions = existsSync(decisionsFile) ? readFileSync(decisionsFile, "utf-8") : "";
-  const artifacts = existsSync(artifactsDir) ? readdirSync(artifactsDir) : [];
+  const context = readTextIfPresent(join(projectDir, "context.md"));
+  const decisions = readTextIfPresent(join(projectDir, "decisions.md"));
+  const artifacts = readDirIfPresent(join(projectDir, "artifacts"));
 
   return { context, decisions, artifacts };
 }
@@ -468,11 +483,9 @@ export async function compactSessions(bucketId: string, keepRecent = 20): Promis
 function updateIndex(project?: string): void {
   const indexFile = join(KNOWLEDGE_DIR, "index.json");
   let index: any = {};
-  if (existsSync(indexFile)) {
-    try {
-      index = JSON.parse(readFileSync(indexFile, "utf-8"));
-    } catch {}
-  }
+  try {
+    index = JSON.parse(readTextIfPresent(indexFile) || "{}");
+  } catch {}
 
   index.version = index.version ?? 1;
   index.projects = index.projects ?? {};
