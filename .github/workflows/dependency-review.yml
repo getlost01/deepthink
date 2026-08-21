@@ -25,3 +25,8 @@ jobs:
           fail-on-severity: high
           comment-summary-in-pr: always
           deny-licenses: GPL-2.0, GPL-3.0, AGPL-3.0
+          # TruffleHog is AGPL-3.0, but it is a CI scanner that runs in the Actions runner —
+          # it is never linked into, bundled with, or distributed as part of DeepThink, so
+          # the copyleft obligations the deny-list exists to prevent do not attach. Scoped to
+          # this one action so the policy still applies to everything we actually ship.
+          allow-dependencies-licenses: pkg:githubactions/trufflesecurity/trufflehog
