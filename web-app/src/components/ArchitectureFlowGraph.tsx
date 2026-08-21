@@ -39,7 +39,7 @@ function MobileFlow() {
       label: 'MCP',
       color: 'border-teal-400/50 bg-teal-500/10',
       text: 'text-teal-200',
-      lines: ['51 tools · any agent', 'Cursor · Claude Code · Windsurf'],
+      lines: ['23 tools · any agent', 'Cursor · Claude Code · Windsurf'],
     },
   ]
 
@@ -607,7 +607,7 @@ function DesktopFlow() {
         data: {
           zone: 'MCP - any agent',
           title: 'deepthink-mcp',
-          line: '51 tools · stdio · search or edit',
+          line: '23 tools · stdio · search or edit',
           tier: 'mcp',
           targetTop: true,
           tags: [
