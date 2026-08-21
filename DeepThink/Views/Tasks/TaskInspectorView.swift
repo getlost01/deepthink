@@ -73,7 +73,7 @@ private struct TaskInspectorContent: View {
                         HStack(spacing: DS.Spacing.sm) {
                             Circle()
                                 .fill(Color(hex: project.color))
-                                .frame(width: 8, height: 8)
+                                .frame(width: DS.IconSize.nano, height: DS.IconSize.nano)
                             Text(project.name)
                                 .foregroundStyle(DS.Colors.accent)
                             Spacer()

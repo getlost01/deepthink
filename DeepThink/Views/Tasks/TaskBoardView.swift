@@ -37,7 +37,7 @@ struct TaskBoardView: View {
             HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(status.color)
-                    .frame(width: 8, height: 8)
+                    .frame(width: DS.IconSize.nano, height: DS.IconSize.nano)
                 Text(status.rawValue)
                     .font(DS.Font.caption)
                     .fontWeight(.semibold)
@@ -90,7 +90,7 @@ struct TaskBoardView: View {
                     Image(systemName: "plus")
                         .font(.system(size: DS.IconSize.xs, weight: .semibold))
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: DS.IconSize.xl, height: DS.IconSize.xl)
                 }
                 .buttonStyle(.plainPointer)
             }
@@ -112,7 +112,7 @@ struct TaskBoardView: View {
             .overlay {
                 if isDropTarget, !tasks.isEmpty {
                     RoundedRectangle(cornerRadius: DS.Radius.md)
-                        .strokeBorder(status.color.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+                        .strokeBorder(status.color.opacity(DS.Opacity.disabled), style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
                         .allowsHitTesting(false)
                 }
             }
@@ -121,11 +121,12 @@ struct TaskBoardView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .padding(DS.Spacing.sm)
         .background(
-            isDropTarget ? status.color.opacity(0.06) : DS.Colors.transparent,
+            isDropTarget ? status.color.opacity(DS.Opacity.hover) : DS.Colors.transparent,
             in: RoundedRectangle(cornerRadius: DS.Radius.md)
         )
         .animation(DS.Animation.quick, value: isDropTarget)
         .dropDestination(for: String.self) { items, _ in
+            defer { draggingTask = nil }
             guard let taskIDString = items.first,
                   let taskID = UUID(uuidString: taskIDString),
                   let task = findTask(by: taskID) else { return false }
@@ -188,6 +189,7 @@ struct TaskBoardView: View {
                         if appState.selectedTaskID == task.id {
                             appState.selectedTaskID = nil
                         }
+                        ArchiveService.enqueueDeletion(task: task)
                         withAnimation(DS.Animation.standard) {
                             modelContext.delete(task)
                         }
@@ -196,7 +198,7 @@ struct TaskBoardView: View {
                         Image(systemName: "trash")
                             .font(.system(size: DS.IconSize.xs, weight: .medium))
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .frame(width: 16, height: 16)
+                            .frame(width: DS.IconSize.lg, height: DS.IconSize.lg)
                             .background(DS.Colors.fill, in: Circle())
                             .contentShape(Circle())
                     }
@@ -205,7 +207,7 @@ struct TaskBoardView: View {
 
                 HStack(spacing: DS.Spacing.sm) {
                     if task.priority != .none {
-                        HStack(spacing: 3) {
+                        HStack(spacing: DS.Spacing.xs3) {
                             Image(systemName: task.priority.icon)
                                 .font(.system(size: DS.IconSize.xs, weight: .medium))
                             Text(task.priority.rawValue)
@@ -215,7 +217,7 @@ struct TaskBoardView: View {
                     }
 
                     if let due = task.dueDate {
-                        HStack(spacing: 3) {
+                        HStack(spacing: DS.Spacing.xs3) {
                             Image(systemName: "calendar")
                                 .font(.system(size: DS.IconSize.xs))
                             Text(due.shortFormatted)
@@ -226,7 +228,7 @@ struct TaskBoardView: View {
 
                     if !task.subtasks.isEmpty {
                         let done = task.subtasks.count(where: { $0.status == .done })
-                        HStack(spacing: 3) {
+                        HStack(spacing: DS.Spacing.xs3) {
                             Image(systemName: "checklist")
                                 .font(.system(size: DS.IconSize.xs))
                             Text("\(done)/\(task.subtasks.count)")
@@ -274,7 +276,7 @@ struct TaskBoardView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
-        .opacity(isDragging ? 0.5 : 1.0)
+        .opacity(isDragging ? DS.Opacity.disabled : 1.0)
         .onDrag {
             draggingTask = task
             return NSItemProvider(object: task.id.uuidString as NSString)
@@ -293,6 +295,10 @@ struct TaskBoardView: View {
             }
             Divider()
             Button(role: .destructive) {
+                if appState.selectedTaskID == task.id {
+                    appState.selectedTaskID = nil
+                }
+                ArchiveService.enqueueDeletion(task: task)
                 modelContext.delete(task)
                 try? modelContext.save()
             } label: {

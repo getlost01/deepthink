@@ -22,6 +22,18 @@ struct ClaudeSettingsView: View {
                 "tasks, notes, projects, reminders, agents, skills, rules, and AI reasoning in one command."
         ),
         CLICommandEntry(
+            name: "/deepthink:recall",
+            path: "~/.claude/commands/deepthink/recall.md",
+            description: "Warm up a new Claude Code session with prior DeepThink context for this repo — recent " +
+                "sessions, open follow-ups, and an optional scoped relevance search."
+        ),
+        CLICommandEntry(
+            name: "/deepthink:remember",
+            path: "~/.claude/commands/deepthink/remember.md",
+            description: "Save a single fact to DeepThink long-term memory, auto-scoped to this repo. The quick " +
+                "\"remember this\" capture for a decision, gotcha, snippet, or insight worth keeping."
+        ),
+        CLICommandEntry(
             name: "/deepthink:sync-session",
             path: "~/.claude/commands/deepthink/sync-session.md",
             description: "Capture the current Claude Code session to DeepThink. Reads git context, summarizes what " +
@@ -327,7 +339,7 @@ struct ClaudeSettingsView: View {
                 Spacer()
             }
             .padding(DS.Spacing.sm)
-            .background(DS.Colors.danger.opacity(0.06), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.danger.opacity(DS.Opacity.hover), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
     }
 
@@ -526,10 +538,11 @@ struct ClaudeSettingsView: View {
                     }
                     .foregroundStyle(DS.Colors.success)
                 } else {
-                    Text("Not registered with Claude CLI")
+                    Text(claude.isAvailable ? "Not registered with Claude CLI" : "Claude CLI not found — install it first")
                         .font(DS.Font.monoSmall)
                         .foregroundStyle(DS.Colors.warning)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                     Spacer()
                     Button {
                         mcp.registerGlobalMCP()
@@ -545,8 +558,11 @@ struct ClaudeSettingsView: View {
                         .padding(.horizontal, DS.Spacing.sm)
                         .padding(.vertical, DS.Spacing.xs)
                         .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .opacity(claude.isAvailable ? 1 : DS.Opacity.disabled)
                     }
                     .buttonStyle(.plainPointer)
+                    .disabled(!claude.isAvailable)
+                    .help(claude.isAvailable ? "Register the DeepThink MCP server with Claude CLI" : "Requires the Claude CLI")
                 }
             }
             .padding(.horizontal, DS.Spacing.md)
@@ -559,6 +575,8 @@ struct ClaudeSettingsView: View {
     // MARK: - Other Agents (Cursor + portable export)
 
     @State private var exportMessage: String?
+    @State private var exportFailed = false
+    @State private var showCursorRemoveConfirm = false
 
     private var otherAgentsSection: some View {
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
@@ -593,12 +611,13 @@ struct ClaudeSettingsView: View {
                                 .font(DS.Font.small)
                         }
                         .foregroundStyle(DS.Colors.success)
-                        Button { mcp.uninstallCursor() } label: {
+                        Button { showCursorRemoveConfirm = true } label: {
                             Text("Remove")
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                         }
                         .buttonStyle(.plainPointer)
+                        .disabled(!mcp.isCLIInstalled)
                     } else {
                         Button { mcp.installCursor() } label: {
                             HStack(spacing: DS.Spacing.xs) {
@@ -612,8 +631,11 @@ struct ClaudeSettingsView: View {
                             .padding(.horizontal, DS.Spacing.sm)
                             .padding(.vertical, DS.Spacing.xs)
                             .background(DS.Colors.accent, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                            .opacity(mcp.isCLIInstalled ? 1 : DS.Opacity.disabled)
                         }
                         .buttonStyle(.plainPointer)
+                        .disabled(!mcp.isCLIInstalled)
+                        .help(mcp.isCLIInstalled ? "Install DeepThink for Cursor" : "Requires the DeepThink CLI (see Claude CLI section)")
                     }
                 }
                 .padding(.horizontal, DS.Spacing.md)
@@ -634,8 +656,9 @@ struct ClaudeSettingsView: View {
                             .foregroundStyle(DS.Colors.textPrimary)
                         Text(exportMessage ?? "Export skills + mcp.json + README to copy in")
                             .font(DS.Font.small)
-                            .foregroundStyle(exportMessage == nil ? DS.Colors.textTertiary : DS.Colors.success)
+                            .foregroundStyle(exportColor)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                     }
                     Spacer()
                     Button { exportSkillsKit() } label: {
@@ -651,8 +674,11 @@ struct ClaudeSettingsView: View {
                         .padding(.vertical, DS.Spacing.xs)
                         .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                         .overlay(RoundedRectangle(cornerRadius: DS.Radius.sm).strokeBorder(DS.Colors.border, lineWidth: 1))
+                        .opacity(mcp.isCLIInstalled ? 1 : DS.Opacity.disabled)
                     }
                     .buttonStyle(.plainPointer)
+                    .disabled(!mcp.isCLIInstalled)
+                    .help(mcp.isCLIInstalled ? "Export the portable skills kit" : "Requires the DeepThink CLI (see Claude CLI section)")
                 }
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
@@ -660,6 +686,19 @@ struct ClaudeSettingsView: View {
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
         }
+        .confirmationDialog("Remove DeepThink from Cursor?", isPresented: $showCursorRemoveConfirm) {
+            Button("Remove from Cursor", role: .destructive) {
+                mcp.uninstallCursor()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the DeepThink MCP server, skills, and hooks from Cursor's configuration. Your workspace data is untouched.")
+        }
+    }
+
+    private var exportColor: Color {
+        guard exportMessage != nil else { return DS.Colors.textTertiary }
+        return exportFailed ? DS.Colors.danger : DS.Colors.success
     }
 
     private func exportSkillsKit() {
@@ -674,6 +713,7 @@ struct ClaudeSettingsView: View {
             guard response == .OK, let dir = panel.url else { return }
             let target = dir.appendingPathComponent("deepthink-skills")
             mcp.exportSkills(to: target) { ok in
+                exportFailed = !ok
                 if ok {
                     exportMessage = "Exported to \(target.lastPathComponent)"
                     NSWorkspace.shared.activateFileViewerSelecting([target])
@@ -790,35 +830,6 @@ struct ClaudeSettingsView: View {
                 }
                 .padding(.horizontal, DS.Spacing.md)
                 .padding(.vertical, DS.Spacing.sm)
-
-                Divider()
-
-                // Max tokens
-                HStack(spacing: DS.Spacing.md) {
-                    Text("MAX TOKENS")
-                        .font(DS.Font.micro)
-                        .foregroundStyle(DS.Colors.textTertiary)
-
-                    HStack(spacing: DS.Spacing.xs) {
-                        ForEach(ClaudeService.maxTokenOptions, id: \.self) { option in
-                            TokenOptionButton(
-                                value: option,
-                                isSelected: claude.maxTokens == option
-                            ) {
-                                withAnimation(DS.Animation.quick) {
-                                    claude.maxTokens = option
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer()
-
-                    Text(tokenDescription(claude.maxTokens))
-                        .font(DS.Font.small)
-                        .foregroundStyle(DS.Colors.textTertiary)
-                }
-                .padding(DS.Spacing.md)
             }
             .background(DS.Colors.fill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(RoundedRectangle(cornerRadius: DS.Radius.md).strokeBorder(DS.Colors.border, lineWidth: 1))
@@ -1025,7 +1036,14 @@ struct ClaudeSettingsView: View {
         panel.directoryURL = URL(fileURLWithPath: "/usr/local/bin")
         panel.begin { response in
             guard response == .OK, let url = panel.url else { return }
+            // customCLIPath silently ignores non-executables, so validate here or the
+            // user gets no feedback and the old path stays in effect.
+            guard FileManager.default.isExecutableFile(atPath: url.path) else {
+                ToastState.shared.showError("\(url.lastPathComponent) is not an executable file")
+                return
+            }
             claude.customCLIPath = url.path
+            ToastState.shared.show("Claude CLI path updated")
         }
     }
 
@@ -1041,15 +1059,6 @@ struct ClaudeSettingsView: View {
         n >= 1_000_000 ? String(format: "%.1fM", Double(n) / 1_000_000)
             : n >= 1000 ? String(format: "%.1fK", Double(n) / 1000)
             : "\(n)"
-    }
-
-    private func tokenDescription(_ tokens: Int) -> String {
-        switch tokens {
-        case ...1024: "Quick answers"
-        case ...4096: "Standard tasks"
-        case ...8192: "Detailed analysis"
-        default: "Full documents"
-        }
     }
 }
 
@@ -1175,37 +1184,6 @@ private struct SpecChip: View {
                 .foregroundStyle(DS.Colors.textTertiary)
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: - Token Option Button
-
-private struct TokenOptionButton: View {
-    let value: Int
-    let isSelected: Bool
-    let action: () -> Void
-    @State private var isHovered = false
-
-    private var label: String {
-        value >= 1024 ? "\(value / 1024)K" : "\(value)"
-    }
-
-    var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(DS.Font.small)
-                .foregroundStyle(isSelected ? DS.Colors.onAccent : DS.Colors.textSecondary)
-                .padding(.horizontal, DS.Spacing.sm)
-                .padding(.vertical, DS.Spacing.xs)
-                .background(
-                    isSelected ? DS.Colors.accent : (isHovered ? DS.Colors.fillSecondary : DS.Colors.fill),
-                    in: RoundedRectangle(cornerRadius: DS.Radius.sm)
-                )
-        }
-        .buttonStyle(.plainPointer)
-        .onHover { isHovered = $0 }
-        .animation(DS.Animation.quick, value: isHovered)
-        .animation(DS.Animation.quick, value: isSelected)
     }
 }
 

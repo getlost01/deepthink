@@ -24,9 +24,13 @@ struct SkillFile: Identifiable, Hashable {
 
     var commandName: String {
         if !command.isEmpty { return command }
-        return name.lowercased()
+        let slug = name.lowercased()
             .replacingOccurrences(of: " ", with: "-")
             .replacingOccurrences(of: "[^a-z0-9\\-]", with: "", options: .regularExpression)
+        guard slug.contains(where: { $0.isLetter || $0.isNumber }) else {
+            return filePath.deletingPathExtension().lastPathComponent
+        }
+        return slug
     }
 }
 

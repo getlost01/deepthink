@@ -9,6 +9,7 @@ struct ToolsHubView: View {
     @State private var selectedServer: MCPServer?
     @State private var testResult: String?
     @State private var isTesting = false
+    @State private var testFailed = false
     @State private var serverToDelete: MCPServer?
     @State private var showDeleteConfirm = false
     @State private var testTask: Task<Void, Never>?
@@ -92,7 +93,7 @@ struct ToolsHubView: View {
             }
             .dsHorizontalScrollFade()
 
-            if filteredServers.isEmpty {
+            if servers.isEmpty {
                 DSEmptyState(
                     icon: "wrench.and.screwdriver",
                     title: "No Connections Yet",
@@ -101,11 +102,19 @@ struct ToolsHubView: View {
                     action: { showPresets = true },
                     actionTitle: "Browse Presets"
                 )
+            } else if filteredServers.isEmpty {
+                DSEmptyState(
+                    icon: "line.3.horizontal.decrease.circle",
+                    title: "No \(selectedCategory) Connections",
+                    subtitle: "None of your MCP connections are in the \(selectedCategory) category.",
+                    action: { selectedCategory = "All" },
+                    actionTitle: "Show All"
+                )
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 280, maximum: 400), spacing: DS.Spacing.md)], spacing: DS.Spacing.md) {
                         ForEach(filteredServers) { server in
-                            ToolCard(server: server, onTest: { testServer(server) }, onDelete: {
+                            ToolCard(server: server, isTesting: isTesting, onTest: { testServer(server) }, onDelete: {
                                 serverToDelete = server
                                 showDeleteConfirm = true
                             })
@@ -117,11 +126,12 @@ struct ToolsHubView: View {
 
             if let testResult {
                 HStack(spacing: DS.Spacing.sm) {
-                    Image(systemName: isTesting ? "hourglass" : "checkmark.circle")
-                        .foregroundStyle(isTesting ? DS.Colors.warning : DS.Colors.success)
+                    Image(systemName: isTesting ? "hourglass" : (testFailed ? "xmark.circle" : "checkmark.circle"))
+                        .foregroundStyle(isTesting ? DS.Colors.warning : (testFailed ? DS.Colors.danger : DS.Colors.success))
                     Text(testResult)
                         .font(DS.Font.caption)
                         .lineLimit(1)
+                        .truncationMode(.tail)
                     Spacer()
                     Button("Dismiss") { self.testResult = nil }
                         .font(DS.Font.caption)
@@ -158,6 +168,7 @@ struct ToolsHubView: View {
     private func testServer(_ server: MCPServer) {
         testTask?.cancel()
         isTesting = true
+        testFailed = false
         testResult = "Testing \(server.name)..."
 
         testTask = Task {
@@ -173,6 +184,7 @@ struct ToolsHubView: View {
             } catch {
                 await MainActor.run {
                     testResult = "✗ \(server.name): \(error.localizedDescription)"
+                    testFailed = true
                     isTesting = false
                 }
             }
@@ -193,6 +205,7 @@ struct ToolsHubView: View {
 
 private struct ToolCard: View {
     @Bindable var server: MCPServer
+    let isTesting: Bool
     let onTest: () -> Void
     let onDelete: () -> Void
     @State private var showCopied = false
@@ -255,10 +268,11 @@ private struct ToolCard: View {
             .buttonStyle(.plainPointer)
 
             HStack(spacing: DS.Spacing.sm) {
-                Button("Test", action: onTest)
+                Button(isTesting ? "Testing…" : "Test", action: onTest)
                     .font(DS.Font.small)
                     .buttonStyle(.dsSecondary)
                     .controlSize(.mini)
+                    .disabled(isTesting)
 
                 if !server.isCore {
                     Button("Edit") { showEdit = true }
@@ -420,12 +434,12 @@ private struct EditServerSheet: View {
                         .padding(.horizontal, DS.Spacing.xl)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(
-                            name.isEmpty || command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                            canSave ? DS.Colors.accent : DS.Colors.accent.opacity(DS.Opacity.disabled),
                             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                         )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(name.isEmpty || command.isEmpty)
+                .disabled(!canSave)
             }
             .padding(DS.Spacing.lg)
         }
@@ -442,13 +456,19 @@ private struct EditServerSheet: View {
         }
     }
 
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func save() {
-        server.name = name
-        server.command = command
-        server.args = args
+        guard canSave else { return }
+        server.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        server.command = command.trimmingCharacters(in: .whitespacesAndNewlines)
+        server.args = args.trimmingCharacters(in: .whitespacesAndNewlines)
         server.envVars = envVars
         server.category = category
-        server.serverDescription = description
+        server.serverDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
         ToastState.shared.show("Server updated")
         dismiss()
     }
@@ -548,8 +568,18 @@ private struct AddServerSheet: View {
         .dsModalChrome()
     }
 
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedCommand: String {
+        command.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private var canAdd: Bool {
-        inputMode == .json ? (!jsonText.isEmpty && jsonError == nil) : (!name.isEmpty && !command.isEmpty)
+        inputMode == .json
+            ? (!jsonText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && jsonError == nil)
+            : (!trimmedName.isEmpty && !trimmedCommand.isEmpty)
     }
 
     private var formContent: some View {
@@ -656,16 +686,27 @@ private struct AddServerSheet: View {
 
     private func addServer() {
         if inputMode == .json {
-            addFromJSON()
+            // Keep the sheet open on a bad payload — dismissing would drop the input silently.
+            guard addFromJSON() else { return }
         } else {
-            onAdd(MCPServer(name: name, command: command, args: args, envVars: envVars, category: category, description: description))
+            onAdd(MCPServer(
+                name: trimmedName,
+                command: trimmedCommand,
+                args: args.trimmingCharacters(in: .whitespacesAndNewlines),
+                envVars: envVars,
+                category: category,
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines)
+            ))
         }
         dismiss()
     }
 
-    private func addFromJSON() {
+    private func addFromJSON() -> Bool {
         guard let data = jsonText.data(using: .utf8),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            jsonError = "Could not read this as a JSON object"
+            return false
+        }
 
         let serverArgs: String = if let arr = obj["args"] as? [String] { arr.joined(separator: " ") } else { obj["args"] as? String ?? "" }
 
@@ -674,14 +715,23 @@ private struct AddServerSheet: View {
             envString = env.map { "\($0.key)=\($0.value)" }.joined(separator: "\n")
         }
 
+        let jsonCommand = (obj["command"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !jsonCommand.isEmpty else {
+            jsonError = "Missing required \"command\" field"
+            return false
+        }
+
+        let jsonName = (obj["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+
         onAdd(MCPServer(
-            name: obj["name"] as? String ?? "Unnamed Server",
-            command: obj["command"] as? String ?? "",
+            name: jsonName.isEmpty ? "Unnamed Server" : jsonName,
+            command: jsonCommand,
             args: serverArgs,
             envVars: envString,
             category: obj["category"] as? String ?? "General",
             description: obj["description"] as? String ?? ""
         ))
+        return true
     }
 }
 

@@ -22,9 +22,19 @@ const STATUS_ENUM = ["Backlog", "To Do", "In Progress", "Done", "Cancelled"];
 const PRIORITY_ENUM = ["None", "Low", "Medium", "High", "Urgent"];
 const CRUD_ACTIONS = ["list", "get", "create", "update", "delete"];
 
+const MAX_LIMIT = 200;
+
+// Coerce an agent-supplied number into a usable integer. A negative/NaN/fractional
+// limit otherwise silently returns the wrong slice (`slice(0, -5)` drops the tail,
+// `slice(0, NaN)` returns nothing) instead of failing or clamping.
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
 function paginate<T>(all: T[], key: string, p: Record<string, any>) {
-  const limit = typeof p.limit === "number" ? Math.min(p.limit, 200) : 50;
-  const offset = typeof p.offset === "number" ? p.offset : 0;
+  const limit = clampInt(p.limit, 50, 1, MAX_LIMIT);
+  const offset = clampInt(p.offset, 0, 0, Number.MAX_SAFE_INTEGER);
   return {
     [key]: all.slice(offset, offset + limit),
     total: all.length,
@@ -33,6 +43,44 @@ function paginate<T>(all: T[], key: string, p: Record<string, any>) {
     hasMore: offset + limit < all.length,
   };
 }
+
+// A blank/whitespace-only title creates an unnameable, unfindable record (fuzzy ref
+// lookup can never match it), so reject it at the tool boundary.
+function requireText(p: Record<string, any>, field: string, action: string): string {
+  const v = p[field];
+  if (typeof v !== "string" || v.trim() === "")
+    throw new Error(`'${field}' is required for action '${action}' and must be a non-empty string`);
+  return v;
+}
+
+function requireEnum(p: Record<string, any>, field: string, allowed: string[]): void {
+  if (p[field] === undefined) return;
+  if (!allowed.includes(p[field]))
+    throw new Error(`invalid ${field}: ${p[field]}. Use one of: ${allowed.join(", ")}`);
+}
+
+// Only fields the DB layer actually writes may reach it. Previously any stray key
+// (e.g. the list-only `topLevelOnly`) was silently dropped by db.update* yet still
+// reported back in `updated`, so an agent believed a change landed when it hadn't.
+function updateFields(p: Record<string, any>, allowed: string[], entity: string): Record<string, any> {
+  const fields: Record<string, any> = {};
+  const unknown: string[] = [];
+  for (const [k, v] of Object.entries(p)) {
+    if (k === "action" || k === "ref" || k === "limit" || k === "offset") continue;
+    if (allowed.includes(k)) fields[k] = v;
+    else unknown.push(k);
+  }
+  if (unknown.length > 0)
+    throw new Error(
+      `unknown field(s) for ${entity} update: ${unknown.join(", ")}. Updatable fields: ${allowed.join(", ")}`
+    );
+  return fields;
+}
+
+const TASK_UPDATE_FIELDS = ["title", "detail", "status", "priority", "storyPoints", "dueDate", "project", "parent"];
+const NOTE_UPDATE_FIELDS = ["title", "content", "pinned", "project"];
+const PROJECT_UPDATE_FIELDS = ["name", "summary", "color", "archived"];
+const REMINDER_UPDATE_FIELDS = ["title", "notes", "completed", "reminderDate"];
 
 // ── Deeplink resolution (shared by single + batch) ──
 
@@ -80,6 +128,10 @@ function resolveDeeplink(url: string): unknown {
 // and links graph. Workspace items resolve via the DB (accepting pk/id/name); knowledge,
 // bucket, session, and any other type pass through as-is (the caller supplies the entryId).
 function resolveEntity(type: string, ref: string): string {
+  if (typeof ref !== "string" || ref.trim() === "")
+    throw new Error(`a ${type} ref must be a non-empty string (pk/id/name for workspace items, else the entryId)`);
+  if (!LINK_TYPES.includes(type))
+    throw new Error(`unknown link type: ${type}. Use one of: ${LINK_TYPES.join(", ")}`);
   switch (type) {
     case "task": {
       const t = db.getTask(ref);
@@ -113,12 +165,17 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   {
     name: "workspace_task",
     description:
-      "Create, read, update, delete, or list tasks. Set `action`:\n" +
-      "- list: optional status, priority, project, limit, offset → paginated list\n" +
-      "- get: requires ref (ID or name)\n" +
-      "- create: requires title; optional detail, status, priority, storyPoints, dueDate, project\n" +
-      "- update: requires ref; any of title, detail, status, priority, storyPoints, dueDate ('none' to clear), project ('none' to unassign)\n" +
-      "- delete: requires ref",
+      "Create, read, update, delete, or list tasks — including subtasks (a task with a `parent`). Set `action`:\n" +
+      "- list: optional status, priority, project, parent (list only that task's direct subtasks), " +
+      "topLevelOnly (exclude subtasks), limit (default 50, max 200), offset → paginated list. " +
+      "Includes archived tasks (each carries `isArchived`)\n" +
+      "- get: requires ref (ID or name) → includes a `subtasks` summary array of direct children\n" +
+      "- create: requires title; optional detail, status, priority, storyPoints, dueDate, project, " +
+      "parent (ID or name of the parent task, to create this as a subtask)\n" +
+      "- update: requires ref; any of title, detail, status, priority, storyPoints, dueDate ('none' to clear), " +
+      "project ('none' to unassign), parent ('none' to unassign, or a task ID/name to (re)parent — rejects " +
+      "cycles and self-parenting)\n" +
+      "- delete: requires ref (also deletes its subtasks)",
     inputSchema: {
       type: "object",
       properties: {
@@ -131,24 +188,42 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         storyPoints: { type: "number", description: "Story points estimate" },
         dueDate: { type: "string", description: "Due date YYYY-MM-DD (or 'none' to clear on update)" },
         project: { type: "string", description: "Project name or ID (or 'none' to unassign on update)" },
-        limit: { type: "number", description: "list: max results (default 50)" },
+        parent: {
+          type: "string",
+          description:
+            "Parent task ID or name — makes this a subtask (create/update), or filters list to a " +
+            "parent's direct subtasks (list). Pass 'none' on update to unparent.",
+        },
+        topLevelOnly: { type: "boolean", description: "list: exclude subtasks, only top-level tasks" },
+        limit: { type: "number", description: "list: max results (default 50, max 200)" },
         offset: { type: "number", description: "list: skip first N (default 0)" },
       },
       required: ["action"],
     },
     execute: (p) => {
+      requireEnum(p, "status", STATUS_ENUM);
+      requireEnum(p, "priority", PRIORITY_ENUM);
       switch (p.action) {
         case "list": {
-          const all = db.listTasks({ status: p.status, priority: p.priority, project: p.project });
+          const all = db.listTasks({
+            status: p.status,
+            priority: p.priority,
+            project: p.project,
+            parent: p.parent,
+            topLevelOnly: p.topLevelOnly,
+          });
           return paginate(all, "tasks", p);
         }
         case "get": {
           const t = db.getTask(p.ref);
           if (!t) throw new Error(`task not found: ${p.ref}`);
-          return t;
+          const subtasks = db
+            .listSubtasks(t.pk)
+            .map((s) => ({ pk: s.pk, id: s.id, title: s.title, status: s.status, priority: s.priority }));
+          return { ...t, subtasks };
         }
         case "create": {
-          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          requireText(p, "title", "create");
           const { pk, id } = db.createTask(p.title, {
             detail: p.detail,
             status: p.status,
@@ -156,6 +231,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
             storyPoints: p.storyPoints,
             dueDate: p.dueDate,
             project: p.project,
+            parent: p.parent,
           });
           indexEntry({
             id: `task:${hexToUUID(id)}`,
@@ -172,8 +248,10 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           const t = db.getTask(p.ref);
           if (!t) throw new Error(`task not found: ${p.ref}`);
           if (t.isArchived) throw new Error(`task is archived and cannot be edited. Unarchive it first.`);
-          const { action, ref, limit, offset, ...fields } = p;
+          const fields = updateFields(p, TASK_UPDATE_FIELDS, "task");
+          if (fields.title !== undefined) requireText(fields, "title", "update");
           if (fields.dueDate === "none") fields.dueDate = null;
+          if (fields.parent === "none") fields.parent = null;
           db.updateTask(t.pk, fields);
           const updated = db.getTask(t.pk.toString());
           if (updated)
@@ -211,7 +289,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     name: "workspace_note",
     description:
       "Create, read, update, delete, or list notes. Set `action`:\n" +
-      "- list: optional project, pinned, limit, offset → paginated list\n" +
+      "- list: optional project, pinned, limit (default 50, max 200), offset → paginated list. " +
+      "Includes archived notes (each carries `isArchived`)\n" +
       "- get: requires ref (ID or title)\n" +
       "- create: requires title; optional content (markdown), pinned, project\n" +
       "- update: requires ref; any of title, content, pinned, project ('none' to unassign)\n" +
@@ -242,7 +321,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           return n;
         }
         case "create": {
-          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          requireText(p, "title", "create");
           const { pk, id } = db.createNote(p.title, { content: p.content, pinned: p.pinned, project: p.project });
           indexEntry({
             id: `note:${hexToUUID(id)}`,
@@ -259,7 +338,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           const n = db.getNote(p.ref);
           if (!n) throw new Error(`note not found: ${p.ref}`);
           if (n.isArchived) throw new Error(`note is archived and cannot be edited. Unarchive it first.`);
-          const { action, ref, limit, offset, ...fields } = p;
+          const fields = updateFields(p, NOTE_UPDATE_FIELDS, "note");
+          if (fields.title !== undefined) requireText(fields, "title", "update");
           db.updateNote(n.pk, fields);
           const updated = db.getNote(n.pk.toString());
           if (updated)
@@ -293,7 +373,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     name: "workspace_project",
     description:
       "Create, read, update, delete, or list projects. Set `action`:\n" +
-      "- list: optional limit, offset → paginated list with task/note counts\n" +
+      "- list: optional limit (default 50, max 200), offset → paginated list with task/note counts\n" +
       "- get: requires ref (ID or name)\n" +
       "- create: requires name; optional summary, color (hex like #007AFF)\n" +
       "- update: requires ref; any of name, summary, color, archived (boolean; pass archived:false to unarchive)\n" +
@@ -322,7 +402,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
           return pr;
         }
         case "create": {
-          if (!p.name) throw new Error(`'name' is required for action 'create'`);
+          requireText(p, "name", "create");
           const { pk, id } = db.createProject(p.name, { summary: p.summary, color: p.color });
           indexEntry({
             id: `project:${hexToUUID(id)}`,
@@ -342,7 +422,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
             throw new Error(
               `project is archived and cannot be edited. Unarchive it first or pass archived: false to unarchive.`
             );
-          const { action, ref, limit, offset, ...fields } = p;
+          const fields = updateFields(p, PROJECT_UPDATE_FIELDS, "project");
+          if (fields.name !== undefined) requireText(fields, "name", "update");
           db.updateProject(pr.pk, fields);
           const updated = db.getProject(pr.pk.toString());
           if (updated)
@@ -376,7 +457,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
     name: "workspace_reminder",
     description:
       "Create, read, update, delete, or list reminders. Set `action`:\n" +
-      "- list: optional completed (boolean) → all reminders\n" +
+      "- list: optional completed (boolean), limit (default 50, max 200), offset → paginated list\n" +
       "- get: requires ref (ID or title)\n" +
       "- create: requires title; optional notes, reminderDate (ISO 8601 e.g. 2026-05-05T14:00:00)\n" +
       "- update: requires ref; any of title, notes, completed, reminderDate ('none' to clear)\n" +
@@ -390,20 +471,22 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         notes: { type: "string", description: "Additional notes" },
         completed: { type: "boolean", description: "list: filter by completion status; update: set completion status" },
         reminderDate: { type: "string", description: "ISO 8601 date/time (or 'none' to clear on update)" },
+        limit: { type: "number", description: "list: max results (default 50, max 200)" },
+        offset: { type: "number", description: "list: skip first N (default 0)" },
       },
       required: ["action"],
     },
     execute: (p) => {
       switch (p.action) {
         case "list":
-          return db.listReminders({ completed: p.completed });
+          return paginate(db.listReminders({ completed: p.completed }), "reminders", p);
         case "get": {
           const r = db.getReminder(p.ref);
           if (!r) throw new Error(`reminder not found: ${p.ref}`);
           return r;
         }
         case "create": {
-          if (!p.title) throw new Error(`'title' is required for action 'create'`);
+          requireText(p, "title", "create");
           const { pk, id } = db.createReminder(p.title, { notes: p.notes, reminderDate: p.reminderDate });
           indexEntry({
             id: `reminder:${hexToUUID(id)}`,
@@ -419,7 +502,8 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         case "update": {
           const r = db.getReminder(p.ref);
           if (!r) throw new Error(`reminder not found: ${p.ref}`);
-          const { action, ref, ...fields } = p;
+          const fields = updateFields(p, REMINDER_UPDATE_FIELDS, "reminder");
+          if (fields.title !== undefined) requireText(fields, "title", "update");
           if (fields.reminderDate === "none") fields.reminderDate = null;
           db.updateReminder(r.pk, fields);
           const updated = db.getReminder(r.pk.toString());
@@ -453,7 +537,7 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
   {
     name: "workspace_resolve_deeplink",
     description:
-      "Resolve deepthink:// URLs to their full content. Pass `url` for one, or `urls` for many (returns a map of URL → item or error). Supports task, note, project, reminder, and knowledge URLs.",
+      "Resolve deepthink:// URLs to their full content. Pass `url` for one, or `urls` for many (max 50; returns a map of URL → item or error). Supports task, note, project, reminder, and knowledge URLs.",
     inputSchema: {
       type: "object",
       properties: {
@@ -461,12 +545,14 @@ export const WORKSPACE_TOOLS: WorkspaceTool[] = [
         urls: {
           type: "array",
           items: { type: "string" },
-          description: "Multiple deepthink:// URLs to resolve at once",
+          description: "Multiple deepthink:// URLs to resolve at once (max 50)",
         },
       },
     },
     execute: (p) => {
       if (Array.isArray(p.urls)) {
+        if (p.urls.length > 50)
+          throw new Error(`too many urls: ${p.urls.length}. Resolve at most 50 per call (batch the rest).`);
         const results: Record<string, unknown> = {};
         for (const url of p.urls) {
           try {

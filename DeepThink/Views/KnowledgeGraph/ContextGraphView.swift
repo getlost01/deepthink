@@ -92,6 +92,7 @@ struct ContextGraphView: View {
     @State private var searchScope: SearchScope = .all
     @State private var searchFilterMode = false
     @State private var isBuilding = false
+    @State private var isSearching = false
     @State private var showLegend = false
     @State private var showHint = false
     @State private var activeSourceFilter: String?
@@ -185,6 +186,27 @@ struct ContextGraphView: View {
                                     .font(DS.Font.caption)
                                     .foregroundStyle(DS.Colors.textTertiary)
                             }
+                        } else if displayNodes.isEmpty {
+                            VStack(spacing: DS.Spacing.md) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: DS.IconSize.hero))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                Text("No nodes match the current filters")
+                                    .font(DS.Font.body)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                                Button {
+                                    withAnimation(DS.Animation.quick) {
+                                        activeSourceFilter = nil
+                                        activeBucketFilter = nil
+                                        searchFilterMode = false
+                                    }
+                                } label: {
+                                    Text("Clear filters")
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.accent)
+                                }
+                                .buttonStyle(.plainPointer)
+                            }
                         } else {
                             graphCanvas(size: geo.size)
                             canvasControls
@@ -210,8 +232,10 @@ struct ContextGraphView: View {
                     .onChange(of: query) { _, newVal in
                         queryDebounceTask?.cancel()
                         if newVal.trimmingCharacters(in: .whitespaces).isEmpty {
+                            isSearching = false
                             queryScores = [:]
                         } else {
+                            isSearching = true
                             queryDebounceTask = Task {
                                 try? await Task.sleep(for: .milliseconds(300))
                                 guard !Task.isCancelled else { return }
@@ -501,7 +525,15 @@ struct ContextGraphView: View {
 
                 // Stats
                 let isFiltered = activeSourceFilter != nil || activeBucketFilter != nil || searchFilterMode
-                if !queryScores.isEmpty {
+                if isSearching {
+                    HStack(spacing: DS.Spacing.xs) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Searching…")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                } else if !queryScores.isEmpty {
                     let visibleMatches = displayNodes.count(where: { queryScores[$0.id] != nil })
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "sparkle")
@@ -510,6 +542,15 @@ struct ContextGraphView: View {
                         Text("\(visibleMatches) match\(visibleMatches == 1 ? "" : "es")")
                             .font(DS.Font.caption)
                             .foregroundStyle(DS.Colors.accent)
+                    }
+                } else if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: DS.IconSize.xs))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Text("No matches")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
                 } else if isFiltered {
                     Text("\(displayNodes.count) / \(nodes.count) nodes")
@@ -1409,6 +1450,7 @@ struct ContextGraphView: View {
 
     private func runQuery() {
         let q = query.trimmingCharacters(in: .whitespaces)
+        isSearching = false
         guard !q.isEmpty else { queryScores = [:]; return }
 
         switch searchScope {

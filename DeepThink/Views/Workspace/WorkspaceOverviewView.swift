@@ -106,9 +106,9 @@ struct WorkspaceOverviewView: View {
                                         Image(systemName: task.status.icon)
                                             .font(.system(size: DS.IconSize.sm))
                                             .foregroundStyle(DS.Colors.danger)
-                                            .frame(width: 20)
+                                            .frame(width: DS.IconSize.xl)
 
-                                        Text(task.title)
+                                        Text(task.title.isEmpty ? "Untitled" : task.title)
                                             .font(DS.Font.body)
                                             .foregroundStyle(DS.Colors.textPrimary)
                                             .lineLimit(1)
@@ -155,8 +155,8 @@ struct WorkspaceOverviewView: View {
                                         Image(systemName: task.status.icon)
                                             .font(.system(size: DS.IconSize.sm))
                                             .foregroundStyle(task.status.color)
-                                            .frame(width: 20)
-                                        Text(task.title)
+                                            .frame(width: DS.IconSize.xl)
+                                        Text(task.title.isEmpty ? "Untitled" : task.title)
                                             .font(DS.Font.body)
                                             .foregroundStyle(DS.Colors.textPrimary)
                                             .lineLimit(1)
@@ -192,7 +192,7 @@ struct WorkspaceOverviewView: View {
                                         Image(systemName: "bell.fill")
                                             .font(.system(size: DS.IconSize.sm))
                                             .foregroundStyle(reminder.isOverdue ? DS.Colors.danger : DS.Colors.accent)
-                                            .frame(width: 20)
+                                            .frame(width: DS.IconSize.xl)
                                         Text(reminder.title.isEmpty ? "Untitled" : reminder.title)
                                             .font(DS.Font.body)
                                             .foregroundStyle(DS.Colors.textPrimary)
@@ -243,7 +243,7 @@ struct WorkspaceOverviewView: View {
                                             Image(systemName: "doc.text")
                                                 .font(.system(size: DS.IconSize.sm))
                                                 .foregroundStyle(DS.Colors.textTertiary)
-                                                .frame(width: 20)
+                                                .frame(width: DS.IconSize.xl)
 
                                             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                                                 Text(note.title.isEmpty ? "Untitled" : note.title)
@@ -255,6 +255,8 @@ struct WorkspaceOverviewView: View {
                                                     Text(project.name)
                                                         .font(DS.Font.small)
                                                         .foregroundStyle(DS.Colors.textTertiary)
+                                                        .lineLimit(1)
+                                                        .truncationMode(.tail)
                                                 }
                                             }
 
@@ -298,7 +300,7 @@ struct WorkspaceOverviewView: View {
                                             Image(systemName: task.status.icon)
                                                 .font(.system(size: DS.IconSize.sm))
                                                 .foregroundStyle(task.status.color)
-                                                .frame(width: 20)
+                                                .frame(width: DS.IconSize.xl)
 
                                             Text(task.title.isEmpty ? "Untitled" : task.title)
                                                 .font(DS.Font.body)
@@ -380,7 +382,7 @@ struct WorkspaceOverviewView: View {
             HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(Color(hex: project.color))
-                    .frame(width: 10, height: 10)
+                    .frame(width: DS.IconSize.sm2, height: DS.IconSize.sm2)
                 Text(project.name)
                     .font(DS.Font.body)
                     .fontWeight(.medium)
@@ -400,7 +402,7 @@ struct WorkspaceOverviewView: View {
             }
 
             HStack(spacing: DS.Spacing.md) {
-                HStack(spacing: 3) {
+                HStack(spacing: DS.Spacing.xs3) {
                     Image(systemName: "doc.text")
                         .font(.system(size: DS.IconSize.xs))
                     Text("\(project.notes.count)")
@@ -408,7 +410,7 @@ struct WorkspaceOverviewView: View {
                 }
                 .foregroundStyle(DS.Colors.textTertiary)
 
-                HStack(spacing: 3) {
+                HStack(spacing: DS.Spacing.xs3) {
                     Image(systemName: "checklist")
                         .font(.system(size: DS.IconSize.xs))
                     Text("\(project.openTaskCount) open")
@@ -417,7 +419,7 @@ struct WorkspaceOverviewView: View {
                 .foregroundStyle(DS.Colors.textTertiary)
 
                 if project.totalStoryPoints > 0 {
-                    HStack(spacing: 3) {
+                    HStack(spacing: DS.Spacing.xs3) {
                         Image(systemName: "number")
                             .font(.system(size: DS.IconSize.xs))
                         Text("\(project.completedStoryPoints)/\(project.totalStoryPoints) pts")

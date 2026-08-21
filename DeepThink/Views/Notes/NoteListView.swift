@@ -56,6 +56,8 @@ struct NoteListView: View {
                     Text(projectName)
                         .font(DS.Font.caption)
                         .fontWeight(.medium)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     Button {
                         appState.filterByProject(nil)
                     } label: {
@@ -196,6 +198,7 @@ struct NoteListView: View {
 
     private func deleteNote(_ note: Note) {
         if appState.selectedNoteID == note.id { appState.selectedNoteID = nil }
+        ArchiveService.enqueueDeletion(note: note)
         modelContext.delete(note)
     }
 

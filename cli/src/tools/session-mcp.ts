@@ -25,6 +25,30 @@ export interface MCPTool {
 
 const SESSION_SOURCE = "sessions";
 
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+// A session log is a whole markdown summary; returning several verbatim can dominate
+// the caller's context. Keep the head (the `#` topic heading + "what was worked on"),
+// flag the clip, and hand back `file` so the full text can be fetched deliberately.
+const RECALL_SESSION_MAX_CHARS = 4000;
+
+function clipSession(content: string): { content: string; truncated?: true } {
+  if (content.length <= RECALL_SESSION_MAX_CHARS) return { content };
+  return { content: content.slice(0, RECALL_SESSION_MAX_CHARS), truncated: true };
+}
+
+// A non-blank string is required wherever the value becomes a filename, a title, or
+// indexed content — an empty capture writes a garbage entry that can never be found.
+function requireContent(p: Record<string, any>, field: string, action: string): string {
+  const v = p[field];
+  if (typeof v !== "string" || v.trim() === "")
+    throw new Error(`'${field}' is required for action '${action}' and must be a non-empty string`);
+  return v;
+}
+
 // Pull bullet items out of a markdown section whose header matches `re`.
 function extractSection(content: string, re: RegExp): string[] {
   const lines = content.split("\n");
@@ -56,6 +80,9 @@ function sessionTitle(content: string): string {
 }
 
 type NoteKind = "decision" | "gotcha" | "snippet" | "insight" | "context" | "handoff";
+
+// The kinds a caller may request. "handoff" is set internally by the handoff action only.
+const NOTE_KINDS = ["decision", "gotcha", "snippet", "insight", "context"];
 
 type Visibility = "private" | "shared" | "handoff";
 
@@ -190,6 +217,9 @@ function promoteOpenItems(bucket: Bucket, items: string[]): string[] {
       createProject(projectName, { summary: `Auto-created for ${bucket.id} session follow-ups` });
     } catch {}
   }
+  // createTask rejects an unresolvable project ref, so only bind when it really resolves —
+  // an unassigned follow-up task is still better than a dropped one.
+  const project = getProject(projectName) ? projectName : undefined;
 
   // Existing open tasks in this project — used to suppress duplicates.
   const seen = new Set<string>();
@@ -216,7 +246,7 @@ function promoteOpenItems(bucket: Bucket, items: string[]): string[] {
     try {
       const { id } = createTask(title, {
         detail: `From session sync · bucket ${bucket.id}`,
-        project: projectName,
+        project,
       });
       indexEntry({
         id: `task:${hexToUUID(id)}`,
@@ -241,7 +271,7 @@ export const SESSION_TOOLS: MCPTool[] = [
       "Buckets are resolved from the git remote of `cwd` (falling back to the folder name), so the same repo always maps to the same bucket. Set `action`:\n" +
       "- sync: persist a session summary to the bucket. Requires content; optional cwd, bucket, type, title, branch, date, tags, openItems, promoteOpenItems (default true → creates workspace tasks for follow-ups).\n" +
       "- note: capture a single atomic fact mid-session (a decision, gotcha, snippet, or insight) scoped to the bucket. Requires content; optional kind, title, cwd, bucket, type, tags. Indexed on its own so it's retrievable independently — prefer this over a full sync for one-off learnings.\n" +
-      "- recall: warm a new session with this bucket's recent history. Optional cwd, bucket, type, limit (default 5), query (scoped relevance search). Surfaces OPEN HANDOFFS first.\n" +
+      "- recall: warm a new session with this bucket's recent history. Optional cwd, bucket, type, limit (default 5, max 25), query (scoped relevance search). Surfaces OPEN HANDOFFS first. Long session bodies are clipped (flagged `truncated`) — read the full text from the `file` path if needed.\n" +
       "- handoff: hand off in-flight state to the next agent. Requires content (what's done, what's next, current file/branch). Optional toAgent, title, cwd, bucket. Written as visibility:handoff so recall picks it up.\n" +
       "- claim: claim an open handoff so no other agent duplicates the work. Requires handoffId (from recall/list). Optional agent (defaults to your DEEPTHINK_AGENT_ID).\n" +
       "- list: list all known buckets with session counts and last-active time.",
@@ -299,7 +329,7 @@ export const SESSION_TOOLS: MCPTool[] = [
           type: "boolean",
           description: "sync: create workspace tasks for open items (default true)",
         },
-        limit: { type: "number", description: "recall: number of recent sessions (default 5)" },
+        limit: { type: "number", description: "recall: number of recent sessions (default 5, max 25)" },
         query: { type: "string", description: "recall: run a relevance search scoped to this bucket" },
       },
       required: ["action"],
@@ -312,7 +342,7 @@ export const SESSION_TOOLS: MCPTool[] = [
         }
 
         case "sync": {
-          if (!p.content) throw new Error(`'content' is required for action 'sync'`);
+          requireContent(p, "content", "sync");
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
           const branch = p.branch ?? (bucket.type === "repo" && p.cwd ? gitInfo(p.cwd).branch : undefined);
           const date = p.date ?? new Date().toISOString().slice(0, 10);
@@ -365,7 +395,9 @@ export const SESSION_TOOLS: MCPTool[] = [
         }
 
         case "note": {
-          if (!p.content) throw new Error(`'content' is required for action 'note'`);
+          requireContent(p, "content", "note");
+          if (p.kind !== undefined && !NOTE_KINDS.includes(p.kind))
+            throw new Error(`unknown kind: ${p.kind}. Use one of: ${NOTE_KINDS.join(", ")}`);
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
           const kind = (p.kind as NoteKind) ?? "context";
           const saved = saveNote(bucket, p.content, kind, {
@@ -379,7 +411,7 @@ export const SESSION_TOOLS: MCPTool[] = [
         }
 
         case "handoff": {
-          if (!p.content) throw new Error(`'content' is required for action 'handoff'`);
+          requireContent(p, "content", "handoff");
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
           const agentId = currentAgentId(p.agent);
           const title = p.title ?? `Handoff from ${agentId}`;
@@ -403,7 +435,7 @@ export const SESSION_TOOLS: MCPTool[] = [
         }
 
         case "claim": {
-          if (!p.handoffId) throw new Error(`'handoffId' is required for action 'claim'`);
+          requireContent(p, "handoffId", "claim");
           const agentId = currentAgentId(p.agent);
           const claimed = handoffs.claim(p.handoffId, agentId);
           return { claimed, hint: `Claimed by ${agentId}. Resume from the handoff content above.` };
@@ -411,10 +443,12 @@ export const SESSION_TOOLS: MCPTool[] = [
 
         case "recall": {
           const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
-          const limit = p.limit ?? 5;
+          const limit = clampInt(p.limit, 5, 1, 25);
           const agentId = currentAgentId(p.agent);
           const entries = knowledge.loadIntegrationData(SESSION_SOURCE, bucket.id, limit);
-          const sessions = entries.map((e) => ({ file: e.file, content: e.content }));
+          // Follow-ups are extracted from the FULL text before clipping, so a long
+          // session never loses its open items just because its body was trimmed.
+          const sessions = entries.map((e) => ({ file: e.file, ...clipSession(e.content) }));
           const openFollowUps = [
             ...new Set(entries.flatMap((e) => extractSection(e.content, /open items|follow.?ups/i))),
           ];
@@ -469,8 +503,8 @@ SESSION_TOOLS.push({
       bucket: { type: "string", description: "Explicit bucket/project name, overriding git resolution" },
       type: { type: "string", enum: ["repo", "topic", "area"], description: "Bucket type (default: repo)" },
       query: { type: "string", description: "Optional focus query → bucket-scoped relevance search" },
-      sessionLimit: { type: "number", description: "Recent sessions to include (default 5)" },
-      taskLimit: { type: "number", description: "Open tasks to include (default 15)" },
+      sessionLimit: { type: "number", description: "Recent sessions to include (default 5, max 25)" },
+      taskLimit: { type: "number", description: "Open tasks to include (default 15, max 100)" },
     },
     required: [],
   },
@@ -479,7 +513,7 @@ SESSION_TOOLS.push({
     const projName = linkedProject(bucket);
 
     // Sessions + open follow-ups
-    const sessionEntries = knowledge.loadIntegrationData("sessions", bucket.id, p.sessionLimit ?? 5);
+    const sessionEntries = knowledge.loadIntegrationData("sessions", bucket.id, clampInt(p.sessionLimit, 5, 1, 25));
     const sessions = sessionEntries.map((e) => ({ title: sessionTitle(e.content), file: e.file }));
     const openFollowUps = [
       ...new Set(sessionEntries.flatMap((e) => extractSection(e.content, /open items|follow.?ups/i))),
@@ -525,7 +559,7 @@ SESSION_TOOLS.push({
       openFollowUps,
       tasks: {
         open: openTasks
-          .slice(0, p.taskLimit ?? 15)
+          .slice(0, clampInt(p.taskLimit, 15, 1, 100))
           .map((t) => ({ pk: t.pk, title: t.title, status: t.status, priority: t.priority })),
         counts: taskCounts,
         openCount: openTasks.length,
@@ -595,7 +629,9 @@ SESSION_TOOLS.push({
     required: ["content"],
   },
   execute: (p) => {
-    if (!p.content) throw new Error(`'content' is required`);
+    requireContent(p, "content", "remember");
+    if (p.kind !== undefined && !NOTE_KINDS.includes(p.kind))
+      throw new Error(`unknown kind: ${p.kind}. Use one of: ${NOTE_KINDS.join(", ")}`);
     const bucket = resolveBucket({ cwd: p.cwd, name: p.bucket, type: p.type as BucketType });
     const kind = (p.kind as NoteKind) ?? classifyKind(p.content);
     const saved = saveNote(bucket, p.content, kind, {

@@ -88,12 +88,21 @@ function sameFile(a: string, b: string): boolean {
   }
 }
 
+// A missing config is an empty object; a MALFORMED one must throw. Returning {} for
+// unparseable JSON meant the follow-up writeJson replaced the user's entire
+// settings.json / mcp.json with just our keys — silently destroying their config.
+// Every caller wraps this and reports a failed step instead.
 function readJson(path: string): Record<string, any> {
   if (!existsSync(path)) return {};
+  const raw = readFileSync(path, "utf-8");
+  if (raw.trim() === "") return {};
   try {
-    return JSON.parse(readFileSync(path, "utf-8"));
-  } catch {
-    return {};
+    const parsed = JSON.parse(raw);
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed))
+      throw new Error("expected a JSON object");
+    return parsed;
+  } catch (e: any) {
+    throw new Error(`${path} is not valid JSON (${e?.message ?? e}) — fix or move it, then re-run install`);
   }
 }
 
@@ -219,6 +228,8 @@ function ensurePath(steps: InstallStep[]): void {
 function upsertJsonMcp(path: string, entry: Record<string, any>, label: string, steps: InstallStep[]): void {
   try {
     const cfg = readJson(path);
+    if (cfg.mcpServers !== undefined && (typeof cfg.mcpServers !== "object" || Array.isArray(cfg.mcpServers)))
+      throw new Error(`${path} has an unexpected "mcpServers" shape — fix it, then re-run install`);
     cfg.mcpServers = cfg.mcpServers ?? {};
     cfg.mcpServers.deepthink = entry;
     writeJson(path, cfg);
@@ -298,7 +309,14 @@ function installNestedHooks(
 ): void {
   try {
     const settings = readJson(settingsPath);
+    if (settings.hooks !== undefined && (typeof settings.hooks !== "object" || Array.isArray(settings.hooks)))
+      throw new Error(`${settingsPath} has an unexpected "hooks" shape — fix it, then re-run install`);
     const hooks = (settings.hooks ?? {}) as Record<string, any[]>;
+    // Replacing a non-array event with our array would discard whatever the user had there.
+    for (const event of ["SessionStart", "SessionEnd"]) {
+      if (hooks[event] !== undefined && !Array.isArray(hooks[event]))
+        throw new Error(`${settingsPath} hooks.${event} is not an array — fix it, then re-run install`);
+    }
     const recall = { type: "command", command: `"${cliPath}" session recall --quiet` };
     // Attribute unattended captures to this host so multi-agent provenance is correct.
     const agentFlag = agentId ? ` --agent ${agentId}` : "";
@@ -444,7 +462,13 @@ const cursorAdapter: HostAdapter = {
         const path = join(base, "hooks.json");
         const cfg = readJson(path);
         cfg.version = cfg.version ?? 1;
+        if (cfg.hooks !== undefined && (typeof cfg.hooks !== "object" || Array.isArray(cfg.hooks)))
+          throw new Error(`${path} has an unexpected "hooks" shape — fix it, then re-run install`);
         cfg.hooks = cfg.hooks ?? {};
+        for (const event of ["sessionStart", "sessionEnd"]) {
+          if (cfg.hooks[event] !== undefined && !Array.isArray(cfg.hooks[event]))
+            throw new Error(`${path} hooks.${event} is not an array — fix it, then re-run install`);
+        }
         cfg.hooks.sessionStart = [
           ...stripFlatHooks(cfg.hooks.sessionStart),
           { command: `"${ctx.cliPath}" session recall --quiet` },

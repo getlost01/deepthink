@@ -53,6 +53,7 @@ enum DeepThinkPaths {
         var candidates: [String] = []
         if let bundled = bundledCLIPath { candidates.append(bundled) }
         candidates.append(contentsOf: [
+            devCLIDir + "/out/deepthink",
             devCLIDir + "/deepthink",
             localBin + "/deepthink",
             "/usr/local/bin/deepthink"

@@ -35,7 +35,9 @@ final class EmbeddingService {
 
     // MARK: - Knowledge Indexing
 
-    func indexEntries(_ entries: [KnowledgeEntry]) {
+    /// `prune` must stay false for an incremental pass: pruning against a partial set of
+    /// entries would delete the chunks of every knowledge entry that simply hadn't changed.
+    func indexEntries(_ entries: [KnowledgeEntry], prune: Bool = true) {
         DispatchQueue.main.async { self.isIndexing = true }
         defer {
             let count = store.embeddedCount()
@@ -49,6 +51,7 @@ final class EmbeddingService {
             DispatchQueue.main.async { self.progress = p }
         }
 
+        guard prune else { return }
         store.pruneStaleEntries(
             validIDs: Set(entries.map(\.id)),
             entryType: "knowledge"
@@ -138,9 +141,9 @@ final class EmbeddingService {
         store.replaceChunksForEntry(id, with: vectorChunks)
     }
 
-    func scheduleIndexEntries(_ entries: [KnowledgeEntry]) {
+    func scheduleIndexEntries(_ entries: [KnowledgeEntry], prune: Bool = true) {
         indexQueue.async {
-            self.indexEntries(entries)
+            self.indexEntries(entries, prune: prune)
         }
     }
 

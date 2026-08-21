@@ -102,7 +102,12 @@ final class RuleFileService {
         md += "---\n\n"
         md += rule.instruction
 
-        try? md.write(to: rule.filePath, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: rule.filePath, atomically: true, encoding: .utf8)
+        } catch {
+            ToastState.shared.showError("Could not save rule: \(error.localizedDescription)")
+            return
+        }
         reload()
     }
 

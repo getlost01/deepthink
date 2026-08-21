@@ -129,7 +129,7 @@ struct ReminderDetailView: View {
                             if reminder.priority != .none {
                                 Circle()
                                     .fill(reminder.priority.color)
-                                    .frame(width: 7, height: 7)
+                                    .frame(width: DS.IconSize.micro, height: DS.IconSize.micro)
                             }
                             Image(systemName: reminder.priority == .none ? "flag" : "flag.fill")
                                 .font(.system(size: DS.IconSize.sm))
@@ -210,7 +210,7 @@ struct ReminderDetailView: View {
                         HStack(spacing: DS.Spacing.xs) {
                             Circle()
                                 .fill(Color(hex: project.color))
-                                .frame(width: 7, height: 7)
+                                .frame(width: DS.IconSize.micro, height: DS.IconSize.micro)
                             Text(project.name)
                                 .font(DS.Font.caption)
                                 .foregroundStyle(DS.Colors.textSecondary)
@@ -633,7 +633,7 @@ private struct ReminderDatePickerPopover: View {
 
             Spacer()
 
-            VStack(spacing: 1) {
+            VStack(spacing: DS.Spacing.xxxs) {
                 Text(viewMonth, format: .dateTime.month(.wide))
                     .font(DS.Font.bodySmall)
                     .fontWeight(.bold)

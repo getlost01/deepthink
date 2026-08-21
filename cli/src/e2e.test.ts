@@ -1785,9 +1785,10 @@ async function run() {
     assert("overview.workspace.tasks.total matches list total", ovCount.workspace.tasks.total === taskListCount.total);
     assert("overview.workspace.notes matches list total", ovCount.workspace.notes === noteListCount.total);
     assert(
-      "overview.workspace.reminders.total matches list count",
-      ovCount.workspace.reminders.total === (remListCount.reminders ?? remListCount).length
+      "overview.workspace.reminders.total matches list total",
+      ovCount.workspace.reminders.total === remListCount.total
     );
+    assert("reminder list is paginated", Array.isArray(remListCount.reminders) && remListCount.limit === 50);
 
     // recentTasks should contain ≤ 3 strings
     assert("recentTasks ≤ 3 entries", ovCount.workspace.recentTasks.length <= 3);
@@ -2162,6 +2163,114 @@ async function run() {
       () => client.call("workspace_get_reminder", { ref: "" }),
       "not found"
     );
+
+    section("Error Paths — Blank create titles");
+
+    // Whitespace-only titles would create unnameable, unfindable records.
+    for (const [label, tool, field] of [
+      ["task", "workspace_create_task", "title"],
+      ["note", "workspace_create_note", "title"],
+      ["reminder", "workspace_create_reminder", "title"],
+      ["project", "workspace_create_project", "name"],
+    ] as const) {
+      await assertThrows(
+        `create ${label} with whitespace-only ${field} throws`,
+        () => client.call(tool, { [field]: "   " }),
+        "non-empty"
+      );
+      await assertThrows(
+        `create ${label} with missing ${field} throws`,
+        () => client.call(tool, {}),
+        "required"
+      );
+    }
+    await assertThrows(
+      "remember with blank content throws",
+      () => client.call("remember", { content: "  \n " }),
+      "non-empty"
+    );
+    await assertThrows(
+      "knowledge_session sync with blank content throws",
+      () => client.call("knowledge_session", { action: "sync", content: "" }),
+      "non-empty"
+    );
+    await assertThrows(
+      "unified_search with blank query throws",
+      () => client.call("unified_search", { query: "   " }),
+      "non-empty"
+    );
+    await assertThrows(
+      "smart_query with missing query throws",
+      () => client.call("smart_query", {}),
+      "required"
+    );
+    await assertThrows(
+      "agent create with punctuation-only name throws",
+      () => client.call("agent_create", { name: "!!!", role: "r", systemPrompt: "s" }),
+      "letter or digit"
+    );
+
+    section("Error Paths — Invalid enums & unknown update fields");
+
+    await assertThrows(
+      "create task with invalid status throws and lists valid values",
+      () => client.call("workspace_create_task", { title: "E2E Bad Status", status: "in progress" }),
+      "In Progress"
+    );
+    await assertThrows(
+      "create task with invalid priority throws",
+      () => client.call("workspace_create_task", { title: "E2E Bad Priority", priority: "Critical" }),
+      "Urgent"
+    );
+    await assertThrows(
+      "unified_search with unknown type throws",
+      () => client.call("unified_search", { query: "anything", types: ["taks"] }),
+      "unknown type"
+    );
+    await assertThrows(
+      "smart_query with unknown mode throws",
+      () => client.call("smart_query", { query: "anything", mode: "everything" }),
+      "unknown mode"
+    );
+
+    // A list-only filter passed to update used to be echoed back in `updated` while
+    // being silently dropped — the agent believed a change landed that never did.
+    const badFieldTask = await client.call("workspace_create_task", { title: "E2E Unknown Field Task" });
+    extraCleanup.push(["workspace_delete_task", badFieldTask.pk.toString()]);
+    await assertThrows(
+      "update task with a list-only filter field throws",
+      () => client.call("workspace_update_task", { ref: badFieldTask.pk.toString(), topLevelOnly: true }),
+      "unknown field"
+    );
+    await assertThrows(
+      "update task with an unresolvable project throws",
+      () =>
+        client.call("workspace_update_task", {
+          ref: badFieldTask.pk.toString(),
+          project: "zzz-no-such-project-xyz-e2e",
+        }),
+      "project not found"
+    );
+    const stillUnassigned = await client.call("workspace_get_task", { ref: badFieldTask.pk.toString() });
+    assert("rejected project update left the task unassigned", stillUnassigned.projectName === null);
+
+    section("Numeric Params — clamping");
+
+    // Negative/NaN limits used to silently return the wrong slice (`slice(0, -5)`).
+    const negLimit = await client.call("workspace_list_tasks", { limit: -5 });
+    assert("negative limit clamps to ≥ 1 result page", negLimit.limit === 1);
+    const hugeLimit = await client.call("workspace_list_tasks", { limit: 100000 });
+    assert("huge limit clamps to the 200 cap", hugeLimit.limit === 200);
+    const fracLimit = await client.call("workspace_list_tasks", { limit: 7.9 });
+    assert("fractional limit truncates to an integer", fracLimit.limit === 7);
+    const negOffset = await client.call("workspace_list_tasks", { limit: 5, offset: -10 });
+    assert("negative offset clamps to 0", negOffset.offset === 0);
+
+    // An unresolvable project filter must narrow to nothing, not widen to the whole table.
+    const bogusProjFilter = await client.call("workspace_list_tasks", { project: "zzz-no-such-project-xyz-e2e" });
+    assert("unresolvable project filter returns no tasks", bogusProjFilter.total === 0);
+    const bogusProjNotes = await client.call("workspace_list_notes", { project: "zzz-no-such-project-xyz-e2e" });
+    assert("unresolvable project filter returns no notes", bogusProjNotes.total === 0);
 
     // ══════════════════════════════════════════════════════════════════════════
     // 25. workspace_reindex (idempotency)

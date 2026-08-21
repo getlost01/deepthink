@@ -39,7 +39,9 @@ Synthesize the tool's response into a short briefing — do **not** dump raw JSO
 <if query was given: a short "Most relevant to '<query>'" section from `relevant`>
 ```
 
-If there are open follow-ups, ask whether to pick one up now.
+If there are open follow-ups, ask whether to pick one up now. To see how the ledger stands
+before choosing, call `workspace_task {action:"list", topLevelOnly:true}` — then
+`workspace_task {action:"get", ref}` on the one you pick to see its `subtasks`.
 
 If the bucket has no prior sessions, say so in one line and suggest running
 `/deepthink:sync-session` at the end of this session to start the history.

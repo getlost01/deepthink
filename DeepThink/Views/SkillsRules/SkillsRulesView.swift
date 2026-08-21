@@ -100,6 +100,10 @@ struct SkillsListView: View {
                 }
             }
             .onAppear { skillService.reload() }
+            .onChange(of: skillService.skills) { _, newSkills in
+                guard let current = selectedSkill else { return }
+                selectedSkill = newSkills.first(where: { $0.id == current.id })
+            }
             .sheet(item: $skillToRun) { skill in
                 SkillRunSheet(skill: skill)
             }
@@ -371,31 +375,35 @@ private struct RuleRow: View {
                     .lineLimit(1)
                 }
 
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { !rule.isDisabled },
-                    set: { newValue in
-                        let updated = RuleFile(
-                            name: rule.name, trigger: rule.trigger, icon: rule.icon,
-                            category: rule.category, instruction: rule.instruction,
-                            filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
-                            isDisabled: !newValue
-                        )
-                        RuleFileService.shared.save(rule: updated)
-                    }
-                ))
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .pointerOnHover()
+                Spacer(minLength: DS.Spacing.xxl)
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm + 2)
-            .opacity(rule.isDisabled ? 0.6 : 1.0)
+            .opacity(rule.isDisabled ? DS.Opacity.muted : 1.0)
             .background(isSelected ? DS.Colors.accentFill : (isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plainPointer)
+        // A Toggle nested inside a Button label never receives clicks, so it sits outside the button.
+        .overlay(alignment: .trailing) {
+            Toggle("", isOn: Binding(
+                get: { !rule.isDisabled },
+                set: { newValue in
+                    let updated = RuleFile(
+                        name: rule.name, trigger: rule.trigger, icon: rule.icon,
+                        category: rule.category, instruction: rule.instruction,
+                        filePath: rule.filePath, isBuiltIn: rule.isBuiltIn,
+                        isDisabled: !newValue
+                    )
+                    RuleFileService.shared.save(rule: updated)
+                }
+            ))
+            .toggleStyle(.switch)
+            .controlSize(.mini)
+            .labelsHidden()
+            .pointerOnHover()
+            .padding(.trailing, DS.Spacing.md)
+        }
         .onHover { isHovered = $0 }
         .animation(DS.Animation.quick, value: isHovered)
         .contextMenu {

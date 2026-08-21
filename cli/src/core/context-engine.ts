@@ -223,7 +223,7 @@ function splitIdentifier(raw: string): string[] {
     .split(/[^a-zA-Z0-9]+/);
 }
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   const out: string[] = [];
   for (const raw of text.split(/\s+/)) {
     if (!raw) continue;
@@ -251,7 +251,7 @@ function computeTF(tokens: string[]): Record<string, number> {
 
 // ── Relevance Window Extraction ──
 
-function extractRelevantWindow(content: string, queryTerms: Set<string>, maxLen: number): string {
+export function extractRelevantWindow(content: string, queryTerms: Set<string>, maxLen: number): string {
   if (content.length <= maxLen) return content;
 
   const words = content.split(/\s+/);

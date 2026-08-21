@@ -105,7 +105,7 @@ Each entity is a single tool that takes an `action` of `list` / `get` / `create`
 
 | Tool | `action` values | Description |
 |------|-----------------|-------------|
-| `workspace_task` | list, get, create, update, delete | Tasks. `list` filters by status/priority/project, paginated (50/page); `get` by ID or fuzzy name; `create` needs `title`; `update`/`delete` need `ref`. `dueDate`/`project` accept `'none'` to clear. |
+| `workspace_task` | list, get, create, update, delete | Tasks and subtasks. `list` filters by status/priority/project, plus `parent` (a task's direct subtasks) and `topLevelOnly` (exclude subtasks), paginated (50/page); `get` by ID or fuzzy name, and returns a `subtasks` array; `create` needs `title`, and `parent` makes it a subtask; `update`/`delete` need `ref`. `dueDate`/`project`/`parent` accept `'none'` to clear. Reparenting rejects cycles and self-parenting; `delete` cascades to subtasks. |
 | `workspace_note` | list, get, create, update, delete | Notes. `list` filters by project/pinned, paginated; `create` needs `title` (+ markdown `content`); `update`/`delete` need `ref`. `project` accepts `'none'` to unassign. |
 | `workspace_project` | list, get, create, update, delete | Projects. `list` returns task/note counts, paginated; `create` needs `name`; `update` toggles archive via `archived`; `delete` unassigns its tasks/notes. |
 | `workspace_reminder` | list, get, create, update, delete | Reminders. `list` filters by `completed`; `create` needs `title` (+ optional ISO `reminderDate`); `update` sets `completed`/`reminderDate` (`'none'` clears). |
@@ -131,7 +131,7 @@ URL format: `deepthink://task/UUID`, `deepthink://note/UUID`, `deepthink://proje
 |------|-----------------|-------------|
 | `knowledge_project` | list, load, save, archive | Knowledge projects. `list` all projects; `load` a project's context/decisions/artifacts; `save` needs `content` (+ `type`: `context`/`decision`/`artifact`); `archive` compresses a project into a summary file. |
 | `knowledge_integration` | list, load, capture, compress | Integration data. `list` sources + channels; `load` recent entries; `capture` needs `source`/`channel`/`content` (+ optional `title`/`tags`/`metadata`); `compress` archives a channel's entries. |
-| `knowledge_search` | _(read-only)_ | Keyword search across integration data and captured entries. |
+| `knowledge_search` | _(read-only)_ | Legacy keyword search over captured integration data only. Returns a relevance-windowed snippet per hit (full content stays on disk at the returned `file` path). Prefer `smart_query` / `unified_search`, which span all entity types, rank by relevance, and are budget-aware. |
 | `knowledge_stats` | _(read-only)_ | Overview: project count, integration channels, archive count. |
 
 ### Config - Agents / Rules / Skills

@@ -95,7 +95,7 @@ struct ProjectDetailView: View {
                     } label: {
                         Circle()
                             .fill(Color(hex: project.color))
-                            .frame(width: 14, height: 14)
+                            .frame(width: DS.IconSize.md, height: DS.IconSize.md)
                     }
                     .buttonStyle(.plainPointer)
                     .disabled(project.isArchived)
@@ -233,7 +233,7 @@ struct ProjectDetailView: View {
             GeometryReader { geo in
                 let totalHeight = geo.size.height
                 let handleHeight: CGFloat = 8
-                let available = totalHeight - handleHeight
+                let available = max(totalHeight - handleHeight, 0)
                 let clampedRatio = min(max(splitRatio, minPaneRatio), 1 - minPaneRatio)
                 let topHeight = available * clampedRatio
                 let bottomHeight = available - topHeight
@@ -329,13 +329,17 @@ struct ProjectDetailView: View {
                 }
             } else {
                 ScrollView {
-                    VStack(spacing: 1) {
+                    VStack(spacing: DS.Spacing.xxxs) {
                         ForEach(visibleTasks) { task in
                             ProjectTaskRow(task: task, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToTaskInProject(task.id)
                                 }
                             }, onDelete: {
+                                if appState.projectDetailMode == .taskDetail(task.id) {
+                                    appState.projectDetailMode = .overview
+                                }
+                                ArchiveService.enqueueDeletion(task: task)
                                 modelContext.delete(task)
                             })
                         }
@@ -395,13 +399,17 @@ struct ProjectDetailView: View {
                 }
             } else {
                 ScrollView {
-                    VStack(spacing: 1) {
+                    VStack(spacing: DS.Spacing.xxxs) {
                         ForEach(visibleNotes) { note in
                             ProjectNoteRow(note: note, action: {
                                 withAnimation(DS.Animation.standard) {
                                     appState.navigateToNoteInProject(note.id)
                                 }
                             }, onDelete: {
+                                if appState.projectDetailMode == .noteDetail(note.id) {
+                                    appState.projectDetailMode = .overview
+                                }
+                                ArchiveService.enqueueDeletion(note: note)
                                 modelContext.delete(note)
                             })
                         }
@@ -452,7 +460,7 @@ private struct ProjectTaskRow: View {
                     .foregroundStyle(task.status.color)
                     .frame(width: 18)
 
-                Text(task.title)
+                Text(task.title.isEmpty ? "Untitled" : task.title)
                     .font(DS.Font.body)
                     .lineLimit(1)
                     .foregroundStyle(task.status == .done ? DS.Colors.textTertiary : DS.Colors.textPrimary)
@@ -552,7 +560,7 @@ private struct ProjectColorPickerPopover: View {
             HStack(spacing: DS.Spacing.sm) {
                 Circle()
                     .fill(Color(hex: hex))
-                    .frame(width: 14, height: 14)
+                    .frame(width: DS.IconSize.md, height: DS.IconSize.md)
                 Text(DS.Colors.projectColorNames[hex] ?? hex)
                     .font(DS.Font.body)
                     .foregroundStyle(DS.Colors.textPrimary)

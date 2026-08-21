@@ -27,10 +27,15 @@ final class TaskNotificationService {
 
     private func checkAuthorization() {
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            let wasAuthorized = self?.authorized ?? false
             let isAuthorized = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
-            self?.authorized = isAuthorized
-            if isAuthorized, !wasAuthorized { self?.scheduleCheck() }
+            // The settings callback lands on an arbitrary queue; `authorized`, the timer
+            // and the ModelContext work all have to happen on the main thread.
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let wasAuthorized = self.authorized
+                self.authorized = isAuthorized
+                if isAuthorized, !wasAuthorized { self.scheduleCheck() }
+            }
         }
     }
 
@@ -82,8 +87,10 @@ final class TaskNotificationService {
         let delay = next9am.timeIntervalSinceNow
 
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.checkAndNotify()
-            self?.timer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.checkAndNotify()
+            self.timer?.invalidate()
+            self.timer = Timer.scheduledTimer(withTimeInterval: 86400, repeats: true) { [weak self] _ in
                 self?.checkAndNotify()
             }
         }

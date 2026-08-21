@@ -179,7 +179,7 @@ struct AllTasksView: View {
                 Image(systemName: "list.bullet")
                     .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(viewMode == .list ? DS.Colors.accent : DS.Colors.textTertiary)
-                    .frame(width: 28, height: 24)
+                    .frame(width: DS.Layout.iconButtonSize, height: DS.IconSize.xxl)
             }
             .buttonStyle(.plainPointer)
 
@@ -189,7 +189,7 @@ struct AllTasksView: View {
                 Image(systemName: "rectangle.split.3x1")
                     .font(.system(size: DS.IconSize.sm, weight: .medium))
                     .foregroundStyle(viewMode == .board ? DS.Colors.accent : DS.Colors.textTertiary)
-                    .frame(width: 28, height: 24)
+                    .frame(width: DS.Layout.iconButtonSize, height: DS.IconSize.xxl)
             }
             .buttonStyle(.plainPointer)
         }
@@ -328,6 +328,7 @@ struct AllTasksView: View {
         if appState.selectedTaskID == task.id {
             appState.selectedTaskID = nil
         }
+        ArchiveService.enqueueDeletion(task: task)
         modelContext.delete(task)
         try? modelContext.save()
     }
@@ -357,6 +358,8 @@ struct AllTasksView: View {
                         Text(project.name)
                             .font(DS.Font.small)
                             .foregroundStyle(DS.Colors.textTertiary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                         if showArchived, project.isArchived {
                             DSPill(text: "project archived", color: DS.Colors.textTertiary)
                         }

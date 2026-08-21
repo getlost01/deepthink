@@ -399,7 +399,12 @@ function parseRow(row: any): VectorChunk {
   let embedding: Float32Array | null = null;
   if (row.embedding) {
     const buf = row.embedding as Buffer;
-    embedding = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+    // A truncated/corrupt blob whose length isn't a whole number of floats makes the
+    // Float32Array constructor throw, which would break every search rather than just
+    // this one chunk. Treat it as un-embedded — the reconciler re-embeds it later.
+    if (buf.byteLength > 0 && buf.byteLength % 4 === 0) {
+      embedding = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+    }
   }
 
   return {

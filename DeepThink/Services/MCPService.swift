@@ -44,10 +44,18 @@ final class MCPService {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            // A failed launch leaves the parent holding the write end, so the read below
+            // would block this thread forever.
+            do { try process.run() } catch {
+                DispatchQueue.main.async {
+                    self?.isGlobalMCPRegistered = false
+                    self?.isCheckingGlobalMCP = false
+                }
+                return
+            }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let output = String(data: data, encoding: .utf8) ?? ""
             let found = output.lowercased().contains("deepthink")
 
@@ -66,9 +74,12 @@ final class MCPService {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            do { try process.run() } catch {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async { completion(version?.isEmpty == false ? version : nil) }
         }
@@ -245,7 +256,11 @@ final class MCPService {
             process.arguments = ["skills", "export", dir.path]
             process.standardOutput = FileHandle.nullDevice
             process.standardError = FileHandle.nullDevice
-            try? process.run()
+            // `terminationStatus` throws an ObjC exception on a process that never launched.
+            do { try process.run() } catch {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
             process.waitUntilExit()
             let ok = process.terminationStatus == 0
             DispatchQueue.main.async { completion(ok) }
@@ -360,7 +375,6 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
-                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -474,10 +488,10 @@ final class MCPService {
                         }
                     }
 
+                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
 
                     if process.terminationStatus != 0, fullText.isEmpty {
-                        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
                         if let typed = ClaudeService.classifyOutput(stderr) {
                             continuation.resume(throwing: typed)
@@ -498,7 +512,6 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
-                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -542,14 +555,21 @@ final class MCPService {
                     DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeoutWork)
                     defer { timeoutWork.cancel() }
 
-                    process.waitUntilExit()
-
+                    // Drain the pipes BEFORE waiting for exit — a reply larger than the 64 KB
+                    // pipe buffer otherwise blocks the child until the 120 s timeout kills it,
+                    // losing the whole response.
                     let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
                     let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
 
                     if process.terminationStatus != 0 {
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        let combined = stderr + (String(data: outData, encoding: .utf8) ?? "")
+                        if let typed = ClaudeService.classifyOutput(combined) {
+                            continuation.resume(throwing: typed)
+                        } else {
+                            continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        }
                         return
                     }
 

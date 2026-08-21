@@ -130,10 +130,12 @@ struct KnowledgeBrowserView: View {
                         .buttonStyle(.plainPointer)
                     }
 
-                    Spacer()
+                    Spacer(minLength: DS.Spacing.xs)
                     Text("\(filteredEntries.count) entries")
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.sm)
@@ -273,7 +275,7 @@ struct KnowledgeBrowserView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
+            Text("This will permanently delete \"\(selectedEntry?.title ?? "this entry")\" from your knowledge base.")
         }
         .sheet(isPresented: $showObsidianImport) {
             ObsidianImportView()
@@ -364,11 +366,12 @@ private struct EntryRow: View {
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     HStack {
-                        Text(entry.title)
+                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
                             .font(DS.Font.body)
                             .fontWeight(.medium)
                             .foregroundStyle(DS.Colors.textPrimary)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                             .help(entry.title)
                         Spacer()
                         Text(entry.importedAt.relativeFormatted)
@@ -692,7 +695,12 @@ struct KnowledgeDetailView: View {
             md += "\(key): \(value)\n"
         }
         md += "---\n\n\(editableContent)"
-        guard (try? md.write(to: filePath, atomically: true, encoding: .utf8)) != nil else { return }
+        do {
+            try md.write(to: filePath, atomically: true, encoding: .utf8)
+        } catch {
+            ToastState.shared.showError("Couldn't save \"\(activeEntry.title)\": \(error.localizedDescription)")
+            return
+        }
         activeEntry.content = editableContent
         KnowledgeService.shared.reload()
     }
@@ -755,6 +763,10 @@ struct URLScrapeSheet: View {
     @State private var isScraping = false
     @State private var result: String?
 
+    private var trimmedURL: String {
+        urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -797,12 +809,12 @@ struct URLScrapeSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
                     .background(
-                        urlText.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        trimmedURL.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                         in: RoundedRectangle(cornerRadius: DS.Radius.md)
                     )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(urlText.isEmpty || isScraping)
+                .disabled(trimmedURL.isEmpty || isScraping)
             }
             .padding(DS.Spacing.lg)
         }
@@ -814,7 +826,8 @@ struct URLScrapeSheet: View {
     @MainActor
     private func scrape() async {
         isScraping = true
-        let success = await DataCollectorService.shared.scrapeURL(urlText, title: titleText.isEmpty ? nil : titleText)
+        let trimmedTitle = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let success = await DataCollectorService.shared.scrapeURL(trimmedURL, title: trimmedTitle.isEmpty ? nil : trimmedTitle)
         result = success ? "Saved to knowledge base" : "Error: Failed to scrape URL"
         isScraping = false
         if success {
@@ -838,6 +851,10 @@ struct NewKnowledgeSheet: View {
         KnowledgeService.shared
     }
 
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -856,12 +873,12 @@ struct NewKnowledgeSheet: View {
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(
-                            title.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                            trimmedTitle.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                         )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(title.isEmpty)
+                .disabled(trimmedTitle.isEmpty)
             }
             .padding(DS.Spacing.lg)
 
@@ -950,7 +967,7 @@ struct NewKnowledgeSheet: View {
 
     private func save() {
         let tagList = tags.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        KnowledgeService.shared.createEntry(title: title, content: content, source: "manual", tags: tagList, bucket: selectedBucket)
+        KnowledgeService.shared.createEntry(title: trimmedTitle, content: content, source: "manual", tags: tagList, bucket: selectedBucket)
         dismiss()
     }
 }
@@ -962,6 +979,10 @@ struct ScriptRunSheet: View {
     @State private var command = ""
     @State private var isRunning = false
     @State private var result: String?
+
+    private var trimmedCommand: String {
+        command.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1009,12 +1030,12 @@ struct ScriptRunSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
                     .background(
-                        command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        trimmedCommand.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                         in: RoundedRectangle(cornerRadius: DS.Radius.md)
                     )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(command.isEmpty || isRunning)
+                .disabled(trimmedCommand.isEmpty || isRunning)
             }
             .padding(DS.Spacing.lg)
         }
@@ -1026,7 +1047,7 @@ struct ScriptRunSheet: View {
     @MainActor
     private func run() async {
         isRunning = true
-        let success = await DataCollectorService.shared.runScript(command: command)
+        let success = await DataCollectorService.shared.runScript(command: trimmedCommand)
         result = success ? "Saved to knowledge base" : "Error: Script produced no output"
         isRunning = false
         if success {

@@ -12,6 +12,7 @@ import {
 import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
 import { indexEntry, removeEntry } from "../core/embedding-service";
+import { extractRelevantWindow, tokenize } from "../core/context-engine";
 import { query } from "../core/llm";
 import { simpleHash } from "../core/vector-store";
 
@@ -489,20 +490,33 @@ function updateIndex(project?: string): void {
   notifyAppSync();
 }
 
+// Snippet cap for search results — full content stays on disk at `file`; this tool only
+// surfaces a relevance-windowed summary so a keyword hit can't dump a whole raw entry into
+// context (prefer smart_query/unified_search for ranked, budget-aware retrieval).
+const SEARCH_SNIPPET_MAX_LEN = 500;
+
 export function searchIntegrationData(
-  query: string,
+  searchQuery: string,
   source?: string,
   limit = 20
-): { source: string; channel: string; file: string; content: string }[] {
+): { source: string; channel: string; file: string; content: string; truncated: boolean }[] {
   const sources = source ? [source] : listIntegrations().map((i) => i.source);
-  const results: { source: string; channel: string; file: string; content: string }[] = [];
-  const q = query.toLowerCase();
+  const results: { source: string; channel: string; file: string; content: string; truncated: boolean }[] = [];
+  const q = searchQuery.toLowerCase();
+  const queryTerms = new Set(tokenize(searchQuery));
 
   for (const src of sources) {
     const items = loadIntegrationData(src, undefined, 100);
     for (const item of items) {
       if (item.content.toLowerCase().includes(q)) {
-        results.push(item);
+        const truncated = item.content.length > SEARCH_SNIPPET_MAX_LEN;
+        results.push({
+          ...item,
+          content: truncated
+            ? extractRelevantWindow(item.content, queryTerms, SEARCH_SNIPPET_MAX_LEN)
+            : item.content,
+          truncated,
+        });
       }
     }
   }

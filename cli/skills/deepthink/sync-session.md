@@ -66,6 +66,11 @@ The tool stores the session in the bucket, updates bucket stats, and — unless 
 `promoteOpenItems: false` — creates workspace tasks for each open follow-up, linked to the
 bucket's project. Pass `promoteOpenItems: false` if you don't want tasks created.
 
+If several follow-ups are steps of one larger piece of work, pass `promoteOpenItems: false`,
+create one parent task with `workspace_task {action:"create", title}`, then create each step as
+`workspace_task {action:"create", title, parent:"<parent ref>"}`. Keeps the ledger readable —
+`workspace_task {action:"list", topLevelOnly:true}` then shows outcomes, not every step.
+
 ## Step 4 — Confirm
 
 On success, output one line summarizing the tool's result:

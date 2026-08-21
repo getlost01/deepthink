@@ -71,8 +71,10 @@ final class AppState {
     /// Edit branching (keyed by message index where edit happened)
     var editBranchPoints: [Int: BranchPoint] = [:]
 
-    /// Agent Config sub-navigation
-    var agentConfigTab: AgentConfigTab = .agents
+    /// Agent Config sub-navigation. A pending request only — callers set it before
+    /// navigating to `.integrations`, and IntegrationsView consumes it on appear.
+    /// nil means "no request", so plain sidebar navigation keeps its own default tab.
+    var agentConfigTab: AgentConfigTab?
 
     // Context sub-navigation
     var selectedContextSource: String?

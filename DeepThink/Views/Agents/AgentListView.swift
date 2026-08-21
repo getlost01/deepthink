@@ -112,7 +112,7 @@ struct AgentListView: View {
                     }
                 }
             } message: {
-                Text("This will permanently delete \"\(selectedAgent?.name ?? "")\".")
+                Text("This will permanently delete \"\(selectedAgent?.name ?? "this assistant")\".")
             }
             .sheet(isPresented: $showTemplates) {
                 AgentTemplateSheet { template in
@@ -344,10 +344,12 @@ private struct AgentRow: View {
                 )
 
                 HStack(spacing: DS.Spacing.xs) {
-                    Text(agent.name)
+                    Text(agent.name.isEmpty ? "Untitled Assistant" : agent.name)
                         .font(DS.Font.body)
                         .fontWeight(isSelected ? .semibold : .regular)
                         .foregroundStyle(DS.Colors.textPrimary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     if agent.isBuiltIn {
                         Text("Built-in")
                             .font(DS.Font.micro)
@@ -408,6 +410,8 @@ private struct AgentDetailEditor: View {
     @State private var filePath: URL?
     @State private var agentSkills: [String] = []
     @State private var isBuiltIn: Bool = false
+    // Name the file was loaded with, so a blanked-out field never writes a nameless agent.
+    @State private var loadedName: String = ""
 
     private let icons = [
         "person.circle", "magnifyingglass.circle", "chevron.left.forwardslash.chevron.right",
@@ -567,6 +571,7 @@ private struct AgentDetailEditor: View {
 
     private func loadAgent() {
         name = agent.name
+        loadedName = agent.name
         role = agent.role
         icon = agent.icon
         model = agent.model
@@ -593,8 +598,10 @@ private struct AgentDetailEditor: View {
         let scope = knowledgeScope.components(separatedBy: ",")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let updated = AgentFile(
-            name: name, role: role, icon: icon, model: model,
+            name: trimmedName.isEmpty ? loadedName : trimmedName,
+            role: role.trimmingCharacters(in: .whitespacesAndNewlines), icon: icon, model: model,
             systemPrompt: editablePrompt, skills: agentSkills, knowledgeScope: scope,
             filePath: fp, isBuiltIn: isBuiltIn
         )

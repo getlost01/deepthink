@@ -95,7 +95,7 @@ struct TaskListView: View {
                         )
                 }
                 .menuStyle(.borderlessButton)
-                .frame(width: 28)
+                .frame(width: DS.Layout.iconButtonSize)
                 .pointerOnHover()
 
                 DSAddButton {
@@ -143,6 +143,8 @@ struct TaskListView: View {
                     Text(projectName)
                         .font(DS.Font.caption)
                         .fontWeight(.medium)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                     Button {
                         appState.filterByProject(nil)
                     } label: {
@@ -304,6 +306,7 @@ struct TaskListView: View {
 
     private func deleteTask(_ task: TaskItem) {
         if appState.selectedTaskID == task.id { appState.selectedTaskID = nil }
+        ArchiveService.enqueueDeletion(task: task)
         modelContext.delete(task)
         try? modelContext.save()
     }

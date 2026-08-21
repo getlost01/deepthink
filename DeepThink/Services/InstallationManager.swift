@@ -146,12 +146,12 @@ final class InstallationManager {
         process.arguments = ["mcp", "add", "--transport", "stdio", "--scope", "user", "deepthink", "--", mcpBinaryPath]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        try? process.run()
-        let deadline = DispatchTime.now() + .seconds(10)
-        DispatchQueue.global().asyncAfter(deadline: deadline) {
-            if process.isRunning { process.terminate() }
-        }
+        // `terminationStatus` throws an ObjC exception on a process that never launched.
+        do { try process.run() } catch { return false }
+        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(10), execute: timeout)
         process.waitUntilExit()
+        timeout.cancel()
         return process.terminationStatus == 0
     }
 
@@ -171,10 +171,19 @@ final class InstallationManager {
         process.arguments = ["install", "--skills-only", "--quiet"]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        try? process.run()
+        do {
+            try process.run()
+        } catch {
+            StorageService.shared.writeLog("Skills install failed to launch: \(error.localizedDescription)", to: "app")
+            return
+        }
         process.waitUntilExit()
 
-        StorageService.shared.writeLog("Claude Code skills installed via CLI", to: "app")
+        if process.terminationStatus == 0 {
+            StorageService.shared.writeLog("Claude Code skills installed via CLI", to: "app")
+        } else {
+            StorageService.shared.writeLog("Skills install exited \(process.terminationStatus)", to: "app")
+        }
     }
 
     // MARK: - PATH setup
@@ -192,9 +201,13 @@ final class InstallationManager {
         ]
 
         for filePath in shellFiles {
-            let existing = (try? String(contentsOfFile: filePath, encoding: .utf8)) ?? ""
-            guard !existing.contains(localBin) else { continue }
-            let updated = existing + "\n" + block
+            let existing = try? String(contentsOfFile: filePath, encoding: .utf8)
+            // Never rewrite a shell config we failed to read (non-UTF-8, unreadable) —
+            // treating that as empty would replace the user's entire rc file with our block.
+            if existing == nil, FileManager.default.fileExists(atPath: filePath) { continue }
+            let current = existing ?? ""
+            guard !current.contains(localBin) else { continue }
+            let updated = current + "\n" + block
             try? updated.write(toFile: filePath, atomically: true, encoding: .utf8)
         }
     }

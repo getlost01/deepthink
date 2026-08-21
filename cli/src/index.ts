@@ -41,7 +41,20 @@ function err(t: string): never {
 const flag = (f: string) => args.includes(f);
 const flagVal = (f: string) => {
   const i = args.indexOf(f);
-  return i !== -1 ? args[i + 1] : undefined;
+  const v = i !== -1 ? args[i + 1] : undefined;
+  // `--limit --json` would otherwise hand back "--json" as the value.
+  if (v === undefined && i !== -1) err(`${f} requires a value`);
+  if (v?.startsWith("--")) err(`${f} requires a value (got ${v})`);
+  return v;
+};
+// A bad numeric flag used to become NaN and silently degrade (`slice(0, NaN)` → no
+// results), so validate it here and exit non-zero with the offending value.
+const intFlag = (f: string, fallback: number, min = 1) => {
+  const raw = flagVal(f);
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min) err(`${f} must be an integer ≥ ${min} (got ${raw})`);
+  return n;
 };
 
 // ── deepthink status ──
@@ -168,7 +181,7 @@ async function cmdKnowledge() {
       .join(" ");
     if (!q) err("usage: deepthink knowledge search <query> [--source s] [--limit n] [--json]");
     const source = flagVal("--source");
-    const limit = flagVal("--limit") ? parseInt(flagVal("--limit")!, 10) : 20;
+    const limit = intFlag("--limit", 20, 0);
     const results = knowledgeTools.searchIntegrationData(q, source ?? undefined, limit);
     if (json) {
       p(JSON.stringify(results));
@@ -459,7 +472,7 @@ async function cmdSession() {
       cwd,
       bucket,
       type,
-      limit: flagVal("--limit") ? Number(flagVal("--limit")) : 5,
+      limit: intFlag("--limit", 5),
       query: q || undefined,
     });
     if (json) return p(JSON.stringify(res));
@@ -557,7 +570,7 @@ async function cmdSession() {
       if (!tpath || !existsSync(tpath)) return;
 
       const { text, userTurns } = readTranscript(tpath);
-      const minTurns = flagVal("--min-turns") ? Number(flagVal("--min-turns")) : 2;
+      const minTurns = intFlag("--min-turns", 2, 0);
       if (userTurns < minTurns || text.length < 200) return;
 
       const date = new Date().toISOString().slice(0, 10);
@@ -593,7 +606,7 @@ async function cmdSession() {
     return;
   }
 
-  err(`unknown session subcommand: ${sub}. Use recall | sync | note | list | autosync`);
+  err(`unknown session subcommand: ${sub}. Use one of: recall, sync, autosync, list, context`);
 }
 
 function cmdContext() {
@@ -663,7 +676,7 @@ function cmdContext() {
 
   if (sub === "semantic" || sub === "sem") {
     if (!q) err("usage: deepthink context semantic <query> [--top n] [--json]");
-    const topK = flagVal("--top") ? parseInt(flagVal("--top")!, 10) : 10;
+    const topK = intFlag("--top", 10);
     const results = semanticSearch(q, topK);
     if (json) {
       p(JSON.stringify(results));
@@ -682,7 +695,7 @@ function cmdContext() {
 
   if (sub === "query" || sub === "q") {
     if (!q) err("usage: deepthink context query <question> [--tokens n] [--project name] [--bm25] [--json]");
-    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!, 10) : 4000;
+    const maxTokens = intFlag("--tokens", 4000, 200);
     const projectScope = flagVal("--project") ?? undefined;
     const bm25Only = flag("--bm25");
 
@@ -721,7 +734,7 @@ function cmdContext() {
 
   if (sub === "workspace" || sub === "ws") {
     if (!q) err("usage: deepthink context workspace <query> [--limit n] [--json]");
-    const maxItems = flagVal("--limit") ? parseInt(flagVal("--limit")!, 10) : 5;
+    const maxItems = intFlag("--limit", 5);
     const ws = workspaceContext(q, maxItems);
     if (json) {
       p(JSON.stringify(ws));
@@ -745,9 +758,9 @@ function cmdContext() {
 
   if (sub === "knowledge" || sub === "kb") {
     if (!q) err("usage: deepthink context knowledge <query> [--tokens n] [--project name] [--top n] [--json]");
-    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!, 10) : 4000;
+    const maxTokens = intFlag("--tokens", 4000, 200);
     const projectScope = flagVal("--project") ?? undefined;
-    const topK = flagVal("--top") ? parseInt(flagVal("--top")!, 10) : 10;
+    const topK = intFlag("--top", 10);
     const kr = retrieveContext(q, { maxTokens, projectScope, topK });
     if (json) {
       p(JSON.stringify(kr));
@@ -870,7 +883,7 @@ function cmdTask() {
     const { pk, id } = db.createTask(title, {
       status: flagVal("--status") ?? undefined,
       priority: flagVal("--priority") ?? undefined,
-      storyPoints: flagVal("--points") ? parseInt(flagVal("--points")!, 10) : undefined,
+      storyPoints: flagVal("--points") !== undefined ? intFlag("--points", 0, 0) : undefined,
       dueDate: flagVal("--due") ?? undefined,
       project: flagVal("--project") ?? undefined,
     });
@@ -920,8 +933,7 @@ function cmdTask() {
     if (status) fields.status = status;
     const priority = flagVal("--priority");
     if (priority) fields.priority = priority;
-    const points = flagVal("--points");
-    if (points) fields.storyPoints = parseInt(points, 10);
+    if (flagVal("--points") !== undefined) fields.storyPoints = intFlag("--points", 0, 0);
     const due = flagVal("--due");
     if (due) fields.dueDate = due === "none" ? null : due;
     const detail = flagVal("--detail");
@@ -1389,6 +1401,16 @@ function cmdHelp() {
   deepthink ws <request>                          (alias)
     natural language task/note/project management
 
+  AGENTS & AUTOMATION
+  ───────────────────
+  deepthink react <goal>                          ReAct loop (reason → act → observe)
+  deepthink insight scan|list|clear               workspace health insights
+  deepthink research <topic>                      research pipeline
+    --deep  --project <name>
+  deepthink schedule run|status                   scheduled jobs
+    --force (run, ignore due times)
+  deepthink version                               print version (also --version, -v)
+
   SEARCH
   ──────
   deepthink search <query>                        web search
@@ -1408,13 +1430,21 @@ function cmdHelp() {
 
   MCP TOOLS (via deepthink-mcp)
   ─────────────────────────────
-  smart_query          auto-routes: hybrid retrieval (BM25 + semantic)
+  smart_query          auto-routes: hybrid retrieval (BM25 + semantic) — the default
+  unified_search       single ranked list across all data types
   knowledge_context    hybrid knowledge retrieval (~90% token savings)
   workspace_context    query-relevant workspace snapshot
-  unified_search       single ranked list across all data types
+  project_context      360° project view (sessions + tasks + notes + decisions)
   deepthink_overview   compact counts + top items (~200 tokens)
+  remember             save one fact, auto-scoped to the repo's bucket
+  knowledge_session    { action: sync|note|recall|list|handoff|claim }
   workspace_task|note|project|reminder   CRUD via { action: list|get|create|update|delete }
+                       tasks support subtasks: parent / topLevelOnly / subtasks
+  workspace_summary | workspace_reindex | workspace_resolve_deeplink
+  workspace_link       relationship graph via { action: create|list|delete }
   knowledge_project|knowledge_integration   CRUD via { action }
+  knowledge_search     legacy keyword search over integration data (prefer smart_query)
+  knowledge_stats      knowledge base counts
   agent|rule|skill     CRUD via { action: list|get|create|delete }
 `);
 }

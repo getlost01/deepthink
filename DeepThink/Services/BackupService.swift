@@ -105,8 +105,15 @@ final class BackupService {
     // MARK: - Run Backup
 
     func runBackup(isManual: Bool = false) async {
-        guard !isRunning else { return }
-        await MainActor.run { isRunning = true; lastError = nil }
+        // Claim the flag on the main actor — checking it here and setting it in a second
+        // hop let a timer tick and a manual run start two backups writing one manifest.
+        let alreadyRunning = await MainActor.run { () -> Bool in
+            guard !isRunning else { return true }
+            isRunning = true
+            lastError = nil
+            return false
+        }
+        guard !alreadyRunning else { return }
 
         let folderName = ISO8601DateFormatter().string(from: Date())
             .replacingOccurrences(of: ":", with: "-")
@@ -149,7 +156,9 @@ final class BackupService {
             await MainActor.run {
                 self.lastError = error.localizedDescription
                 self.isRunning = false
+                self.appState?.presentError(error, context: "Backup")
             }
+            StorageService.shared.writeLog("Backup failed: \(error.localizedDescription)", to: "errors")
         }
     }
 

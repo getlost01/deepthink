@@ -42,6 +42,31 @@ export interface MCPTool {
   execute: (params: Record<string, any>) => any;
 }
 
+// `required` in inputSchema is advisory — a missing/blank query otherwise reaches the
+// tokenizer and surfaces as a cryptic TypeError instead of an actionable message.
+function requireQuery(p: Record<string, any>): string {
+  if (typeof p.query !== "string" || p.query.trim() === "")
+    throw new Error(`'query' is required and must be a non-empty string`);
+  return p.query;
+}
+
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+// Hard ceiling on rows returned by smart_query's `full` mode. Without it a query whose
+// wording trips the "full data" classifier dumps the entire workspace into the agent's
+// context; the paginated workspace_* tools are the real full-data path.
+const FULL_MODE_CAP = 100;
+
+// Note which lists got clipped so the agent knows to page rather than assume it saw everything.
+function truncationNote(counts: Record<string, number>, cap: number): Record<string, number> | undefined {
+  const over: Record<string, number> = {};
+  for (const [k, n] of Object.entries(counts)) if (n > cap) over[k] = n;
+  return Object.keys(over).length > 0 ? over : undefined;
+}
+
 // ── Intent Classification ──
 
 const FULL_DATA_SIGNALS = [
@@ -129,7 +154,7 @@ export const SMART_TOOLS: MCPTool[] = [
           description:
             "Override auto-detection: 'summary' for context/understanding, 'full' for mutations/exports. Default: 'auto' (recommended)",
         },
-        maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000)" },
+        maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000, max 40000)" },
         cwd: {
           type: "string",
           description:
@@ -144,22 +169,39 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
+      requireQuery(p);
+      if (p.mode !== undefined && !["auto", "summary", "full"].includes(p.mode))
+        throw new Error(`unknown mode: ${p.mode}. Use one of: auto, summary, full`);
       const rawMode = p.mode && p.mode !== "auto" ? p.mode : classifyIntent(p.query);
       const actualMode = rawMode === "auto" ? "summary" : rawMode;
       const { projectScope, bucketScope } = currentScope(p);
       const agentId = currentAgentId(p.agent);
 
       if (actualMode === "full") {
+        const projects = db.listProjects();
+        const tasks = db.listTasks();
+        const notes = db.listNotes();
+        const reminders = db.listReminders();
+        const truncated = truncationNote(
+          {
+            projects: projects.length,
+            tasks: tasks.length,
+            notes: notes.length,
+            reminders: reminders.length,
+          },
+          FULL_MODE_CAP
+        );
         return {
           mode: "full",
           intent: "full_data",
-          hint: "Use workspace_task/note/project/reminder {action:'list'} or knowledge_project {action:'load'} for full data access.",
+          hint: `Each list is capped at ${FULL_MODE_CAP} items. Use workspace_task/note/project/reminder {action:'list', limit, offset} to page through everything, or knowledge_project {action:'load'} for a project's knowledge.`,
           workspace: {
-            projects: db.listProjects(),
-            tasks: db.listTasks(),
-            notes: db.listNotes(),
-            reminders: db.listReminders(),
+            projects: projects.slice(0, FULL_MODE_CAP),
+            tasks: tasks.slice(0, FULL_MODE_CAP),
+            notes: notes.slice(0, FULL_MODE_CAP),
+            reminders: reminders.slice(0, FULL_MODE_CAP),
           },
+          ...(truncated ? { truncated } : {}),
           knowledge: {
             stats: knowledge.knowledgeStats(),
             projects: knowledge.listProjects(),
@@ -169,8 +211,9 @@ export const SMART_TOOLS: MCPTool[] = [
       }
 
       // Summary mode — unified search (BM25 + semantic, all types, RRF-fused)
+      const maxTokens = clampInt(p.maxTokens, 4000, 200, 40000);
       const unified = unifiedSearch(p.query, {
-        maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10,
+        maxItems: clampInt(Math.ceil(maxTokens / 400), 10, 1, 100),
         projectScope,
         bucketScope,
         agentId,
@@ -211,18 +254,19 @@ export const SMART_TOOLS: MCPTool[] = [
           type: "string",
           description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
         },
-        topK: { type: "number", description: "Max entries to return (default: 10)" },
+        topK: { type: "number", description: "Max entries to return (default: 10, max 50)" },
       },
       required: ["query"],
     },
     execute: (p) => {
+      requireQuery(p);
       const agentScope = [...(p.agentScope ?? []), ...(p.bucket ? [`bucket:${p.bucket}`] : [])];
       return retrieveContextHybrid(p.query, {
-        maxTokens: p.maxTokens ?? 4000,
+        maxTokens: clampInt(p.maxTokens, 4000, 200, 40000),
         projectScope: p.projectScope,
         agentScope: agentScope.length > 0 ? agentScope : undefined,
         agentId: currentAgentId(p.agent),
-        topK: p.topK ?? 10,
+        topK: clampInt(p.topK, 10, 1, 50),
       });
     },
   },
@@ -236,7 +280,7 @@ export const SMART_TOOLS: MCPTool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "What you're working on or looking for" },
-        maxItems: { type: "number", description: "Max items per category (default: 5)" },
+        maxItems: { type: "number", description: "Max items per category (default: 5, max 50)" },
         cwd: {
           type: "string",
           description: "Repo working directory — boosts items from the matching project. Defaults to the server's cwd.",
@@ -246,7 +290,8 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
-      return workspaceContext(p.query, p.maxItems ?? 5, undefined, currentProjectScope(p));
+      requireQuery(p);
+      return workspaceContext(p.query, clampInt(p.maxItems, 5, 1, 50), undefined, currentProjectScope(p));
     },
   },
 
@@ -259,7 +304,7 @@ export const SMART_TOOLS: MCPTool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "What you're looking for" },
-        maxItems: { type: "number", description: "Max results (default: 10)" },
+        maxItems: { type: "number", description: "Max results (default: 10, max 100)" },
         types: {
           type: "array",
           items: { type: "string", enum: ["task", "note", "reminder", "knowledge"] },
@@ -282,9 +327,17 @@ export const SMART_TOOLS: MCPTool[] = [
       required: ["query"],
     },
     execute: (p) => {
+      requireQuery(p);
+      const UNIFIED_TYPES = ["task", "note", "reminder", "knowledge"];
+      if (p.types !== undefined) {
+        if (!Array.isArray(p.types)) throw new Error(`'types' must be an array of: ${UNIFIED_TYPES.join(", ")}`);
+        const bad = p.types.filter((t: string) => !UNIFIED_TYPES.includes(t));
+        if (bad.length > 0)
+          throw new Error(`unknown type(s): ${bad.join(", ")}. Use one of: ${UNIFIED_TYPES.join(", ")}`);
+      }
       const { projectScope, bucketScope } = currentScope({ cwd: p.cwd });
       const results = unifiedSearch(p.query, {
-        maxItems: p.maxItems ?? 10,
+        maxItems: clampInt(p.maxItems, 10, 1, 100),
         types: p.types,
         scope: p.bucket ? [`bucket:${p.bucket}`] : undefined,
         projectScope,

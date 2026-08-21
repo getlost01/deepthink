@@ -51,7 +51,9 @@ struct HandoffsView: View {
             Spacer()
             DSSearchField(text: $search, placeholder: "Search handoffs")
                 .frame(maxWidth: 240)
-            Button(action: { service.reload() }) {
+            Button {
+                service.reload()
+            } label: {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: DS.IconSize.md, weight: .medium))
                     .foregroundStyle(DS.Colors.textSecondary)
@@ -80,7 +82,7 @@ struct HandoffsView: View {
             } else {
                 LazyVStack(spacing: DS.Spacing.md) {
                     ForEach(filtered) { handoff in
-                        HandoffCard(handoff: handoff) { service.claim(handoff.id) }
+                        HandoffCard(handoff: handoff) { claim(handoff) }
                     }
                 }
                 .padding(DS.Spacing.lg)
@@ -89,24 +91,41 @@ struct HandoffsView: View {
         .dsPage()
     }
 
+    private func claim(_ handoff: Handoff) {
+        if service.claim(handoff.id) {
+            ToastState.shared.show("Handoff marked claimed")
+        } else {
+            ToastState.shared.showError("Couldn't claim this handoff — the handoff file may have changed on disk")
+        }
+    }
+
     @ViewBuilder
     private var emptyState: some View {
-        switch filter {
-        case .open:
+        let query = search.trimmingCharacters(in: .whitespaces)
+        if !query.isEmpty {
             DSEmptyState(
-                icon: "tray",
-                title: "No open handoffs",
-                subtitle: "You're all caught up — nothing is waiting to be picked up."
+                icon: "magnifyingglass",
+                title: "No Results",
+                subtitle: "No handoffs match \"\(query)\""
             )
-        case .claimed:
-            DSEmptyState(icon: "checkmark.circle", title: "No claimed handoffs yet")
-        case .all:
-            DSEmptyState(
-                icon: "tray.and.arrow.down",
-                title: "No handoffs",
-                subtitle: "When one AI agent hands off to another, it shows up here.",
-                hint: "Agents create these with knowledge_session {action:'handoff'}."
-            )
+        } else {
+            switch filter {
+            case .open:
+                DSEmptyState(
+                    icon: "tray",
+                    title: "No open handoffs",
+                    subtitle: "You're all caught up — nothing is waiting to be picked up."
+                )
+            case .claimed:
+                DSEmptyState(icon: "checkmark.circle", title: "No claimed handoffs yet")
+            case .all:
+                DSEmptyState(
+                    icon: "tray.and.arrow.down",
+                    title: "No handoffs",
+                    subtitle: "When one AI agent hands off to another, it shows up here.",
+                    hint: "Agents create these with knowledge_session {action:'handoff'}."
+                )
+            }
         }
     }
 }
@@ -123,7 +142,7 @@ private struct HandoffCard: View {
                 Image(systemName: "tray.and.arrow.down")
                     .font(.system(size: DS.IconSize.md, weight: .medium))
                     .foregroundStyle(statusColor)
-                Text(handoff.title)
+                Text(handoff.title.isEmpty ? "Untitled handoff" : handoff.title)
                     .font(DS.Font.heading)
                     .foregroundStyle(DS.Colors.textPrimary)
                     .lineLimit(2)
@@ -146,7 +165,7 @@ private struct HandoffCard: View {
                 }
             }
 
-            Text(handoff.content)
+            Text(handoff.content.isEmpty ? "No details provided." : handoff.content)
                 .font(DS.Font.bodySmall)
                 .foregroundStyle(DS.Colors.textSecondary)
                 .lineLimit(6)

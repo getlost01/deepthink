@@ -383,9 +383,9 @@ final class VectorStore {
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_int(stmt, 1, Int32(maxRetries))
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let entryID = String(cString: sqlite3_column_text(stmt, 0))
-                let entryType = String(cString: sqlite3_column_text(stmt, 1))
-                let operation = String(cString: sqlite3_column_text(stmt, 2))
+                guard let entryID = columnText(stmt, 0) else { continue }
+                let entryType = columnText(stmt, 1) ?? ""
+                let operation = columnText(stmt, 2) ?? "upsert"
                 let retryCount = Int(sqlite3_column_int(stmt, 4))
                 results.append(PendingReindexRow(entryID: entryID, entryType: entryType, operation: operation, retryCount: retryCount))
             }
@@ -599,7 +599,7 @@ final class VectorStore {
             }
             var out: [String: EntryMeta] = [:]
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let eid = String(cString: sqlite3_column_text(stmt, 0))
+                guard let eid = text(0) else { continue }
                 out[eid] = EntryMeta(agentID: text(1), visibility: text(2) ?? "shared", supersededBy: text(3))
             }
             return out
@@ -628,7 +628,7 @@ final class VectorStore {
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
             guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
-            return String(cString: sqlite3_column_text(stmt, 0))
+            return columnText(stmt, 0)
         }
     }
 
@@ -656,23 +656,31 @@ final class VectorStore {
 
             var ids: Set<String> = []
             while sqlite3_step(stmt) == SQLITE_ROW {
-                ids.insert(String(cString: sqlite3_column_text(stmt, 0)))
+                if let id = columnText(stmt, 0) { ids.insert(id) }
             }
             return ids
         }
     }
 
-    private func readChunkRow(_ stmt: OpaquePointer?) -> VectorChunk {
-        let id = String(cString: sqlite3_column_text(stmt, 0))
-        let entryID = String(cString: sqlite3_column_text(stmt, 1))
-        let entryType = String(cString: sqlite3_column_text(stmt, 2))
-        let title = String(cString: sqlite3_column_text(stmt, 3))
-        let content = String(cString: sqlite3_column_text(stmt, 4))
+    /// `sqlite3_column_text` yields NULL for a NULL column, and `String(cString:)` on that
+    /// pointer is a hard crash. `tags`, `source` and `meta.value` are nullable, and rows
+    /// also arrive from the CLI/MCP writing the same file.
+    private func columnText(_ stmt: OpaquePointer?, _ col: Int32) -> String? {
+        guard let ptr = sqlite3_column_text(stmt, col) else { return nil }
+        return String(cString: ptr)
+    }
 
-        let tagsStr = String(cString: sqlite3_column_text(stmt, 5))
+    private func readChunkRow(_ stmt: OpaquePointer?) -> VectorChunk {
+        let id = columnText(stmt, 0) ?? ""
+        let entryID = columnText(stmt, 1) ?? ""
+        let entryType = columnText(stmt, 2) ?? "knowledge"
+        let title = columnText(stmt, 3) ?? ""
+        let content = columnText(stmt, 4) ?? ""
+
+        let tagsStr = columnText(stmt, 5) ?? "[]"
         let tags = (try? JSONSerialization.jsonObject(with: Data(tagsStr.utf8)) as? [String]) ?? []
 
-        let source = String(cString: sqlite3_column_text(stmt, 6))
+        let source = columnText(stmt, 6) ?? ""
         let importedAt = Date(timeIntervalSince1970: sqlite3_column_double(stmt, 7))
         let chunkIndex = Int(sqlite3_column_int(stmt, 8))
         let totalChunks = Int(sqlite3_column_int(stmt, 9))

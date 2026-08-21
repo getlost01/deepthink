@@ -25,6 +25,18 @@ function slugify(s: string): string {
     .replace(/[^a-z0-9-]/g, "");
 }
 
+// The filename IS the record's identity here, so a name that slugifies to nothing
+// (blank, or only punctuation) would write a nameless ".md" that no lookup can find
+// and no delete can remove.
+function requireSlug(name: unknown, entity: string): string {
+  if (typeof name !== "string" || name.trim() === "")
+    throw new Error(`'name' is required and must be a non-empty string`);
+  const slug = slugify(name);
+  if (!slug)
+    throw new Error(`'name' must contain at least one letter or digit to form a ${entity} filename: ${name}`);
+  return slug;
+}
+
 // ── Frontmatter parser ──
 
 function parseFrontmatter(text: string): { meta: Record<string, string>; body: string } {
@@ -235,8 +247,8 @@ export const CONFIG_TOOLS: MCPTool[] = [
         case "create": {
           if (!p.name || !p.role || !p.systemPrompt)
             throw new Error(`'name', 'role', and 'systemPrompt' are required for action 'create'`);
+          const filename = `${requireSlug(p.name, "agent")}.md`;
           ensureDir(AGENTS_DIR);
-          const filename = `${slugify(p.name)}.md`;
           let md = buildFrontmatter({
             name: p.name,
             role: p.role,
@@ -301,8 +313,8 @@ export const CONFIG_TOOLS: MCPTool[] = [
         case "create": {
           if (!p.name || !p.trigger || !p.instruction)
             throw new Error(`'name', 'trigger', and 'instruction' are required for action 'create'`);
+          const filename = `${requireSlug(p.name, "rule")}.md`;
           ensureDir(RULES_DIR);
-          const filename = `${slugify(p.name)}.md`;
           let md = buildFrontmatter({
             name: p.name,
             trigger: p.trigger,
@@ -367,8 +379,9 @@ export const CONFIG_TOOLS: MCPTool[] = [
         case "create": {
           if (!p.name || !p.promptTemplate)
             throw new Error(`'name' and 'promptTemplate' are required for action 'create'`);
+          const slug = requireSlug(p.name, "skill");
+          const filename = `${slug}.md`;
           ensureDir(SKILLS_DIR);
-          const filename = `${slugify(p.name)}.md`;
           let md = buildFrontmatter({
             name: p.name,
             trigger: p.trigger ?? "manual",
@@ -379,7 +392,7 @@ export const CONFIG_TOOLS: MCPTool[] = [
           if (p.systemPrompt) md += `${p.systemPrompt}\n\n---\n\n`;
           md += p.promptTemplate;
           writeFileSync(join(SKILLS_DIR, filename), md, "utf-8");
-          return { name: p.name, commandName: slugify(p.name), filename, created: true };
+          return { name: p.name, commandName: slug, filename, created: true };
         }
         case "delete": {
           if (!p.name) throw new Error(`'name' is required for action 'delete'`);

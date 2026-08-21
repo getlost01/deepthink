@@ -29,7 +29,7 @@ struct NoteVersionsView: View {
                     .listRowSeparator(.hidden)
                 } else {
                     ForEach(versions) { version in
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                             HStack {
                                 Text("v\(version.versionNumber)")
                                     .font(DS.Font.small)
@@ -81,7 +81,7 @@ struct NoteVersionsView: View {
 
                     ScrollView {
                         VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                            Text(version.title)
+                            Text(version.title.isEmpty ? "Untitled" : version.title)
                                 .font(DS.Font.title)
 
                             Divider()

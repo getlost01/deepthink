@@ -162,7 +162,7 @@ struct TaskDetailView: View {
                         Image(systemName: showSubtasks ? "chevron.down" : "chevron.right")
                             .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .frame(width: 12)
+                            .frame(width: DS.IconSize.sm)
                         Text("Subtasks")
                             .font(DS.Font.caption)
                             .fontWeight(.semibold)
@@ -207,7 +207,7 @@ struct TaskDetailView: View {
                                 Spacer()
 
                                 Button {
-                                    VectorStore.shared.enqueuePendingReindex(entryID: "task:\(sub.id.uuidString)", entryType: "task", operation: "delete")
+                                    ArchiveService.enqueueDeletion(task: sub)
                                     modelContext.delete(sub)
                                     try? modelContext.save()
                                 } label: {

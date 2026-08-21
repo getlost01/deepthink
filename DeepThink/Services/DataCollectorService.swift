@@ -147,6 +147,15 @@ final class DataCollectorService {
 
     private static let allImportExtensions: Set<String> = ["md", "markdown", "txt", "pdf"]
 
+    /// `String.hashValue` is seeded per process, so using it in an import filename made
+    /// every relaunch re-copy the same source file under a new name (and `abs` traps on
+    /// `Int.min`). djb2 keeps the name stable so the dedup checks actually match.
+    private static func pathHash(_ path: String) -> String {
+        var hash: UInt64 = 5381
+        for byte in path.utf8 { hash = hash &* 33 &+ UInt64(byte) }
+        return String(String(hash, radix: 36).suffix(6))
+    }
+
     func importFolder(at path: String, folder: String? = nil) -> Int {
         let folderURL = URL(fileURLWithPath: path)
         guard fm.fileExists(atPath: path) else { return 0 }
@@ -172,7 +181,7 @@ final class DataCollectorService {
                 }
             } else {
                 let stem = fileURL.deletingPathExtension().lastPathComponent
-                let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+                let hash = Self.pathHash(fileURL.path)
                 let destURL = destDir.appendingPathComponent("\(stem)-\(hash).md")
                 if !fm.fileExists(atPath: destURL.path),
                    (try? fm.copyItem(at: fileURL, to: destURL)) != nil {
@@ -195,14 +204,24 @@ final class DataCollectorService {
                 process.arguments = ["-c", command]
 
                 let pipe = Pipe()
+                let errPipe = Pipe()
                 process.standardOutput = pipe
-                process.standardError = Pipe()
+                process.standardError = errPipe
 
                 do {
                     try process.run()
-                    process.waitUntilExit()
 
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeoutWork)
+
+                    // Drain the pipes BEFORE waiting for exit — a script emitting more than
+                    // the 64 KB pipe buffer blocks forever if we wait first, and this
+                    // continuation would then never resume.
                     let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    _ = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    timeoutWork.cancel()
+
                     guard let output = String(data: data, encoding: .utf8), !output.isEmpty else {
                         continuation.resume(returning: false)
                         return
@@ -373,7 +392,7 @@ final class DataCollectorService {
             if fileURL.pathExtension == "pdf" {
                 let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
                 let title = fileURL.deletingPathExtension().lastPathComponent
-                let sentinelURL = destDir.appendingPathComponent("\(title)-\(String(abs(fileURL.path.hashValue), radix: 36).prefix(6)).pdf.imported")
+                let sentinelURL = destDir.appendingPathComponent("\(title)-\(Self.pathHash(fileURL.path)).pdf.imported")
                 let sentinelDate = (try? sentinelURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
                 if !fm.fileExists(atPath: sentinelURL.path) || sourceDate > sentinelDate {
                     if let text = extractTextFromPDF(at: fileURL) {
@@ -387,7 +406,7 @@ final class DataCollectorService {
             } else {
                 let stem = fileURL.deletingPathExtension().lastPathComponent
                 let ext = fileURL.pathExtension
-                let hash = String(abs(fileURL.path.hashValue), radix: 36).prefix(6)
+                let hash = Self.pathHash(fileURL.path)
                 let destURL = destDir.appendingPathComponent("\(stem)-\(hash).\(ext)")
                 let sourceDate = (try? fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
                 let destDate = (try? destURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast

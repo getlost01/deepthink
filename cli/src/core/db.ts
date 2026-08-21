@@ -305,13 +305,23 @@ export interface TaskRow {
   completedAt: Date | null;
   projectPk: number | null;
   projectName: string | null;
+  parentPk: number | null;
+  parentId: string | null;
+  parentTitle: string | null;
   isArchived: boolean;
   createdAt: Date;
   modifiedAt: Date;
 }
 
 export function listTasks(
-  opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}
+  opts: {
+    status?: string;
+    priority?: string;
+    project?: string;
+    parent?: string;
+    topLevelOnly?: boolean;
+    excludeArchived?: boolean;
+  } = {}
 ): TaskRow[] {
   const db = getDB();
   let where = opts.excludeArchived ? "(t.ZISARCHIVED = 0 OR t.ZISARCHIVED IS NULL)" : "1=1";
@@ -325,20 +335,31 @@ export function listTasks(
     where += " AND t.ZPRIORITYRAW = ?";
     params.push(opts.priority);
   }
+  // An unresolvable filter must narrow to nothing, never silently widen to "no filter"
+  // (which would return the whole table for a mistyped project/parent name).
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) {
-      where += " AND t.ZPROJECT = ?";
-      params.push(proj.pk);
-    }
+    if (!proj) return [];
+    where += " AND t.ZPROJECT = ?";
+    params.push(proj.pk);
+  }
+  if (opts.parent) {
+    const parent = getTask(opts.parent);
+    if (!parent) return [];
+    where += " AND t.ZPARENT = ?";
+    params.push(parent.pk);
+  } else if (opts.topLevelOnly) {
+    where += " AND t.ZPARENT IS NULL";
   }
 
   const rows = db
     .query(`
     SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
-           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZCOMPLETEDAT, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
-           p.ZNAME as projectName
-    FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
+           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZCOMPLETEDAT, t.ZPROJECT, t.ZPARENT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
+           p.ZNAME as projectName, parent.ZTITLE as parentTitle, hex(parent.ZID) as parentId
+    FROM ZTASKITEM t
+      LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
+      LEFT JOIN ZTASKITEM parent ON t.ZPARENT = parent.Z_PK
     WHERE ${where}
     ORDER BY t.ZMODIFIEDAT DESC
   `)
@@ -355,6 +376,9 @@ export function listTasks(
     completedAt: r.ZCOMPLETEDAT ? fromCD(r.ZCOMPLETEDAT) : null,
     projectPk: r.ZPROJECT,
     projectName: r.projectName ?? null,
+    parentPk: r.ZPARENT,
+    parentId: r.parentId ?? null,
+    parentTitle: r.parentTitle ?? null,
     isArchived: !!r.ZISARCHIVED,
     createdAt: fromCD(r.ZCREATEDAT),
     modifiedAt: fromCD(r.ZMODIFIEDAT),
@@ -375,6 +399,11 @@ export function getTask(pkStr: string): TaskRow | null {
   return partial.length === 1 ? partial[0] : null;
 }
 
+// Direct children of a task, as full rows (used by workspace_task get/list to surface subtasks).
+export function listSubtasks(parentPk: number): TaskRow[] {
+  return listTasks().filter((t) => t.parentPk === parentPk);
+}
+
 export function createTask(
   title: string,
   opts: {
@@ -384,6 +413,7 @@ export function createTask(
     storyPoints?: number;
     dueDate?: string;
     project?: string;
+    parent?: string;
   } = {}
 ): { pk: number; id: string } {
   const db = getWriteDB();
@@ -394,7 +424,15 @@ export function createTask(
   let projectPk: number | null = null;
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) projectPk = proj.pk;
+    if (!proj) throw new Error(`project not found: ${opts.project}`);
+    projectPk = proj.pk;
+  }
+
+  let parentPk: number | null = null;
+  if (opts.parent) {
+    const parent = getTask(opts.parent);
+    if (!parent) throw new Error(`parent task not found: ${opts.parent}`);
+    parentPk = parent.pk;
   }
 
   let dueDateCD: number | null = null;
@@ -403,13 +441,14 @@ export function createTask(
   }
 
   db.query(`
-    INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
-    VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${id}')
+    INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZPARENT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
+    VALUES (?, ?, 1, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${id}')
   `).run(
     pk,
     ent,
     opts.storyPoints ?? null,
     projectPk,
+    parentPk,
     now,
     dueDateCD,
     now,
@@ -465,10 +504,32 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
       vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) {
-        sets.push("ZPROJECT = ?");
-        vals.push(proj.pk);
+      if (!proj) throw new Error(`project not found: ${fields.project}. Pass 'none' to unassign.`);
+      sets.push("ZPROJECT = ?");
+      vals.push(proj.pk);
+    }
+  }
+  if (fields.parent !== undefined) {
+    if (fields.parent === null || fields.parent === "none") {
+      sets.push("ZPARENT = ?");
+      vals.push(null);
+    } else {
+      const parent = getTask(fields.parent);
+      if (!parent) throw new Error(`parent task not found: ${fields.parent}`);
+      if (parent.pk === pk) throw new Error(`a task cannot be its own parent`);
+      // Walk descendants to reject reparenting a task under its own subtask/grandchild.
+      const descendants = new Set<string>();
+      const queue = listSubtaskIds(pk);
+      while (queue.length) {
+        const childId = queue.pop()!;
+        if (descendants.has(childId)) continue;
+        descendants.add(childId);
+        const child = getTask(childId);
+        if (child) queue.push(...listSubtaskIds(child.pk));
       }
+      if (descendants.has(parent.id)) throw new Error(`cannot move a task under its own subtask`);
+      sets.push("ZPARENT = ?");
+      vals.push(parent.pk);
     }
   }
 
@@ -539,10 +600,9 @@ export function listNotes(opts: { project?: string; pinned?: boolean; excludeArc
   }
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) {
-      where += " AND n.ZPROJECT = ?";
-      params.push(proj.pk);
-    }
+    if (!proj) return [];
+    where += " AND n.ZPROJECT = ?";
+    params.push(proj.pk);
   }
 
   const rows = db
@@ -596,7 +656,8 @@ export function createNote(
   let projectPk: number | null = null;
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) projectPk = proj.pk;
+    if (!proj) throw new Error(`project not found: ${opts.project}`);
+    projectPk = proj.pk;
   }
 
   db.query(`
@@ -631,10 +692,9 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
       vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) {
-        sets.push("ZPROJECT = ?");
-        vals.push(proj.pk);
-      }
+      if (!proj) throw new Error(`project not found: ${fields.project}. Pass 'none' to unassign.`);
+      sets.push("ZPROJECT = ?");
+      vals.push(proj.pk);
     }
   }
 

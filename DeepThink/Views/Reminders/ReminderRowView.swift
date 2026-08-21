@@ -55,7 +55,7 @@ struct ReminderRowView: View {
                 if reminder.priority != .none {
                     Circle()
                         .fill(reminder.priority.color)
-                        .frame(width: 7, height: 7)
+                        .frame(width: DS.IconSize.micro, height: DS.IconSize.micro)
                 }
                 if reminder.notificationScheduled, reminder.reminderDate != nil {
                     Image(systemName: "bell.badge.fill")

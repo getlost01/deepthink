@@ -109,7 +109,11 @@ enum BranchSerializer {
                     return AIMessage(role: role, content: sm.content, timestamp: sm.timestamp)
                 })
             }
-            result[item.index] = BranchPoint(branches: branches, activeBranchIndex: item.activeBranchIndex)
+            guard !branches.isEmpty else { continue }
+            result[item.index] = BranchPoint(
+                branches: branches,
+                activeBranchIndex: min(max(item.activeBranchIndex, 0), branches.count - 1)
+            )
         }
         return result
     }

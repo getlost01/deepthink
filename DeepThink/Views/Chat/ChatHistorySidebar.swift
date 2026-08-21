@@ -10,6 +10,7 @@ struct ChatHistorySidebar: View {
     var onClose: (() -> Void)?
     @State private var searchText = ""
     @State private var hoveredID: UUID?
+    @State private var pendingDelete: Conversation?
 
     private var filtered: [Conversation] {
         let convs = conversations.prefix(100).map(\.self)
@@ -105,7 +106,7 @@ struct ChatHistorySidebar: View {
                                     isSelected: currentID == conv.id,
                                     isHovered: hoveredID == conv.id,
                                     onSelect: { onSelect(conv) },
-                                    onDelete: { onDelete(conv) }
+                                    onDelete: { pendingDelete = conv }
                                 )
                                 .onHover { hoveredID = $0 ? conv.id : nil }
                                 .pointerOnHover()
@@ -118,6 +119,19 @@ struct ChatHistorySidebar: View {
             }
         }
         .background(DS.Colors.page)
+        .confirmationDialog("Delete Conversation?", isPresented: Binding(
+            get: { pendingDelete != nil },
+            set: { if !$0 { pendingDelete = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let conv = pendingDelete { onDelete(conv) }
+                pendingDelete = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDelete = nil }
+        } message: {
+            let name = pendingDelete?.title ?? ""
+            Text("This will permanently delete \"\(name.isEmpty ? "Untitled" : name)\".")
+        }
     }
 }
 
@@ -144,10 +158,12 @@ private struct HistoryRow: View {
                         .lineLimit(1)
 
                     HStack(spacing: DS.Spacing.xs) {
-                        if let agent = conversation.agentName {
+                        if let agent = conversation.agentName, !agent.isEmpty {
                             Text(agent)
                                 .font(DS.Font.micro)
                                 .foregroundStyle(DS.Colors.accent)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
                         }
                         Text(conversation.updatedAt.formatted(.dateTime.month(.abbreviated).day().hour().minute()))
                             .font(DS.Font.micro)

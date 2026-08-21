@@ -32,7 +32,7 @@ final class Note {
     }
 
     var firstLine: String {
-        let line = content.prefix(while: { $0 != "\n" })
+        let line = content.drop(while: \.isWhitespace).prefix(while: { !$0.isNewline })
         return line.isEmpty ? "No content" : String(line.prefix(100))
     }
 }
