@@ -2,7 +2,7 @@
 
 **The local context layer for AI-assisted development on macOS.**
 
-DeepThink is a local-first workspace-notes, tasks, projects, and a knowledge graph in a native app-plus a **51-tool MCP server** and **CLI** that expose indexed context from `~/DeepThink/` to Cursor, Claude Code, Windsurf, and other MCP hosts. On-device search. No required cloud account. **MIT licensed.**
+DeepThink is a local-first workspace-notes, tasks, projects, and a knowledge graph in a native app-plus a **23-tool MCP server** and **CLI** that expose indexed context from `~/DeepThink/` to Cursor, Claude Code, Windsurf, and other MCP hosts. On-device search. No required cloud account. **MIT licensed.**
 
 [![CI](https://github.com/getlost01/deepthink/actions/workflows/ci.yml/badge.svg)](https://github.com/getlost01/deepthink/actions/workflows/ci.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/getlost01/deepthink?logo=github)](https://github.com/getlost01/deepthink/releases/latest)
@@ -31,7 +31,7 @@ Editor-integrated AI is strong at in-session assistance, but context often reset
 | **Where your data lives** | Vendor cloud or ephemeral chat | `~/DeepThink/` - files you own |
 | **Search** | Keyword grep or cloud RAG | Hybrid BM25 + Apple NLEmbedding, fully on-device |
 | **Workspace** | Editor-only | Native app: notes, kanban, reminders, knowledge graph |
-| **Agent access** | Single IDE | App · CLI · 51-tool MCP - any MCP host |
+| **Agent access** | Single IDE | App · CLI · 23-tool MCP - any MCP host |
 
 ---
 
@@ -84,7 +84,7 @@ deepthink context --query "authentication decisions"
 
 | Feature | What it does |
 |---|---|
-| **51-tool MCP server** | `smart_query`, `unified_search`, `workspace_*`, `knowledge_*`, agents, skills, rules - search tools and edit tools, clearly separated |
+| **23-tool MCP server** | `smart_query`, `unified_search`, `workspace_*`, `knowledge_*`, agents, skills, rules - search tools and edit tools, clearly separated. Action-based: one tool per entity taking `action: list\|get\|create\|update\|delete`, replacing 51 single-purpose CRUD tools |
 | **Model-agnostic CLI** | `deepthink ask`, `run`, `react`, `research`, `schedule` - works without Claude; full audit log on writes |
 | **Live sync** | CLI and MCP mutations sync to the running app instantly via Darwin notification |
 | **Token-budgeted retrieval** | `smart_query` and `deepthink_overview` return ~200 tokens of the *right* context, not raw dumps |
@@ -359,7 +359,7 @@ All new UI must use `DS.*` tokens from `DeepThink/Views/Shared/DesignSystem.swif
 |-|-|
 | [App Features](docs/app/README.md) | Workspace, knowledge, AI chat, terminal, quick capture, appearance |
 | [CLI Reference](docs/cli/README.md) | All `deepthink` commands, agent system |
-| [MCP Integration](docs/mcp-integration.md) | 51 MCP tools, external client setup |
+| [MCP Integration](docs/mcp-integration.md) | 23 MCP tools, external client setup |
 | [Architecture](docs/ARCHITECTURE.md) | System design, service layer, data flow |
 | [RAG Pipeline](docs/rag-pipeline.md) | Hybrid BM25 + semantic retrieval |
 | [Storage](docs/storage.md) | Data directory layout, database schema |

@@ -6,7 +6,7 @@ export const landingContent = {
     titleLead: 'Persistent context for',
     titleAccent: 'AI-assisted work.',
     subtitle:
-      'DeepThink is a native macOS workspace for notes, tasks, projects, and knowledge-backed by a 51-tool MCP server and CLI. Connect Cursor, Claude Code, or Windsurf once; each session can draw on an indexed corpus under ~/DeepThink. On-device indexing. No required cloud account.',
+      'DeepThink is a native macOS workspace for notes, tasks, projects, and knowledge-backed by a 23-tool MCP server and CLI. Connect Cursor, Claude Code, or Windsurf once; each session can draw on an indexed corpus under ~/DeepThink. On-device indexing. No required cloud account.',
     primaryCta: { label: 'Download for macOS', href: REPO_RELEASES_LATEST_URL },
     secondaryCta: { label: 'Documentation', to: '/documentation' },
     stats: [
@@ -22,7 +22,7 @@ export const landingContent = {
     badges: [
       'Native SwiftUI app',
       'Hybrid RAG (BM25 + semantic)',
-      '51-tool MCP server',
+      '23-tool MCP server',
       'Model-agnostic CLI',
       'On-device embeddings',
       'MIT licensed',
@@ -346,7 +346,7 @@ export const landingContent = {
   finalCta: {
     title: 'Install DeepThink for macOS',
     subtitle:
-      'Homebrew install includes the native app, 51-tool MCP server, and model-agnostic CLI-sharing one local knowledge base across interfaces.',
+      'Homebrew install includes the native app, 23-tool MCP server, and model-agnostic CLI-sharing one local knowledge base across interfaces.',
     primaryLabel: 'Download latest release',
     secondaryLabel: 'Read the docs',
   },
