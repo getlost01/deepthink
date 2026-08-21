@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { existsSync, readFileSync } from "node:fs";
 import { version as pkgVersion } from "../package.json";
 import { Analyst } from "./agents/analyst";
 import { Executor } from "./agents/executor";
@@ -13,8 +14,17 @@ import { findClaudePath, query } from "./core/llm";
 import { initSandbox, listFiles } from "./core/sandbox";
 import { deleteChunksForEntry } from "./core/vector-store";
 import * as fileTools from "./tools/file";
+import {
+  exportPortable,
+  type InstallOptions,
+  listAdapters,
+  runInstallByHost,
+  runUninstallByHost,
+  type Scope,
+} from "./tools/installer";
 import * as knowledgeTools from "./tools/knowledge";
 import * as search from "./tools/search";
+import { SESSION_TOOL_MAP } from "./tools/session-mcp";
 
 initSandbox();
 
@@ -31,7 +41,20 @@ function err(t: string): never {
 const flag = (f: string) => args.includes(f);
 const flagVal = (f: string) => {
   const i = args.indexOf(f);
-  return i !== -1 ? args[i + 1] : undefined;
+  const v = i !== -1 ? args[i + 1] : undefined;
+  // `--limit --json` would otherwise hand back "--json" as the value.
+  if (v === undefined && i !== -1) err(`${f} requires a value`);
+  if (v?.startsWith("--")) err(`${f} requires a value (got ${v})`);
+  return v;
+};
+// A bad numeric flag used to become NaN and silently degrade (`slice(0, NaN)` → no
+// results), so validate it here and exit non-zero with the offending value.
+const intFlag = (f: string, fallback: number, min = 1) => {
+  const raw = flagVal(f);
+  if (raw === undefined) return fallback;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < min) err(`${f} must be an integer ≥ ${min} (got ${raw})`);
+  return n;
 };
 
 // ── deepthink status ──
@@ -158,7 +181,7 @@ async function cmdKnowledge() {
       .join(" ");
     if (!q) err("usage: deepthink knowledge search <query> [--source s] [--limit n] [--json]");
     const source = flagVal("--source");
-    const limit = flagVal("--limit") ? parseInt(flagVal("--limit")!, 10) : 20;
+    const limit = intFlag("--limit", 20, 0);
     const results = knowledgeTools.searchIntegrationData(q, source ?? undefined, limit);
     if (json) {
       p(JSON.stringify(results));
@@ -277,6 +300,315 @@ async function cmdKnowledge() {
 
 // ── deepthink context ──
 
+// ── deepthink install / uninstall ──
+
+const STATUS_ICON = (s: string) => (s === "done" ? "✓" : s === "skipped" ? "·" : "✗");
+
+// Collect every `--agent <v>` (repeatable) and split comma lists: `--agent codex,cursor`.
+function parseAgents(): string[] | undefined {
+  const out: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if ((args[i] === "--agent" || args[i] === "--agents") && args[i + 1] && !args[i + 1].startsWith("--")) {
+      out.push(
+        ...args[i + 1]
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      );
+    }
+  }
+  return out.length ? out : undefined;
+}
+
+function pickScope(): Scope {
+  return flag("--local") ? "local" : "global";
+}
+
+// Numbered, no-raw-mode menu (robust in compiled binaries) for picking host(s) + scope.
+function interactiveSelect(): { agents: string[]; scope: Scope } | null {
+  const hosts = listAdapters();
+  p("Install DeepThink into which host(s)?\n");
+  hosts.forEach((h, i) =>
+    p(`  ${i + 1}) ${h.name}${h.detected ? "  (detected)" : ""}  ·  ${h.capabilities.join(", ")}`)
+  );
+  p("");
+  const ans = prompt("Hosts — comma-separated numbers, or 'a' for all:", "1");
+  if (ans == null) return null;
+  const trimmed = ans.trim().toLowerCase();
+  const agents =
+    trimmed === "a"
+      ? hosts.map((h) => h.id)
+      : trimmed
+          .split(",")
+          .map((s) => hosts[Number(s.trim()) - 1]?.id)
+          .filter((x): x is string => !!x);
+  if (agents.length === 0) return null;
+  const scopeAns = prompt("Scope — [g]lobal (your home) or [l]ocal (this project only)?", "g");
+  const scope: Scope = scopeAns?.trim().toLowerCase().startsWith("l") ? "local" : "global";
+  return { agents, scope };
+}
+
+function cmdInstall() {
+  let agents = parseAgents();
+  let scope = pickScope();
+  const quiet = flag("--quiet");
+
+  // Bare `deepthink install` in a terminal → interactive picker. With --agent, or when
+  // not a TTY (e.g. spawned by the app), run headless defaulting to Claude Code.
+  if (!agents && !quiet && process.stdin.isTTY) {
+    const sel = interactiveSelect();
+    if (!sel) return p("Cancelled.");
+    agents = sel.agents;
+    scope = sel.scope;
+  }
+
+  const opts: InstallOptions = {
+    agents: agents ?? ["claude-code"],
+    scope,
+    skillsOnly: flag("--skills-only"),
+    mcpOnly: flag("--mcp-only"),
+    quiet,
+  };
+  const results = runInstallByHost(opts);
+  if (quiet) return;
+
+  p(`deepthink install (${scope})\n`);
+  for (const host of results) {
+    p(`▸ ${host.name}`);
+    for (const s of host.steps) p(`    ${STATUS_ICON(s.status)} ${s.step}${s.detail ? ` — ${s.detail}` : ""}`);
+  }
+  if (results.some((h) => h.steps.some((s) => s.status === "failed"))) process.exit(1);
+  p(`\nDone. Restart the host app/CLI so the MCP server + skills load.`);
+}
+
+// `deepthink skills export [dir]` — write a portable kit (skill files + mcp.json +
+// README) for hosts without a first-class adapter. The "copy into any agent" path.
+function cmdSkills() {
+  if (sub !== "export") {
+    return err("usage: deepthink skills export [dir]   (default dir: ./deepthink-skills)");
+  }
+  const dir = flagVal("--dir") ?? args.slice(2).find((a) => !a.startsWith("--")) ?? "./deepthink-skills";
+  const steps = exportPortable(dir);
+  p(`deepthink skills export → ${dir}\n`);
+  for (const s of steps) p(`  ${STATUS_ICON(s.status)} ${s.step}${s.detail ? ` — ${s.detail}` : ""}`);
+  if (steps.some((s) => s.status === "failed")) process.exit(1);
+  p(`\nOpen ${dir}/README.md for where to drop each file in your agent.`);
+}
+
+function cmdUninstall() {
+  const opts: InstallOptions = { agents: parseAgents() ?? ["claude-code"], scope: pickScope() };
+  const results = runUninstallByHost(opts);
+  p(`deepthink uninstall\n`);
+  for (const host of results) {
+    p(`▸ ${host.name}`);
+    for (const s of host.steps) p(`    ${STATUS_ICON(s.status)} ${s.step}${s.detail ? ` — ${s.detail}` : ""}`);
+  }
+}
+
+// ── deepthink session (recall / sync / list) ──
+
+// Flatten a Claude Code transcript (JSONL) into plain dialogue text + a count of
+// real user turns, skipping tool noise and injected reminders. Used by autosync.
+function readTranscript(path: string): { text: string; userTurns: number } {
+  let lines: string[];
+  try {
+    lines = readFileSync(path, "utf-8").split("\n").filter(Boolean);
+  } catch {
+    return { text: "", userTurns: 0 };
+  }
+  const parts: string[] = [];
+  let userTurns = 0;
+  for (const line of lines) {
+    let obj: any;
+    try {
+      obj = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const role = obj?.message?.role ?? obj?.role;
+    if (role !== "user" && role !== "assistant") continue;
+    const content = obj?.message?.content ?? obj?.content;
+    let txt = "";
+    if (typeof content === "string") txt = content;
+    else if (Array.isArray(content)) {
+      txt = content
+        .filter((b: any) => b?.type === "text" && typeof b.text === "string")
+        .map((b: any) => b.text)
+        .join("\n");
+    }
+    txt = txt.trim();
+    if (!txt) continue;
+    if (role === "user") {
+      // Skip tool_result blocks and harness-injected <system-reminder>/<command> noise.
+      if (txt.startsWith("<")) continue;
+      userTurns++;
+    }
+    parts.push(`${role === "user" ? "User" : "Assistant"}: ${txt}`);
+  }
+  return { text: parts.join("\n\n"), userTurns };
+}
+
+async function cmdSession() {
+  const tool = SESSION_TOOL_MAP.knowledge_session;
+  const json = flag("--json");
+  const cwd = flagVal("--cwd") ?? process.cwd();
+  const bucket = flagVal("--bucket");
+  const type = flagVal("--type");
+
+  if (!sub || sub === "recall") {
+    // Quiet mode (for the session-start hook): if this repo has no registered bucket
+    // or no prior sessions, emit nothing and don't register anything.
+    if (flag("--quiet")) {
+      const { peekBucket } = await import("./tools/buckets");
+      const existing = peekBucket({ cwd, name: bucket, type: type as any });
+      if (!existing?.sessionCount) return;
+    }
+    const q = args
+      .slice(sub ? 2 : 1)
+      .filter((a) => !a.startsWith("--"))
+      .join(" ");
+    const res: any = await tool.execute({
+      action: "recall",
+      cwd,
+      bucket,
+      type,
+      limit: intFlag("--limit", 5),
+      query: q || undefined,
+    });
+    if (json) return p(JSON.stringify(res));
+
+    p(`## DeepThink — "${res.bucket.name}" (${res.sessionCount} prior session${res.sessionCount === 1 ? "" : "s"})`);
+    if (res.sessionCount === 0) {
+      p(res.hint);
+      return;
+    }
+    const latest = res.sessions[0]?.content
+      ?.split("\n")
+      .find((l: string) => l.startsWith("#"))
+      ?.replace(/^#+\s*/, "");
+    if (latest) p(`\nLast session: ${latest}`);
+    if (res.openFollowUps?.length) {
+      p(`\nOpen follow-ups:`);
+      for (const f of res.openFollowUps) p(`  - ${f}`);
+    }
+    if (res.relevant?.length) {
+      p(`\nMost relevant:`);
+      for (const r of res.relevant) p(`  - ${r.title}`);
+    }
+    return;
+  }
+
+  if (sub === "list") {
+    const res: any = await tool.execute({ action: "list" });
+    if (json) return p(JSON.stringify(res));
+    if (res.count === 0) return p("No buckets yet.");
+    for (const b of res.buckets)
+      p(`${b.id}  (${b.type})  ${b.sessionCount} sessions  last:${b.lastSessionAt?.slice(0, 10) ?? "—"}`);
+    return;
+  }
+
+  if (sub === "context" || sub === "project") {
+    const q = args
+      .slice(2)
+      .filter((a) => !a.startsWith("--"))
+      .join(" ");
+    const res: any = await SESSION_TOOL_MAP.project_context.execute({ cwd, bucket, type, query: q || undefined });
+    if (json) return p(JSON.stringify(res));
+    const pr = res.project;
+    p(`## Project "${pr.name}" (${pr.type})`);
+    p(
+      `sessions:${pr.sessionCount}  open-tasks:${res.tasks.openCount}  notes:${res.notes.length}  decisions:${res.knowledge.decisions ? "yes" : "no"}`
+    );
+    if (res.openFollowUps?.length) {
+      p(`\nOpen follow-ups:`);
+      for (const f of res.openFollowUps) p(`  - ${f}`);
+    }
+    if (res.tasks.open?.length) {
+      p(`\nOpen tasks:`);
+      for (const t of res.tasks.open) p(`  [${t.status}] ${t.title}`);
+    }
+    if (res.relevant?.length) {
+      p(`\nRelevant to "${q}":`);
+      for (const r of res.relevant) p(`  - ${r.title}`);
+    }
+    return;
+  }
+
+  if (sub === "sync") {
+    const file = flagVal("--content-file");
+    const content = file ? await Bun.file(file).text() : await Bun.stdin.text();
+    if (!content.trim()) err("session sync: no content (pass --content-file <path> or pipe via stdin)");
+    const res: any = await tool.execute({
+      action: "sync",
+      cwd,
+      bucket,
+      type,
+      title: flagVal("--title"),
+      content,
+      promoteOpenItems: !flag("--no-tasks"),
+    });
+    if (json) return p(JSON.stringify(res));
+    ok(
+      `Saved → ${res.bucket.name}: "${res.title}"${res.tasksCreated.length ? ` (${res.tasksCreated.length} follow-up tasks)` : ""}`
+    );
+    return;
+  }
+
+  if (sub === "autosync") {
+    // Fed the SessionEnd hook's JSON payload on stdin. Silently summarize the
+    // transcript via the LLM and persist it to this repo's bucket. Never throws
+    // into the hook, and stays quiet for trivial sessions so it's safe to run
+    // on every session end.
+    try {
+      const raw = await Bun.stdin.text();
+      let payload: any = {};
+      try {
+        payload = raw.trim() ? JSON.parse(raw) : {};
+      } catch {}
+      const tpath = payload.transcript_path || flagVal("--transcript");
+      const hookCwd = payload.cwd || cwd;
+      if (!tpath || !existsSync(tpath)) return;
+
+      const { text, userTurns } = readTranscript(tpath);
+      const minTurns = intFlag("--min-turns", 2, 0);
+      if (userTurns < minTurns || text.length < 200) return;
+
+      const date = new Date().toISOString().slice(0, 10);
+      const system =
+        "You summarize an engineering session from its transcript. Output ONLY markdown in the exact section format requested. Include only what actually happened — never invent. Omit any section with no content.";
+      const prompt =
+        `Summarize this Claude Code session as markdown with these sections (omit empty ones):\n\n` +
+        `# Session: ${date} — <one-line topic>\n\n` +
+        `## What was worked on\n- ...\n\n## Key decisions\n- ...\n\n## Files changed\n- ...\n\n## Outcomes\n- ...\n\n## Open items / follow-ups\n- ... (or "none")\n\n` +
+        `Transcript (most recent last):\n\n${text.slice(-24000)}`;
+
+      let content: string;
+      try {
+        content = await query(prompt, system);
+      } catch {
+        return;
+      }
+      if (!content || content.trim().length < 40) return;
+
+      const res: any = await tool.execute({
+        action: "sync",
+        cwd: hookCwd,
+        content,
+        date,
+        // Attribute the capture to the host agent when the hook passes one (else env
+        // DEEPTHINK_AGENT_ID, else "default").
+        ...(flagVal("--agent") ? { agent: flagVal("--agent") } : {}),
+        // Don't spawn tasks from an unattended capture unless explicitly asked.
+        promoteOpenItems: flag("--tasks"),
+      });
+      p(`DeepThink: auto-saved session → "${res.bucket.name}"`);
+    } catch {}
+    return;
+  }
+
+  err(`unknown session subcommand: ${sub}. Use one of: recall, sync, autosync, list, context`);
+}
+
 function cmdContext() {
   const json = flag("--json");
   const q = args
@@ -344,7 +676,7 @@ function cmdContext() {
 
   if (sub === "semantic" || sub === "sem") {
     if (!q) err("usage: deepthink context semantic <query> [--top n] [--json]");
-    const topK = flagVal("--top") ? parseInt(flagVal("--top")!, 10) : 10;
+    const topK = intFlag("--top", 10);
     const results = semanticSearch(q, topK);
     if (json) {
       p(JSON.stringify(results));
@@ -363,7 +695,7 @@ function cmdContext() {
 
   if (sub === "query" || sub === "q") {
     if (!q) err("usage: deepthink context query <question> [--tokens n] [--project name] [--bm25] [--json]");
-    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!, 10) : 4000;
+    const maxTokens = intFlag("--tokens", 4000, 200);
     const projectScope = flagVal("--project") ?? undefined;
     const bm25Only = flag("--bm25");
 
@@ -402,7 +734,7 @@ function cmdContext() {
 
   if (sub === "workspace" || sub === "ws") {
     if (!q) err("usage: deepthink context workspace <query> [--limit n] [--json]");
-    const maxItems = flagVal("--limit") ? parseInt(flagVal("--limit")!, 10) : 5;
+    const maxItems = intFlag("--limit", 5);
     const ws = workspaceContext(q, maxItems);
     if (json) {
       p(JSON.stringify(ws));
@@ -426,9 +758,9 @@ function cmdContext() {
 
   if (sub === "knowledge" || sub === "kb") {
     if (!q) err("usage: deepthink context knowledge <query> [--tokens n] [--project name] [--top n] [--json]");
-    const maxTokens = flagVal("--tokens") ? parseInt(flagVal("--tokens")!, 10) : 4000;
+    const maxTokens = intFlag("--tokens", 4000, 200);
     const projectScope = flagVal("--project") ?? undefined;
-    const topK = flagVal("--top") ? parseInt(flagVal("--top")!, 10) : 10;
+    const topK = intFlag("--top", 10);
     const kr = retrieveContext(q, { maxTokens, projectScope, topK });
     if (json) {
       p(JSON.stringify(kr));
@@ -551,7 +883,7 @@ function cmdTask() {
     const { pk, id } = db.createTask(title, {
       status: flagVal("--status") ?? undefined,
       priority: flagVal("--priority") ?? undefined,
-      storyPoints: flagVal("--points") ? parseInt(flagVal("--points")!, 10) : undefined,
+      storyPoints: flagVal("--points") !== undefined ? intFlag("--points", 0, 0) : undefined,
       dueDate: flagVal("--due") ?? undefined,
       project: flagVal("--project") ?? undefined,
     });
@@ -601,8 +933,7 @@ function cmdTask() {
     if (status) fields.status = status;
     const priority = flagVal("--priority");
     if (priority) fields.priority = priority;
-    const points = flagVal("--points");
-    if (points) fields.storyPoints = parseInt(points, 10);
+    if (flagVal("--points") !== undefined) fields.storyPoints = intFlag("--points", 0, 0);
     const due = flagVal("--due");
     if (due) fields.dueDate = due === "none" ? null : due;
     const detail = flagVal("--detail");
@@ -985,6 +1316,28 @@ function cmdHelp() {
   deepthink context knowledge <query>             BM25-scored knowledge chunks
     --tokens <n>  --project <name>  --top <n>  --json
 
+  SESSION MEMORY (per repo/topic bucket)
+  ──────────────────────────────────────
+  deepthink session recall [query]                warm context for this repo
+    --cwd <path>  --limit <n>  --bucket <name>  --type <t>  --json
+  deepthink session sync                          save a session (content via stdin)
+    --content-file <path>  --cwd <path>  --bucket <name>  --title <t>  --no-tasks
+  deepthink session autosync                      summarize transcript & save (SessionEnd hook; reads JSON on stdin)
+    --transcript <path>  --min-turns <n>  --tasks
+  deepthink session list                          list buckets
+  deepthink session context [query]               360° project view (sessions+tasks+notes+decisions)
+    --cwd <path>  --bucket <name>  --json
+
+  SETUP
+  ─────
+  deepthink install                               interactive: pick host(s) + global/local
+  deepthink install --agent <id>[,<id>]           headless install into specific hosts
+    hosts: claude-code | cursor | all
+    --global (home, default)  --local (this project)  --skills-only  --mcp-only  --quiet
+  deepthink uninstall [--agent <id>] [--local]    remove MCP, skills, and hooks
+  deepthink skills export [dir]                   portable kit (skills + mcp.json + README)
+                                                  for any other agent — default ./deepthink-skills
+
   GENERAL
   ──────
   deepthink status                                system overview (full)
@@ -1048,6 +1401,16 @@ function cmdHelp() {
   deepthink ws <request>                          (alias)
     natural language task/note/project management
 
+  AGENTS & AUTOMATION
+  ───────────────────
+  deepthink react <goal>                          ReAct loop (reason → act → observe)
+  deepthink insight scan|list|clear               workspace health insights
+  deepthink research <topic>                      research pipeline
+    --deep  --project <name>
+  deepthink schedule run|status                   scheduled jobs
+    --force (run, ignore due times)
+  deepthink version                               print version (also --version, -v)
+
   SEARCH
   ──────
   deepthink search <query>                        web search
@@ -1067,11 +1430,22 @@ function cmdHelp() {
 
   MCP TOOLS (via deepthink-mcp)
   ─────────────────────────────
-  smart_query          auto-routes: hybrid retrieval (BM25 + semantic)
+  smart_query          auto-routes: hybrid retrieval (BM25 + semantic) — the default
+  unified_search       single ranked list across all data types
   knowledge_context    hybrid knowledge retrieval (~90% token savings)
   workspace_context    query-relevant workspace snapshot
+  project_context      360° project view (sessions + tasks + notes + decisions)
   deepthink_overview   compact counts + top items (~200 tokens)
-  + all workspace_*, knowledge_*, agent_*, rule_*, skill_* tools
+  remember             save one fact, auto-scoped to the repo's bucket
+  knowledge_session    { action: sync|note|recall|list|handoff|claim }
+  workspace_task|note|project|reminder   CRUD via { action: list|get|create|update|delete }
+                       tasks support subtasks: parent / topLevelOnly / subtasks
+  workspace_summary | workspace_reindex | workspace_resolve_deeplink
+  workspace_link       relationship graph via { action: create|list|delete }
+  knowledge_project|knowledge_integration   CRUD via { action }
+  knowledge_search     legacy keyword search over integration data (prefer smart_query)
+  knowledge_stats      knowledge base counts
+  agent|rule|skill     CRUD via { action: list|get|create|delete }
 `);
 }
 
@@ -1081,6 +1455,10 @@ const dispatch: Record<string, () => Promise<void> | void> = {
   status: cmdStatus,
   context: cmdContext,
   ctx: cmdContext,
+  session: cmdSession,
+  install: cmdInstall,
+  uninstall: cmdUninstall,
+  skills: cmdSkills,
   ask: cmdAsk,
   run: cmdRun,
   knowledge: cmdKnowledge,

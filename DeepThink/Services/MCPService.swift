@@ -44,10 +44,18 @@ final class MCPService {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            // A failed launch leaves the parent holding the write end, so the read below
+            // would block this thread forever.
+            do { try process.run() } catch {
+                DispatchQueue.main.async {
+                    self?.isGlobalMCPRegistered = false
+                    self?.isCheckingGlobalMCP = false
+                }
+                return
+            }
 
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let output = String(data: data, encoding: .utf8) ?? ""
             let found = output.lowercased().contains("deepthink")
 
@@ -66,9 +74,12 @@ final class MCPService {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            do { try process.run() } catch {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async { completion(version?.isEmpty == false ? version : nil) }
         }
@@ -98,45 +109,48 @@ final class MCPService {
 
         All tools called as `mcp__deepthink__<tool>`.
 
-        | Intent signals | Tool |
+        CRUD tools take an `action` param. Entity tools: `workspace_task`, `workspace_note`, `workspace_project`, `workspace_reminder` (action: list|get|create|update|delete); `agent`, `rule`, `skill` (action: list|get|create|delete). Knowledge: `knowledge_project` (action: list|load|save|archive), `knowledge_integration` (action: list|load|capture|compress).
+
+        | Intent signals | Tool + action |
         |---|---|
         | **Search / retrieve** | |
         | search / find / look for / do I have / any notes on / show me / where is | `unified_search` |
         | what do I know about / context on / brief me on / catch me up | `knowledge_context` |
         | knowledge stats / how much stored / how many items | `knowledge_stats` |
         | **Knowledge** | |
-        | save / capture / remember / store / log / keep / record / note this | `knowledge_capture` |
-        | load project knowledge / context for project | `knowledge_load_project` |
+        | save / capture / remember / store / log / keep / record / note this | `knowledge_integration` {action:"capture"} |
+        | load project knowledge / context for project | `knowledge_project` {action:"load"} |
+        | save project knowledge / decision / artifact | `knowledge_project` {action:"save"} |
         | **Workspace** | |
         | summary / overview / digest / status / what's going on | `workspace_summary` |
-        | **Tasks** | |
-        | tasks / todos / pending / what's next / backlog / in progress | `workspace_list_tasks` |
-        | add task / new task / create task | `workspace_create_task` |
-        | update task / mark done / complete / change task | `workspace_update_task` |
-        | delete task / remove task | `workspace_delete_task` |
-        | show task / get task details | `workspace_get_task` |
-        | **Notes** | |
-        | notes / my notes / show notes / what did I write | `workspace_list_notes` |
-        | new note / create note / add note / jot down | `workspace_create_note` |
-        | update note / edit note | `workspace_update_note` |
-        | delete note / remove note | `workspace_delete_note` |
-        | **Projects** | |
-        | projects / active projects / project status | `workspace_list_projects` |
-        | new project / create project | `workspace_create_project` |
-        | update project / rename project | `workspace_update_project` |
-        | delete project | `workspace_delete_project` |
-        | **Reminders** | |
-        | reminders / upcoming / what's scheduled | `workspace_list_reminders` |
-        | remind me / set reminder / don't forget | `workspace_create_reminder` |
-        | update reminder / reschedule | `workspace_update_reminder` |
-        | delete reminder / cancel reminder | `workspace_delete_reminder` |
+        | **Tasks** (`workspace_task`) | |
+        | tasks / todos / pending / what's next / backlog / in progress | {action:"list"} |
+        | add task / new task / create task | {action:"create"} |
+        | update task / mark done / complete / change task | {action:"update"} |
+        | delete task / remove task | {action:"delete"} |
+        | show task / get task details | {action:"get"} |
+        | **Notes** (`workspace_note`) | |
+        | notes / my notes / show notes / what did I write | {action:"list"} |
+        | new note / create note / add note / jot down | {action:"create"} |
+        | update note / edit note | {action:"update"} |
+        | delete note / remove note | {action:"delete"} |
+        | **Projects** (`workspace_project`) | |
+        | projects / active projects / project status | {action:"list"} |
+        | new project / create project | {action:"create"} |
+        | update project / rename project | {action:"update"} |
+        | delete project | {action:"delete"} |
+        | **Reminders** (`workspace_reminder`) | |
+        | reminders / upcoming / what's scheduled | {action:"list"} |
+        | remind me / set reminder / don't forget | {action:"create"} |
+        | update reminder / reschedule | {action:"update"} |
+        | delete reminder / cancel reminder | {action:"delete"} |
         | **Agents / Skills / Rules** | |
-        | agents / my agents | `agent_list` |
-        | create agent / new agent | `agent_create` |
-        | skills / my skills | `skill_list` |
-        | create skill / new skill | `skill_create` |
-        | rules / my rules | `rule_list` |
-        | create rule / new rule | `rule_create` |
+        | agents / my agents | `agent` {action:"list"} |
+        | create agent / new agent | `agent` {action:"create"} |
+        | skills / my skills | `skill` {action:"list"} |
+        | create skill / new skill | `skill` {action:"create"} |
+        | rules / my rules | `rule` {action:"list"} |
+        | create rule / new rule | `rule` {action:"create"} |
         | **Reasoning** | |
         | what / why / how / explain / analyze / compare / suggest / help me think / ideas | `smart_query` |
         | **Overview** | |
@@ -150,8 +164,8 @@ final class MCPService {
         ## Multi-step
         Chain calls for compound requests:
         - "Search X then summarize" → `unified_search` → `smart_query` with results
-        - "Create a task and a reminder" → `workspace_create_task` → `workspace_create_reminder`
-        - "Find notes on X and update the project" → `unified_search` → `workspace_update_project`
+        - "Create a task and a reminder" → `workspace_task` {action:"create"} → `workspace_reminder` {action:"create"}
+        - "Find notes on X and update the project" → `unified_search` → `workspace_project` {action:"update"}
 
         ## Output
         Return tool results directly. No preamble. No tool-name explanation.
@@ -189,6 +203,67 @@ final class MCPService {
             DispatchQueue.main.async {
                 self?.checkGlobalMCPStatus()
             }
+        }
+    }
+
+    // MARK: - Other Agents (Cursor + portable export)
+
+    var isCursorInstalled = false
+
+    static let cursorMCPPath = "\(NSHomeDirectory())/.cursor/mcp.json"
+
+    func checkCursorStatus() {
+        let txt = (try? String(contentsOfFile: Self.cursorMCPPath, encoding: .utf8)) ?? ""
+        let installed = txt.contains("deepthink")
+        DispatchQueue.main.async { self.isCursorInstalled = installed }
+    }
+
+    func installCursor() {
+        runDeepthink(["install", "--agent", "cursor", "--quiet"]) { self.checkCursorStatus() }
+    }
+
+    func uninstallCursor() {
+        runDeepthink(["uninstall", "--agent", "cursor"]) { self.checkCursorStatus() }
+    }
+
+    /// Run the bundled deepthink CLI off the main thread, then refresh on the main thread.
+    private func runDeepthink(_ args: [String], completion: @escaping @Sendable () -> Void) {
+        let cli = Self.cliInstallPath
+        guard FileManager.default.isExecutableFile(atPath: cli) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cli)
+            process.arguments = args
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            try? process.run()
+            process.waitUntilExit()
+            DispatchQueue.main.async { completion() }
+        }
+    }
+
+    /// Write the portable kit (skills + mcp.json + README) to a folder the user picks,
+    /// for any agent without a first-class installer.
+    func exportSkills(to dir: URL, completion: @escaping @Sendable (Bool) -> Void) {
+        let cli = Self.cliInstallPath
+        guard FileManager.default.isExecutableFile(atPath: cli) else {
+            DispatchQueue.main.async { completion(false) }
+            return
+        }
+        DispatchQueue.global(qos: .utility).async {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: cli)
+            process.arguments = ["skills", "export", dir.path]
+            process.standardOutput = FileHandle.nullDevice
+            process.standardError = FileHandle.nullDevice
+            // `terminationStatus` throws an ObjC exception on a process that never launched.
+            do { try process.run() } catch {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
+            process.waitUntilExit()
+            let ok = process.terminationStatus == 0
+            DispatchQueue.main.async { completion(ok) }
         }
     }
 
@@ -300,7 +375,6 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
-                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -414,10 +488,10 @@ final class MCPService {
                         }
                     }
 
+                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
 
                     if process.terminationStatus != 0, fullText.isEmpty {
-                        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
                         if let typed = ClaudeService.classifyOutput(stderr) {
                             continuation.resume(throwing: typed)
@@ -438,7 +512,6 @@ final class MCPService {
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
                 let claudePath = ClaudeService.shared.claudePath
-                let maxTokens = ClaudeService.shared.maxTokens
                 guard FileManager.default.isExecutableFile(atPath: claudePath) else {
                     continuation.resume(throwing: ClaudeError.notInstalled)
                     return
@@ -482,14 +555,21 @@ final class MCPService {
                     DispatchQueue.global().asyncAfter(deadline: .now() + 120, execute: timeoutWork)
                     defer { timeoutWork.cancel() }
 
-                    process.waitUntilExit()
-
+                    // Drain the pipes BEFORE waiting for exit — a reply larger than the 64 KB
+                    // pipe buffer otherwise blocks the child until the 120 s timeout kills it,
+                    // losing the whole response.
                     let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
                     let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
 
                     if process.terminationStatus != 0 {
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
-                        continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        let combined = stderr + (String(data: outData, encoding: .utf8) ?? "")
+                        if let typed = ClaudeService.classifyOutput(combined) {
+                            continuation.resume(throwing: typed)
+                        } else {
+                            continuation.resume(throwing: ClaudeError.cliError("Exit \(process.terminationStatus): \(stderr)"))
+                        }
                         return
                     }
 

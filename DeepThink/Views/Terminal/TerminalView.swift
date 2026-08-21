@@ -96,7 +96,12 @@ struct DeepThinkTerminalView: View {
         }
         .background(theme.palette.page.opacity(0.001))
         .onAppear {
-            if tabs.isEmpty { addTab() }
+            if tabs.isEmpty {
+                addTab()
+            } else if activeTab == nil {
+                // Tabs restored without a matching active id would render an empty pane.
+                activeTabID = tabs.first?.id
+            }
         }
         .sheet(isPresented: $showAnalysisSheet) {
             if let result = analysisResult {
@@ -315,7 +320,10 @@ struct DeepThinkTerminalView: View {
     private func analyzeOutput() {
         guard let tab = activeTab else { return }
         let buffer = tab.activeSession().getTextBuffer(lastLines: 50)
-        guard !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        guard !buffer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            ToastState.shared.showError("No terminal output to analyze")
+            return
+        }
 
         isAnalyzing = true
 
@@ -571,7 +579,7 @@ private struct TerminalTabButton: View {
         Button(action: onSelect) {
             HStack(spacing: DS.Spacing.xs) {
                 Circle()
-                    .fill(tab.primarySession.isRunning ? DS.Colors.success : DS.Colors.danger.opacity(0.5))
+                    .fill(tab.primarySession.isRunning ? DS.Colors.success : DS.Colors.danger.opacity(DS.Opacity.disabled))
                     .frame(width: 6, height: 6)
 
                 if isEditing {

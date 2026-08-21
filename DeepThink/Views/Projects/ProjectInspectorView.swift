@@ -51,7 +51,7 @@ private struct ProjectInspectorContent: View {
                     ForEach(colorOptions, id: \.self) { hex in
                         Circle()
                             .fill(Color(hex: hex))
-                            .frame(width: 24, height: 24)
+                            .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
                             .overlay {
                                 if project.color == hex {
                                     Image(systemName: "checkmark")

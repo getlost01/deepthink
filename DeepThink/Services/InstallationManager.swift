@@ -146,114 +146,45 @@ final class InstallationManager {
         process.arguments = ["mcp", "add", "--transport", "stdio", "--scope", "user", "deepthink", "--", mcpBinaryPath]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
-        try? process.run()
-        let deadline = DispatchTime.now() + .seconds(10)
-        DispatchQueue.global().asyncAfter(deadline: deadline) {
-            if process.isRunning { process.terminate() }
-        }
+        // `terminationStatus` throws an ObjC exception on a process that never launched.
+        do { try process.run() } catch { return false }
+        let timeout = DispatchWorkItem { if process.isRunning { process.terminate() } }
+        DispatchQueue.global().asyncAfter(deadline: .now() + .seconds(10), execute: timeout)
         process.waitUntilExit()
+        timeout.cancel()
         return process.terminationStatus == 0
     }
 
     // MARK: - Claude Code slash commands
 
+    /// Skills are owned by the CLI (embedded from cli/skills/) — delegate so the app,
+    /// the CLI, and any agent always install the same canonical set with no drift.
     static func installClaudeCommands() {
-        let commandsDir = NSHomeDirectory() + "/.claude/commands/deepthink"
-        try? FileManager.default.createDirectory(atPath: commandsDir, withIntermediateDirectories: true)
-
-        let commands: [(filename: String, content: String)] = [
-            ("sync-session.md", syncSessionCommandContent)
-        ]
-
-        for command in commands {
-            let path = commandsDir + "/" + command.filename
-            let existing = (try? String(contentsOfFile: path, encoding: .utf8)) ?? ""
-            guard existing != command.content else { continue }
-            try? command.content.write(toFile: path, atomically: true, encoding: .utf8)
+        let cli = DeepThinkPaths.localBin + "/deepthink"
+        guard FileManager.default.isExecutableFile(atPath: cli) else {
+            StorageService.shared.writeLog("Skills install skipped — CLI not found at \(cli)", to: "app")
+            return
         }
 
-        StorageService.shared.writeLog("Claude Code commands installed → \(commandsDir)", to: "app")
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: cli)
+        process.arguments = ["install", "--skills-only", "--quiet"]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do {
+            try process.run()
+        } catch {
+            StorageService.shared.writeLog("Skills install failed to launch: \(error.localizedDescription)", to: "app")
+            return
+        }
+        process.waitUntilExit()
+
+        if process.terminationStatus == 0 {
+            StorageService.shared.writeLog("Claude Code skills installed via CLI", to: "app")
+        } else {
+            StorageService.shared.writeLog("Skills install exited \(process.terminationStatus)", to: "app")
+        }
     }
-
-    private static let syncSessionCommandContent = #"""
-    ---
-    description: Capture the current Claude Code session to DeepThink — what was worked on, decisions made, files changed, and open items.
-    ---
-
-    Synthesize this Claude Code session and persist it to the DeepThink knowledge base.
-
-    ## Step 1 — Gather context
-
-    Run these shell commands to ground the summary in facts:
-
-    ```bash
-    git rev-parse --show-toplevel 2>/dev/null || pwd          # repo root
-    git branch --show-current 2>/dev/null                     # current branch
-    git log --oneline -10 2>/dev/null                         # recent commits
-    git diff --stat HEAD 2>/dev/null                          # changed files
-    date +%Y-%m-%d                                            # today's date
-    ```
-
-    Derive:
-    - **project**: `basename` of the repo root (override with `$ARGUMENTS` if provided)
-    - **branch**: current git branch (omit if not in a git repo)
-    - **date**: from `date` command above
-
-    ## Step 2 — Build the summary
-
-    Use conversation history as the primary source; use git output to fill gaps or verify file names.
-    Include only what actually happened — do not pad or invent.
-
-    ```
-    # Session: <date> — <one-line topic>
-
-    **Project:** <project>
-    **Branch:** <branch>
-    **Date:** <date>
-
-    ## What was worked on
-    <bullet list — features, bugs, refactors, investigations>
-
-    ## Key decisions
-    <bullet list — architectural, approach, or design choices made>
-
-    ## Files changed
-    <bullet list — notable files created or modified with a short reason>
-
-    ## Outcomes
-    <what was completed, fixed, or shipped>
-
-    ## Open items / follow-ups
-    <unresolved work, deferred items, or follow-ups — "none" if clean>
-    ```
-
-    Omit any section with no content.
-
-    ## Step 3 — Capture to DeepThink
-
-    Call `mcp__deepthink__knowledge_capture` with:
-    - `source`: `"claude-code"`
-    - `channel`: project slug (lowercase, spaces as hyphens)
-    - `content`: full markdown from Step 2
-    - `title`: `"Session <date>: <one-line topic>"`
-    - `tags`: `["session-log", "<project-slug>", "<date>", "<branch>"]` (omit branch tag if not in a git repo)
-
-    ## Step 4 — Confirm
-
-    On success, output one line:
-
-    ```
-    Saved → DeepThink / <channel>: "<title>"
-    ```
-
-    If the MCP tool is unavailable, print the full summary so nothing is lost:
-
-    ```
-    DeepThink MCP not connected. Session summary:
-
-    <markdown from Step 2>
-    ```
-    """#
 
     // MARK: - PATH setup
 
@@ -270,9 +201,13 @@ final class InstallationManager {
         ]
 
         for filePath in shellFiles {
-            let existing = (try? String(contentsOfFile: filePath, encoding: .utf8)) ?? ""
-            guard !existing.contains(localBin) else { continue }
-            let updated = existing + "\n" + block
+            let existing = try? String(contentsOfFile: filePath, encoding: .utf8)
+            // Never rewrite a shell config we failed to read (non-UTF-8, unreadable) —
+            // treating that as empty would replace the user's entire rc file with our block.
+            if existing == nil, FileManager.default.fileExists(atPath: filePath) { continue }
+            let current = existing ?? ""
+            guard !current.contains(localBin) else { continue }
+            let updated = current + "\n" + block
             try? updated.write(toFile: filePath, atomically: true, encoding: .utf8)
         }
     }

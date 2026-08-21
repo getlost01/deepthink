@@ -109,6 +109,14 @@ enum DS {
             p.fillSecondary
         }
 
+        static var controlFill: Color {
+            p.controlFill
+        }
+
+        static var controlFillHover: Color {
+            p.controlFillHover
+        }
+
         static var border: Color {
             p.border
         }
@@ -535,7 +543,6 @@ struct DSSearchField: View {
 
 private struct DSThemedSearchFieldContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     @Binding var text: String
     let placeholder: String
     let icon: String
@@ -553,11 +560,10 @@ private struct DSThemedSearchFieldContent: View {
                 .foregroundStyle(palette.textPrimary)
                 .tint(palette.accent)
                 .onSubmit { onSubmit?() }
-                .id(theme.themeRevision)
         }
         .padding(.horizontal, DS.Spacing.lg)
         .padding(.vertical, DS.Spacing.sm + 2)
-        .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+        .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
         .overlay(
             RoundedRectangle(cornerRadius: DS.Radius.md)
                 .strokeBorder(palette.border, lineWidth: 1)
@@ -857,7 +863,6 @@ struct DSLabeledTextField: View {
 
 private struct DSLabeledTextFieldContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     let label: String
     @Binding var text: String
     let placeholder: String
@@ -875,7 +880,6 @@ private struct DSLabeledTextFieldContent: View {
                 .font(DS.Font.body)
                 .foregroundStyle(palette.textPrimary)
                 .tint(palette.accent)
-                .id(theme.themeRevision)
                 .dsInputField()
         }
     }
@@ -893,7 +897,6 @@ struct DSLabeledTextEditor: View {
 
 private struct DSLabeledTextEditorContent: View {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
     let label: String
     @Binding var text: String
     let minHeight: CGFloat
@@ -911,9 +914,8 @@ private struct DSLabeledTextEditorContent: View {
                 .tint(palette.accent)
                 .scrollContentBackground(.hidden)
                 .frame(minHeight: minHeight)
-                .id(theme.themeRevision)
                 .padding(DS.Spacing.md)
-                .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+                .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
                 .overlay(
                     RoundedRectangle(cornerRadius: DS.Radius.md)
                         .strokeBorder(palette.border, lineWidth: 1)
@@ -940,7 +942,7 @@ struct DSLabeledPicker<SelectionValue: Hashable, Content: View>: View {
             .pickerStyle(.menu)
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.xs)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(DS.Colors.border, lineWidth: 1)
@@ -1223,13 +1225,11 @@ extension View {
 
 private struct DSThemedTextInputModifier: ViewModifier {
     @Environment(\.dsPalette) private var palette
-    @Bindable private var theme = DSThemeManager.shared
 
     func body(content: Content) -> some View {
         content
             .foregroundStyle(palette.textPrimary)
             .tint(palette.accent)
-            .id(theme.themeRevision)
     }
 }
 
@@ -1240,7 +1240,7 @@ private struct DSInputFieldModifier: ViewModifier {
         content
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.md)
-            .background(palette.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
+            .background(palette.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.md))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.md)
                     .strokeBorder(palette.border, lineWidth: 1)
@@ -1420,7 +1420,7 @@ struct DSSecondaryButtonStyle: ButtonStyle {
             .padding(.vertical, DS.Spacing.sm - 1)
             .background(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)
-                    .fill(isHovered ? DS.Colors.fillSecondary : DS.Colors.fill)
+                    .fill(isHovered ? DS.Colors.controlFillHover : DS.Colors.controlFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.sm)

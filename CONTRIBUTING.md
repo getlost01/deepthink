@@ -8,6 +8,7 @@
 | Xcode | 16+ | App Store |
 | XcodeGen | latest | `brew install xcodegen` |
 | Bun | latest | `brew install oven-sh/bun/bun` |
+| Node.js | 24+ (only for `web-app/`) | `nvm install` (reads `web-app/.nvmrc`) |
 | Claude CLI | latest | [docs.anthropic.com](https://docs.anthropic.com/claude/docs/claude-cli) |
 | lefthook | latest | `brew install lefthook` |
 | SwiftLint | latest | `brew install swiftlint` (optional — build warns if missing) |
@@ -47,7 +48,7 @@ deepthink/
 ├── cli/                        # Bun/TypeScript CLI
 │   └── src/
 │       ├── index.ts            # Entry point + command routing
-│       ├── mcp-server.ts       # MCP server (45 tools)
+│       ├── mcp-server.ts       # MCP server (19 tools)
 │       ├── core/               # Context engine + embedding
 │       ├── agents/             # Planner, executor, writer agents
 │       └── tools/              # Tool implementations

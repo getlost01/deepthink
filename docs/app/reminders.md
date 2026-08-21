@@ -40,19 +40,19 @@ Todo-style reminders with optional scheduled dates and timed notifications.
 - `Cmd+5` - go to Reminders section
 - `Shift+Cmd+R` - create new reminder
 - Also accessible via Command Palette (`Cmd+K` → "New Reminder")
-- MCP tools: `workspace_create_reminder`, `workspace_list_reminders`, etc.
+- MCP tool: `workspace_reminder` (with `action: create | list | …`)
 
 ## CLI & MCP
 
-Reminders are fully accessible via CLI and MCP tools:
+Reminders are fully accessible via the single `workspace_reminder` MCP tool, which takes an `action`:
 
-| Tool | Description |
-|------|-------------|
-| `workspace_list_reminders` | List all reminders, optionally filter by completion |
-| `workspace_get_reminder` | Get by ID or fuzzy title match |
-| `workspace_create_reminder` | Create with optional date/time |
-| `workspace_update_reminder` | Update title, notes, date, completion |
-| `workspace_delete_reminder` | Delete by ID |
+| `action` | Description |
+|----------|-------------|
+| `list` | List all reminders, optionally filter by `completed` |
+| `get` | Get by ID or fuzzy title match (`ref`) |
+| `create` | Create with `title` + optional `notes` / ISO `reminderDate` |
+| `update` | Update `title`, `notes`, `reminderDate` (`'none'` clears), `completed` |
+| `delete` | Delete by ID (`ref`) |
 
 MCP resource: `deepthink://reminders`
 

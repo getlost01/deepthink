@@ -212,6 +212,7 @@ struct ContentRouter: View {
             case .knowledge: KnowledgeView()
             case .aiAssistant: AIView()
             case .reminders: ReminderListView().id(listRefreshID)
+            case .handoffs: HandoffsView()
             case .integrations: IntegrationsView()
             case .terminal: DeepThinkTerminalView()
             case .contextGraph: ContextGraphView()

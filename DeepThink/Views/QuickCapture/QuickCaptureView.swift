@@ -98,7 +98,10 @@ struct QuickCaptureView: View {
     private func applyPrefillIfNeeded() {
         guard let prefill = appState.quickCapturePrefill else { return }
         content = prefill
-        title = String(prefill.prefix(60)).components(separatedBy: "\n").first ?? "AI Response"
+        let firstLine = String(prefill.prefix(60))
+            .components(separatedBy: "\n")
+            .first { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+        title = firstLine?.trimmingCharacters(in: .whitespaces) ?? "AI Response"
         appState.quickCapturePrefill = nil
     }
 
@@ -129,7 +132,7 @@ struct QuickCaptureView: View {
                 .buttonStyle(.plainPointer)
             }
         }
-        .padding(3)
+        .padding(DS.Spacing.xs3)
         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.md))
     }
 
@@ -214,7 +217,7 @@ struct QuickCaptureView: View {
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
             .padding(.vertical, DS.Spacing.xs + 2)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
     }
@@ -238,7 +241,7 @@ struct QuickCaptureView: View {
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm + 2)
             .padding(.vertical, DS.Spacing.xs + 2)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
         }
         .buttonStyle(.plainPointer)
     }
@@ -255,7 +258,7 @@ struct QuickCaptureView: View {
         }
         .padding(.horizontal, DS.Spacing.sm + 2)
         .padding(.vertical, DS.Spacing.xs + 2)
-        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+        .background(DS.Colors.controlFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
     }
 
     // MARK: - Footer
@@ -269,7 +272,7 @@ struct QuickCaptureView: View {
             Spacer()
 
             if saved {
-                HStack(spacing: 4) {
+                HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: "checkmark.circle.fill")
                         .font(DS.Font.body)
                         .foregroundStyle(DS.Colors.success)
@@ -287,7 +290,7 @@ struct QuickCaptureView: View {
                 Button {
                     save()
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: DS.Spacing.xs) {
                         Text("Save")
                         Text("\u{2318}\u{21a9}")
                             .font(DS.Font.micro)

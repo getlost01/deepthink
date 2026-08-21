@@ -9,9 +9,39 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { KNOWLEDGE_DIR, KNOWLEDGE_DIRS } from "../config";
+import { extractRelevantWindow, tokenize } from "../core/context-engine";
+import { indexEntry, removeEntry } from "../core/embedding-service";
 import { query } from "../core/llm";
+import { simpleHash } from "../core/vector-store";
+
+// Index a knowledge file into the vector store at write time so it's retrievable
+// immediately (no first-query indexing latency). entryId matches loadAllEntries.
+function indexKnowledgeFile(
+  filepath: string,
+  title: string,
+  body: string,
+  tags: string[],
+  source: string,
+  importedAt: Date,
+  provenance?: { agentId?: string | null; sessionId?: string | null; visibility?: "private" | "shared" | "handoff" }
+): void {
+  try {
+    indexEntry({
+      id: relative(KNOWLEDGE_DIR, filepath),
+      type: "knowledge",
+      title,
+      content: body,
+      tags,
+      source,
+      importedAt,
+      agentId: provenance?.agentId,
+      sessionId: provenance?.sessionId,
+      visibility: provenance?.visibility,
+    });
+  } catch {}
+}
 
 function notifyAppSync(): void {
   try {
@@ -98,16 +128,31 @@ export function saveProjectKnowledge(
   return filepath;
 }
 
+// Read straight from a try/catch instead of existsSync-then-read. The app, another CLI
+// invocation, and the MCP server all touch these files, so a check can go stale before the
+// read — and "missing" and "vanished mid-read" want the same empty fallback either way.
+function readTextIfPresent(path: string): string {
+  try {
+    return readFileSync(path, "utf-8");
+  } catch {
+    return "";
+  }
+}
+
+function readDirIfPresent(path: string): string[] {
+  try {
+    return readdirSync(path);
+  } catch {
+    return [];
+  }
+}
+
 export function loadProjectKnowledge(project: string): { context: string; decisions: string; artifacts: string[] } {
   const projectDir = join(KNOWLEDGE_DIRS.projects, slugify(project));
 
-  const contextFile = join(projectDir, "context.md");
-  const decisionsFile = join(projectDir, "decisions.md");
-  const artifactsDir = join(projectDir, "artifacts");
-
-  const context = existsSync(contextFile) ? readFileSync(contextFile, "utf-8") : "";
-  const decisions = existsSync(decisionsFile) ? readFileSync(decisionsFile, "utf-8") : "";
-  const artifacts = existsSync(artifactsDir) ? readdirSync(artifactsDir) : [];
+  const context = readTextIfPresent(join(projectDir, "context.md"));
+  const decisions = readTextIfPresent(join(projectDir, "decisions.md"));
+  const artifacts = readDirIfPresent(join(projectDir, "artifacts"));
 
   return { context, decisions, artifacts };
 }
@@ -158,6 +203,14 @@ export function saveIntegrationData(
   const fullContent = `---\n${meta}\n---\n\n${content}`;
 
   writeFileSync(filepath, fullContent, "utf-8");
+  // Provenance travels in `metadata` (→ frontmatter), so it survives re-indexing from
+  // disk. Pull it back out here to stamp the chunks at write time too.
+  const vis = metadata.visibility;
+  indexKnowledgeFile(filepath, resolvedTitle, content, tags ?? [], "integrations", new Date(), {
+    agentId: metadata.agent_id ?? null,
+    sessionId: metadata.session_id ?? null,
+    visibility: vis === "private" || vis === "handoff" || vis === "shared" ? vis : undefined,
+  });
   updateIndex();
   return filepath;
 }
@@ -340,16 +393,99 @@ export async function archiveProject(project: string): Promise<string> {
   }
 }
 
+// MARK: - Session Compaction
+
+// Roll up a bucket's older session logs into a single dense summary, keeping the
+// most recent `keepRecent` intact. Prevents per-bucket session sprawl from diluting
+// retrieval. Returns the archive path, or null when nothing needed compacting.
+export async function compactSessions(bucketId: string, keepRecent = 20): Promise<string | null> {
+  const source = "sessions";
+  const channelDir = join(KNOWLEDGE_DIRS.integrations, source, slugify(bucketId));
+  if (!existsSync(channelDir)) return null;
+
+  const files = readdirSync(channelDir)
+    .filter((f) => f.endsWith(".md"))
+    .sort()
+    .reverse(); // newest first (timestamps sort lexically)
+  if (files.length <= keepRecent) return null;
+
+  const oldFiles = files.slice(keepRecent);
+
+  // Deterministic archive name keyed on the exact set of rolled-up files. If a prior
+  // run wrote the archive but crashed before deleting the sources, re-running lands on
+  // the same filename (idempotent) — we skip recompaction and just finish the cleanup,
+  // rather than minting a new timestamped duplicate.
+  mkdirSync(KNOWLEDGE_DIRS.archive, { recursive: true });
+  const setKey = simpleHash(oldFiles.slice().sort().join("|")).toString(36);
+  const archiveFile = join(KNOWLEDGE_DIRS.archive, `sessions_${slugify(bucketId)}_${setKey}.md`);
+
+  if (existsSync(archiveFile)) {
+    for (const f of oldFiles) {
+      const fp = join(channelDir, f);
+      removeEntry(relative(KNOWLEDGE_DIR, fp));
+      try {
+        unlinkSync(fp);
+      } catch {}
+    }
+    notifyAppSync();
+    return archiveFile;
+  }
+
+  const combined = oldFiles
+    .map((f) => {
+      try {
+        return readFileSync(join(channelDir, f), "utf-8");
+      } catch {
+        return "";
+      }
+    })
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+  if (!combined) return null;
+
+  const charLimit = 32000;
+  let compressed: string;
+  try {
+    compressed = await query(
+      `Compress these older session logs into a dense, chronological summary. Preserve key decisions, recurring problems, and any still-open follow-ups:\n\n${combined.slice(0, charLimit)}`,
+      "You compress engineering session history. Output structured markdown. Preserve decisions, dates, and open items."
+    );
+  } catch (err: any) {
+    throw new Error(`session compaction failed for ${bucketId}: ${err?.message ?? String(err)}`);
+  }
+
+  const title = `Session history: ${bucketId} (rolled up ${oldFiles.length})`;
+  const body = `# ${title}\n${new Date().toISOString()}\n\n${compressed}`;
+  atomicWrite(archiveFile, body);
+  indexKnowledgeFile(
+    archiveFile,
+    title,
+    compressed,
+    ["session-log", `bucket:${bucketId}`, "rollup"],
+    "archive",
+    new Date()
+  );
+
+  for (const f of oldFiles) {
+    const fp = join(channelDir, f);
+    removeEntry(relative(KNOWLEDGE_DIR, fp));
+    try {
+      unlinkSync(fp);
+    } catch {}
+  }
+
+  notifyAppSync();
+  return archiveFile;
+}
+
 // MARK: - Index
 
 function updateIndex(project?: string): void {
   const indexFile = join(KNOWLEDGE_DIR, "index.json");
   let index: any = {};
-  if (existsSync(indexFile)) {
-    try {
-      index = JSON.parse(readFileSync(indexFile, "utf-8"));
-    } catch {}
-  }
+  try {
+    index = JSON.parse(readTextIfPresent(indexFile) || "{}");
+  } catch {}
 
   index.version = index.version ?? 1;
   index.projects = index.projects ?? {};
@@ -367,20 +503,31 @@ function updateIndex(project?: string): void {
   notifyAppSync();
 }
 
+// Snippet cap for search results — full content stays on disk at `file`; this tool only
+// surfaces a relevance-windowed summary so a keyword hit can't dump a whole raw entry into
+// context (prefer smart_query/unified_search for ranked, budget-aware retrieval).
+const SEARCH_SNIPPET_MAX_LEN = 500;
+
 export function searchIntegrationData(
-  query: string,
+  searchQuery: string,
   source?: string,
   limit = 20
-): { source: string; channel: string; file: string; content: string }[] {
+): { source: string; channel: string; file: string; content: string; truncated: boolean }[] {
   const sources = source ? [source] : listIntegrations().map((i) => i.source);
-  const results: { source: string; channel: string; file: string; content: string }[] = [];
-  const q = query.toLowerCase();
+  const results: { source: string; channel: string; file: string; content: string; truncated: boolean }[] = [];
+  const q = searchQuery.toLowerCase();
+  const queryTerms = new Set(tokenize(searchQuery));
 
   for (const src of sources) {
     const items = loadIntegrationData(src, undefined, 100);
     for (const item of items) {
       if (item.content.toLowerCase().includes(q)) {
-        results.push(item);
+        const truncated = item.content.length > SEARCH_SNIPPET_MAX_LEN;
+        results.push({
+          ...item,
+          content: truncated ? extractRelevantWindow(item.content, queryTerms, SEARCH_SNIPPET_MAX_LEN) : item.content,
+          truncated,
+        });
       }
     }
   }

@@ -490,7 +490,7 @@ struct AIChatView: View {
             }
             .padding(.horizontal, DS.Spacing.md)
             .padding(.vertical, DS.Spacing.sm)
-            .background(DS.Colors.card)
+            .background(DS.Colors.controlFill)
             .clipShape(RoundedRectangle(cornerRadius: DS.Radius.lg))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.Radius.lg)
@@ -936,7 +936,10 @@ struct AIChatView: View {
         let oldBranch = EditBranch(messages: Array(appState.chatMessages[index...]))
 
         if var branchPoint = appState.editBranchPoints[index] {
-            branchPoint.branches[branchPoint.activeBranchIndex] = oldBranch
+            // activeBranchIndex comes from persisted JSON — never index blindly.
+            if branchPoint.branches.indices.contains(branchPoint.activeBranchIndex) {
+                branchPoint.branches[branchPoint.activeBranchIndex] = oldBranch
+            }
             let newIndex = branchPoint.branches.count
             branchPoint.branches.append(EditBranch(messages: []))
             branchPoint.activeBranchIndex = newIndex
@@ -966,7 +969,9 @@ struct AIChatView: View {
         guard branchIndex >= 0, branchIndex < bp.branches.count else { return }
 
         let currentSuffix = Array(appState.chatMessages[index...])
-        bp.branches[bp.activeBranchIndex] = EditBranch(messages: currentSuffix)
+        if bp.branches.indices.contains(bp.activeBranchIndex) {
+            bp.branches[bp.activeBranchIndex] = EditBranch(messages: currentSuffix)
+        }
 
         let target = bp.branches[branchIndex]
         bp.activeBranchIndex = branchIndex
@@ -1004,6 +1009,7 @@ struct AIChatView: View {
     private func updateActiveBranchSnapshot() {
         for (index, var bp) in appState.editBranchPoints {
             guard index < appState.chatMessages.count else { continue }
+            guard bp.branches.indices.contains(bp.activeBranchIndex) else { continue }
             let currentMessages = Array(appState.chatMessages[index...])
             bp.branches[bp.activeBranchIndex] = EditBranch(messages: currentMessages)
             appState.editBranchPoints[index] = bp

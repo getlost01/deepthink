@@ -6,10 +6,11 @@ struct WorkspaceView: View {
     @Query(filter: #Predicate<Note> { !$0.isArchived }) private var allNotes: [Note]
     @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasks: [TaskItem]
     @Query(filter: #Predicate<Project> { !$0.isArchived }) private var allProjects: [Project]
+    @Query private var allProjectsIncludingArchived: [Project]
 
     private var selectedProject: Project? {
         guard let id = appState.selectedProjectID else { return nil }
-        return allProjects.first { $0.id == id }
+        return allProjectsIncludingArchived.first { $0.id == id }
     }
 
     var body: some View {

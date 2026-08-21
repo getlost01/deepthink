@@ -8,13 +8,26 @@ final class ContextEngine {
     private(set) var indexedCount = 0
     private(set) var lastIndexedAt: Date?
 
-    // TF-IDF index (in-memory for fast BM25)
+    // TF-IDF index (in-memory for fast BM25). Rebuilt on `indexQueue` but read from
+    // background retrieval calls, so every access goes through `indexLock` — an
+    // unsynchronised dictionary read during a rebuild is a crash, not just a stale score.
+    private let indexLock = NSLock()
     private var documentFrequency: [String: Int] = [:]
     private var documentTerms: [String: [String: Double]] = [:]
     private var documentCount = 0
 
     var vocabularySize: Int {
-        documentFrequency.count
+        indexLock.lock()
+        defer { indexLock.unlock() }
+        return documentFrequency.count
+    }
+
+    private typealias IndexSnapshot = (frequency: [String: Int], terms: [String: [String: Double]], count: Int)
+
+    private func indexSnapshot() -> IndexSnapshot {
+        indexLock.lock()
+        defer { indexLock.unlock() }
+        return (documentFrequency, documentTerms, documentCount)
     }
 
     private var conversationSummaries: [UUID: String] = [:]
@@ -48,12 +61,16 @@ final class ContextEngine {
             newFingerprints.insert(fingerprint(entry.content))
         }
 
+        indexLock.lock()
+        documentFrequency = newDocFreq
+        documentTerms = newDocTerms
+        contentFingerprints = newFingerprints
+        documentCount = allEntries.count
+        indexLock.unlock()
+
+        let count = allEntries.count
         DispatchQueue.main.async { [self] in
-            documentFrequency = newDocFreq
-            documentTerms = newDocTerms
-            contentFingerprints = newFingerprints
-            documentCount = allEntries.count
-            indexedCount = allEntries.count
+            indexedCount = count
             lastIndexedAt = Date()
         }
     }
@@ -75,21 +92,24 @@ final class ContextEngine {
         let queryTF = computeTF(queryTerms)
         let querySet = Set(queryTerms)
         var scoredChunks: [(chunk: VectorChunk, score: Double)] = []
+        let index = indexSnapshot()
 
         let k1 = 1.5
         let b = 0.75
-        let avgDocLen = Double(chunks.map(\.content.count).reduce(0, +)) / Double(chunks.count)
+        let totalLen = chunks.map(\.content.count).reduce(0, +)
+        // All-empty content would make the BM25 length normaliser 0/0 → NaN scores.
+        let avgDocLen = totalLen > 0 ? Double(totalLen) / Double(chunks.count) : 1.0
 
         for chunk in chunks {
             let docID = chunk.entryID
-            guard let docTF = documentTerms[docID] else { continue }
+            guard let docTF = index.terms[docID] else { continue }
 
             var score = 0.0
             let docLen = Double(chunk.content.count)
 
             for (term, queryFreq) in queryTF {
-                let df = Double(documentFrequency[term] ?? 0)
-                let idf = log((Double(documentCount) - df + 0.5) / (df + 0.5) + 1.0)
+                let df = Double(index.frequency[term] ?? 0)
+                let idf = log((Double(index.count) - df + 0.5) / (df + 0.5) + 1.0)
                 let tf = docTF[term] ?? 0
                 let tfNorm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * docLen / avgDocLen))
                 score += idf * tfNorm * queryFreq
@@ -253,14 +273,15 @@ final class ContextEngine {
 
     func scoreEntries(for query: String) -> [String: Double] {
         let queryTerms = tokenize(query)
-        guard !queryTerms.isEmpty, documentCount > 0 else { return [:] }
+        let index = indexSnapshot()
+        guard !queryTerms.isEmpty, index.count > 0 else { return [:] }
         let queryTF = computeTF(queryTerms)
         var scores: [String: Double] = [:]
-        for (docID, docTF) in documentTerms {
+        for (docID, docTF) in index.terms {
             var score = 0.0
             for (term, queryFreq) in queryTF {
-                let df = Double(documentFrequency[term] ?? 0)
-                let idf = log((Double(documentCount) - df + 0.5) / (df + 0.5) + 1.0)
+                let df = Double(index.frequency[term] ?? 0)
+                let idf = log((Double(index.count) - df + 0.5) / (df + 0.5) + 1.0)
                 let tf = docTF[term] ?? 0
                 score += idf * tf * queryFreq
             }
@@ -272,12 +293,13 @@ final class ContextEngine {
     // MARK: - Similarity Graph
 
     func similarityEdges(threshold: Double = 0.15) -> [(String, String, Double)] {
-        let entries = Array(documentTerms)
-        let n = Double(documentCount)
+        let index = indexSnapshot()
+        let entries = Array(index.terms)
+        let n = Double(index.count)
 
         func tfidfVec(_ tf: [String: Double]) -> [String: Double] {
             tf.reduce(into: [String: Double]()) { result, kv in
-                let df = Double(documentFrequency[kv.key] ?? 1)
+                let df = Double(index.frequency[kv.key] ?? 1)
                 result[kv.key] = kv.value * log((n + 1) / (df + 1))
             }
         }
@@ -316,6 +338,8 @@ final class ContextEngine {
 
     func isDuplicate(content: String) -> Bool {
         let fp = fingerprint(content)
+        indexLock.lock()
+        defer { indexLock.unlock() }
         return contentFingerprints.contains(fp)
     }
 

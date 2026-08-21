@@ -4,6 +4,18 @@ import SQLite3
 final class VectorStore {
     static let shared = VectorStore()
 
+    /// Canonical vector-store entry ID. Workspace UUIDs are lowercased so the app
+    /// (`UUID.uuidString`, uppercase) and the CLI (`hexToUUID`, lowercase) converge on
+    /// the same key in `vectors.db`. Non-workspace keys (e.g. knowledge) are untouched.
+    static func canonicalEntryID(_ entryID: String) -> String {
+        let parts = entryID.split(separator: ":", maxSplits: 1)
+        guard parts.count == 2,
+              ["task", "note", "reminder", "project"].contains(String(parts[0])),
+              UUID(uuidString: String(parts[1])) != nil
+        else { return entryID }
+        return "\(parts[0]):\(parts[1].lowercased())"
+    }
+
     private var db: OpaquePointer?
     private let dbPath: String
     private let queue = DispatchQueue(label: "com.deepthink.vectorstore", attributes: .concurrent)
@@ -35,6 +47,11 @@ final class VectorStore {
     }
 
     private func createTables() {
+        // Schema is shared with the CLI/MCP (cli/src/core/vector-store.ts). The last
+        // four chunk columns + the links table are owned by the MCP's multi-agent layer
+        // (provenance, visibility, supersession, cross-type links); the app must carry
+        // the same schema so a fresh app-only install matches, and must NOT clobber
+        // those columns on write (see upsertChunk / replaceChunksForEntry).
         exec("""
             CREATE TABLE IF NOT EXISTS chunks (
                 id TEXT PRIMARY KEY,
@@ -48,13 +65,25 @@ final class VectorStore {
                 chunk_index INTEGER NOT NULL DEFAULT 0,
                 total_chunks INTEGER NOT NULL DEFAULT 1,
                 content_hash INTEGER NOT NULL DEFAULT 0,
-                embedding BLOB
+                embedding BLOB,
+                agent_id TEXT,
+                session_id TEXT,
+                visibility TEXT NOT NULL DEFAULT 'shared',
+                superseded_by TEXT
             )
         """)
         exec("CREATE INDEX IF NOT EXISTS idx_chunks_entry_id ON chunks(entry_id)")
         exec("CREATE INDEX IF NOT EXISTS idx_chunks_entry_type ON chunks(entry_type)")
         exec("CREATE INDEX IF NOT EXISTS idx_chunks_source ON chunks(source)")
         exec("CREATE INDEX IF NOT EXISTS idx_chunks_hash ON chunks(content_hash)")
+
+        // Backfill the MCP-owned columns on databases created before they existed.
+        ensureColumn("chunks", "agent_id", "agent_id TEXT")
+        ensureColumn("chunks", "session_id", "session_id TEXT")
+        ensureColumn("chunks", "visibility", "visibility TEXT NOT NULL DEFAULT 'shared'")
+        ensureColumn("chunks", "superseded_by", "superseded_by TEXT")
+        exec("CREATE INDEX IF NOT EXISTS idx_chunks_agent ON chunks(agent_id)")
+        exec("CREATE INDEX IF NOT EXISTS idx_chunks_superseded ON chunks(superseded_by)")
 
         exec("""
             CREATE TABLE IF NOT EXISTS meta (
@@ -72,6 +101,35 @@ final class VectorStore {
                 retry_count INTEGER NOT NULL DEFAULT 0
             )
         """)
+
+        // Cross-type relationship graph, owned by the MCP; the app reads it (e.g. the
+        // context graph view) but does not yet write to it.
+        exec("""
+            CREATE TABLE IF NOT EXISTS links (
+                from_type  TEXT NOT NULL,
+                from_id    TEXT NOT NULL,
+                to_type    TEXT NOT NULL,
+                to_id      TEXT NOT NULL,
+                relation   TEXT NOT NULL DEFAULT 'related',
+                created_at INTEGER NOT NULL,
+                PRIMARY KEY (from_type, from_id, to_type, to_id, relation)
+            )
+        """)
+        exec("CREATE INDEX IF NOT EXISTS idx_links_from ON links(from_type, from_id)")
+        exec("CREATE INDEX IF NOT EXISTS idx_links_to ON links(to_type, to_id)")
+    }
+
+    /// Add a column only if it's missing — idempotent, for DBs created before the
+    /// MCP multi-agent columns existed.
+    private func ensureColumn(_ table: String, _ column: String, _ ddl: String) {
+        var stmt: OpaquePointer?
+        guard sqlite3_prepare_v2(db, "PRAGMA table_info(\(table))", -1, &stmt, nil) == SQLITE_OK else { return }
+        var exists = false
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            if let namePtr = sqlite3_column_text(stmt, 1), String(cString: namePtr) == column { exists = true }
+        }
+        sqlite3_finalize(stmt)
+        if !exists { exec("ALTER TABLE \(table) ADD COLUMN \(ddl)") }
     }
 
     private func migrate() {
@@ -84,13 +142,31 @@ final class VectorStore {
 
     // MARK: - Chunk CRUD
 
+    /// Upsert that touches only the 12 app-owned columns. On conflict it UPDATEs those
+    /// columns and leaves the MCP-owned ones (agent_id, session_id, visibility,
+    /// superseded_by) untouched — so re-indexing an entry the MCP tagged never wipes
+    /// its multi-agent provenance. A brand-new row simply gets the schema defaults.
+    private static let upsertChunkSQL = """
+        INSERT INTO chunks
+        (id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            entry_id = excluded.entry_id,
+            entry_type = excluded.entry_type,
+            title = excluded.title,
+            content = excluded.content,
+            tags = excluded.tags,
+            source = excluded.source,
+            imported_at = excluded.imported_at,
+            chunk_index = excluded.chunk_index,
+            total_chunks = excluded.total_chunks,
+            content_hash = excluded.content_hash,
+            embedding = excluded.embedding
+    """
+
     func upsertChunk(_ chunk: VectorChunk) {
         queue.sync(flags: .barrier) {
-            let sql = """
-                INSERT OR REPLACE INTO chunks
-                (id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """
+            let sql = Self.upsertChunkSQL
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
             defer { sqlite3_finalize(stmt) }
@@ -131,11 +207,7 @@ final class VectorStore {
     }
 
     private func upsertChunkUnsafe(_ chunk: VectorChunk) {
-        let sql = """
-            INSERT OR REPLACE INTO chunks
-            (id, entry_id, entry_type, title, content, tags, source, imported_at, chunk_index, total_chunks, content_hash, embedding)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
+        let sql = Self.upsertChunkSQL
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
         defer { sqlite3_finalize(stmt) }
@@ -172,6 +244,7 @@ final class VectorStore {
     }
 
     func deleteChunksForEntry(_ entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             let sql = "DELETE FROM chunks WHERE entry_id = ?"
@@ -183,8 +256,13 @@ final class VectorStore {
     }
 
     func replaceChunksForEntry(_ entryID: String, with chunks: [VectorChunk]) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             exec("BEGIN TRANSACTION")
+            // Capture the MCP-owned provenance before we drop the rows, so a content
+            // re-index doesn't erase it (DELETE + fresh INSERT would otherwise reset
+            // these to defaults — the ON CONFLICT clause can't fire on a fresh insert).
+            let preserved = readProvenanceUnsafe(entryID: entryID)
             var delStmt: OpaquePointer?
             if sqlite3_prepare_v2(db, "DELETE FROM chunks WHERE entry_id = ?", -1, &delStmt, nil) == SQLITE_OK {
                 sqlite3_bind_text(delStmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
@@ -194,8 +272,48 @@ final class VectorStore {
             for chunk in chunks {
                 upsertChunkUnsafe(chunk)
             }
+            if let preserved { applyProvenanceUnsafe(entryID: entryID, preserved) }
             exec("COMMIT")
         }
+    }
+
+    /// MCP-owned provenance/lifecycle for an entry (uniform across its chunks). Returns
+    /// nil when the entry is new or carries only defaults, so normal app rows are left
+    /// alone. Must be called on the barrier queue (operates on `db` directly).
+    private func readProvenanceUnsafe(entryID: String) -> ChunkProvenance? {
+        var stmt: OpaquePointer?
+        let sql = "SELECT agent_id, session_id, visibility, superseded_by FROM chunks WHERE entry_id = ? LIMIT 1"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
+        defer { sqlite3_finalize(stmt) }
+        sqlite3_bind_text(stmt, 1, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+        guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
+
+        func text(_ col: Int32) -> String? {
+            sqlite3_column_type(stmt, col) == SQLITE_NULL ? nil : String(cString: sqlite3_column_text(stmt, col))
+        }
+        let agentID = text(0)
+        let sessionID = text(1)
+        let visibility = text(2) ?? "shared"
+        let supersededBy = text(3)
+
+        // Nothing worth preserving → let the fresh inserts keep the defaults.
+        if agentID == nil, sessionID == nil, visibility == "shared", supersededBy == nil { return nil }
+        return ChunkProvenance(agentID: agentID, sessionID: sessionID, visibility: visibility, supersededBy: supersededBy)
+    }
+
+    /// Re-stamp preserved provenance onto an entry's rows after a replace. Must be
+    /// called on the barrier queue.
+    private func applyProvenanceUnsafe(entryID: String, _ p: ChunkProvenance) {
+        var stmt: OpaquePointer?
+        let sql = "UPDATE chunks SET agent_id = ?, session_id = ?, visibility = ?, superseded_by = ? WHERE entry_id = ?"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return }
+        defer { sqlite3_finalize(stmt) }
+        if let a = p.agentID { sqlite3_bind_text(stmt, 1, a.cString, -1, SQLITE_TRANSIENT_PTR) } else { sqlite3_bind_null(stmt, 1) }
+        if let s = p.sessionID { sqlite3_bind_text(stmt, 2, s.cString, -1, SQLITE_TRANSIENT_PTR) } else { sqlite3_bind_null(stmt, 2) }
+        sqlite3_bind_text(stmt, 3, p.visibility.cString, -1, SQLITE_TRANSIENT_PTR)
+        if let sb = p.supersededBy { sqlite3_bind_text(stmt, 4, sb.cString, -1, SQLITE_TRANSIENT_PTR) } else { sqlite3_bind_null(stmt, 4) }
+        sqlite3_bind_text(stmt, 5, entryID.cString, -1, SQLITE_TRANSIENT_PTR)
+        sqlite3_step(stmt)
     }
 
     func deleteChunksByType(_ entryType: String) {
@@ -210,6 +328,7 @@ final class VectorStore {
     }
 
     func pruneStaleEntries(validIDs: Set<String>, entryType: String) {
+        let validIDs = Set(validIDs.map(Self.canonicalEntryID))
         let existing = allEntryIDs(forType: entryType)
         let stale = existing.subtracting(validIDs)
         guard !stale.isEmpty else { return }
@@ -232,6 +351,7 @@ final class VectorStore {
     // MARK: - Pending Reindex Queue
 
     func enqueuePendingReindex(entryID: String, entryType: String, operation: String = "upsert") {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.async(flags: .barrier) { [weak self] in
             guard let self else { return }
             // Preserve retry_count on re-enqueue so the cap isn't reset by every keystroke
@@ -263,9 +383,9 @@ final class VectorStore {
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_int(stmt, 1, Int32(maxRetries))
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let entryID = String(cString: sqlite3_column_text(stmt, 0))
-                let entryType = String(cString: sqlite3_column_text(stmt, 1))
-                let operation = String(cString: sqlite3_column_text(stmt, 2))
+                guard let entryID = columnText(stmt, 0) else { continue }
+                let entryType = columnText(stmt, 1) ?? ""
+                let operation = columnText(stmt, 2) ?? "upsert"
                 let retryCount = Int(sqlite3_column_int(stmt, 4))
                 results.append(PendingReindexRow(entryID: entryID, entryType: entryType, operation: operation, retryCount: retryCount))
             }
@@ -274,6 +394,7 @@ final class VectorStore {
     }
 
     func deletePendingReindex(entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, "DELETE FROM pending_reindex WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK else { return }
@@ -284,6 +405,7 @@ final class VectorStore {
     }
 
     func incrementPendingRetry(entryID: String) {
+        let entryID = Self.canonicalEntryID(entryID)
         queue.sync(flags: .barrier) {
             var stmt: OpaquePointer?
             guard sqlite3_prepare_v2(db, "UPDATE pending_reindex SET retry_count = retry_count + 1 WHERE entry_id = ?", -1, &stmt, nil) == SQLITE_OK
@@ -307,7 +429,8 @@ final class VectorStore {
     // MARK: - Query
 
     func contentHash(forEntry entryID: String) -> UInt64? {
-        queue.sync {
+        let entryID = Self.canonicalEntryID(entryID)
+        return queue.sync {
             var stmt: OpaquePointer?
             let sql = "SELECT content_hash FROM chunks WHERE entry_id = ? LIMIT 1"
             guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
@@ -461,6 +584,40 @@ final class VectorStore {
         }
     }
 
+    // MARK: - Multi-agent metadata (MCP-owned columns, read-only from the app)
+
+    /// One row of MCP provenance per entry, keyed by entry_id. Loaded once by a view
+    /// rather than per-row so browsing stays cheap.
+    func provenanceByEntry() -> [String: EntryMeta] {
+        queue.sync {
+            var stmt: OpaquePointer?
+            let sql = "SELECT entry_id, agent_id, visibility, superseded_by FROM chunks GROUP BY entry_id"
+            guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return [:] }
+            defer { sqlite3_finalize(stmt) }
+            func text(_ c: Int32) -> String? {
+                sqlite3_column_type(stmt, c) == SQLITE_NULL ? nil : String(cString: sqlite3_column_text(stmt, c))
+            }
+            var out: [String: EntryMeta] = [:]
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                guard let eid = text(0) else { continue }
+                out[eid] = EntryMeta(agentID: text(1), visibility: text(2) ?? "shared", supersededBy: text(3))
+            }
+            return out
+        }
+    }
+
+    /// Entry ids the MCP's last grounding pass flagged as stale (references a deleted
+    /// task or a missing file). Stored as JSON under meta key 'grounding'.
+    func staleEntryIDs() -> Set<String> {
+        guard let raw = getMeta("grounding"), let data = raw.data(using: .utf8) else { return [] }
+        struct GroundingReport: Decodable {
+            struct Stale: Decodable { let entryId: String }
+            let stale: [Stale]
+        }
+        guard let report = try? JSONDecoder().decode(GroundingReport.self, from: data) else { return [] }
+        return Set(report.stale.map { $0.entryId })
+    }
+
     // MARK: - Meta
 
     func getMeta(_ key: String) -> String? {
@@ -471,7 +628,7 @@ final class VectorStore {
             defer { sqlite3_finalize(stmt) }
             sqlite3_bind_text(stmt, 1, key.cString, -1, SQLITE_TRANSIENT_PTR)
             guard sqlite3_step(stmt) == SQLITE_ROW else { return nil }
-            return String(cString: sqlite3_column_text(stmt, 0))
+            return columnText(stmt, 0)
         }
     }
 
@@ -499,23 +656,31 @@ final class VectorStore {
 
             var ids: Set<String> = []
             while sqlite3_step(stmt) == SQLITE_ROW {
-                ids.insert(String(cString: sqlite3_column_text(stmt, 0)))
+                if let id = columnText(stmt, 0) { ids.insert(id) }
             }
             return ids
         }
     }
 
-    private func readChunkRow(_ stmt: OpaquePointer?) -> VectorChunk {
-        let id = String(cString: sqlite3_column_text(stmt, 0))
-        let entryID = String(cString: sqlite3_column_text(stmt, 1))
-        let entryType = String(cString: sqlite3_column_text(stmt, 2))
-        let title = String(cString: sqlite3_column_text(stmt, 3))
-        let content = String(cString: sqlite3_column_text(stmt, 4))
+    /// `sqlite3_column_text` yields NULL for a NULL column, and `String(cString:)` on that
+    /// pointer is a hard crash. `tags`, `source` and `meta.value` are nullable, and rows
+    /// also arrive from the CLI/MCP writing the same file.
+    private func columnText(_ stmt: OpaquePointer?, _ col: Int32) -> String? {
+        guard let ptr = sqlite3_column_text(stmt, col) else { return nil }
+        return String(cString: ptr)
+    }
 
-        let tagsStr = String(cString: sqlite3_column_text(stmt, 5))
+    private func readChunkRow(_ stmt: OpaquePointer?) -> VectorChunk {
+        let id = columnText(stmt, 0) ?? ""
+        let entryID = columnText(stmt, 1) ?? ""
+        let entryType = columnText(stmt, 2) ?? "knowledge"
+        let title = columnText(stmt, 3) ?? ""
+        let content = columnText(stmt, 4) ?? ""
+
+        let tagsStr = columnText(stmt, 5) ?? "[]"
         let tags = (try? JSONSerialization.jsonObject(with: Data(tagsStr.utf8)) as? [String]) ?? []
 
-        let source = String(cString: sqlite3_column_text(stmt, 6))
+        let source = columnText(stmt, 6) ?? ""
         let importedAt = Date(timeIntervalSince1970: sqlite3_column_double(stmt, 7))
         let chunkIndex = Int(sqlite3_column_int(stmt, 8))
         let totalChunks = Int(sqlite3_column_int(stmt, 9))
@@ -569,6 +734,23 @@ struct VectorChunk {
     let totalChunks: Int
     let contentHash: UInt64
     let embedding: [Double]?
+}
+
+// MARK: - Entry Metadata (MCP multi-agent columns, surfaced in the UI)
+
+struct EntryMeta {
+    let agentID: String?
+    let visibility: String
+    let supersededBy: String?
+}
+
+// MARK: - Chunk Provenance (MCP-owned columns preserved across app re-index)
+
+private struct ChunkProvenance {
+    let agentID: String?
+    let sessionID: String?
+    let visibility: String
+    let supersededBy: String?
 }
 
 // MARK: - Pending Reindex Model

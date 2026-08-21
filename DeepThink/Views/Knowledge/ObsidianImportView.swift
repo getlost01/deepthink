@@ -268,9 +268,9 @@ struct ObsidianImportView: View {
             Image(systemName: icon)
                 .font(.system(size: DS.IconSize.sm, weight: .medium))
                 .foregroundStyle(DS.Colors.textTertiary)
-                .frame(width: 20)
+                .frame(width: DS.IconSize.xl)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                 Text(title)
                     .font(DS.Font.body)
                     .foregroundStyle(DS.Colors.textPrimary)
@@ -317,7 +317,12 @@ struct ObsidianImportView: View {
     @MainActor
     private func startImport() async {
         guard let url = vaultURL else { return }
-        result = await importService.importVault(at: url, options: options)
+        // An empty bucket name would resolve the destination to the knowledge root.
+        var opts = options
+        let bucket = opts.folderName.trimmingCharacters(in: .whitespacesAndNewlines)
+        opts.folderName = bucket.isEmpty ? "obsidian" : bucket
+        options = opts
+        result = await importService.importVault(at: url, options: opts)
     }
 
     private func formattedSize(_ bytes: Int64) -> String {

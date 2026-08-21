@@ -24,6 +24,62 @@ interface RPCResponse {
   error?: { code: number; message: string };
 }
 
+/**
+ * Legacy tool name → consolidated { tool, action } mapping.
+ * The suite still calls the old granular names; this rewrites each call to the
+ * new per-entity tool with an `action` arg so the consolidated server is what
+ * actually gets exercised over the wire.
+ */
+const LEGACY_TOOL_MAP: Record<string, { tool: string; action?: string }> = {
+  workspace_list_tasks: { tool: "workspace_task", action: "list" },
+  workspace_get_task: { tool: "workspace_task", action: "get" },
+  workspace_create_task: { tool: "workspace_task", action: "create" },
+  workspace_update_task: { tool: "workspace_task", action: "update" },
+  workspace_delete_task: { tool: "workspace_task", action: "delete" },
+  workspace_list_notes: { tool: "workspace_note", action: "list" },
+  workspace_get_note: { tool: "workspace_note", action: "get" },
+  workspace_create_note: { tool: "workspace_note", action: "create" },
+  workspace_update_note: { tool: "workspace_note", action: "update" },
+  workspace_delete_note: { tool: "workspace_note", action: "delete" },
+  workspace_list_projects: { tool: "workspace_project", action: "list" },
+  workspace_get_project: { tool: "workspace_project", action: "get" },
+  workspace_create_project: { tool: "workspace_project", action: "create" },
+  workspace_update_project: { tool: "workspace_project", action: "update" },
+  workspace_delete_project: { tool: "workspace_project", action: "delete" },
+  workspace_list_reminders: { tool: "workspace_reminder", action: "list" },
+  workspace_get_reminder: { tool: "workspace_reminder", action: "get" },
+  workspace_create_reminder: { tool: "workspace_reminder", action: "create" },
+  workspace_update_reminder: { tool: "workspace_reminder", action: "update" },
+  workspace_delete_reminder: { tool: "workspace_reminder", action: "delete" },
+  workspace_resolve_deeplinks: { tool: "workspace_resolve_deeplink" },
+  knowledge_list_projects: { tool: "knowledge_project", action: "list" },
+  knowledge_load_project: { tool: "knowledge_project", action: "load" },
+  knowledge_save_project: { tool: "knowledge_project", action: "save" },
+  knowledge_archive_project: { tool: "knowledge_project", action: "archive" },
+  knowledge_list_integrations: { tool: "knowledge_integration", action: "list" },
+  knowledge_load_integration: { tool: "knowledge_integration", action: "load" },
+  knowledge_capture: { tool: "knowledge_integration", action: "capture" },
+  knowledge_compress: { tool: "knowledge_integration", action: "compress" },
+  agent_list: { tool: "agent", action: "list" },
+  agent_get: { tool: "agent", action: "get" },
+  agent_create: { tool: "agent", action: "create" },
+  agent_delete: { tool: "agent", action: "delete" },
+  rule_list: { tool: "rule", action: "list" },
+  rule_get: { tool: "rule", action: "get" },
+  rule_create: { tool: "rule", action: "create" },
+  rule_delete: { tool: "rule", action: "delete" },
+  skill_list: { tool: "skill", action: "list" },
+  skill_get: { tool: "skill", action: "get" },
+  skill_create: { tool: "skill", action: "create" },
+  skill_delete: { tool: "skill", action: "delete" },
+};
+
+function translateCall(name: string, args: Record<string, any>): { name: string; args: Record<string, any> } {
+  const mapped = LEGACY_TOOL_MAP[name];
+  if (!mapped) return { name, args };
+  return { name: mapped.tool, args: mapped.action ? { action: mapped.action, ...args } : { ...args } };
+}
+
 class MCPClient {
   private proc: Subprocess;
   private stdin: FileSink;
@@ -107,7 +163,8 @@ class MCPClient {
 
   /** Calls a tool. Throws if the tool returns isError. */
   async call(name: string, args: Record<string, any> = {}): Promise<any> {
-    const res = await this.send("tools/call", { name, arguments: args });
+    const t = translateCall(name, args);
+    const res = await this.send("tools/call", { name: t.name, arguments: t.args });
     if (res.isError) throw new Error(res.content?.[0]?.text ?? "tool error");
     const text = res.content?.[0]?.text ?? "{}";
     try {
@@ -122,7 +179,8 @@ class MCPClient {
     name: string,
     args: Record<string, any> = {}
   ): Promise<{ result: any; isError: boolean; text: string }> {
-    const res = await this.send("tools/call", { name, arguments: args });
+    const t = translateCall(name, args);
+    const res = await this.send("tools/call", { name: t.name, arguments: t.args });
     const text = res.content?.[0]?.text ?? "";
     return { result: res, isError: !!res.isError, text };
   }
@@ -214,31 +272,14 @@ async function run() {
     section("Tool Discovery");
     const tools = await client.listTools();
     assert("tools/list returns array", Array.isArray(tools));
-    assert("at least 40 tools registered", tools.length >= 40, `got ${tools.length}`);
+    assert("at least 18 tools registered", tools.length >= 18, `got ${tools.length}`);
     const toolNames = new Set(tools.map((t: any) => t.name));
     const REQUIRED_TOOLS = [
-      "workspace_list_tasks",
-      "workspace_get_task",
-      "workspace_create_task",
-      "workspace_update_task",
-      "workspace_delete_task",
-      "workspace_list_notes",
-      "workspace_get_note",
-      "workspace_create_note",
-      "workspace_update_note",
-      "workspace_delete_note",
-      "workspace_list_projects",
-      "workspace_get_project",
-      "workspace_create_project",
-      "workspace_update_project",
-      "workspace_delete_project",
-      "workspace_list_reminders",
-      "workspace_get_reminder",
-      "workspace_create_reminder",
-      "workspace_update_reminder",
-      "workspace_delete_reminder",
+      "workspace_task",
+      "workspace_note",
+      "workspace_project",
+      "workspace_reminder",
       "workspace_resolve_deeplink",
-      "workspace_resolve_deeplinks",
       "workspace_summary",
       "workspace_reindex",
       "deepthink_overview",
@@ -247,27 +288,12 @@ async function run() {
       "workspace_context",
       "knowledge_context",
       "knowledge_stats",
-      "knowledge_list_projects",
-      "knowledge_load_project",
-      "knowledge_save_project",
+      "knowledge_project",
+      "knowledge_integration",
       "knowledge_search",
-      "knowledge_list_integrations",
-      "knowledge_load_integration",
-      "knowledge_capture",
-      "knowledge_compress",
-      "knowledge_archive_project",
-      "agent_list",
-      "agent_get",
-      "agent_create",
-      "agent_delete",
-      "rule_list",
-      "rule_get",
-      "rule_create",
-      "rule_delete",
-      "skill_list",
-      "skill_get",
-      "skill_create",
-      "skill_delete",
+      "agent",
+      "rule",
+      "skill",
     ];
     for (const t of REQUIRED_TOOLS) {
       assert(`tool "${t}" registered`, toolNames.has(t));
@@ -1759,9 +1785,10 @@ async function run() {
     assert("overview.workspace.tasks.total matches list total", ovCount.workspace.tasks.total === taskListCount.total);
     assert("overview.workspace.notes matches list total", ovCount.workspace.notes === noteListCount.total);
     assert(
-      "overview.workspace.reminders.total matches list count",
-      ovCount.workspace.reminders.total === (remListCount.reminders ?? remListCount).length
+      "overview.workspace.reminders.total matches list total",
+      ovCount.workspace.reminders.total === remListCount.total
     );
+    assert("reminder list is paginated", Array.isArray(remListCount.reminders) && remListCount.limit === 50);
 
     // recentTasks should contain ≤ 3 strings
     assert("recentTasks ≤ 3 entries", ovCount.workspace.recentTasks.length <= 3);
@@ -2136,6 +2163,106 @@ async function run() {
       () => client.call("workspace_get_reminder", { ref: "" }),
       "not found"
     );
+
+    section("Error Paths — Blank create titles");
+
+    // Whitespace-only titles would create unnameable, unfindable records.
+    for (const [label, tool, field] of [
+      ["task", "workspace_create_task", "title"],
+      ["note", "workspace_create_note", "title"],
+      ["reminder", "workspace_create_reminder", "title"],
+      ["project", "workspace_create_project", "name"],
+    ] as const) {
+      await assertThrows(
+        `create ${label} with whitespace-only ${field} throws`,
+        () => client.call(tool, { [field]: "   " }),
+        "non-empty"
+      );
+      await assertThrows(`create ${label} with missing ${field} throws`, () => client.call(tool, {}), "required");
+    }
+    await assertThrows(
+      "remember with blank content throws",
+      () => client.call("remember", { content: "  \n " }),
+      "non-empty"
+    );
+    await assertThrows(
+      "knowledge_session sync with blank content throws",
+      () => client.call("knowledge_session", { action: "sync", content: "" }),
+      "non-empty"
+    );
+    await assertThrows(
+      "unified_search with blank query throws",
+      () => client.call("unified_search", { query: "   " }),
+      "non-empty"
+    );
+    await assertThrows("smart_query with missing query throws", () => client.call("smart_query", {}), "required");
+    await assertThrows(
+      "agent create with punctuation-only name throws",
+      () => client.call("agent_create", { name: "!!!", role: "r", systemPrompt: "s" }),
+      "letter or digit"
+    );
+
+    section("Error Paths — Invalid enums & unknown update fields");
+
+    await assertThrows(
+      "create task with invalid status throws and lists valid values",
+      () => client.call("workspace_create_task", { title: "E2E Bad Status", status: "in progress" }),
+      "In Progress"
+    );
+    await assertThrows(
+      "create task with invalid priority throws",
+      () => client.call("workspace_create_task", { title: "E2E Bad Priority", priority: "Critical" }),
+      "Urgent"
+    );
+    await assertThrows(
+      "unified_search with unknown type throws",
+      () => client.call("unified_search", { query: "anything", types: ["taks"] }),
+      "unknown type"
+    );
+    await assertThrows(
+      "smart_query with unknown mode throws",
+      () => client.call("smart_query", { query: "anything", mode: "everything" }),
+      "unknown mode"
+    );
+
+    // A list-only filter passed to update used to be echoed back in `updated` while
+    // being silently dropped — the agent believed a change landed that never did.
+    const badFieldTask = await client.call("workspace_create_task", { title: "E2E Unknown Field Task" });
+    extraCleanup.push(["workspace_delete_task", badFieldTask.pk.toString()]);
+    await assertThrows(
+      "update task with a list-only filter field throws",
+      () => client.call("workspace_update_task", { ref: badFieldTask.pk.toString(), topLevelOnly: true }),
+      "unknown field"
+    );
+    await assertThrows(
+      "update task with an unresolvable project throws",
+      () =>
+        client.call("workspace_update_task", {
+          ref: badFieldTask.pk.toString(),
+          project: "zzz-no-such-project-xyz-e2e",
+        }),
+      "project not found"
+    );
+    const stillUnassigned = await client.call("workspace_get_task", { ref: badFieldTask.pk.toString() });
+    assert("rejected project update left the task unassigned", stillUnassigned.projectName === null);
+
+    section("Numeric Params — clamping");
+
+    // Negative/NaN limits used to silently return the wrong slice (`slice(0, -5)`).
+    const negLimit = await client.call("workspace_list_tasks", { limit: -5 });
+    assert("negative limit clamps to ≥ 1 result page", negLimit.limit === 1);
+    const hugeLimit = await client.call("workspace_list_tasks", { limit: 100000 });
+    assert("huge limit clamps to the 200 cap", hugeLimit.limit === 200);
+    const fracLimit = await client.call("workspace_list_tasks", { limit: 7.9 });
+    assert("fractional limit truncates to an integer", fracLimit.limit === 7);
+    const negOffset = await client.call("workspace_list_tasks", { limit: 5, offset: -10 });
+    assert("negative offset clamps to 0", negOffset.offset === 0);
+
+    // An unresolvable project filter must narrow to nothing, not widen to the whole table.
+    const bogusProjFilter = await client.call("workspace_list_tasks", { project: "zzz-no-such-project-xyz-e2e" });
+    assert("unresolvable project filter returns no tasks", bogusProjFilter.total === 0);
+    const bogusProjNotes = await client.call("workspace_list_notes", { project: "zzz-no-such-project-xyz-e2e" });
+    assert("unresolvable project filter returns no notes", bogusProjNotes.total === 0);
 
     // ══════════════════════════════════════════════════════════════════════════
     // 25. workspace_reindex (idempotency)

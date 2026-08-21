@@ -77,7 +77,7 @@ private struct NoteInspectorContent: View {
                         HStack(spacing: DS.Spacing.sm) {
                             Circle()
                                 .fill(Color(hex: project.color))
-                                .frame(width: 8, height: 8)
+                                .frame(width: DS.IconSize.nano, height: DS.IconSize.nano)
                             Text("Go to \(project.name)")
                                 .font(DS.Font.caption)
                                 .foregroundStyle(DS.Colors.accent)

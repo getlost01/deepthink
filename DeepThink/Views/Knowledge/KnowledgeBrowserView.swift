@@ -15,8 +15,17 @@ struct KnowledgeBrowserView: View {
     @State private var newBucketName = ""
     @State private var showObsidianImport = false
     @State private var displayedCount = 20
+    // MCP multi-agent metadata for badges, keyed by vectors.db entry_id (path relative
+    // to the knowledge dir). Loaded once per reload rather than per row.
+    @State private var entryMeta: [String: EntryMeta] = [:]
+    @State private var staleIDs: Set<String> = []
 
     private let pageSize = 20
+
+    private func loadBadgeData() {
+        entryMeta = VectorStore.shared.provenanceByEntry()
+        staleIDs = VectorStore.shared.staleEntryIDs()
+    }
     private var knowledge: KnowledgeService {
         KnowledgeService.shared
     }
@@ -121,10 +130,12 @@ struct KnowledgeBrowserView: View {
                         .buttonStyle(.plainPointer)
                     }
 
-                    Spacer()
+                    Spacer(minLength: DS.Spacing.xs)
                     Text("\(filteredEntries.count) entries")
                         .font(DS.Font.small)
                         .foregroundStyle(DS.Colors.textTertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
                 }
                 .padding(.horizontal, DS.Spacing.lg)
                 .padding(.bottom, DS.Spacing.sm)
@@ -151,7 +162,13 @@ struct KnowledgeBrowserView: View {
                         ScrollView {
                             LazyVStack(spacing: 0) {
                                 ForEach(visibleEntries) { entry in
-                                    EntryRow(entry: entry, isSelected: selectedEntry?.id == entry.id, bucketFiltered: bucketFilter != nil) {
+                                    EntryRow(
+                                        entry: entry,
+                                        isSelected: selectedEntry?.id == entry.id,
+                                        bucketFiltered: bucketFilter != nil,
+                                        meta: entryMeta,
+                                        staleIDs: staleIDs
+                                    ) {
                                         selectedEntry = entry
                                     }
                                     .id(entry.id)
@@ -218,10 +235,14 @@ struct KnowledgeBrowserView: View {
         .onChange(of: bucketFilter) { displayedCount = pageSize }
         .onAppear {
             knowledge.reload()
+            loadBadgeData()
             // Deep link and selectedEntry refresh handled in onChange(of: knowledge.entries)
             // once the async reload actually populates entries.
         }
+        .onChange(of: appState.externalSyncToken) { _, _ in loadBadgeData() }
         .onChange(of: knowledge.entries) { _, entries in
+            // Refresh badge metadata whenever the knowledge set changes.
+            loadBadgeData()
             // Keep selectedEntry fresh after any reload (handles phantom after moveEntry too)
             if let sel = selectedEntry {
                 selectedEntry = entries.first(where: { $0.id == sel.id })
@@ -254,7 +275,7 @@ struct KnowledgeBrowserView: View {
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(selectedEntry?.title ?? "")\" from your knowledge base.")
+            Text("This will permanently delete \"\(selectedEntry?.title ?? "this entry")\" from your knowledge base.")
         }
         .sheet(isPresented: $showObsidianImport) {
             ObsidianImportView()
@@ -312,8 +333,26 @@ private struct EntryRow: View {
     let entry: KnowledgeEntry
     let isSelected: Bool
     let bucketFiltered: Bool
+    var meta: [String: EntryMeta] = [:]
+    var staleIDs: Set<String> = []
     let action: () -> Void
     @State private var isHovered = false
+
+    // vectors.db entry_id for this file (path relative to the knowledge dir).
+    private var relID: String {
+        let base = StorageService.shared.knowledgeURL.path
+        let p = entry.filePath.path
+        return p.hasPrefix(base + "/") ? String(p.dropFirst(base.count + 1)) : p
+    }
+
+    private var visibility: String { meta[relID]?.visibility ?? "shared" }
+    private var agentID: String? {
+        guard let a = meta[relID]?.agentID, !a.isEmpty, a != "default" else { return nil }
+        return a
+    }
+    private var isStale: Bool { staleIDs.contains(relID) }
+    private var isSuperseded: Bool { meta[relID]?.supersededBy != nil }
+    private var hasBadges: Bool { visibility != "shared" || agentID != nil || isStale || isSuperseded }
 
     var body: some View {
         Button(action: action) {
@@ -327,11 +366,12 @@ private struct EntryRow: View {
 
                 VStack(alignment: .leading, spacing: DS.Spacing.xs) {
                     HStack {
-                        Text(entry.title)
+                        Text(entry.title.isEmpty ? "Untitled" : entry.title)
                             .font(DS.Font.body)
                             .fontWeight(.medium)
                             .foregroundStyle(DS.Colors.textPrimary)
                             .lineLimit(1)
+                            .truncationMode(.tail)
                             .help(entry.title)
                         Spacer()
                         Text(entry.importedAt.relativeFormatted)
@@ -359,6 +399,25 @@ private struct EntryRow: View {
                                 .font(DS.Font.small)
                                 .foregroundStyle(DS.Colors.textTertiary)
                                 .lineLimit(1)
+                        }
+                    }
+
+                    if hasBadges {
+                        HStack(spacing: DS.Spacing.xs2) {
+                            if visibility == "private" {
+                                DSPill(text: "private", color: DS.Colors.slate)
+                            } else if visibility == "handoff" {
+                                DSPill(text: "handoff", color: DS.Colors.info)
+                            }
+                            if let agentID {
+                                DSPill(text: agentID, color: DS.Colors.purple)
+                            }
+                            if isStale {
+                                DSPill(text: "stale", color: DS.Colors.amber)
+                            }
+                            if isSuperseded {
+                                DSPill(text: "superseded", color: DS.Colors.textTertiary)
+                            }
                         }
                     }
                 }
@@ -636,7 +695,12 @@ struct KnowledgeDetailView: View {
             md += "\(key): \(value)\n"
         }
         md += "---\n\n\(editableContent)"
-        guard (try? md.write(to: filePath, atomically: true, encoding: .utf8)) != nil else { return }
+        do {
+            try md.write(to: filePath, atomically: true, encoding: .utf8)
+        } catch {
+            ToastState.shared.showError("Couldn't save \"\(activeEntry.title)\": \(error.localizedDescription)")
+            return
+        }
         activeEntry.content = editableContent
         KnowledgeService.shared.reload()
     }
@@ -699,6 +763,10 @@ struct URLScrapeSheet: View {
     @State private var isScraping = false
     @State private var result: String?
 
+    private var trimmedURL: String {
+        urlText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -741,12 +809,12 @@ struct URLScrapeSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
                     .background(
-                        urlText.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        trimmedURL.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                         in: RoundedRectangle(cornerRadius: DS.Radius.md)
                     )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(urlText.isEmpty || isScraping)
+                .disabled(trimmedURL.isEmpty || isScraping)
             }
             .padding(DS.Spacing.lg)
         }
@@ -758,7 +826,8 @@ struct URLScrapeSheet: View {
     @MainActor
     private func scrape() async {
         isScraping = true
-        let success = await DataCollectorService.shared.scrapeURL(urlText, title: titleText.isEmpty ? nil : titleText)
+        let trimmedTitle = titleText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let success = await DataCollectorService.shared.scrapeURL(trimmedURL, title: trimmedTitle.isEmpty ? nil : trimmedTitle)
         result = success ? "Saved to knowledge base" : "Error: Failed to scrape URL"
         isScraping = false
         if success {
@@ -782,6 +851,10 @@ struct NewKnowledgeSheet: View {
         KnowledgeService.shared
     }
 
+    private var trimmedTitle: String {
+        title.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -800,12 +873,12 @@ struct NewKnowledgeSheet: View {
                         .padding(.horizontal, DS.Spacing.lg)
                         .padding(.vertical, DS.Spacing.sm)
                         .background(
-                            title.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                            trimmedTitle.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                             in: RoundedRectangle(cornerRadius: DS.Radius.sm)
                         )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(title.isEmpty)
+                .disabled(trimmedTitle.isEmpty)
             }
             .padding(DS.Spacing.lg)
 
@@ -894,7 +967,7 @@ struct NewKnowledgeSheet: View {
 
     private func save() {
         let tagList = tags.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        KnowledgeService.shared.createEntry(title: title, content: content, source: "manual", tags: tagList, bucket: selectedBucket)
+        KnowledgeService.shared.createEntry(title: trimmedTitle, content: content, source: "manual", tags: tagList, bucket: selectedBucket)
         dismiss()
     }
 }
@@ -906,6 +979,10 @@ struct ScriptRunSheet: View {
     @State private var command = ""
     @State private var isRunning = false
     @State private var result: String?
+
+    private var trimmedCommand: String {
+        command.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -953,12 +1030,12 @@ struct ScriptRunSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, DS.Spacing.md)
                     .background(
-                        command.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
+                        trimmedCommand.isEmpty ? DS.Colors.accent.opacity(DS.Opacity.disabled) : DS.Colors.accent,
                         in: RoundedRectangle(cornerRadius: DS.Radius.md)
                     )
                 }
                 .buttonStyle(.plainPointer)
-                .disabled(command.isEmpty || isRunning)
+                .disabled(trimmedCommand.isEmpty || isRunning)
             }
             .padding(DS.Spacing.lg)
         }
@@ -970,7 +1047,7 @@ struct ScriptRunSheet: View {
     @MainActor
     private func run() async {
         isRunning = true
-        let success = await DataCollectorService.shared.runScript(command: command)
+        let success = await DataCollectorService.shared.runScript(command: trimmedCommand)
         result = success ? "Saved to knowledge base" : "Error: Script produced no output"
         isRunning = false
         if success {

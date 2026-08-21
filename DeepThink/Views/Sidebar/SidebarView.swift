@@ -4,6 +4,7 @@ import SwiftUI
 struct SidebarView: View {
     @Environment(AppState.self) private var appState
     @State private var isExpanded = true
+    @State private var handoffService = HandoffService.shared
     @Query(filter: #Predicate<TaskItem> { !$0.isArchived }) private var allTasks: [TaskItem]
     @Query(filter: #Predicate<Reminder> { !$0.isCompleted }) private var activeReminders: [Reminder]
 
@@ -29,6 +30,7 @@ struct SidebarView: View {
         switch section {
         case .reminders: todayReminderCount
         case .workspace: overdueTaskCount
+        case .handoffs: handoffService.openCount
         default: 0
         }
     }
@@ -121,6 +123,8 @@ struct SidebarView: View {
         .frame(width: isExpanded ? DS.Layout.sidebarWidth : DS.Layout.sidebarCollapsedWidth)
         .dsChromeBar()
         .animation(DS.Animation.standard, value: isExpanded)
+        .task { handoffService.reload() }
+        .onChange(of: appState.externalSyncToken) { _, _ in handoffService.reload() }
     }
 }
 

@@ -41,7 +41,7 @@ test.describe('Marketing site', () => {
       .first()
     await expect(download).toHaveAttribute(
       'href',
-      /github\.com\/getlost01\/deepthink\/releases/,
+      /^https:\/\/github\.com\/getlost01\/deepthink\/releases/,
     )
     await expect(download).toHaveAttribute('target', '_blank')
 

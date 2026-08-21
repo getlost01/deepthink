@@ -166,6 +166,7 @@ final class CommandPaletteState {
 
     private func fuzzyMatch(_ query: String, in target: String) -> Bool {
         let q = query.lowercased()
+        guard !q.isEmpty else { return true }
         let t = target.lowercased()
         if t.contains(q) { return true }
         var qIdx = q.startIndex

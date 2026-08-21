@@ -5,20 +5,45 @@ final class KnowledgeExtractionService {
     static let shared = KnowledgeExtractionService()
 
     var isExtracting = false
+
+    // Both sets are touched from concurrent async callers, so every access goes through
+    // `stateLock` — mutating a Set from two threads is a crash, not just a lost insert.
+    private let stateLock = NSLock()
     private var recentlyProcessedNotes: Set<UUID> = []
     private var activeTaggingEntries: Set<String> = []
 
     private init() {}
+
+    /// Returns false when the id was already present (caller should bail).
+    private func claimNote(_ id: UUID) -> Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !recentlyProcessedNotes.contains(id) else { return false }
+        if recentlyProcessedNotes.count >= 500 { recentlyProcessedNotes.removeAll() }
+        recentlyProcessedNotes.insert(id)
+        return true
+    }
+
+    private func claimTagging(_ id: String) -> Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        guard !activeTaggingEntries.contains(id) else { return false }
+        activeTaggingEntries.insert(id)
+        return true
+    }
+
+    private func releaseTagging(_ id: String) {
+        stateLock.lock()
+        activeTaggingEntries.remove(id)
+        stateLock.unlock()
+    }
 
     // MARK: - Feature 6: Auto-extract from notes
 
     func extractFromNote(id: UUID, title: String, content: String) async {
         guard !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               content.split(whereSeparator: \.isWhitespace).count >= 30,
-              !recentlyProcessedNotes.contains(id) else { return }
-
-        if recentlyProcessedNotes.count >= 500 { recentlyProcessedNotes.removeAll() }
-        recentlyProcessedNotes.insert(id)
+              claimNote(id) else { return }
 
         await MainActor.run { isExtracting = true }
         defer { Task { @MainActor in isExtracting = false } }
@@ -75,9 +100,8 @@ final class KnowledgeExtractionService {
     }
 
     func autoTagAndUpdate(entry: KnowledgeEntry) async {
-        guard !activeTaggingEntries.contains(entry.id) else { return }
-        activeTaggingEntries.insert(entry.id)
-        defer { activeTaggingEntries.remove(entry.id) }
+        guard claimTagging(entry.id) else { return }
+        defer { releaseTagging(entry.id) }
 
         let tags = await autoTag(entry: entry)
         guard !tags.isEmpty else { return }
@@ -179,6 +203,8 @@ final class KnowledgeExtractionService {
     }
 
     func clearProcessedNote(_ id: UUID) {
+        stateLock.lock()
         recentlyProcessedNotes.remove(id)
+        stateLock.unlock()
     }
 }

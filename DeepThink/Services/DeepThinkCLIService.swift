@@ -132,10 +132,20 @@ final class DeepThinkCLIService {
 
                 do {
                     try process.run()
-                    process.waitUntilExit()
 
-                    let stdout = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-                    let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 300, execute: timeoutWork)
+
+                    // Drain the pipes BEFORE waiting for exit — output larger than the 64 KB
+                    // pipe buffer blocks the child forever if we wait first, and this
+                    // continuation would then never resume.
+                    let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
+                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    timeoutWork.cancel()
+
+                    let stdout = String(data: outData, encoding: .utf8) ?? ""
+                    let stderr = String(data: errData, encoding: .utf8) ?? ""
 
                     continuation.resume(returning: CLIResult(
                         output: stdout.trimmingCharacters(in: .whitespacesAndNewlines),

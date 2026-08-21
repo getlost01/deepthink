@@ -149,7 +149,7 @@ Output saved to sandbox/outputs/
 | Search | `search_web`, `search_local` |
 | Analytics | `analyze_file` |
 | Knowledge | `save_knowledge`, `search_knowledge` |
-| Workspace | `workspace_list_tasks`, `workspace_create_task`, `workspace_update_task`, etc. |
+| Workspace | `workspace_task`, `workspace_note`, `workspace_project`, `workspace_reminder` (each with `action: list\|get\|create\|update\|delete`) |
 
 ---
 
@@ -214,7 +214,7 @@ CLI and app share the same data directory (`~/DeepThink/`):
 ```text
 cli/src/
 ├── index.ts                   # CLI entry point, command routing
-├── mcp-server.ts              # MCP server (45 tools)
+├── mcp-server.ts              # MCP server (19 tools)
 ├── config.ts                  # Paths, settings
 ├── core/
 │   ├── context-engine.ts      # BM25 index, hybrid RRF retrieval, archive exclusion

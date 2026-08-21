@@ -366,7 +366,7 @@ struct CommandPaletteView: View {
         for project in projects {
             items.append(WorkspaceSearchItem(
                 id: project.id,
-                title: project.name,
+                title: project.name.isEmpty ? "Untitled" : project.name,
                 subtitle: "\(project.isArchived ? project.tasks.count : project.openTaskCount) tasks · \(project.notes.count) notes",
                 icon: "folder",
                 type: .project,

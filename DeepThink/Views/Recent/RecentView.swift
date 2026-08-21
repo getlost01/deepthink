@@ -271,7 +271,7 @@ struct RecentView: View {
                         }
                         .foregroundStyle(DS.Colors.accent)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, DS.Spacing.sm + 2)
+                        .padding(.vertical, DS.Spacing.sm2)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plainPointer)
@@ -371,7 +371,7 @@ private struct RecentItemRow: View {
                 kindBadge
             }
             .padding(.horizontal, DS.Spacing.md)
-            .padding(.vertical, DS.Spacing.sm + 2)
+            .padding(.vertical, DS.Spacing.sm2)
             .background(isHovered ? DS.Colors.fillSecondary : DS.Colors.transparent)
             .contentShape(Rectangle())
         }
@@ -490,7 +490,7 @@ private struct AgentsSection: View {
                 .foregroundStyle(DS.Colors.accent)
                 .frame(width: DS.Layout.sidebarIconSlot, height: DS.Layout.sidebarIconSlot)
                 .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                 Text(agent.name)
                     .font(DS.Font.caption)
                     .fontWeight(.semibold)
@@ -503,7 +503,7 @@ private struct AgentsSection: View {
             if runningAgents.contains(agent.id) {
                 ProgressView()
                     .scaleEffect(0.6)
-                    .frame(width: 20, height: 20)
+                    .frame(width: DS.IconSize.xl, height: DS.IconSize.xl)
             } else {
                 Menu {
                     Button {
@@ -523,7 +523,7 @@ private struct AgentsSection: View {
                     Image(systemName: "ellipsis")
                         .font(.system(size: DS.IconSize.xs, weight: .bold))
                         .foregroundStyle(DS.Colors.textTertiary)
-                        .frame(width: 20, height: 20)
+                        .frame(width: DS.IconSize.xl, height: DS.IconSize.xl)
                         .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 }
                 .menuStyle(.borderlessButton)
@@ -671,7 +671,7 @@ private struct AgentOutputCard: View {
                 Image(systemName: icon)
                     .font(.system(size: DS.IconSize.xs, weight: .semibold))
                     .foregroundStyle(DS.Colors.accent)
-                    .frame(width: 24, height: 24)
+                    .frame(width: DS.IconSize.xxl, height: DS.IconSize.xxl)
                     .background(DS.Colors.accentFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
                 Text(name)
                     .font(DS.Font.small)
@@ -701,7 +701,7 @@ struct DailyBriefModal: View {
                     Image(systemName: "sun.horizon.fill")
                         .font(.system(size: DS.IconSize.sm, weight: .semibold))
                         .foregroundStyle(DS.Colors.sunrise)
-                    VStack(alignment: .leading, spacing: 1) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                         Text("Daily Brief")
                             .font(DS.Font.titleSmall)
                             .foregroundStyle(DS.Colors.textPrimary)
@@ -820,10 +820,10 @@ private struct InsightsStrip: View {
             Image(systemName: severityIcon(insight.severity))
                 .font(.system(size: DS.IconSize.xs, weight: .semibold))
                 .foregroundStyle(severityColor(insight.severity))
-                .frame(width: 20, height: 20)
+                .frame(width: DS.IconSize.xl, height: DS.IconSize.xl)
                 .background(DS.Colors.badgeFill(severityColor(insight.severity)), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 Text(insight.title)
                     .font(DS.Font.body)
                     .fontWeight(.medium)

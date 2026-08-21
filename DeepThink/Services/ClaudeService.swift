@@ -9,11 +9,6 @@ final class ClaudeService {
     var isProcessing = false
     var lastError: String?
     var lastErrorKind: ClaudeErrorKind?
-    var maxTokens: Int = 16384 {
-        didSet {
-            UserDefaults.standard.set(maxTokens, forKey: "maxTokens")
-        }
-    }
 
     /// Model selection — persisted across launches via UserDefaults
     var selectedModelFamily: ModelFamily = .sonnet {
@@ -99,7 +94,11 @@ final class ClaudeService {
         session.outputTokens += outputTokens
         session.cacheReadTokens += cacheReadTokens
         session.cacheCreationTokens += cacheCreationTokens
-        try? usageContext.save()
+        do {
+            try usageContext.save()
+        } catch {
+            StorageService.shared.writeLog("Usage save failed: \(error.localizedDescription)", to: "errors")
+        }
         sessionCacheReadTokens += cacheReadTokens
         sessionCacheCreationTokens += cacheCreationTokens
         totalDurationMs += durationMs
@@ -127,12 +126,23 @@ final class ClaudeService {
             id
         }
 
+        static let opus5 = ModelVersion(
+            id: "claude-opus-5",
+            family: .opus,
+            version: "5",
+            suffix: "Latest",
+            isLatest: true,
+            contextWindow: "200K",
+            maxOutput: "32K",
+            inputCostPer1M: "$15",
+            outputCostPer1M: "$75"
+        )
         static let opus47 = ModelVersion(
             id: "claude-opus-4-7",
             family: .opus,
             version: "4.7",
-            suffix: "Latest",
-            isLatest: true,
+            suffix: nil,
+            isLatest: false,
             contextWindow: "200K",
             maxOutput: "32K",
             inputCostPer1M: "$15",
@@ -161,12 +171,23 @@ final class ClaudeService {
             outputCostPer1M: "$75"
         )
 
+        static let sonnet5 = ModelVersion(
+            id: "claude-sonnet-5",
+            family: .sonnet,
+            version: "5",
+            suffix: "Latest",
+            isLatest: true,
+            contextWindow: "200K",
+            maxOutput: "16K",
+            inputCostPer1M: "$3",
+            outputCostPer1M: "$15"
+        )
         static let sonnet46 = ModelVersion(
             id: "claude-sonnet-4-6",
             family: .sonnet,
             version: "4.6",
             suffix: nil,
-            isLatest: true,
+            isLatest: false,
             contextWindow: "200K",
             maxOutput: "16K",
             inputCostPer1M: "$3",
@@ -219,8 +240,8 @@ final class ClaudeService {
         )
 
         // Legacy aliases
-        static let latestOpus = opus47
-        static let latestSonnet = sonnet46
+        static let latestOpus = opus5
+        static let latestSonnet = sonnet5
         static let latestHaiku = haiku45
     }
 
@@ -260,8 +281,8 @@ final class ClaudeService {
         var versions: [ModelVersion] {
             switch self {
             case .haiku: [.haiku45, .haiku35]
-            case .sonnet: [.sonnet46, .sonnet45, .sonnet37]
-            case .opus: [.opus47, .opus46, .opus45]
+            case .sonnet: [.sonnet5, .sonnet46, .sonnet45, .sonnet37]
+            case .opus: [.opus5, .opus47, .opus46, .opus45]
             }
         }
 
@@ -281,8 +302,6 @@ final class ClaudeService {
     var fullModelID: String {
         selectedModelVersion.modelID
     }
-
-    static let maxTokenOptions = [4096, 8192, 16384, 32768]
 
     var claudePath: String
     var customCLIPath: String? {
@@ -319,11 +338,6 @@ final class ClaudeService {
             } else {
                 selectedModelVersion = family.latestVersion
             }
-        }
-
-        if let savedTokens = UserDefaults.standard.object(forKey: "maxTokens") as? Int,
-           Self.maxTokenOptions.contains(savedTokens) {
-            maxTokens = savedTokens
         }
 
         fetchCLIVersion()
@@ -366,9 +380,14 @@ final class ClaudeService {
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
-            try? process.run()
-            process.waitUntilExit()
+            // A failed launch leaves the parent holding the pipe's write end, so
+            // readDataToEndOfFile below would block this thread forever.
+            do { try process.run() } catch {
+                DispatchQueue.main.async { ClaudeService.shared.cliVersion = nil }
+                return
+            }
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            process.waitUntilExit()
             let version = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             DispatchQueue.main.async {
                 ClaudeService.shared.cliVersion = version
@@ -420,7 +439,7 @@ final class ClaudeService {
 
     private func runCLI(prompt: String, systemPrompt: String?, model: String? = nil, extraArgs: [String] = []) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [claudePath, maxTokens] in
+            DispatchQueue.global(qos: .userInitiated).async { [claudePath] in
                 let storage = StorageService.shared
                 let process = Process()
                 process.executableURL = URL(fileURLWithPath: claudePath)
@@ -433,9 +452,7 @@ final class ClaudeService {
                     "json",
                     "--no-session-persistence",
                     "--model",
-                    model ?? ClaudeService.shared.fullModelID,
-                    "--max-tokens",
-                    "\(maxTokens)"
+                    model ?? ClaudeService.shared.fullModelID
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -458,10 +475,17 @@ final class ClaudeService {
 
                 do {
                     try process.run()
-                    process.waitUntilExit()
 
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 300, execute: timeoutWork)
+
+                    // Drain the pipes BEFORE waiting for exit: any response larger than the
+                    // 64 KB pipe buffer blocks the child forever if we wait first, which used
+                    // to hang this continuation with no timeout at all.
                     let outData = outPipe.fileHandleForReading.readDataToEndOfFile()
                     let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
+                    process.waitUntilExit()
+                    timeoutWork.cancel()
 
                     if process.terminationStatus != 0 {
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
@@ -552,7 +576,6 @@ final class ClaudeService {
     private func runCLIStreaming(prompt: String, systemPrompt: String?, onToken: @escaping @Sendable (String) -> Void) async throws -> String {
         let cliPath = claudePath
         let modelID = fullModelID
-        let maxTok = maxTokens
         let storage = StorageService.shared
 
         return try await withCheckedThrowingContinuation { continuation in
@@ -569,9 +592,7 @@ final class ClaudeService {
                     "--verbose",
                     "--no-session-persistence",
                     "--model",
-                    modelID,
-                    "--max-tokens",
-                    "\(maxTok)"
+                    modelID
                 ]
                 if let systemPrompt {
                     args.append(contentsOf: ["--append-system-prompt", systemPrompt])
@@ -593,6 +614,10 @@ final class ClaudeService {
 
                 do {
                     try process.run()
+
+                    // Nothing bounded this before: a wedged CLI held the continuation forever.
+                    let timeoutWork = DispatchWorkItem { if process.isRunning { process.terminate() } }
+                    DispatchQueue.global().asyncAfter(deadline: .now() + 600, execute: timeoutWork)
 
                     let handle = outPipe.fileHandleForReading
                     var buffer = Data()
@@ -627,7 +652,7 @@ final class ClaudeService {
                                     let cost = obj["total_cost_usd"] as? Double
                                     let duration = obj["duration_ms"] as? Double
                                     let usageDict = obj["usage"] as? [String: Any]
-                                    DispatchQueue.main.sync {
+                                    DispatchQueue.main.async {
                                         ClaudeService.shared.totalQueries += 1
                                         if let cost {
                                             ClaudeService.shared.totalCostUSD += cost
@@ -659,10 +684,11 @@ final class ClaudeService {
                         }
                     }
 
+                    let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                     process.waitUntilExit()
+                    timeoutWork.cancel()
 
                     if process.terminationStatus != 0, fullText.isEmpty {
-                        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
                         let stderr = String(data: errData, encoding: .utf8) ?? "Unknown error"
                         if let typed = ClaudeService.classifyOutput(stderr) {
                             continuation.resume(throwing: typed)

@@ -70,6 +70,7 @@
 		99AAF612C230A61EE4498BF1 /* NoteListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49DACC2342FDEA5CD1242861 /* NoteListView.swift */; };
 		A36E6427AE6B21AAC6D69B29 /* ActiveRulesBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B46F832E2500CF5FFF86747 /* ActiveRulesBar.swift */; };
 		A45A891DECB1D74EF2A5B2FD /* ObsidianImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630747ACA3A0EFBE8FB35A77 /* ObsidianImportView.swift */; };
+		A46A36CFB76A3E5BACC269BD /* HandoffsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C22C9857D24AE2EFCBD7A78 /* HandoffsView.swift */; };
 		A676C81F265FD7A1038E0A54 /* MCPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0600BB6D0E20A8A684ED8D07 /* MCPService.swift */; };
 		A6EE9B3FF7DACA255C6D33D1 /* TerminalHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6B41EEC463A03B371966AC1 /* TerminalHostView.swift */; };
 		A856EDEA220FCFC0583BC966 /* InstallationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B054E6D2E053FBEB803CD468 /* InstallationManager.swift */; };
@@ -78,6 +79,7 @@
 		B2EE3CE5FA78E8E1D31465B8 /* DeadLinkScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAC8C58D5D50E6DB600A51F3 /* DeadLinkScanner.swift */; };
 		B40C93BBE9604F4B5427F9F2 /* Project.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0784749C45091B5719161924 /* Project.swift */; };
 		B47B0C5B2114EB20F19D2969 /* ProjectInspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17993B0BAF774FE82D40DCA1 /* ProjectInspectorView.swift */; };
+		B4D48BD48CDB4173A5924BAD /* HandoffService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C953942E8372B65AF04F0E95 /* HandoffService.swift */; };
 		B77D4EF2FA56A119F4517698 /* AIMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68C23989015D98E60342D08F /* AIMessage.swift */; };
 		C46E34B2FFBEC78E725C4F98 /* ChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B515DCC183F7FC0A2C55A5 /* ChatComponents.swift */; };
 		C6144C17B5AF935AF2018373 /* AllNotesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEABA7F13C07CD092954126 /* AllNotesView.swift */; };
@@ -163,6 +165,7 @@
 		743594E1DCCFCB283317BD30 /* NoteVersionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteVersionsView.swift; sourceTree = "<group>"; };
 		7AB8CED762D0BEEEBFA7395D /* SkillFileService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkillFileService.swift; sourceTree = "<group>"; };
 		7B6FA21FE6380844C9D014F0 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		7C22C9857D24AE2EFCBD7A78 /* HandoffsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandoffsView.swift; sourceTree = "<group>"; };
 		7C66CC1E57209BBE097F8539 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		7DF2912F112A3670AE5A84AC /* ClaudeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeSettingsView.swift; sourceTree = "<group>"; };
 		7E1BAEE7E4B74ECC4FD56366 /* ReminderDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderDetailView.swift; sourceTree = "<group>"; };
@@ -198,6 +201,7 @@
 		B7AD0A93ED60E643B3FAE47B /* TaskNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskNotificationService.swift; sourceTree = "<group>"; };
 		C0FA0B0EF4EF57C609BFC6DA /* BackupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupService.swift; sourceTree = "<group>"; };
 		C60730FD3958D5FE4008E5C3 /* VectorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VectorStore.swift; sourceTree = "<group>"; };
+		C953942E8372B65AF04F0E95 /* HandoffService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HandoffService.swift; sourceTree = "<group>"; };
 		CAC8C58D5D50E6DB600A51F3 /* DeadLinkScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeadLinkScanner.swift; sourceTree = "<group>"; };
 		CB73589E106C5A91025E8318 /* MarkdownRendererView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRendererView.swift; sourceTree = "<group>"; };
 		CDEABA7F13C07CD092954126 /* AllNotesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotesView.swift; sourceTree = "<group>"; };
@@ -363,6 +367,7 @@
 				EA7BD3F177366244561A7CD4 /* DSThemeManager.swift */,
 				39AF85031C16E190ABD50E4B /* EmbeddingService.swift */,
 				889E22A7596C1B768A368CBF /* GlobalHotKey.swift */,
+				C953942E8372B65AF04F0E95 /* HandoffService.swift */,
 				B054E6D2E053FBEB803CD468 /* InstallationManager.swift */,
 				1553E0E70B92DA246004ED09 /* KnowledgeExtractionService.swift */,
 				4EA7BBF000DA7F11D56AC155 /* KnowledgeService.swift */,
@@ -378,6 +383,14 @@
 				A3275C61AF584F63DAF20352 /* VersioningService.swift */,
 			);
 			path = Services;
+			sourceTree = "<group>";
+		};
+		4920E636FD0811706A41565C /* Handoffs */ = {
+			isa = PBXGroup;
+			children = (
+				7C22C9857D24AE2EFCBD7A78 /* HandoffsView.swift */,
+			);
+			path = Handoffs;
 			sourceTree = "<group>";
 		};
 		4FB6EAD080FAE297789124A6 /* SkillsRules */ = {
@@ -396,6 +409,7 @@
 				BF44C7D40BE76179DAFE4AB1 /* AI */,
 				2BC602B94B476971CAA885C7 /* Chat */,
 				EF7FA233F182B3FCB79197F0 /* CommandPalette */,
+				4920E636FD0811706A41565C /* Handoffs */,
 				BF16D63BAF179FEA3133D853 /* Knowledge */,
 				0DA13E31242007EA05FF001C /* KnowledgeGraph */,
 				BB62AE060EB91288CD0D701B /* Notes */,
@@ -704,6 +718,8 @@
 				EDDAAA898C3FECF2D63E897E /* Extensions.swift in Sources */,
 				2A30E5B79AB00FCB4409B2EC /* GeneralSettingsView.swift in Sources */,
 				81D83727AC261D9DFF3DC6B3 /* GlobalHotKey.swift in Sources */,
+				B4D48BD48CDB4173A5924BAD /* HandoffService.swift in Sources */,
+				A46A36CFB76A3E5BACC269BD /* HandoffsView.swift in Sources */,
 				A856EDEA220FCFC0583BC966 /* InstallationManager.swift in Sources */,
 				FD6D20B9B09705F3C0CCC6BA /* IntegrationsView.swift in Sources */,
 				52AF5F01C27FD134F747C7E5 /* KnowledgeBrowserView.swift in Sources */,
@@ -901,7 +917,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DeepThink/DeepThink.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedByXcode;
@@ -911,7 +927,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.deepthink.app;
 				PRODUCT_NAME = DeepThink;
 				SDKROOT = macosx;
@@ -925,7 +941,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = DeepThink/DeepThink.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_GENERATION_MODE = GeneratedByXcode;
@@ -935,7 +951,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.1;
+				MARKETING_VERSION = 1.0.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.deepthink.app;
 				PRODUCT_NAME = DeepThink;
 				SDKROOT = macosx;

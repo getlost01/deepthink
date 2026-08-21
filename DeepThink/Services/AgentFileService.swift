@@ -109,8 +109,8 @@ final class AgentFileService {
                     prompt += "\n\n# Knowledge Context\n\n"
                     var budget = remaining - 100
                     for entry in knowledge.prefix(5) {
-                        let snippet = "## \(entry.title)\n\(String(entry.content.prefix(min(400, budget))))\n\n"
                         guard budget > 0 else { break }
+                        let snippet = "## \(entry.title)\n\(String(entry.content.prefix(min(400, budget))))\n\n"
                         prompt += snippet
                         budget -= snippet.count
                     }
@@ -135,7 +135,12 @@ final class AgentFileService {
         md += "---\n\n"
         md += agent.systemPrompt
 
-        try? md.write(to: agent.filePath, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: agent.filePath, atomically: true, encoding: .utf8)
+        } catch {
+            ToastState.shared.showError("Could not save agent: \(error.localizedDescription)")
+            return
+        }
         reload()
     }
 

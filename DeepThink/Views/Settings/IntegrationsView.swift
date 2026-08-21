@@ -58,14 +58,22 @@ struct IntegrationsView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .dsPage()
-        .onChange(of: appState.agentConfigTab) { _, newTab in
-            if appState.selectedSection == .integrations {
-                switch newTab {
-                case .agents: selectedTab = .agents
-                case .skills: selectedTab = .skills
-                case .rules: selectedTab = .rules
-                }
-            }
+        .onAppear { consumePendingTab() }
+        .onChange(of: appState.agentConfigTab) { _, _ in
+            consumePendingTab()
         }
+    }
+
+    // Callers set `agentConfigTab` before navigating here, so the view doesn't exist yet
+    // when it changes — the request has to be consumed on appear too, and cleared so a
+    // later plain navigation doesn't re-apply a stale tab.
+    private func consumePendingTab() {
+        guard let requested = appState.agentConfigTab else { return }
+        switch requested {
+        case .agents: selectedTab = .agents
+        case .skills: selectedTab = .skills
+        case .rules: selectedTab = .rules
+        }
+        appState.agentConfigTab = nil
     }
 }

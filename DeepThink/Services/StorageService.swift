@@ -216,13 +216,20 @@ final class StorageService {
         let url = logFile(named: name)
         let timestamp = ISO8601DateFormatter().string(from: Date())
         let line = "[\(timestamp)] \(message)\n"
+        guard let data = line.data(using: .utf8) else { return }
         if let handle = try? FileHandle(forWritingTo: url) {
+            // `write(contentsOf:)` throws instead of raising an uncatchable ObjC exception
+            // when the volume is full, and the deferred close covers the failure path too —
+            // the old early return on a nil `data` leaked the descriptor.
+            defer { handle.closeFile() }
             handle.seekToEndOfFile()
-            guard let data = line.data(using: .utf8) else { return }
-            handle.write(data)
-            handle.closeFile()
+            do {
+                try handle.write(contentsOf: data)
+            } catch {
+                return
+            }
         } else {
-            try? line.write(to: url, atomically: true, encoding: .utf8)
+            try? data.write(to: url, options: .atomic)
         }
     }
 

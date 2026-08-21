@@ -111,7 +111,14 @@ struct TaskDetailView: View {
                         .font(DS.Font.caption)
                         .padding(.horizontal, DS.Spacing.sm2)
                         .padding(.vertical, DS.Spacing.xs2)
-                        .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+                        .background(
+                            task.dueDate == nil ? DS.Colors.fillSecondary : DS.Colors.badgeFill(dueDateColor),
+                            in: RoundedRectangle(cornerRadius: DS.Radius.sm)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: DS.Radius.sm)
+                                .strokeBorder(task.dueDate == nil ? DS.Colors.border : DS.Colors.badgeBorder(dueDateColor), lineWidth: 1)
+                        )
                     }
                     .buttonStyle(.plainPointer)
                     .popover(isPresented: $showCalendar) {
@@ -155,7 +162,7 @@ struct TaskDetailView: View {
                         Image(systemName: showSubtasks ? "chevron.down" : "chevron.right")
                             .font(.system(size: DS.IconSize.xs, weight: .bold))
                             .foregroundStyle(DS.Colors.textTertiary)
-                            .frame(width: 12)
+                            .frame(width: DS.IconSize.sm)
                         Text("Subtasks")
                             .font(DS.Font.caption)
                             .fontWeight(.semibold)
@@ -200,7 +207,7 @@ struct TaskDetailView: View {
                                 Spacer()
 
                                 Button {
-                                    VectorStore.shared.enqueuePendingReindex(entryID: "task:\(sub.id.uuidString)", entryType: "task", operation: "delete")
+                                    ArchiveService.enqueueDeletion(task: sub)
                                     modelContext.delete(sub)
                                     try? modelContext.save()
                                 } label: {
@@ -351,7 +358,11 @@ struct TaskDetailView: View {
             .font(DS.Font.caption)
             .padding(.horizontal, DS.Spacing.sm2)
             .padding(.vertical, DS.Spacing.xs2)
-            .background(DS.Colors.fillSecondary, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .background(DS.Colors.badgeFill(color), in: RoundedRectangle(cornerRadius: DS.Radius.sm))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.Radius.sm)
+                    .strokeBorder(DS.Colors.badgeBorder(color), lineWidth: 1)
+            )
         }
         .buttonStyle(.plainPointer)
     }

@@ -7,11 +7,9 @@ import SwiftUI
 final class UpdateService {
     static let shared = UpdateService()
 
-    // swiftlint:disable force_unwrapping
     private static let repositoryURL = URL(string: "https://github.com/getlost01/deepthink")!
     private static let latestReleaseAPIURL = URL(string: "https://api.github.com/repos/getlost01/deepthink/releases/latest")!
     private static let fallbackReleasePageURL = URL(string: "https://github.com/getlost01/deepthink/releases/latest")!
-    // swiftlint:enable force_unwrapping
 
     private var isCheckingGitHub = false
     private var hasCheckedAtLaunch = false
@@ -81,15 +79,24 @@ final class UpdateService {
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
-                lastGitHubError = "Could not reach GitHub releases."
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if statusCode == 403 || statusCode == 429 {
+                    lastGitHubError = "GitHub rate limit exceeded. Try again later."
+                } else if statusCode == 404 {
+                    lastGitHubError = "No releases found on GitHub."
+                } else {
+                    lastGitHubError = "Could not reach GitHub releases."
+                }
                 return
             }
 
             let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
             latestVersion = normalizeVersionTag(release.tagName)
             latestReleaseURL = preferredDownloadURL(from: release)
-        } catch {
+        } catch is DecodingError {
             lastGitHubError = "Update check failed. Try again."
+        } catch {
+            lastGitHubError = "Could not reach GitHub. Check your internet connection."
         }
     }
 

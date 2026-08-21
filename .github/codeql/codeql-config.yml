@@ -1,0 +1,8 @@
+name: DeepThink CodeQL config
+
+# editor.bundle.js is generated build output (~1.3MB of bundled CodeMirror/ProseMirror),
+# committed at editor-bundle/ and copied into DeepThink/Resources/. Scanning it produced
+# 104 of 112 alerts — all in third-party code we do not author and cannot fix in place.
+# Exclude the artifact, not the source: editor-bundle/editor.js is still analysed.
+paths-ignore:
+  - '**/editor.bundle.js'

@@ -34,6 +34,13 @@ final class KnowledgeService {
                 let changed = self.scanDirectory(knowledgeURL, changedSince: since)
                 let allPaths = Set(self.allFilePaths(in: knowledgeURL))
 
+                // Prune against every file on disk, not just `changed` — see
+                // EmbeddingService.indexEntries(prune:) for why the narrow set is unsafe.
+                VectorStore.shared.pruneStaleEntries(
+                    validIDs: Set(allPaths.map(\.path)),
+                    entryType: "knowledge"
+                )
+
                 DispatchQueue.main.async {
                     self.entries.removeAll { !allPaths.contains($0.filePath) }
                     for entry in changed {
@@ -49,7 +56,7 @@ final class KnowledgeService {
                     self.refreshBuckets()
                     let snapshot = self.entries
                     ContextEngine.shared.indexQueue.async { ContextEngine.shared.rebuildIndex(with: snapshot) }
-                    EmbeddingService.shared.scheduleIndexEntries(changed)
+                    EmbeddingService.shared.scheduleIndexEntries(changed, prune: false)
                     self.isLoading = false
                 }
             } else {

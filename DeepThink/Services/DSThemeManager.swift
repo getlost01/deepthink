@@ -29,6 +29,9 @@ struct DSThemePalette {
     let fill: Color
     let fillSecondary: Color
 
+    let controlFill: Color
+    let controlFillHover: Color
+
     let textPrimary: Color
     let textSecondary: Color
     let textTertiary: Color
@@ -174,7 +177,8 @@ private enum DSColor {
         let sunrise: Color
 
         static let light = Semantic(
-            accent: srgb(0.098, 0.463, 0.824),
+            // Deeper, indigo-leaning blue — distinct from stock Material blue (#197ED2).
+            accent: srgb(0.216, 0.325, 0.831),
             success: srgb(0.180, 0.490, 0.196),
             warning: srgb(0.929, 0.424, 0.008),
             danger: srgb(0.827, 0.184, 0.184),
@@ -190,7 +194,8 @@ private enum DSColor {
         )
 
         static let dark = Semantic(
-            accent: srgb(0.565, 0.792, 0.976),
+            // Same indigo-leaning hue as light, lifted for contrast against a near-black page.
+            accent: srgb(0.553, 0.627, 0.976),
             success: srgb(0.298, 0.686, 0.314),
             warning: srgb(1.000, 0.792, 0.361),
             danger: srgb(0.937, 0.325, 0.314),
@@ -216,13 +221,17 @@ extension DSThemePalette {
         let inkG = 0.129
         let inkB = 0.129
         return DSThemePalette(
-            page: DSColor.srgb(0.980, 0.980, 0.980),
-            surface: DSColor.srgb(0.961, 0.961, 0.961),
-            surfaceElevated: DSColor.srgb(1.0, 1.0, 1.0),
+            // Neutral ramp — mirrors the dark-mode ramp below: small, distinct steps rather
+            // than leaning entirely on shadow to separate elevated surfaces from each other.
+            page: DSColor.srgb(0.978, 0.978, 0.978),
+            surface: DSColor.srgb(0.965, 0.965, 0.965),
+            surfaceElevated: DSColor.srgb(0.988, 0.988, 0.988),
             modal: DSColor.srgb(1.0, 1.0, 1.0),
-            card: DSColor.srgb(1.0, 1.0, 1.0),
+            card: DSColor.srgb(0.995, 0.995, 0.995),
             fill: DSColor.srgb(0, 0, 0, 0.04),
             fillSecondary: DSColor.srgb(0, 0, 0, 0.08),
+            controlFill: DSColor.srgb(0.945, 0.946, 0.950),
+            controlFillHover: DSColor.srgb(0.925, 0.926, 0.933),
             textPrimary: DSColor.srgb(inkR, inkG, inkB),
             textSecondary: DSColor.srgb(0.459, 0.459, 0.459),
             textTertiary: DSColor.srgb(0.620, 0.620, 0.620),
@@ -234,11 +243,11 @@ extension DSThemePalette {
             modalShadow: DSColor.srgb(0, 0, 0, 0.16),
             subtleShadow: DSColor.srgb(0, 0, 0, 0.06),
             overlayBg: DSColor.srgb(0, 0, 0, 0.50),
-            scrollMaskOpaque: DSColor.srgb(0.980, 0.980, 0.980),
+            scrollMaskOpaque: DSColor.srgb(0.978, 0.978, 0.978),
             scrollMaskFade: Color.clear,
             gridDot: DSColor.srgb(0, 0, 0, 0.12),
-            terminal: DSColor.srgb(0.980, 0.980, 0.980),
-            terminalNS: DSColor.nsrgb(0.980, 0.980, 0.980),
+            terminal: DSColor.srgb(0.978, 0.978, 0.978),
+            terminalNS: DSColor.nsrgb(0.978, 0.978, 0.978),
             terminalForegroundNS: DSColor.nsrgb(inkR, inkG, inkB),
             accent: accent,
             accentFill: accent.opacity(0.10),
@@ -268,13 +277,17 @@ extension DSThemePalette {
         let accent = sem.accent
         let warning = sem.warning
         return DSThemePalette(
+            // Neutral ramp — each step a small, even lift over the last so no single
+            // boundary (e.g. page → sidebar) reads as a harder jump than any other.
             page: DSColor.srgb(0.071, 0.071, 0.071),
-            surface: DSColor.srgb(0.118, 0.118, 0.118),
-            surfaceElevated: DSColor.srgb(0.137, 0.137, 0.137),
-            modal: DSColor.srgb(0.149, 0.149, 0.149),
-            card: DSColor.srgb(0.118, 0.118, 0.118),
+            surface: DSColor.srgb(0.094, 0.094, 0.094),
+            surfaceElevated: DSColor.srgb(0.110, 0.110, 0.110),
+            modal: DSColor.srgb(0.140, 0.140, 0.140),
+            card: DSColor.srgb(0.125, 0.125, 0.125),
             fill: DSColor.srgb(1, 1, 1, 0.04),
             fillSecondary: DSColor.srgb(1, 1, 1, 0.08),
+            controlFill: DSColor.srgb(0.155, 0.157, 0.165),
+            controlFillHover: DSColor.srgb(0.185, 0.188, 0.198),
             textPrimary: DSColor.srgb(1, 1, 1, 0.87),
             textSecondary: DSColor.srgb(1, 1, 1, 0.70),
             textTertiary: DSColor.srgb(1, 1, 1, 0.50),
@@ -418,10 +431,13 @@ final class DSThemeManager {
         }
     }
 
-    /// Uses AppKit effective appearance only — not `AppleInterfaceStyle` defaults, which stay at the OS value while the app forces light/dark.
+    /// Reads the OS preference directly rather than `NSApp.effectiveAppearance`, which
+    /// hasn't synced with the system yet in the first moments after launch — querying it
+    /// too early (a race won more often in optimized Release builds than in Debug) returns
+    /// `.aqua` regardless of actual Dark Mode, until AppKit catches up a beat later.
     private static func resolvedSystemAppearance() -> AppAppearance {
-        let match = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
-        return match == .darkAqua ? .dark : .light
+        let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle")
+        return style?.localizedCaseInsensitiveContains("dark") == true ? .dark : .light
     }
 }
 

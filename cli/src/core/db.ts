@@ -1,9 +1,22 @@
 import { Database } from "bun:sqlite";
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { DEEPTHINK_ROOT } from "../config";
 
 const STORE_PATH = join(DEEPTHINK_ROOT, "data", "deepthink.store");
+
+function ensureStoreExists(): void {
+  if (!existsSync(STORE_PATH)) {
+    throw new Error(`DeepThink workspace not found at ${STORE_PATH}. Launch the DeepThink app once to initialize it.`);
+  }
+}
+
+function parseDateToCD(value: string): number {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) throw new Error(`invalid date: ${value}`);
+  return toCD(d);
+}
 
 // Core Data epoch: 2001-01-01T00:00:00Z
 const CD_EPOCH = Date.UTC(2001, 0, 1) / 1000;
@@ -37,23 +50,61 @@ function nextPK(db: Database, entity: string): { pk: number; ent: number } {
   db.transaction(() => {
     const row = db.query("SELECT Z_ENT, Z_MAX FROM Z_PRIMARYKEY WHERE Z_NAME = ?").get(entity) as any;
     if (!row) throw new Error(`unknown entity: ${entity}`);
-    const pk = row.Z_MAX + 1;
+    // Guard against a stale Z_MAX: the running app allocates PKs from its own cached
+    // counter and may have inserted rows without this connection seeing the bump. Taking
+    // the higher of Z_MAX and the table's actual MAX(Z_PK) avoids colliding with them.
+    const table = `Z${entity.toUpperCase()}`;
+    let tableMax = 0;
+    try {
+      const m = db.query(`SELECT MAX(Z_PK) AS m FROM ${table}`).get() as { m: number | null };
+      tableMax = m?.m ?? 0;
+    } catch {}
+    const pk = Math.max(row.Z_MAX, tableMax) + 1;
     db.query("UPDATE Z_PRIMARYKEY SET Z_MAX = ? WHERE Z_NAME = ?").run(pk, entity);
     result = { pk, ent: row.Z_ENT };
   })();
   return result!;
 }
 
+// Core Data assigns Z_<n> numeric prefixes to entities and their many-to-many join tables
+// based on model ordering; those numbers shift whenever the SwiftData schema changes. Resolve
+// the join table and owning FK column at runtime by matching the column suffix (e.g. "TASKS",
+// "NOTES") instead of hardcoding the number. Returns null if absent or ambiguous so callers
+// skip the cleanup safely rather than corrupting unrelated rows.
+const _joinCache = new Map<string, { table: string; col: string } | null>();
+function resolveJoin(db: Database, ownerSuffix: string): { table: string; col: string } | null {
+  const key = ownerSuffix.toUpperCase();
+  if (_joinCache.has(key)) return _joinCache.get(key) ?? null;
+  const tables = db.query("SELECT name FROM sqlite_master WHERE type='table' AND name GLOB 'Z_[0-9]*'").all() as {
+    name: string;
+  }[];
+  const re = new RegExp(`^Z_\\d+${key}$`);
+  const matches: { table: string; col: string }[] = [];
+  for (const { name } of tables) {
+    const cols = db.query(`PRAGMA table_info('${name}')`).all() as { name: string }[];
+    for (const c of cols) {
+      if (re.test(c.name.toUpperCase())) matches.push({ table: name, col: c.name });
+    }
+  }
+  const result = matches.length === 1 ? matches[0] : null;
+  _joinCache.set(key, result);
+  return result;
+}
+
 let _db: Database | null = null;
 let _writeDb: Database | null = null;
 
 function getDB(): Database {
-  if (!_db) _db = new Database(STORE_PATH, { readonly: true });
+  if (!_db) {
+    ensureStoreExists();
+    _db = new Database(STORE_PATH, { readonly: true });
+  }
   return _db;
 }
 
 function getWriteDB(): Database {
   if (!_writeDb) {
+    ensureStoreExists();
     _writeDb = new Database(STORE_PATH);
     _writeDb.exec("PRAGMA journal_mode=WAL");
     _writeDb.exec("PRAGMA busy_timeout=5000");
@@ -169,11 +220,10 @@ export function getProject(nameOrPk: string): ProjectRow | null {
   if (!nameOrPk) return null;
   const projects = listProjects();
   const lower = nameOrPk.toLowerCase();
-  return (
-    projects.find((p) => p.name.toLowerCase() === lower) ??
-    projects.find((p) => p.name.toLowerCase().includes(lower)) ??
-    null
-  );
+  const exact = projects.find((p) => p.name.toLowerCase() === lower);
+  if (exact) return exact;
+  const partial = projects.filter((p) => p.name.toLowerCase().includes(lower));
+  return partial.length === 1 ? partial[0] : null;
 }
 
 export function createProject(
@@ -255,13 +305,23 @@ export interface TaskRow {
   completedAt: Date | null;
   projectPk: number | null;
   projectName: string | null;
+  parentPk: number | null;
+  parentId: string | null;
+  parentTitle: string | null;
   isArchived: boolean;
   createdAt: Date;
   modifiedAt: Date;
 }
 
 export function listTasks(
-  opts: { status?: string; priority?: string; project?: string; excludeArchived?: boolean } = {}
+  opts: {
+    status?: string;
+    priority?: string;
+    project?: string;
+    parent?: string;
+    topLevelOnly?: boolean;
+    excludeArchived?: boolean;
+  } = {}
 ): TaskRow[] {
   const db = getDB();
   let where = opts.excludeArchived ? "(t.ZISARCHIVED = 0 OR t.ZISARCHIVED IS NULL)" : "1=1";
@@ -275,20 +335,31 @@ export function listTasks(
     where += " AND t.ZPRIORITYRAW = ?";
     params.push(opts.priority);
   }
+  // An unresolvable filter must narrow to nothing, never silently widen to "no filter"
+  // (which would return the whole table for a mistyped project/parent name).
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) {
-      where += " AND t.ZPROJECT = ?";
-      params.push(proj.pk);
-    }
+    if (!proj) return [];
+    where += " AND t.ZPROJECT = ?";
+    params.push(proj.pk);
+  }
+  if (opts.parent) {
+    const parent = getTask(opts.parent);
+    if (!parent) return [];
+    where += " AND t.ZPARENT = ?";
+    params.push(parent.pk);
+  } else if (opts.topLevelOnly) {
+    where += " AND t.ZPARENT IS NULL";
   }
 
   const rows = db
     .query(`
     SELECT t.Z_PK, hex(t.ZID) as id, t.ZTITLE, t.ZDETAIL, t.ZSTATUSRAW, t.ZPRIORITYRAW,
-           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZCOMPLETEDAT, t.ZPROJECT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
-           p.ZNAME as projectName
-    FROM ZTASKITEM t LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
+           t.ZSTORYPOINTS, t.ZDUEDATE, t.ZCOMPLETEDAT, t.ZPROJECT, t.ZPARENT, t.ZISARCHIVED, t.ZCREATEDAT, t.ZMODIFIEDAT,
+           p.ZNAME as projectName, parent.ZTITLE as parentTitle, hex(parent.ZID) as parentId
+    FROM ZTASKITEM t
+      LEFT JOIN ZPROJECT p ON t.ZPROJECT = p.Z_PK
+      LEFT JOIN ZTASKITEM parent ON t.ZPARENT = parent.Z_PK
     WHERE ${where}
     ORDER BY t.ZMODIFIEDAT DESC
   `)
@@ -305,6 +376,9 @@ export function listTasks(
     completedAt: r.ZCOMPLETEDAT ? fromCD(r.ZCOMPLETEDAT) : null,
     projectPk: r.ZPROJECT,
     projectName: r.projectName ?? null,
+    parentPk: r.ZPARENT,
+    parentId: r.parentId ?? null,
+    parentTitle: r.parentTitle ?? null,
     isArchived: !!r.ZISARCHIVED,
     createdAt: fromCD(r.ZCREATEDAT),
     modifiedAt: fromCD(r.ZMODIFIEDAT),
@@ -317,11 +391,17 @@ export function getTask(pkStr: string): TaskRow | null {
   const byPk = tasks.find((t) => t.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return (
-    tasks.find((t) => t.title.toLowerCase() === lower) ??
-    tasks.find((t) => t.title.toLowerCase().includes(lower)) ??
-    null
-  );
+  const exact = tasks.find((t) => t.title.toLowerCase() === lower);
+  if (exact) return exact;
+  // Only resolve a substring match when it's unambiguous — an ambiguous ref must not
+  // silently pick the first of several (a delete/update would hit the wrong task).
+  const partial = tasks.filter((t) => t.title.toLowerCase().includes(lower));
+  return partial.length === 1 ? partial[0] : null;
+}
+
+// Direct children of a task, as full rows (used by workspace_task get/list to surface subtasks).
+export function listSubtasks(parentPk: number): TaskRow[] {
+  return listTasks().filter((t) => t.parentPk === parentPk);
 }
 
 export function createTask(
@@ -333,6 +413,7 @@ export function createTask(
     storyPoints?: number;
     dueDate?: string;
     project?: string;
+    parent?: string;
   } = {}
 ): { pk: number; id: string } {
   const db = getWriteDB();
@@ -343,22 +424,31 @@ export function createTask(
   let projectPk: number | null = null;
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) projectPk = proj.pk;
+    if (!proj) throw new Error(`project not found: ${opts.project}`);
+    projectPk = proj.pk;
+  }
+
+  let parentPk: number | null = null;
+  if (opts.parent) {
+    const parent = getTask(opts.parent);
+    if (!parent) throw new Error(`parent task not found: ${opts.parent}`);
+    parentPk = parent.pk;
   }
 
   let dueDateCD: number | null = null;
   if (opts.dueDate) {
-    dueDateCD = toCD(new Date(opts.dueDate));
+    dueDateCD = parseDateToCD(opts.dueDate);
   }
 
   db.query(`
-    INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
-    VALUES (?, ?, 1, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${id}')
+    INSERT INTO ZTASKITEM (Z_PK, Z_ENT, Z_OPT, ZSTORYPOINTS, ZPROJECT, ZPARENT, ZCOMPLETEDAT, ZCREATEDAT, ZDUEDATE, ZMODIFIEDAT, ZDETAIL, ZPRIORITYRAW, ZSTATUSRAW, ZTITLE, ZID)
+    VALUES (?, ?, 1, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, x'${id}')
   `).run(
     pk,
     ent,
     opts.storyPoints ?? null,
     projectPk,
+    parentPk,
     now,
     dueDateCD,
     now,
@@ -406,7 +496,7 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
   }
   if (fields.dueDate !== undefined) {
     sets.push("ZDUEDATE = ?");
-    vals.push(fields.dueDate ? toCD(new Date(fields.dueDate)) : null);
+    vals.push(fields.dueDate ? parseDateToCD(fields.dueDate) : null);
   }
   if (fields.project !== undefined) {
     if (fields.project === null || fields.project === "none") {
@@ -414,10 +504,32 @@ export function updateTask(pk: number, fields: Record<string, any>): void {
       vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) {
-        sets.push("ZPROJECT = ?");
-        vals.push(proj.pk);
+      if (!proj) throw new Error(`project not found: ${fields.project}. Pass 'none' to unassign.`);
+      sets.push("ZPROJECT = ?");
+      vals.push(proj.pk);
+    }
+  }
+  if (fields.parent !== undefined) {
+    if (fields.parent === null || fields.parent === "none") {
+      sets.push("ZPARENT = ?");
+      vals.push(null);
+    } else {
+      const parent = getTask(fields.parent);
+      if (!parent) throw new Error(`parent task not found: ${fields.parent}`);
+      if (parent.pk === pk) throw new Error(`a task cannot be its own parent`);
+      // Walk descendants to reject reparenting a task under its own subtask/grandchild.
+      const descendants = new Set<string>();
+      const queue = listSubtaskIds(pk);
+      while (queue.length) {
+        const childId = queue.pop()!;
+        if (descendants.has(childId)) continue;
+        descendants.add(childId);
+        const child = getTask(childId);
+        if (child) queue.push(...listSubtaskIds(child.pk));
       }
+      if (descendants.has(parent.id)) throw new Error(`cannot move a task under its own subtask`);
+      sets.push("ZPARENT = ?");
+      vals.push(parent.pk);
     }
   }
 
@@ -443,18 +555,19 @@ export function listSubtaskIds(parentPk: number): string[] {
 
 export function deleteTask(pk: number): void {
   const db = getWriteDB();
+  const taskJoin = resolveJoin(db, "TASKS");
   db.transaction(() => {
     const subtaskPKs = db.query("SELECT Z_PK FROM ZTASKITEM WHERE ZPARENT = ?").all(pk) as { Z_PK: number }[];
     for (const sub of subtaskPKs) {
       const subSnap = db.query("SELECT * FROM ZTASKITEM WHERE Z_PK = ?").get(sub.Z_PK) as object | undefined;
       if (subSnap) trashEntity(db, "task", sub.Z_PK, subSnap);
-      db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(sub.Z_PK);
+      if (taskJoin) db.query(`DELETE FROM ${taskJoin.table} WHERE ${taskJoin.col} = ?`).run(sub.Z_PK);
       db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(sub.Z_PK);
       auditLog(db, "delete", "task", sub.Z_PK);
     }
     const snap = db.query("SELECT * FROM ZTASKITEM WHERE Z_PK = ?").get(pk) as object | undefined;
     if (snap) trashEntity(db, "task", pk, snap);
-    db.query("DELETE FROM Z_10TASKS WHERE Z_11TASKS = ?").run(pk);
+    if (taskJoin) db.query(`DELETE FROM ${taskJoin.table} WHERE ${taskJoin.col} = ?`).run(pk);
     db.query("DELETE FROM ZTASKITEM WHERE Z_PK = ?").run(pk);
     auditLog(db, "delete", "task", pk);
   })();
@@ -487,10 +600,9 @@ export function listNotes(opts: { project?: string; pinned?: boolean; excludeArc
   }
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) {
-      where += " AND n.ZPROJECT = ?";
-      params.push(proj.pk);
-    }
+    if (!proj) return [];
+    where += " AND n.ZPROJECT = ?";
+    params.push(proj.pk);
   }
 
   const rows = db
@@ -522,11 +634,10 @@ export function getNote(pkStr: string): NoteRow | null {
   const byPk = notes.find((n) => n.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return (
-    notes.find((n) => n.title.toLowerCase() === lower) ??
-    notes.find((n) => n.title.toLowerCase().includes(lower)) ??
-    null
-  );
+  const exact = notes.find((n) => n.title.toLowerCase() === lower);
+  if (exact) return exact;
+  const partial = notes.filter((n) => n.title.toLowerCase().includes(lower));
+  return partial.length === 1 ? partial[0] : null;
 }
 
 export function createNote(
@@ -545,7 +656,8 @@ export function createNote(
   let projectPk: number | null = null;
   if (opts.project) {
     const proj = getProject(opts.project);
-    if (proj) projectPk = proj.pk;
+    if (!proj) throw new Error(`project not found: ${opts.project}`);
+    projectPk = proj.pk;
   }
 
   db.query(`
@@ -580,10 +692,9 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
       vals.push(null);
     } else {
       const proj = getProject(fields.project);
-      if (proj) {
-        sets.push("ZPROJECT = ?");
-        vals.push(proj.pk);
-      }
+      if (!proj) throw new Error(`project not found: ${fields.project}. Pass 'none' to unassign.`);
+      sets.push("ZPROJECT = ?");
+      vals.push(proj.pk);
     }
   }
 
@@ -603,9 +714,10 @@ export function updateNote(pk: number, fields: Record<string, any>): void {
 export function deleteNote(pk: number): void {
   const db = getWriteDB();
   db.transaction(() => {
+    const noteJoin = resolveJoin(db, "NOTES");
     const snap = db.query("SELECT * FROM ZNOTE WHERE Z_PK = ?").get(pk) as object | undefined;
     if (snap) trashEntity(db, "note", pk, snap);
-    db.query("DELETE FROM Z_5TAGS WHERE Z_5NOTES = ?").run(pk);
+    if (noteJoin) db.query(`DELETE FROM ${noteJoin.table} WHERE ${noteJoin.col} = ?`).run(pk);
     db.query("DELETE FROM ZNOTE WHERE Z_PK = ?").run(pk);
     auditLog(db, "delete", "note", pk);
   })();
@@ -664,11 +776,10 @@ export function getReminder(pkStr: string): ReminderRow | null {
   const byPk = reminders.find((r) => r.pk.toString() === pkStr);
   if (byPk) return byPk;
   const lower = pkStr.toLowerCase();
-  return (
-    reminders.find((r) => r.title.toLowerCase() === lower) ??
-    reminders.find((r) => r.title.toLowerCase().includes(lower)) ??
-    null
-  );
+  const exact = reminders.find((r) => r.title.toLowerCase() === lower);
+  if (exact) return exact;
+  const partial = reminders.filter((r) => r.title.toLowerCase().includes(lower));
+  return partial.length === 1 ? partial[0] : null;
 }
 
 export function createReminder(
@@ -685,7 +796,7 @@ export function createReminder(
 
   let reminderDateCD: number | null = null;
   if (opts.reminderDate) {
-    reminderDateCD = toCD(new Date(opts.reminderDate));
+    reminderDateCD = parseDateToCD(opts.reminderDate);
   }
 
   db.query(`
@@ -723,7 +834,7 @@ export function updateReminder(pk: number, fields: Record<string, any>): void {
   }
   if (fields.reminderDate !== undefined) {
     sets.push("ZREMINDERDATE = ?");
-    vals.push(fields.reminderDate ? toCD(new Date(fields.reminderDate)) : null);
+    vals.push(fields.reminderDate ? parseDateToCD(fields.reminderDate) : null);
   }
 
   if (sets.length === 0) {

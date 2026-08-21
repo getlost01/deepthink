@@ -68,6 +68,8 @@ private enum SearchScope: String, CaseIterable {
 struct ContextGraphView: View {
     @State private var nodes: [ContextNode] = []
     @State private var edges: [ContextEdge] = []
+    // Node ids (absolute knowledge-file paths) the MCP flagged grounding-stale.
+    @State private var staleNodeIDs: Set<String> = []
     @State private var showSemanticEdges = true
     @State private var showExplicitEdges = true
 
@@ -90,6 +92,7 @@ struct ContextGraphView: View {
     @State private var searchScope: SearchScope = .all
     @State private var searchFilterMode = false
     @State private var isBuilding = false
+    @State private var isSearching = false
     @State private var showLegend = false
     @State private var showHint = false
     @State private var activeSourceFilter: String?
@@ -183,6 +186,27 @@ struct ContextGraphView: View {
                                     .font(DS.Font.caption)
                                     .foregroundStyle(DS.Colors.textTertiary)
                             }
+                        } else if displayNodes.isEmpty {
+                            VStack(spacing: DS.Spacing.md) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                    .font(.system(size: DS.IconSize.hero))
+                                    .foregroundStyle(DS.Colors.textTertiary)
+                                Text("No nodes match the current filters")
+                                    .font(DS.Font.body)
+                                    .foregroundStyle(DS.Colors.textSecondary)
+                                Button {
+                                    withAnimation(DS.Animation.quick) {
+                                        activeSourceFilter = nil
+                                        activeBucketFilter = nil
+                                        searchFilterMode = false
+                                    }
+                                } label: {
+                                    Text("Clear filters")
+                                        .font(DS.Font.caption)
+                                        .foregroundStyle(DS.Colors.accent)
+                                }
+                                .buttonStyle(.plainPointer)
+                            }
                         } else {
                             graphCanvas(size: geo.size)
                             canvasControls
@@ -208,8 +232,10 @@ struct ContextGraphView: View {
                     .onChange(of: query) { _, newVal in
                         queryDebounceTask?.cancel()
                         if newVal.trimmingCharacters(in: .whitespaces).isEmpty {
+                            isSearching = false
                             queryScores = [:]
                         } else {
+                            isSearching = true
                             queryDebounceTask = Task {
                                 try? await Task.sleep(for: .milliseconds(300))
                                 guard !Task.isCancelled else { return }
@@ -499,7 +525,15 @@ struct ContextGraphView: View {
 
                 // Stats
                 let isFiltered = activeSourceFilter != nil || activeBucketFilter != nil || searchFilterMode
-                if !queryScores.isEmpty {
+                if isSearching {
+                    HStack(spacing: DS.Spacing.xs) {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Searching…")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
+                    }
+                } else if !queryScores.isEmpty {
                     let visibleMatches = displayNodes.count(where: { queryScores[$0.id] != nil })
                     HStack(spacing: DS.Spacing.xs) {
                         Image(systemName: "sparkle")
@@ -508,6 +542,15 @@ struct ContextGraphView: View {
                         Text("\(visibleMatches) match\(visibleMatches == 1 ? "" : "es")")
                             .font(DS.Font.caption)
                             .foregroundStyle(DS.Colors.accent)
+                    }
+                } else if !query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    HStack(spacing: DS.Spacing.xs) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: DS.IconSize.xs))
+                            .foregroundStyle(DS.Colors.textTertiary)
+                        Text("No matches")
+                            .font(DS.Font.caption)
+                            .foregroundStyle(DS.Colors.textTertiary)
                     }
                 } else if isFiltered {
                     Text("\(displayNodes.count) / \(nodes.count) nodes")
@@ -638,7 +681,7 @@ struct ContextGraphView: View {
             Text("FILTER BY BUCKET")
                 .font(DS.Font.micro)
                 .foregroundStyle(DS.Colors.textTertiary)
-                .padding(.bottom, 2)
+                .padding(.bottom, DS.Spacing.xxs)
 
             Button {
                 withAnimation(DS.Animation.quick) { activeBucketFilter = nil }
@@ -866,6 +909,7 @@ struct ContextGraphView: View {
         let hasQueryScore = !queryScores.isEmpty
         let qScore = queryScores[node.id] ?? 0
         let isQueryMatch = hasQueryScore && qScore > 0
+        let isStale = staleNodeIDs.contains(node.id)
 
         let radius = CGFloat(max(22, min(48, 18 + node.connectionCount * 5)))
         let nodeColor = colorForSource(node.source)
@@ -928,6 +972,14 @@ struct ContextGraphView: View {
                     Circle().strokeBorder(ringColor, lineWidth: isSelected || isHovered ? 2.5 : 1.5)
                 )
 
+            // grounding-stale indicator — dashed amber ring around the node
+            if isStale {
+                Circle()
+                    .strokeBorder(DS.Colors.amber, style: StrokeStyle(lineWidth: 2, dash: [3, 2]))
+                    .frame(width: radius + 8, height: radius + 8)
+                    .opacity(isDimmed ? 0.3 : 1)
+            }
+
             // initial letter
             Text(initial)
                 .font(.system(size: max(11, radius * 0.38), weight: .bold, design: .rounded))
@@ -960,7 +1012,7 @@ struct ContextGraphView: View {
                         Text(String(format: "%.0f%%", pct * 100))
                             .font(DS.Font.micro)
                             .foregroundStyle(DS.Colors.onAccent)
-                            .padding(.horizontal, 4)
+                            .padding(.horizontal, DS.Spacing.xs)
                             .padding(.vertical, DS.Spacing.xxs)
                             .background(nodeColor, in: Capsule())
                             .offset(x: 6, y: -radius / 2)
@@ -1192,11 +1244,19 @@ struct ContextGraphView: View {
 
     // MARK: - Build
 
+    // Map the MCP's grounding-stale entry ids (paths relative to the knowledge dir)
+    // to absolute node ids so nodeView can flag them.
+    private func refreshStaleNodes() {
+        let base = StorageService.shared.knowledgeURL.path
+        staleNodeIDs = Set(VectorStore.shared.staleEntryIDs().map { "\(base)/\($0)" })
+    }
+
     private func rebuild(in size: CGSize) {
         stopSimulation()
         isBuilding = true
         buildGeneration &+= 1
         let gen = buildGeneration
+        refreshStaleNodes()
 
         let knowledgeEntries = KnowledgeService.shared.entries
         DispatchQueue.global(qos: .userInitiated).async {
@@ -1390,6 +1450,7 @@ struct ContextGraphView: View {
 
     private func runQuery() {
         let q = query.trimmingCharacters(in: .whitespaces)
+        isSearching = false
         guard !q.isEmpty else { queryScores = [:]; return }
 
         switch searchScope {

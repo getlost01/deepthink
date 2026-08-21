@@ -34,10 +34,11 @@ final class MCPServer {
     var envDict: [String: String] {
         var dict: [String: String] = [:]
         for line in envVars.split(separator: "\n") {
-            let parts = line.split(separator: "=", maxSplits: 1)
-            if parts.count == 2 {
-                dict[String(parts[0])] = String(parts[1])
-            }
+            let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard parts.count == 2 else { continue }
+            let key = parts[0].trimmingCharacters(in: .whitespaces)
+            guard !key.isEmpty else { continue }
+            dict[key] = parts[1].trimmingCharacters(in: .whitespaces)
         }
         return dict
     }

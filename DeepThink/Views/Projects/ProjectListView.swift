@@ -128,12 +128,14 @@ struct ProjectListView: View {
                     if appState.selectedProjectID == project.id {
                         appState.selectedProjectID = nil
                     }
+                    ArchiveService.enqueueDeletion(project: project)
                     modelContext.delete(project)
                     projectToDelete = nil
                 }
             }
         } message: {
-            Text("This will permanently delete \"\(projectToDelete?.name ?? "")\" and all its notes, tasks, and reminders.")
+            let name = projectToDelete.flatMap { $0.name.isEmpty ? nil : $0.name } ?? "Untitled"
+            Text("This will permanently delete \"\(name)\" and all its notes, tasks, and reminders.")
         }
         .dsListPanel()
     }
@@ -164,7 +166,7 @@ private struct ProjectCard: View {
         HStack(spacing: DS.Spacing.md) {
             Circle()
                 .fill(Color(hex: project.color))
-                .frame(width: 10, height: 10)
+                .frame(width: DS.IconSize.sm2, height: DS.IconSize.sm2)
 
             VStack(alignment: .leading, spacing: DS.Spacing.xxs) {
                 HStack(spacing: DS.Spacing.sm) {
@@ -173,7 +175,7 @@ private struct ProjectCard: View {
                         .fontWeight(.medium)
                         .lineLimit(1)
                     if project.isArchived {
-                        DSPill(text: "Archived", color: .secondary)
+                        DSPill(text: "Archived", color: DS.Colors.textSecondary)
                     }
                 }
                 if !project.summary.isEmpty {

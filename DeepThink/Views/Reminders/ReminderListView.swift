@@ -148,7 +148,7 @@ struct ReminderListView: View {
                         DSFilterChip(label: filter.rawValue, isSelected: filterMode == filter) { filterMode = filter }
                     }
                     Divider()
-                        .frame(height: 16)
+                        .frame(height: DS.IconSize.lg)
                         .padding(.horizontal, DS.Spacing.xxs)
                     ForEach(PriorityFilter.allCases, id: \.self) { pf in
                         let pfColor: Color = pf == .high ? DS.Colors.danger : pf == .medium ? DS.Colors.warning : pf == .low ? DS.Colors.success : DS.Colors
@@ -281,6 +281,7 @@ struct ReminderListView: View {
     private func deleteReminder(_ reminder: Reminder) {
         cancelNotification(for: reminder)
         if appState.selectedReminderID == reminder.id { appState.selectedReminderID = nil }
+        ArchiveService.enqueueDeletion(reminder: reminder)
         modelContext.delete(reminder)
     }
 
@@ -402,7 +403,7 @@ private struct NotificationPermissionBanner: View {
                     .font(DS.Font.small)
                     .fontWeight(.semibold)
                     .foregroundStyle(DS.Colors.warning)
-                    .frame(height: 20)
+                    .frame(height: DS.IconSize.xl)
                     .padding(.horizontal, DS.Spacing.xs2)
                     .background(DS.Colors.warningFill, in: RoundedRectangle(cornerRadius: DS.Radius.sm))
             }

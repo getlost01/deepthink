@@ -219,8 +219,8 @@ Full list of remaining issues from the pre-release review, grouped by priority a
 | B2 | Read-only `getDB()` in CLI doesn't set `busy_timeout` - reader can hit SQLITE_BUSY immediately if writer mid-tx. | CLI | `cli/src/core/db.ts:50` | 5 min |
 | B3 | `notifyutil` duplicated between `db.ts:97` and `knowledge.ts:7`. Consolidate into one helper. | CLI | `cli/src/core/db.ts`, `cli/src/tools/knowledge.ts` | 15 min |
 | B4 | Knowledge `searchIntegrationData()` is O(n×m) linear substring scan - unusable past ~1k entries. Needs SQLite FTS5 or similar. | CLI | `cli/src/tools/knowledge.ts` | 1 day |
-| B5 | `knowledge_capture` MCP tool has no max size limit. Large pastes bloat `vectors.db`. | MCP | `cli/src/tools/knowledge.ts` + tool schema | 30 min |
-| B6 | `workspace_resolve_deeplink` accepts any string as UUID - no format validation. Confusing "not found" instead of "invalid link". | MCP | `cli/src/tools/workspace.ts:532–574` | 15 min |
+| B5 | `knowledge_integration` (`action: "capture"`) has no max size limit. Large pastes bloat `vectors.db`. | MCP | `cli/src/tools/knowledge.ts` + tool schema | 30 min |
+| B6 | `workspace_resolve_deeplink` accepts any string as UUID - no format validation. Confusing "not found" instead of "invalid link". | MCP | `cli/src/tools/workspace.ts` (`resolveDeeplink` helper) | 15 min |
 | B7 | `classifyIntent()` in smart-mcp uses simple keyword matching - fragile (e.g. "update the backup" misclassified as full data load). | MCP | `cli/src/tools/smart-mcp.ts:71–79` | 2 hrs (or accept) |
 | B8 | `compressKnowledge` truncates content silently at 32KB. No warning or paging for large inputs. | CLI | `cli/src/tools/knowledge.ts:200–250` | 1 hr |
 | B9 | `TaskNotificationService` checks daily at 9am - misses if app not running. DST transitions can also skip a day. | App | `TaskNotificationService.swift` | 2 hrs |

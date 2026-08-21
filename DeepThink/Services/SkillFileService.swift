@@ -227,7 +227,12 @@ final class SkillFileService {
         }
         md += skill.promptTemplate
 
-        try? md.write(to: skill.filePath, atomically: true, encoding: .utf8)
+        do {
+            try md.write(to: skill.filePath, atomically: true, encoding: .utf8)
+        } catch {
+            ToastState.shared.showError("Could not save skill: \(error.localizedDescription)")
+            return
+        }
         reload()
     }
 

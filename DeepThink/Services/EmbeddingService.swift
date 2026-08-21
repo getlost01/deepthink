@@ -35,7 +35,9 @@ final class EmbeddingService {
 
     // MARK: - Knowledge Indexing
 
-    func indexEntries(_ entries: [KnowledgeEntry]) {
+    /// `prune` must stay false for an incremental pass: pruning against a partial set of
+    /// entries would delete the chunks of every knowledge entry that simply hadn't changed.
+    func indexEntries(_ entries: [KnowledgeEntry], prune: Bool = true) {
         DispatchQueue.main.async { self.isIndexing = true }
         defer {
             let count = store.embeddedCount()
@@ -49,6 +51,7 @@ final class EmbeddingService {
             DispatchQueue.main.async { self.progress = p }
         }
 
+        guard prune else { return }
         store.pruneStaleEntries(
             validIDs: Set(entries.map(\.id)),
             entryType: "knowledge"
@@ -102,6 +105,7 @@ final class EmbeddingService {
         tags: [String] = [],
         modifiedAt: Date = Date()
     ) throws {
+        let id = VectorStore.canonicalEntryID(id)
         let hash = simpleHash(content)
         if let existing = store.contentHash(forEntry: id), existing == hash {
             return
@@ -137,9 +141,9 @@ final class EmbeddingService {
         store.replaceChunksForEntry(id, with: vectorChunks)
     }
 
-    func scheduleIndexEntries(_ entries: [KnowledgeEntry]) {
+    func scheduleIndexEntries(_ entries: [KnowledgeEntry], prune: Bool = true) {
         indexQueue.async {
-            self.indexEntries(entries)
+            self.indexEntries(entries, prune: prune)
         }
     }
 
@@ -229,6 +233,19 @@ final class EmbeddingService {
                             content: Self.reminderContent(title: reminder.title, notes: reminder.notes, isCompleted: reminder.isCompleted),
                             modifiedAt: reminder.modifiedAt
                         )
+                    case "project":
+                        let projects = (try? context.fetch(FetchDescriptor<Project>(predicate: #Predicate { $0.id == uuid }))) ?? []
+                        guard let project = projects.first else {
+                            VectorStore.shared.deleteChunksForEntry(row.entryID)
+                            VectorStore.shared.deletePendingReindex(entryID: row.entryID)
+                            continue
+                        }
+                        try self.indexWorkspaceItem(
+                            id: row.entryID, type: "project",
+                            title: project.name,
+                            content: Self.projectContent(name: project.name, summary: project.summary, isArchived: project.isArchived),
+                            modifiedAt: project.modifiedAt
+                        )
                     default:
                         VectorStore.shared.deletePendingReindex(entryID: row.entryID)
                         continue
@@ -268,6 +285,10 @@ final class EmbeddingService {
 
     static func reminderContent(title: String, notes: String, isCompleted: Bool) -> String {
         "\(title)\n\(notes)\ncompleted:\(isCompleted)"
+    }
+
+    static func projectContent(name: String, summary: String, isArchived: Bool) -> String {
+        "\(name)\n\(summary)\narchived:\(isArchived)"
     }
 
     // MARK: - Search

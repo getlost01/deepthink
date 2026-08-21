@@ -195,6 +195,7 @@ struct AllNotesView: View {
         if appState.selectedNoteID == note.id {
             appState.selectedNoteID = nil
         }
+        ArchiveService.enqueueDeletion(note: note)
         modelContext.delete(note)
     }
 
@@ -225,6 +226,8 @@ struct AllNotesView: View {
                         Text(project.name)
                             .font(DS.Font.small)
                             .foregroundStyle(Color(hex: project.color))
+                            .lineLimit(1)
+                            .truncationMode(.tail)
                     }
 
                     Text(note.modifiedAt.relativeFormatted)

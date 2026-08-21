@@ -1,12 +1,70 @@
+import { currentAgentId } from "../config";
 import { retrieveContextHybrid, unifiedSearch, workspaceContext } from "../core/context-engine";
 import * as db from "../core/db";
+import { embeddingStats, lastMaintenance } from "../core/embedding-service";
+import { chunkCount, getPendingReindex } from "../core/vector-store";
+import { linkedProject, peekBucket } from "./buckets";
 import * as knowledge from "./knowledge";
+
+// The project to softly boost for a query. An explicit name wins; otherwise we
+// peek the bucket for `cwd` (defaulting to the MCP server's cwd, i.e. the repo
+// Claude Code was launched in) WITHOUT registering it. Returns undefined when
+// there's no matching bucket, leaving search unscoped.
+function currentProjectScope(opts: { cwd?: string; bucket?: string }): string | undefined {
+  if (opts.bucket) return opts.bucket;
+  try {
+    const b = peekBucket({ cwd: opts.cwd ?? process.cwd() });
+    return b ? linkedProject(b) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// Resolve both scope keys for the current repo: `projectScope` (the project NAME,
+// for fuzzy boosting of workspace items + knowledge projects) and `bucketScope`
+// (the exact bucket ID, for structured boosting of sessions/notes tagged
+// `bucket:<id>`). An explicit `bucket` is treated as the name; the id is only known
+// when resolved from `cwd`.
+function currentScope(opts: { cwd?: string; bucket?: string }): { projectScope?: string; bucketScope?: string } {
+  if (opts.bucket) return { projectScope: opts.bucket };
+  try {
+    const b = peekBucket({ cwd: opts.cwd ?? process.cwd() });
+    return b ? { projectScope: linkedProject(b), bucketScope: b.id } : {};
+  } catch {
+    return {};
+  }
+}
 
 export interface MCPTool {
   name: string;
   description: string;
   inputSchema: Record<string, any>;
   execute: (params: Record<string, any>) => any;
+}
+
+// `required` in inputSchema is advisory — a missing/blank query otherwise reaches the
+// tokenizer and surfaces as a cryptic TypeError instead of an actionable message.
+function requireQuery(p: Record<string, any>): string {
+  if (typeof p.query !== "string" || p.query.trim() === "")
+    throw new Error(`'query' is required and must be a non-empty string`);
+  return p.query;
+}
+
+function clampInt(value: unknown, fallback: number, min: number, max: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
+// Hard ceiling on rows returned by smart_query's `full` mode. Without it a query whose
+// wording trips the "full data" classifier dumps the entire workspace into the agent's
+// context; the paginated workspace_* tools are the real full-data path.
+const FULL_MODE_CAP = 100;
+
+// Note which lists got clipped so the agent knows to page rather than assume it saw everything.
+function truncationNote(counts: Record<string, number>, cap: number): Record<string, number> | undefined {
+  const over: Record<string, number> = {};
+  for (const [k, n] of Object.entries(counts)) if (n > cap) over[k] = n;
+  return Object.keys(over).length > 0 ? over : undefined;
 }
 
 // ── Intent Classification ──
@@ -85,7 +143,7 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "smart_query",
     description:
-      "Intelligent auto-routing query. Analyzes intent and returns either compact summary context (for understanding/planning) or full data (for mutations/exports). Use this as your DEFAULT tool — it picks the right depth automatically. Saves ~80-90% tokens vs raw data retrieval for context-only queries.",
+      "Intelligent auto-routing query. Analyzes intent and returns either compact summary context (for understanding/planning) or full data (for mutations/exports). Use this as your DEFAULT tool — it picks the right depth automatically. Saves ~80-90% tokens vs raw data retrieval for context-only queries. Results from the current repo's project are boosted automatically (resolved from the working dir); pass `cwd`/`bucket` to target a different one.",
     inputSchema: {
       type: "object",
       properties: {
@@ -96,25 +154,54 @@ export const SMART_TOOLS: MCPTool[] = [
           description:
             "Override auto-detection: 'summary' for context/understanding, 'full' for mutations/exports. Default: 'auto' (recommended)",
         },
-        maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000)" },
+        maxTokens: { type: "number", description: "Token budget for summary mode (default: 4000, max 40000)" },
+        cwd: {
+          type: "string",
+          description:
+            "Repo working directory — boosts results from the matching project. Defaults to the server's cwd.",
+        },
+        bucket: { type: "string", description: "Explicit bucket/project name to boost (overrides cwd resolution)." },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
       },
       required: ["query"],
     },
     execute: (p) => {
+      requireQuery(p);
+      if (p.mode !== undefined && !["auto", "summary", "full"].includes(p.mode))
+        throw new Error(`unknown mode: ${p.mode}. Use one of: auto, summary, full`);
       const rawMode = p.mode && p.mode !== "auto" ? p.mode : classifyIntent(p.query);
       const actualMode = rawMode === "auto" ? "summary" : rawMode;
+      const { projectScope, bucketScope } = currentScope(p);
+      const agentId = currentAgentId(p.agent);
 
       if (actualMode === "full") {
+        const projects = db.listProjects();
+        const tasks = db.listTasks();
+        const notes = db.listNotes();
+        const reminders = db.listReminders();
+        const truncated = truncationNote(
+          {
+            projects: projects.length,
+            tasks: tasks.length,
+            notes: notes.length,
+            reminders: reminders.length,
+          },
+          FULL_MODE_CAP
+        );
         return {
           mode: "full",
           intent: "full_data",
-          hint: "Use workspace_list_tasks, workspace_list_notes, knowledge_load_project, etc. for full data access.",
+          hint: `Each list is capped at ${FULL_MODE_CAP} items. Use workspace_task/note/project/reminder {action:'list', limit, offset} to page through everything, or knowledge_project {action:'load'} for a project's knowledge.`,
           workspace: {
-            projects: db.listProjects(),
-            tasks: db.listTasks(),
-            notes: db.listNotes(),
-            reminders: db.listReminders(),
+            projects: projects.slice(0, FULL_MODE_CAP),
+            tasks: tasks.slice(0, FULL_MODE_CAP),
+            notes: notes.slice(0, FULL_MODE_CAP),
+            reminders: reminders.slice(0, FULL_MODE_CAP),
           },
+          ...(truncated ? { truncated } : {}),
           knowledge: {
             stats: knowledge.knowledgeStats(),
             projects: knowledge.listProjects(),
@@ -124,14 +211,21 @@ export const SMART_TOOLS: MCPTool[] = [
       }
 
       // Summary mode — unified search (BM25 + semantic, all types, RRF-fused)
-      const unified = unifiedSearch(p.query, { maxItems: p.maxTokens ? Math.ceil(p.maxTokens / 400) : 10 });
+      const maxTokens = clampInt(p.maxTokens, 4000, 200, 40000);
+      const unified = unifiedSearch(p.query, {
+        maxItems: clampInt(Math.ceil(maxTokens / 400), 10, 1, 100),
+        projectScope,
+        bucketScope,
+        agentId,
+      });
 
       return {
         mode: "summary",
         intent: classifyIntent(p.query),
+        ...(projectScope ? { projectScope } : {}),
         results: unified,
         totalResults: unified.length,
-        tip: "Need full data? Call again with mode='full' or use specific workspace_list_* / knowledge_load_* tools.",
+        tip: "Need full data? Call again with mode='full' or use workspace_* {action:'list'} / knowledge_project {action:'load'}.",
       };
     },
   },
@@ -150,21 +244,29 @@ export const SMART_TOOLS: MCPTool[] = [
           description: "Token budget (default: 4000). Controls how much context is returned.",
         },
         projectScope: { type: "string", description: "Boost results from this project" },
+        bucket: { type: "string", description: "Restrict to a session bucket id (from knowledge_session)" },
         agentScope: {
           type: "array",
           items: { type: "string" },
           description: "Filter to these knowledge scope tags",
         },
-        topK: { type: "number", description: "Max entries to return (default: 10)" },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
+        topK: { type: "number", description: "Max entries to return (default: 10, max 50)" },
       },
       required: ["query"],
     },
     execute: (p) => {
+      requireQuery(p);
+      const agentScope = [...(p.agentScope ?? []), ...(p.bucket ? [`bucket:${p.bucket}`] : [])];
       return retrieveContextHybrid(p.query, {
-        maxTokens: p.maxTokens ?? 4000,
+        maxTokens: clampInt(p.maxTokens, 4000, 200, 40000),
         projectScope: p.projectScope,
-        agentScope: p.agentScope,
-        topK: p.topK ?? 10,
+        agentScope: agentScope.length > 0 ? agentScope : undefined,
+        agentId: currentAgentId(p.agent),
+        topK: clampInt(p.topK, 10, 1, 50),
       });
     },
   },
@@ -173,17 +275,23 @@ export const SMART_TOOLS: MCPTool[] = [
   {
     name: "workspace_context",
     description:
-      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_list_tasks + workspace_list_notes when you need context, not full data.",
+      "Query-relevant workspace snapshot. Scores tasks, notes, and reminders by relevance to your query and returns top matches only. Use instead of workspace_task/note {action:'list'} when you need context, not full data. Items in the current repo's project are boosted automatically; pass `cwd`/`bucket` to target a different one.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "What you're working on or looking for" },
-        maxItems: { type: "number", description: "Max items per category (default: 5)" },
+        maxItems: { type: "number", description: "Max items per category (default: 5, max 50)" },
+        cwd: {
+          type: "string",
+          description: "Repo working directory — boosts items from the matching project. Defaults to the server's cwd.",
+        },
+        bucket: { type: "string", description: "Explicit bucket/project name to boost (overrides cwd resolution)." },
       },
       required: ["query"],
     },
     execute: (p) => {
-      return workspaceContext(p.query, p.maxItems ?? 5);
+      requireQuery(p);
+      return workspaceContext(p.query, clampInt(p.maxItems, 5, 1, 50), undefined, currentProjectScope(p));
     },
   },
 
@@ -196,17 +304,46 @@ export const SMART_TOOLS: MCPTool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "What you're looking for" },
-        maxItems: { type: "number", description: "Max results (default: 10)" },
+        maxItems: { type: "number", description: "Max results (default: 10, max 100)" },
         types: {
           type: "array",
           items: { type: "string", enum: ["task", "note", "reminder", "knowledge"] },
           description: "Filter to specific types (default: all types)",
         },
+        bucket: {
+          type: "string",
+          description: "Restrict knowledge results to a session bucket id (from knowledge_session)",
+        },
+        cwd: {
+          type: "string",
+          description:
+            "Repo working directory — softly boosts results from the matching project. Defaults to the server's cwd.",
+        },
+        agent: {
+          type: "string",
+          description: "Agent identity (defaults to env DEEPTHINK_AGENT_ID). Includes this agent's private captures.",
+        },
       },
       required: ["query"],
     },
     execute: (p) => {
-      const results = unifiedSearch(p.query, { maxItems: p.maxItems ?? 10, types: p.types });
+      requireQuery(p);
+      const UNIFIED_TYPES = ["task", "note", "reminder", "knowledge"];
+      if (p.types !== undefined) {
+        if (!Array.isArray(p.types)) throw new Error(`'types' must be an array of: ${UNIFIED_TYPES.join(", ")}`);
+        const bad = p.types.filter((t: string) => !UNIFIED_TYPES.includes(t));
+        if (bad.length > 0)
+          throw new Error(`unknown type(s): ${bad.join(", ")}. Use one of: ${UNIFIED_TYPES.join(", ")}`);
+      }
+      const { projectScope, bucketScope } = currentScope({ cwd: p.cwd });
+      const results = unifiedSearch(p.query, {
+        maxItems: clampInt(p.maxItems, 10, 1, 100),
+        types: p.types,
+        scope: p.bucket ? [`bucket:${p.bucket}`] : undefined,
+        projectScope,
+        bucketScope,
+        agentId: currentAgentId(p.agent),
+      });
       return { results, count: results.length };
     },
   },
@@ -231,7 +368,19 @@ export const SMART_TOOLS: MCPTool[] = [
 
       const activeReminders = reminders.filter((r) => !r.isCompleted);
 
+      const embed = embeddingStats();
+      const pending = getPendingReindex().length;
+      const maint = lastMaintenance();
+
       return {
+        index: {
+          totalChunks: chunkCount(),
+          embeddedEntries: embed.indexed,
+          semanticSearch: embed.available ? "on" : "off (BM25 only)",
+          ...(embed.available ? {} : { embedderHint: embed.reason }),
+          ...(pending > 0 ? { pendingReindex: pending } : {}),
+          ...(maint ? { lastMaintenance: maint } : {}),
+        },
         workspace: {
           projects: projects.length,
           tasks: { total: tasks.length, byStatus: tasksByStatus },
@@ -247,7 +396,7 @@ export const SMART_TOOLS: MCPTool[] = [
           projects: kProjects,
           integrationSources: kIntegrations.map((i) => `${i.source} (${i.channels.length} channels)`),
         },
-        hint: "Use smart_query for relevant context, or workspace_list_*/knowledge_load_* for full data.",
+        hint: "Use smart_query for relevant context, or workspace_* {action:'list'} / knowledge_project {action:'load'} for full data.",
       };
     },
   },
