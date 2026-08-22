@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.8",
-    "@xyflow/react": "^12.10.2",
+    "@xyflow/react": "^12.11.3",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.33.0",
     "react": "^19.2.6",
